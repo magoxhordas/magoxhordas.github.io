@@ -2175,6 +2175,7 @@ body {
 /* Botões */
 .pm-go { min-width:220px; font-size:clamp(15px,1.2vw,20px) !important; letter-spacing:3px; }
 .pm-back { min-width:120px; font-size:clamp(13px,1vw,17px) !important; }
+.pm-actions { max-width:100%; flex-wrap:wrap; }
 
 /* ═══════════════════════════════════════════════════════════════
    v52 — LEGIBILIDADE + TEMA VERDE: Cozinha, Oficina e Melhorias
@@ -2702,6 +2703,12 @@ canvas, img {
     max-width:230px;
     padding:12px 9px;
   }
+  .pm-actions { width:100%; gap:8px; }
+  .pm-go, .pm-back {
+    flex:1 1 150px;
+    min-width:0;
+    max-width:260px;
+  }
   .choice-card .c-desc { line-height:1.45; }
   .cs-card {
     flex:1 1 min(142px,43vw);
@@ -2779,6 +2786,10 @@ canvas, img {
   .hub-action-panel {
     grid-template-columns:repeat(3,minmax(0,1fr));
     width:100%;
+  }
+  .hub-action-panel .hub-btn:last-child {
+    grid-column:auto;
+    grid-row:auto;
   }
   .hub-btn { min-width:0; min-height:var(--touch-target); }
   #cooking-panel, #workshop-panel, #expedition-map-panel, #inventory-panel,
@@ -2906,6 +2917,15 @@ canvas, img {
   .coll-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
   .hub-action-panel { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .br-boss-card { width:42vw; }
+}
+
+@media (pointer:coarse) and (max-width:1024px) {
+  button, .menu-btn, .hub-btn, .farm-tool-btn, .seed-btn,
+  .craft-tab, .coll-tab, .ws-tab, .pet-sanc-tab,
+  .expmap-start-btn, .expmap-close-btn, .cook-close-btn,
+  .ws-close-btn, .inv-close, .farm-close, .meta-close, .pet-close {
+    min-height:var(--touch-target);
+  }
 }
 
 /* Celular em paisagem: controles nas laterais e área jogável livre no centro. */
@@ -3286,7 +3306,7 @@ canvas, img {
     </div>
   </div>
 
-  <div style="display:flex;gap:12px;justify-content:center;align-items:stretch;">
+  <div class="pm-actions" style="display:flex;gap:12px;justify-content:center;align-items:stretch;">
     <button class="menu-btn primary pm-go" id="start-btn" onclick="goCharSelect()">⚔ ESCOLHER HERÓI →</button>
     <button class="menu-btn pm-back" onclick="showScreen('main-menu')">← Voltar</button>
   </div>
