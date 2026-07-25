@@ -2524,6 +2524,9 @@ canvas, img {
     padding-top:max(14px, var(--safe-top));
     padding-bottom:max(14px, var(--safe-bottom));
   }
+  .shop-grid-new {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
   .choice-cards, .cs-cards, .cards-row {
     justify-content:center;
   }
@@ -2737,8 +2740,42 @@ canvas, img {
     overflow-y:auto;
     padding:5px;
   }
-  .card-choice, .upgrade-card { min-width:0; max-width:100%; }
-  .card-screen-footer { max-width:100%; }
+  .bless-card, .card-choice, .upgrade-card {
+    width:100%;
+    min-width:0;
+    max-width:100%;
+    min-height:clamp(230px,70vw,270px);
+  }
+  .card-screen-rune-line, .card-screen-footer { width:100%; max-width:100%; }
+  .go-actions, .vic-btns {
+    width:100%;
+    max-width:100%;
+    flex-wrap:wrap;
+    justify-content:center;
+  }
+  .go-actions .menu-btn, .vic-btn {
+    flex:1 1 150px;
+    min-width:0;
+    max-width:280px;
+  }
+  .vic-panel {
+    width:min(420px,100%);
+    min-width:0;
+    padding:clamp(12px,4vw,18px);
+  }
+  .vic-rune-line { width:min(300px,100%); }
+  .vic-title {
+    max-width:100%;
+    font-size:clamp(30px,11vw,46px);
+    letter-spacing:clamp(3px,2vw,9px);
+    overflow-wrap:anywhere;
+  }
+  .vic-sub {
+    max-width:100%;
+    text-align:center;
+    font-size:clamp(11px,3.5vw,15px);
+    letter-spacing:clamp(1px,1vw,5px);
+  }
   .temple-choices { width:100%; justify-content:center; }
   .temple-choice-btn {
     flex:1 1 135px;
@@ -2760,7 +2797,7 @@ canvas, img {
     width:100%;
     gap:9px;
   }
-  .shop-inv-panel {
+  .shop-inventory-panel {
     width:100%;
     min-width:0;
     max-width:none;
@@ -2772,11 +2809,24 @@ canvas, img {
     gap:5px;
   }
   .shop-inv-slot { min-width:0; }
-  .shop-items-grid, .s-cards {
+  .shop-grid-new {
     grid-template-columns:repeat(2,minmax(0,1fr));
   }
+  .shop-header {
+    flex-wrap:wrap;
+    gap:6px;
+  }
+  .shop-coins-badge {
+    min-width:0;
+    margin-left:auto;
+    padding:5px 8px;
+    font-size:16px;
+  }
   .shop-footer { flex-wrap:wrap; justify-content:center; }
-  .s-card { min-width:0; }
+  .s-card, .shop-inv-slot {
+    min-width:0;
+    overflow:hidden;
+  }
 
   /* Acampamento e painéis. */
   #hub-screen {
@@ -2876,7 +2926,19 @@ canvas, img {
     min-width:0;
     max-width:100%;
     max-height:calc(100dvh - var(--safe-top) - var(--safe-bottom) - 16px);
+    overflow-x:hidden;
     overflow-y:auto;
+  }
+  #dng-menu-body {
+    width:100%;
+    min-width:0;
+    overflow-x:hidden;
+  }
+  #dng-menu-body #crafting-panel {
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    padding:0;
   }
   #deq-bag { grid-template-columns:repeat(3,minmax(0,1fr)); }
   #dng-shop-grid, #dng-inv-grid {
@@ -2890,7 +2952,7 @@ canvas, img {
   .pm-sub { margin-bottom:12px; letter-spacing:2px; }
   #play-menu .section-title::before,
   #play-menu .section-title::after { content:'✦'; margin:0 5px; }
-  .shop-items-grid, .s-cards, .cook-grid, .ws-grid, .meta-grid,
+  .shop-grid-new, .cook-grid, .ws-grid, .meta-grid,
   .recipe-grid, .armor-grid, .pet-exped-grid, .pet-train-grid,
   .biome-cards {
     grid-template-columns:1fr;
@@ -2914,6 +2976,7 @@ canvas, img {
   #play-menu .choice-card, .choice-card,
   .cs-card { flex-basis:100%; max-width:280px; }
   .cards-row { grid-template-columns:1fr; }
+  .bless-card { max-width:280px; margin-inline:auto; }
   .coll-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
   .hub-action-panel { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .br-boss-card { width:42vw; }
@@ -3435,7 +3498,7 @@ canvas, img {
   <h1>DERROTA!</h1>
   <div style="font-size:15px;color:#4a1a1a;letter-spacing:4px;margin-bottom:16px;text-transform:uppercase;">— A fortaleza caiu —</div>
   <div class="go-stats" id="go-stats"></div>
-  <div style="display:flex;gap:10px;">
+  <div class="go-actions" style="display:flex;gap:10px;">
     <button class="menu-btn primary" onclick="goToHub()">🏕 ACAMPAMENTO</button>
     <button class="menu-btn" onclick="goMainMenu()">MENU PRINCIPAL</button>
   </div>
