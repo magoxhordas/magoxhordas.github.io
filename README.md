@@ -1,4 +1,4 @@
-# Mago X Ordas
+# Mago X Hordas
 
 Jogo de ação em HTML, CSS e JavaScript.
 
