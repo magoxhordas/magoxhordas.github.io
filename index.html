@@ -4070,13 +4070,15 @@ body.campaign-hud-active #xp2-bar-wrap,
 body.campaign-hud-active #hint { display:none!important; }
 body.campaign-hud-active #weapon-slots-wrap {
   position:absolute;
-  left:18px;
+  left:50%;
   bottom:14px;
   display:flex;
   gap:12px;
   margin:0;
   align-items:flex-end;
   pointer-events:none;
+  transform:translateX(-50%);
+  transform-origin:bottom center;
 }
 body.campaign-hud-active .weapon-slots-group {
   position:relative;
@@ -4149,7 +4151,7 @@ body.campaign-hud-active .wslot .wname { display:none; }
   body.campaign-hud-active #ui-top .stat-value,
   body.campaign-hud-active #coin-display { font-size:18px; }
   body.campaign-hud-active #ui-top .campaign-health-stat { padding-right:14px; }
-  body.campaign-hud-active #weapon-slots-wrap { transform:scale(.82);transform-origin:bottom left; }
+  body.campaign-hud-active #weapon-slots-wrap { transform:translateX(-50%) scale(.82);transform-origin:bottom center; }
 }
 @media(max-width:720px){
   body.campaign-hud-active #ui-top {
@@ -4175,10 +4177,10 @@ body.campaign-hud-active .wslot .wname { display:none; }
   }
   body.campaign-hud-active #weapon-slots-wrap {
     display:flex!important;
-    left:4px;
+    left:50%;
     bottom:4px;
-    transform:scale(.58);
-    transform-origin:bottom left;
+    transform:translateX(-50%) scale(.58);
+    transform-origin:bottom center;
   }
 }
 
@@ -16000,9 +16002,100 @@ function drawBGGround(bc){
   bc.fillStyle='#4a3a28'; bc.fillRect(128,192,W-256,4);
 }
 
+function drawCryptFlame(x,y,t,{color='amber',scale=1,phase=0}={}){
+  const green=color==='green';
+  const sway=(Math.sin(t*0.011+phase)+Math.sin(t*0.019+phase*1.7)*0.45)*2.2*scale;
+  const pulse=0.88+Math.sin(t*0.008+phase)*0.08+Math.sin(t*0.021+phase)*0.04;
+  const outer=green?'rgba(29,255,92,.46)':'rgba(255,91,8,.48)';
+  const middle=green?'rgba(72,255,119,.84)':'rgba(255,153,20,.88)';
+  const core=green?'rgba(205,255,185,.95)':'rgba(255,239,148,.96)';
+
+  ctx.save();
+  ctx.globalCompositeOperation='screen';
+  const radius=(green?31:27)*scale*pulse;
+  const glow=ctx.createRadialGradient(x,y,1,x,y,radius);
+  glow.addColorStop(0,green?'rgba(63,255,104,.42)':'rgba(255,177,54,.45)');
+  glow.addColorStop(.42,green?'rgba(9,198,70,.18)':'rgba(240,83,5,.16)');
+  glow.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=glow;
+  ctx.fillRect(x-radius,y-radius,radius*2,radius*2);
+
+  ctx.fillStyle=outer;
+  ctx.beginPath();
+  ctx.moveTo(x-5*scale,y+6*scale);
+  ctx.bezierCurveTo(x-7*scale,y-scale,x+sway-2*scale,y-9*scale,x+sway*.8,y-16*scale);
+  ctx.bezierCurveTo(x+sway+5*scale,y-7*scale,x+7*scale,y-2*scale,x+5*scale,y+6*scale);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle=middle;
+  ctx.beginPath();
+  ctx.moveTo(x-3.2*scale,y+5*scale);
+  ctx.quadraticCurveTo(x+sway*.55-2*scale,y-4*scale,x+sway*.62,y-11*scale);
+  ctx.quadraticCurveTo(x+sway*.9+4*scale,y-3*scale,x+3.2*scale,y+5*scale);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle=core;
+  ctx.beginPath();
+  ctx.moveTo(x-1.7*scale,y+4*scale);
+  ctx.quadraticCurveTo(x+sway*.25,y-2*scale,x+sway*.34,y-6.5*scale);
+  ctx.quadraticCurveTo(x+2.4*scale,y-scale,x+1.7*scale,y+4*scale);
+  ctx.closePath();
+  ctx.fill();
+
+  for(let i=0;i<3;i++){
+    const age=(t*0.00028+phase*.17+i*.31)%1;
+    const sparkX=x+Math.sin(age*8+phase+i)*5*scale+sway*.2;
+    const sparkY=y-8*scale-age*18*scale;
+    ctx.globalAlpha=Math.sin(age*Math.PI)*.58;
+    ctx.fillStyle=green?'#79ff9c':'#ffd65b';
+    ctx.fillRect(Math.round(sparkX),Math.round(sparkY),Math.max(1,scale*1.5),Math.max(1,scale*1.5));
+  }
+  ctx.restore();
+}
+
+function drawCryptAmbience(t){
+  [
+    [W*.314,H*.269,'amber',1.02,.2],
+    [W*.690,H*.269,'amber',1.02,2.1],
+    [W*.199,H*.306,'green',.78,.8],
+    [W*.798,H*.306,'green',.78,2.8],
+    [W*.432,H*.347,'green',.56,1.5],
+    [W*.566,H*.347,'green',.56,3.5]
+  ].forEach(([x,y,color,scale,phase])=>drawCryptFlame(x,y,t,{color,scale,phase}));
+
+  // Névoa sobrenatural respirando no portão central da cripta.
+  ctx.save();
+  ctx.globalCompositeOperation='screen';
+  const pulse=.82+.18*Math.sin(t*.0026);
+  ctx.translate(W*.5,H*.414);
+  ctx.scale(1.45,.62);
+  const gateGlow=ctx.createRadialGradient(0,0,2,0,0,42*pulse);
+  gateGlow.addColorStop(0,`rgba(32,255,92,${.24*pulse})`);
+  gateGlow.addColorStop(.45,`rgba(4,176,65,${.13*pulse})`);
+  gateGlow.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=gateGlow;
+  ctx.fillRect(-50,-50,100,100);
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalCompositeOperation='screen';
+  for(let i=0;i<7;i++){
+    const age=(t*.00013+i*.143)%1;
+    const x=W*.5+Math.sin(age*7+i*1.8)*18*(1-age*.35);
+    const y=H*.43-age*48;
+    ctx.globalAlpha=Math.sin(age*Math.PI)*.22;
+    ctx.fillStyle=i%2?'#38f179':'#0cad55';
+    ctx.beginPath();ctx.arc(x,y,1.2+age*2.2,0,Math.PI*2);ctx.fill();
+  }
+  ctx.restore();
+}
+
 function drawAnimTorches(t){
+  if(currentArena==='crypt'){ drawCryptAmbience(t); return; }
   // A floresta já possui iluminação natural; tochas pertencem aos outros mapas.
-  if(currentArena==='crypt'||currentArena==='forest'||currentArena==='desert'||currentArena==='volcano') return;
+  if(currentArena==='forest'||currentArena==='desert'||currentArena==='volcano') return;
   if(currentArena==='snow'){
     // Snow arena — floating ice crystals instead of torches
     [[W/2-60,148],[W/2+50,148],[100*0.3,285*0.62],[100*0.7,285*0.62],[W-100*0.7,285*0.62],[W-100*0.3,285*0.62]].forEach(([x,y])=>{
@@ -22250,6 +22343,7 @@ const Audio = (function(){
   // ══════════════════════════════════
   const COMBAT_THEMES={
     castle:{root:293.66,bpm:96,bass:[[0,0,3,5,0,0,7,5],[0,3,0,0,5,0,3,7]],lead:[[0,.5],[3,.25],[5,.25],[7,.5],[5,.25],[3,.25],[2,.5],[0,.5]]},
+    crypt:{root:174.61,bpm:68,scale:[0,1,3,5,7,8,10,12,13],darkAmbient:true,bass:[[0,0,3,0,5,3,1,0],[0,5,3,1,0,3,1,0]],lead:[[7,1.5],[5,.5],[3,1],[1,1]]},
     forest:{root:261.63,bpm:100,bass:[[0,3,0,5,7,5,3,0],[0,0,5,3,7,3,5,0]],lead:[[0,.25],[3,.25],[7,.5],[5,.5],[3,.25],[2,.25],[0,1]]},
     snow:{root:220,bpm:92,bass:[[0,0,5,7,0,3,7,5],[0,3,5,3,7,5,3,0]],lead:[[7,.5],[5,.5],[3,.5],[0,.5],[2,.25],[3,.25],[5,.5],[7,.5]]},
     desert:{root:196,bpm:104,bass:[[0,1,0,5,0,7,5,1],[0,0,4,5,7,5,4,1]],lead:[[0,.25],[1,.25],[4,.5],[5,.25],[7,.25],[5,.5],[1,.5],[0,.5]]},
@@ -22263,12 +22357,13 @@ const Audio = (function(){
     const myGen = ++_gen;
     setTimeout(()=>{ if(_gen===myGen) musicGain.gain.setValueAtTime(musicVol, ctx.currentTime); }, 300);
 
-    const rev = makeReverb(1.0, 0.55);
-    const revG = ctx.createGain(); revG.gain.value=0.22; rev.connect(revG); revG.connect(musicGain);
-    const dry = ctx.createGain(); dry.gain.value=0.78; dry.connect(musicGain);
-
     const profile=COMBAT_THEMES[theme]||COMBAT_THEMES.castle;
-    const ROOT=profile.root, minor=[0,2,3,5,7,8,10,12,14];
+    const darkAmbient=!!profile.darkAmbient;
+    const rev = makeReverb(darkAmbient?2.8:1.0, darkAmbient?0.38:0.55);
+    const revG = ctx.createGain(); revG.gain.value=darkAmbient?0.48:0.22; rev.connect(revG); revG.connect(musicGain);
+    const dry = ctx.createGain(); dry.gain.value=darkAmbient?0.52:0.78; dry.connect(musicGain);
+
+    const ROOT=profile.root, minor=profile.scale||[0,2,3,5,7,8,10,12,14];
     const BPM=profile.bpm, BEAT=60/BPM, BAR=BEAT*4;
     let t=ctx.currentTime+0.1;
     const bassSeqs=profile.bass;
@@ -22281,33 +22376,51 @@ const Audio = (function(){
       bseq.forEach((si,bi)=>{
         const bt=t+bi*(BEAT/2);
         const bf=n(ROOT*0.5,minor[si%minor.length]);
-        osc(bf,'triangle',0.20,dry,bt,BEAT*0.38,0.004,0.08);
-        osc(bf*2,'sine',0.05,dry,bt,BEAT*0.3,0.004,0.07);
+        osc(bf,'triangle',darkAmbient?0.12:0.20,dry,bt,BEAT*(darkAmbient?.82:.38),darkAmbient?.035:.004,darkAmbient?.3:.08);
+        osc(bf*2,'sine',darkAmbient?0.035:0.05,darkAmbient?revG:dry,bt,BEAT*(darkAmbient?.7:.3),darkAmbient?.04:.004,darkAmbient?.38:.07);
       });
-      // Kick
-      [0,BEAT*2,BEAT*2.75].forEach(kt=>{
-        const kg=ctx.createGain(); kg.gain.setValueAtTime(0.5,t+kt); kg.gain.exponentialRampToValueAtTime(0.001,t+kt+0.11); kg.connect(dry);
-        const ko=ctx.createOscillator(); ko.type='sine'; ko.frequency.setValueAtTime(140,t+kt); ko.frequency.exponentialRampToValueAtTime(55,t+kt+0.09);
-        ko.connect(kg); try{ko.start(t+kt);ko.stop(t+kt+0.14);}catch(e){}
-        trackNodes.push({stop:()=>{try{ko.stop(0);}catch(e){}}});
-        noise(0.3,dry,t+kt,0.022,2500,2.0);
-      });
-      // Snare
-      [BEAT,BEAT*3].forEach(st=>{
-        noise(0.26,dry,t+st,0.08,1800,1.5);
-        noise(0.10,revG,t+st,0.2,1000,1.0);
-        const sg=ctx.createGain(); sg.gain.setValueAtTime(0.16,t+st); sg.gain.exponentialRampToValueAtTime(0.001,t+st+0.09); sg.connect(dry);
-        const so=ctx.createOscillator(); so.type='triangle'; so.frequency.value=250; so.connect(sg); try{so.start(t+st);so.stop(t+st+0.11);}catch(e){}
-        trackNodes.push({stop:()=>{try{so.stop(0);}catch(e){}}});
-      });
-      // Hi-hat
-      for(let h=0;h<16;h++){ const hv=h%4===0?0:h%2===0?0.05:0.025; if(hv>0) noise(hv,dry,t+h*(BEAT/4),0.025,9500,0.8); }
+      if(darkAmbient){
+        // Batidas de pedra abafadas, correntes distantes e sino funerário: tensão sem bateria moderna.
+        [0,BEAT*2].forEach(kt=>{
+          const kg=ctx.createGain();kg.gain.setValueAtTime(.2,t+kt);kg.gain.exponentialRampToValueAtTime(.001,t+kt+.3);kg.connect(dry);
+          const ko=ctx.createOscillator();ko.type='sine';ko.frequency.setValueAtTime(104,t+kt);ko.frequency.exponentialRampToValueAtTime(82,t+kt+.26);
+          ko.connect(kg);try{ko.start(t+kt);ko.stop(t+kt+.34);}catch(e){}
+          trackNodes.push({stop:()=>{try{ko.stop(0);}catch(e){}}});
+        });
+        [BEAT*1.5,BEAT*3.4].forEach(st=>noise(.045,revG,t+st,.2,720,3.2));
+        if(rem%2===0){
+          osc(n(ROOT*2,minor[7]),'sine',.035,revG,t+BEAT*3.05,BEAT*1.55,.004,BEAT*1.35);
+          noise(.025,revG,t+BEAT*3.08,.34,1480,5.5);
+        }
+      }else{
+        // Percussão das arenas abertas.
+        [0,BEAT*2,BEAT*2.75].forEach(kt=>{
+          const kg=ctx.createGain(); kg.gain.setValueAtTime(0.5,t+kt); kg.gain.exponentialRampToValueAtTime(0.001,t+kt+0.11); kg.connect(dry);
+          const ko=ctx.createOscillator(); ko.type='sine'; ko.frequency.setValueAtTime(140,t+kt); ko.frequency.exponentialRampToValueAtTime(55,t+kt+0.09);
+          ko.connect(kg); try{ko.start(t+kt);ko.stop(t+kt+0.14);}catch(e){}
+          trackNodes.push({stop:()=>{try{ko.stop(0);}catch(e){}}});
+          noise(0.3,dry,t+kt,0.022,2500,2.0);
+        });
+        [BEAT,BEAT*3].forEach(st=>{
+          noise(0.26,dry,t+st,0.08,1800,1.5);
+          noise(0.10,revG,t+st,0.2,1000,1.0);
+          const sg=ctx.createGain(); sg.gain.setValueAtTime(0.16,t+st); sg.gain.exponentialRampToValueAtTime(0.001,t+st+0.09); sg.connect(dry);
+          const so=ctx.createOscillator(); so.type='triangle'; so.frequency.value=250; so.connect(sg); try{so.start(t+st);so.stop(t+st+0.11);}catch(e){}
+          trackNodes.push({stop:()=>{try{so.stop(0);}catch(e){}}});
+        });
+        for(let h=0;h<16;h++){ const hv=h%4===0?0:h%2===0?0.05:0.025; if(hv>0) noise(hv,dry,t+h*(BEAT/4),0.025,9500,0.8); }
+      }
       // Melody
-      const melFilt=ctx.createBiquadFilter(); melFilt.type='lowpass'; melFilt.frequency.value=3000; melFilt.connect(dry);
+      const melFilt=ctx.createBiquadFilter(); melFilt.type='lowpass'; melFilt.frequency.value=darkAmbient?1250:3000; melFilt.connect(darkAmbient?revG:dry);
       let mt=t;
-      melSeq.forEach(([si,dur])=>{ osc(n(ROOT*2,minor[si%minor.length]),'square',0.05,melFilt,mt,dur*BEAT*0.85,0.005,0.04); mt+=dur*BEAT; });
-      osc(n(ROOT,minor[0]),'sawtooth',0.04,revG,t,BAR,0.3,0.5);
-      osc(n(ROOT,minor[0])*1.003,'sawtooth',0.04,revG,t,BAR,0.3,0.5);
+      melSeq.forEach(([si,dur])=>{ osc(n(ROOT*2,minor[si%minor.length]),darkAmbient?'sine':'square',darkAmbient?.045:.05,melFilt,mt,dur*BEAT*(darkAmbient?.95:.85),darkAmbient?.035:.005,darkAmbient?dur*BEAT*.58:.04); mt+=dur*BEAT; });
+      if(darkAmbient){
+        osc(n(ROOT*.5,minor[0]),'sine',.085,dry,t,BAR,.35,.8);
+        osc(n(ROOT,minor[3]),'triangle',.035,revG,t,BAR,.5,.9);
+      }else{
+        osc(n(ROOT,minor[0]),'sawtooth',0.04,revG,t,BAR,0.3,0.5);
+        osc(n(ROOT,minor[0])*1.003,'sawtooth',0.04,revG,t,BAR,0.3,0.5);
+      }
       t+=BAR;
       currentTrack=_addTimeout(()=>combatBars(rem-1),(BAR-0.08)*1000);
     }
