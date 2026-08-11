@@ -13577,6 +13577,7 @@ function closeShop(){
   waveAnnounce=1200;
   lastTs=null; // reset dt so no huge jump
   state='playing';
+  if(typeof window.resumeCampaignMusic==='function') window.resumeCampaignMusic();
   if(!raf) raf=requestAnimationFrame(loop);
 }
 
@@ -16057,12 +16058,15 @@ function drawCryptFlame(x,y,t,{color='amber',scale=1,phase=0}={}){
 
 function drawCryptAmbience(t){
   [
-    [W*.314,H*.269,'amber',1.02,.2],
-    [W*.690,H*.269,'amber',1.02,2.1],
-    [W*.199,H*.306,'green',.78,.8],
-    [W*.798,H*.306,'green',.78,2.8],
-    [W*.432,H*.347,'green',.56,1.5],
-    [W*.566,H*.347,'green',.56,3.5]
+    // Coordenadas medidas diretamente na arte 1448×1086; cada base coincide com o suporte.
+    [W*.354,H*.126,'amber',.38,1.1],
+    [W*.653,H*.126,'amber',.38,2.9],
+    [W*.327,H*.271,'amber',.66,.2],
+    [W*.684,H*.270,'amber',.66,2.1],
+    [W*.199,H*.322,'green',.72,.8],
+    [W*.806,H*.323,'green',.72,2.8],
+    [W*.434,H*.385,'green',.5,1.5],
+    [W*.579,H*.387,'green',.5,3.5]
   ].forEach(([x,y,color,scale,phase])=>drawCryptFlame(x,y,t,{color,scale,phase}));
 
   // Névoa sobrenatural respirando no portão central da cripta.
@@ -21932,6 +21936,7 @@ function beginGame(){
   weaponSlots=[null,null,null]; weaponSlots2=[null,null,null];
   updateWeaponUI();
   state='playing';
+  if(typeof window.resumeCampaignMusic==='function') window.resumeCampaignMusic();
   if(raf) cancelAnimationFrame(raf);
   raf=null;
   lastTs=null;
@@ -22156,6 +22161,12 @@ const Audio = (function(){
   let enabled = true;
   let currentTrack = null;
   let trackNodes = [];
+  let activeMusicTheme = 'none';
+
+  function markMusicTheme(theme){
+    activeMusicTheme=theme;
+    if(document?.documentElement) document.documentElement.dataset.musicTheme=theme;
+  }
 
   function init(){
     if(ctx) return;
@@ -22257,6 +22268,7 @@ const Audio = (function(){
     });
     trackNodes=[];
     _gen++;
+    markMusicTheme('none');
   }
 
   function _addTimeout(fn, ms){
@@ -22288,6 +22300,7 @@ const Audio = (function(){
     if(!ctx||!enabled) return;
     stopMusic(0.4);
     const myGen = ++_gen;
+    markMusicTheme('menu');
     // Restore gain after stopMusic fade
     setTimeout(()=>{ if(_gen===myGen) musicGain.gain.setValueAtTime(musicVol, ctx.currentTime); }, 500);
 
@@ -22337,13 +22350,84 @@ const Audio = (function(){
   }
 
   // ══════════════════════════════════
-  // COMBAT — Tense, rhythmic
+  // CRIPTA — tema exclusivo das ondas 1–5
+  // Marcha fúnebre lenta, coral grave, pedra, correntes e sino distante.
+  // ══════════════════════════════════
+  function playCryptMusic(){
+    if(!ctx||!enabled) return;
+    stopMusic(.35);
+    const myGen=++_gen;
+    markMusicTheme('crypt');
+    setTimeout(()=>{if(_gen===myGen)musicGain.gain.setValueAtTime(musicVol,ctx.currentTime);},460);
+
+    const dry=ctx.createGain();dry.gain.value=.48;dry.connect(musicGain);
+    const temple=ctx.createGain();temple.gain.value=.32;temple.connect(musicGain);
+    const delay=ctx.createDelay(.8);delay.delayTime.value=.37;
+    const echoFilter=ctx.createBiquadFilter();echoFilter.type='lowpass';echoFilter.frequency.value=1350;
+    const echoGain=ctx.createGain();echoGain.gain.value=.22;
+    temple.connect(delay);delay.connect(echoFilter);echoFilter.connect(echoGain);echoGain.connect(musicGain);
+    trackNodes.push({stop:()=>{try{dry.disconnect();temple.disconnect();delay.disconnect();echoFilter.disconnect();echoGain.disconnect();}catch(e){}}});
+
+    const ROOT=164.81;
+    const scale=[0,1,3,5,7,8,10,12,13];
+    const BPM=52,BEAT=60/BPM,BAR=BEAT*4;
+    const dirges=[
+      [[5,0,1.5],[3,1.5,.5],[1,2,2]],
+      [[7,0,2],[5,2,1],[3,3,1]],
+      [[4,0,1],[3,1,1],[1,2,2]],
+      [[5,0,.75],[4,.75,.75],[3,1.5,.5],[0,2,2]]
+    ];
+    let t=ctx.currentTime+.16;
+
+    function cryptBars(rem=96){
+      if(_gen!==myGen||!enabled||rem<=0){currentTrack=null;return;}
+      const barIndex=96-rem;
+      const phase=barIndex%dirges.length;
+
+      // Pedal grave e coral masculino: longos e pouco melódicos.
+      osc(ROOT*.5,'sine',.105,dry,t,BAR*1.04,.32,1.05);
+      [0,3,5].forEach((si,index)=>{
+        osc(n(ROOT,scale[si]),index===0?'triangle':'sine',index===0?.052:.026,temple,t,BAR*.96,.58,1.18);
+      });
+
+      // Impactos de pedra abafados; não há kick, caixa ou hi-hat.
+      [0,BEAT*2.5].forEach((offset,index)=>{
+        const at=t+offset;
+        const gain=ctx.createGain();gain.gain.setValueAtTime(index?.11:.16,at);gain.gain.exponentialRampToValueAtTime(.001,at+.32);gain.connect(dry);
+        const hit=ctx.createOscillator();hit.type='sine';hit.frequency.setValueAtTime(index?96:108,at);hit.frequency.exponentialRampToValueAtTime(82,at+.28);
+        hit.connect(gain);try{hit.start(at);hit.stop(at+.36);}catch(e){}
+        trackNodes.push({stop:()=>{try{hit.stop(0);}catch(e){}try{gain.disconnect();}catch(e){}}});
+      });
+
+      // Corrente e ar de corredor surgem em pontos diferentes a cada compasso.
+      noise(.035,temple,t+BEAT*(1.25+(phase*.19)),.3,720+phase*115,4.4);
+      noise(.018,temple,t+BEAT*3.45,.52,430,1.2);
+
+      // Lamento agudo muito esparso, com grandes espaços entre as notas.
+      dirges[phase].forEach(([si,start,dur])=>{
+        const at=t+start*BEAT;
+        osc(n(ROOT*2,scale[si]),'sine',.042,temple,at,dur*BEAT*.92,.055,dur*BEAT*.66);
+      });
+
+      // Sino funerário a cada dois compassos, com parciais metálicos discretos.
+      if(barIndex%2===0){
+        const bellAt=t+BEAT*3.08;
+        [[1,.045],[1.51,.022],[2.19,.012]].forEach(([ratio,vol])=>osc(ROOT*3*ratio,'sine',vol,temple,bellAt,BEAT*1.72,.004,BEAT*1.55));
+      }
+
+      t+=BAR;
+      currentTrack=_addTimeout(()=>cryptBars(rem-1),(BAR-.1)*1000);
+    }
+    cryptBars();
+  }
+
+  // ══════════════════════════════════
+  // COMBAT — arenas abertas
   // Percussion-forward, clear mid
   // Key: D minor, 96 BPM
   // ══════════════════════════════════
   const COMBAT_THEMES={
     castle:{root:293.66,bpm:96,bass:[[0,0,3,5,0,0,7,5],[0,3,0,0,5,0,3,7]],lead:[[0,.5],[3,.25],[5,.25],[7,.5],[5,.25],[3,.25],[2,.5],[0,.5]]},
-    crypt:{root:174.61,bpm:68,scale:[0,1,3,5,7,8,10,12,13],darkAmbient:true,bass:[[0,0,3,0,5,3,1,0],[0,5,3,1,0,3,1,0]],lead:[[7,1.5],[5,.5],[3,1],[1,1]]},
     forest:{root:261.63,bpm:100,bass:[[0,3,0,5,7,5,3,0],[0,0,5,3,7,3,5,0]],lead:[[0,.25],[3,.25],[7,.5],[5,.5],[3,.25],[2,.25],[0,1]]},
     snow:{root:220,bpm:92,bass:[[0,0,5,7,0,3,7,5],[0,3,5,3,7,5,3,0]],lead:[[7,.5],[5,.5],[3,.5],[0,.5],[2,.25],[3,.25],[5,.5],[7,.5]]},
     desert:{root:196,bpm:104,bass:[[0,1,0,5,0,7,5,1],[0,0,4,5,7,5,4,1]],lead:[[0,.25],[1,.25],[4,.5],[5,.25],[7,.25],[5,.5],[1,.5],[0,.5]]},
@@ -22352,9 +22436,11 @@ const Audio = (function(){
   };
 
   function playCombatMusic(theme='castle'){
+    if(theme==='crypt'){playCryptMusic();return;}
     if(!ctx||!enabled) return;
     stopMusic(0.2);
     const myGen = ++_gen;
+    markMusicTheme('combat:'+theme);
     setTimeout(()=>{ if(_gen===myGen) musicGain.gain.setValueAtTime(musicVol, ctx.currentTime); }, 300);
 
     const profile=COMBAT_THEMES[theme]||COMBAT_THEMES.castle;
@@ -22451,6 +22537,7 @@ const Audio = (function(){
     if(!ctx||!enabled) return;
     stopMusic(0.15);
     const myGen = ++_gen;
+    markMusicTheme('boss:'+bossId);
     setTimeout(()=>{ if(_gen===myGen) musicGain.gain.setValueAtTime(musicVol, ctx.currentTime); }, 250);
 
     const rev=makeReverb(1.4,0.5);
@@ -22516,6 +22603,7 @@ const Audio = (function(){
     if(!ctx||!enabled) return;
     stopMusic(0.7);
     const myGen = ++_gen;
+    markMusicTheme('camp');
     setTimeout(()=>{ if(_gen===myGen) musicGain.gain.setValueAtTime(musicVol, ctx.currentTime); }, 850);
 
     const rev=makeReverb(3.0,0.35);
@@ -22871,13 +22959,14 @@ const Audio = (function(){
 
   return {
     init, stopMusic,
-    playMenuMusic, playCombatMusic, playBossMusic, playCampMusic,
+    playMenuMusic, playCryptMusic, playCombatMusic, playBossMusic, playCampMusic,
     playDeathStinger, playBossDefeat, playBossSpawn, playDeityArrival,
     sfxSword, sfxBow, sfxAxe, sfxHit, sfxPlayerHit, sfxCoin,
     sfxEnemyDeath, sfxLevelUp, sfxWaveClear, sfxMenuClick, sfxShopBuy, sfxPetCapture,
     setMusicVol, setSfxVol, setAttackVol, setAttackEnabled, toggle,
     get enabled(){ return enabled; },
-    get attackEnabled(){ return attackEnabled; }
+    get attackEnabled(){ return attackEnabled; },
+    get activeMusicTheme(){ return activeMusicTheme; }
   };
 })();
 
@@ -27752,10 +27841,8 @@ function _audioStart(){
 document.addEventListener('click',_audioStart);
 document.addEventListener('keydown',_audioStart);
 
-// Patch game functions to emit audio
-const _origBeginGame = beginGame;
-window.beginGame = function(){
-  _origBeginGame.apply(this,arguments);
+// A campanha chama este ponto diretamente após definir o mapa atual.
+window.resumeCampaignMusic = function(){
   Audio.init();
   if(typeof GameSettings!=='undefined') GameSettings.applyAudio();
   Audio.playCombatMusic(typeof currentArena!=='undefined'?currentArena:'castle');
