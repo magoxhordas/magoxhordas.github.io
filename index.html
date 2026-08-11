@@ -3714,8 +3714,8 @@ canvas, img {
   --boon-gold:#e6c675;
   --boon-ink:#020906;
   justify-content:flex-start;
-  gap:clamp(16px,2.4vh,30px);
-  padding:clamp(24px,4vh,54px) clamp(18px,4vw,74px) 28px;
+  gap:clamp(12px,1.8vh,22px);
+  padding:clamp(18px,3vh,36px) clamp(16px,3vw,48px) 20px;
   overflow-x:hidden;
   overflow-y:auto;
   background:
@@ -3739,19 +3739,19 @@ canvas, img {
 #card-screen #card-bg-particles { opacity:.22;filter:hue-rotate(84deg) saturate(.75); }
 
 .deity-offer-header {
-  position:relative;z-index:2;width:min(1460px,100%);margin:0 auto;text-align:center;
+  position:relative;z-index:2;width:min(1080px,100%);margin:0 auto;text-align:center;
   animation:boonHeaderIn .45s ease-out both;
 }
 .deity-offer-title {
-  color:var(--boon-gold);font-family:'Courier New',monospace;font-size:clamp(28px,4vw,58px);
-  font-weight:400;line-height:1.08;letter-spacing:clamp(7px,1.6vw,22px);text-indent:clamp(7px,1.6vw,22px);
+  color:var(--boon-gold);font-family:'Courier New',monospace;font-size:clamp(26px,3vw,42px);
+  font-weight:400;line-height:1.08;letter-spacing:clamp(6px,1.2vw,15px);text-indent:clamp(6px,1.2vw,15px);
   text-shadow:0 0 28px rgba(217,178,75,.15);
 }
 .deity-offer-subtitle {
-  margin-top:15px;color:var(--boon-green-soft);font:400 clamp(12px,1.2vw,19px)/1.5 'Courier New',monospace;
+  margin-top:10px;color:var(--boon-green-soft);font:400 clamp(11px,.95vw,15px)/1.4 'Courier New',monospace;
   letter-spacing:2px;
 }
-.deity-offer-line { display:grid;grid-template-columns:1fr auto 1fr;gap:24px;align-items:center;margin:28px auto 0; }
+.deity-offer-line { display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:center;margin:18px auto 0; }
 .deity-offer-line span { height:1px;background:linear-gradient(90deg,transparent,rgba(101,226,142,.42)); }
 .deity-offer-line span:last-child { transform:scaleX(-1); }
 .deity-offer-line b {
@@ -3762,11 +3762,11 @@ canvas, img {
 
 #card-screen .cards-row {
   position:relative;z-index:2;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
-  width:min(1460px,100%);gap:clamp(16px,2vw,30px);margin:6px auto 0;perspective:none;
+  width:min(1080px,100%);gap:clamp(12px,1.5vw,22px);margin:2px auto 0;perspective:none;
 }
 #card-screen .bless-card {
-  --rarity:#79e89a;width:100%;min-width:0;min-height:clamp(390px,48vh,520px);
-  padding:clamp(22px,2.2vw,34px);overflow:hidden;border:1px solid color-mix(in srgb,var(--rarity) 76%,#203f2d);
+  --rarity:#79e89a;width:100%;min-width:0;min-height:clamp(300px,39vh,370px);
+  padding:clamp(17px,1.65vw,24px);overflow:hidden;border:1px solid color-mix(in srgb,var(--rarity) 76%,#203f2d);
   border-radius:8px;background:
     radial-gradient(circle at 19% 19%,color-mix(in srgb,var(--rarity) 9%,transparent),transparent 28%),
     linear-gradient(155deg,rgba(3,17,12,.98),rgba(1,7,5,.99));
@@ -3798,50 +3798,50 @@ canvas, img {
 #card-screen .bless-card.confirmed { animation:boonConfirmed .25s ease both; }
 
 #card-screen .bless-card-header {
-  display:grid;grid-template-columns:clamp(76px,7vw,112px) minmax(0,1fr);gap:clamp(18px,2vw,30px);
-  align-items:center;padding:0 0 24px;text-align:left;border-radius:0;background:none!important;z-index:2;
+  display:grid;grid-template-columns:clamp(62px,5.4vw,78px) minmax(0,1fr);gap:clamp(14px,1.5vw,20px);
+  align-items:center;padding:0 0 17px;text-align:left;border-radius:0;background:none!important;z-index:2;
 }
 #card-screen .bless-card-header::before,#card-screen .bless-card-header::after { display:none; }
 #card-screen .bless-card-icon {
-  display:grid;place-items:center;width:clamp(76px,7vw,112px);height:clamp(76px,7vw,112px);margin:0;
+  display:grid;place-items:center;width:clamp(62px,5.4vw,78px);height:clamp(62px,5.4vw,78px);margin:0;
   border:1px solid color-mix(in srgb,var(--rarity) 52%,#163527);border-radius:50%;
   background:radial-gradient(circle,color-mix(in srgb,var(--rarity) 15%,#07110d),#030906 72%);
-  color:var(--rarity);font-size:clamp(34px,3.7vw,58px);filter:drop-shadow(0 0 12px color-mix(in srgb,var(--rarity) 25%,transparent));
+  color:var(--rarity);font-size:clamp(29px,2.8vw,42px);filter:drop-shadow(0 0 12px color-mix(in srgb,var(--rarity) 25%,transparent));
 }
 #card-screen .bless-card:hover .bless-card-icon { transform:none;filter:drop-shadow(0 0 18px color-mix(in srgb,var(--rarity) 40%,transparent)); }
 #card-screen .bless-card-name {
-  color:#e6dfcc;font:700 clamp(18px,1.65vw,27px)/1.25 'Courier New',monospace;letter-spacing:1px;text-transform:uppercase;
+  color:#e6dfcc;font:700 clamp(15px,1.3vw,21px)/1.22 'Courier New',monospace;letter-spacing:.6px;text-transform:uppercase;
 }
 #card-screen .bless-card-rarity {
-  display:block;margin-top:10px;color:var(--rarity)!important;font:700 12px/1.2 'Courier New',monospace;
+  display:block;margin-top:7px;color:var(--rarity)!important;font:700 10px/1.2 'Courier New',monospace;
   letter-spacing:3px;text-shadow:0 0 10px color-mix(in srgb,var(--rarity) 35%,transparent);
 }
 #card-screen .bless-card-body { position:relative;z-index:2;padding:0;border:0!important;background:none; }
 #card-screen .bless-card-role {
-  align-self:flex-start;margin:0 0 22px;padding:5px 12px;border-color:color-mix(in srgb,var(--rarity) 42%,#244a34);
-  background:color-mix(in srgb,var(--rarity) 8%,#06100c);color:var(--rarity);font-size:10px;
+  align-self:flex-start;margin:0 0 14px;padding:4px 10px;border-color:color-mix(in srgb,var(--rarity) 42%,#244a34);
+  background:color-mix(in srgb,var(--rarity) 8%,#06100c);color:var(--rarity);font-size:9px;
 }
 #card-screen .bless-card-desc {
-  min-height:112px;margin:0;color:#aebbb1;font:400 clamp(14px,1.25vw,19px)/1.65 'Courier New',monospace;
+  min-height:70px;margin:0;color:#aebbb1;font:400 clamp(12px,1vw,15px)/1.55 'Courier New',monospace;
   text-align:left;font-style:normal;
 }
-#card-screen .bless-card-divider { display:flex;align-items:center;gap:8px;margin:22px 0; }
+#card-screen .bless-card-divider { display:flex;align-items:center;gap:8px;margin:14px 0; }
 #card-screen .bless-card-divider::before,#card-screen .bless-card-divider::after { content:'';height:1px;flex:1;background:rgba(116,150,126,.22); }
 #card-screen .bless-card-divider span { width:7px;height:7px;border:1px solid #806e3c;transform:rotate(45deg); }
 #card-screen .bless-card-value {
   margin:0;padding:0;border:0!important;background:none!important;color:var(--rarity)!important;
-  font:700 clamp(15px,1.35vw,21px)/1.45 'Courier New',monospace;text-align:left;letter-spacing:.5px;
+  font:700 clamp(13px,1.1vw,17px)/1.4 'Courier New',monospace;text-align:left;letter-spacing:.4px;
 }
 
 #card-screen .card-screen-footer {
   position:relative;z-index:2;display:grid;grid-template-columns:minmax(180px,1fr) auto minmax(180px,1fr);
-  align-items:center;width:min(1460px,100%);gap:22px;margin:2px auto 0;
+  align-items:center;width:min(1080px,100%);gap:18px;margin:0 auto;
 }
 #card-screen .card-active-blessings { grid-column:1/-1;justify-self:center;max-width:900px;margin:0;min-height:18px; }
 #card-screen .card-active-pip { filter:drop-shadow(0 0 5px rgba(86,222,136,.48)); }
 #card-screen .card-skip-btn,#card-screen .card-confirm-btn {
-  min-width:250px;padding:17px 28px;border:1px solid #2f7448;border-radius:4px;background:rgba(3,15,10,.92);
-  color:#91c9a2;font:700 14px/1.2 'Courier New',monospace;letter-spacing:4px;text-align:center;text-transform:uppercase;
+  min-width:190px;padding:12px 22px;border:1px solid #2f7448;border-radius:4px;background:rgba(3,15,10,.92);
+  color:#91c9a2;font:700 12px/1.2 'Courier New',monospace;letter-spacing:3px;text-align:center;text-transform:uppercase;
   cursor:pointer;transition:.18s ease;
 }
 #card-screen .card-skip-btn { justify-self:start;grid-column:1;grid-row:2; }
@@ -3855,18 +3855,39 @@ canvas, img {
 @keyframes boonConfirmed { to{transform:scale(.98);filter:brightness(1.45)} }
 
 @media(max-width:980px){
-  #card-screen { padding:22px 16px 24px;gap:18px; }
-  .deity-offer-line { margin-top:18px;gap:8px; }
+  #card-screen { padding:18px 14px 20px;gap:14px; }
+  .deity-offer-line { margin-top:14px;gap:8px; }
   .deity-offer-line b::before,.deity-offer-line b::after { margin:0 7px; }
   #card-screen .cards-row {
-    grid-template-columns:1fr;max-width:720px;grid-auto-rows:max-content;
-    overflow:visible;
+    gap:10px;overflow:visible;
   }
-  #card-screen .bless-card { min-height:340px;height:auto; }
+  #card-screen .bless-card { min-height:285px;height:auto;padding:15px; }
+  #card-screen .bless-card-header { grid-template-columns:54px minmax(0,1fr);gap:11px;padding-bottom:13px; }
+  #card-screen .bless-card-icon { width:54px;height:54px;font-size:27px; }
+  #card-screen .bless-card-name { font-size:14px; }
+  #card-screen .bless-card-desc { min-height:58px;font-size:11px; }
+  #card-screen .card-screen-footer { grid-template-columns:1fr auto 1fr; }
+}
+@media(max-width:720px){
+  #card-screen .cards-row { grid-template-columns:1fr;max-width:620px;grid-auto-rows:max-content; }
+  #card-screen .bless-card { min-height:0; }
   #card-screen .bless-card-desc { min-height:0; }
-  #card-screen .card-screen-footer { max-width:720px;grid-template-columns:1fr 1fr; }
+  #card-screen .card-screen-footer { max-width:620px;grid-template-columns:1fr 1fr; }
   #card-screen .card-skip-btn { grid-column:1;grid-row:2;min-width:0;width:100%; }
   #card-screen .card-confirm-btn { grid-column:2;grid-row:2;min-width:0;width:100%; }
+}
+@media(max-height:720px) and (min-width:721px){
+  #card-screen { padding-top:12px;padding-bottom:12px;gap:9px; }
+  .deity-offer-title { font-size:28px; }
+  .deity-offer-subtitle { margin-top:5px;font-size:10px; }
+  .deity-offer-line { margin-top:8px; }
+  #card-screen .bless-card { min-height:245px;padding:14px; }
+  #card-screen .bless-card-header { grid-template-columns:52px minmax(0,1fr);gap:11px;padding-bottom:11px; }
+  #card-screen .bless-card-icon { width:52px;height:52px;font-size:26px; }
+  #card-screen .bless-card-role { margin-bottom:9px;padding:3px 8px; }
+  #card-screen .bless-card-desc { min-height:48px;font-size:11px;line-height:1.42; }
+  #card-screen .bless-card-divider { margin:9px 0; }
+  #card-screen .card-skip-btn,#card-screen .card-confirm-btn { padding:9px 18px; }
 }
 @media(max-width:560px){
   .deity-offer-title { font-size:25px;letter-spacing:5px;text-indent:5px; }
@@ -8028,6 +8049,7 @@ function applyMetaUpgrades(pl){
     document.getElementById('deity-intro-dialogue').textContent=`“${randomItem(deity.dialogues)}”`;
     screen.dataset.deity=deityId; screen.setAttribute('aria-hidden','false');
     screen.classList.remove('open','leaving'); void screen.offsetWidth; screen.classList.add('open');
+    if(typeof Audio!=='undefined'&&Audio.playDeityArrival) Audio.playDeityArrival(deityId);
     const button=screen.querySelector('.deity-dialogue-continue');
     if(button){button.disabled=false;setTimeout(()=>button.focus({preventScroll:true}),560);}
   };
@@ -22267,6 +22289,162 @@ const Audio = (function(){
     });
   }
 
+  // Assinatura curta de aparicao divina (cerca de 2 s). A base e comum a
+  // todos os fornecedores; os deuses gregos recebem um acento reconhecivel.
+  function deitySweep(t,fromFreq,toFreq,dur,vol,dest,type='sine',attack=0.012){
+    const o=ctx.createOscillator();
+    const g=ctx.createGain();
+    o.type=type;
+    o.frequency.setValueAtTime(Math.max(20,fromFreq),t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(20,toFreq),t+dur);
+    g.gain.setValueAtTime(0,t);
+    g.gain.linearRampToValueAtTime(vol,t+Math.min(dur*.82,Math.max(.003,attack)));
+    g.gain.exponentialRampToValueAtTime(.001,t+dur);
+    o.connect(g);g.connect(dest);o.start(t);o.stop(t+dur+.03);
+    trackNodes.push({osc:o,gain:g,stop:()=>{try{o.stop(0);}catch(e){}try{g.disconnect();}catch(e){}}});
+  }
+
+  function deityNoise(vol,dest,t,dur,fromFreq,toFreq,Q=1.1,type='bandpass'){
+    const len=Math.max(1,Math.floor(ctx.sampleRate*dur));
+    const buf=ctx.createBuffer(1,len,ctx.sampleRate);
+    const data=buf.getChannelData(0);
+    let held=0;
+    for(let i=0;i<len;i++){
+      // Sample-and-hold e quantizacao discretos: textura 16/32-bit sem soar futurista.
+      if(i%4===0) held=Math.round((Math.random()*2-1)*24)/24;
+      data[i]=held;
+    }
+    const src=ctx.createBufferSource();src.buffer=buf;
+    const filter=ctx.createBiquadFilter();filter.type=type;filter.Q.value=Q;
+    filter.frequency.setValueAtTime(Math.max(30,fromFreq),t);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(30,toFreq),t+dur);
+    const g=ctx.createGain();g.gain.setValueAtTime(0,t);
+    g.gain.linearRampToValueAtTime(vol,t+Math.min(.07,dur*.3));
+    g.gain.exponentialRampToValueAtTime(.001,t+dur);
+    src.connect(filter);filter.connect(g);g.connect(dest);src.start(t);src.stop(t+dur+.02);
+    trackNodes.push({stop:()=>{try{src.stop(0);}catch(e){}try{src.disconnect();filter.disconnect();g.disconnect();}catch(e){}}});
+  }
+
+  function deityMetal(dest,t,base=620,vol=.08,dur=.38){
+    [[1,1],[1.414,.72],[2.32,.42]].forEach(([ratio,mix])=>{
+      osc(base*ratio,'sine',vol*mix,dest,t,dur,0.002,dur*.9);
+    });
+  }
+
+  function deityTempleBus(dest){
+    const input=ctx.createGain();
+    [[.065,.24,1180],[.13,.16,920],[.22,.1,720]].forEach(([delayTime,level,cutoff])=>{
+      const delay=ctx.createDelay(.3);delay.delayTime.value=delayTime;
+      const filter=ctx.createBiquadFilter();filter.type='lowpass';filter.frequency.value=cutoff;
+      const gain=ctx.createGain();gain.gain.value=level;
+      input.connect(delay);delay.connect(filter);filter.connect(gain);gain.connect(dest);
+    });
+    return input;
+  }
+
+  function playDeityArrival(deityId=''){
+    if(!ctx) init();
+    if(!ctx||!enabled||!sfxGain) return false;
+    if(ctx.state==='suspended') ctx.resume().catch(()=>{});
+
+    const limiter=ctx.createDynamicsCompressor();
+    limiter.threshold.value=-20;limiter.knee.value=8;limiter.ratio.value=5;
+    limiter.attack.value=.002;limiter.release.value=.18;limiter.connect(sfxGain);
+    const bus=ctx.createGain();bus.gain.value=.7;bus.connect(limiter);
+    const dry=ctx.createGain();dry.gain.value=.78;dry.connect(bus);
+    const temple=deityTempleBus(bus);
+    const t=ctx.currentTime+.025;
+    const id=String(deityId||'').toLowerCase();
+
+    // 0.00-0.35: whoosh profundo que atravessa a tela.
+    deityNoise(.34,dry,t,.34,210,1450,1.05,'bandpass');
+    deitySweep(t+.01,88,210,.33,.12,temple,'triangle',.16);
+
+    // 0.35-0.80: impacto grave, curto e controlado.
+    deitySweep(t+.34,132,62,.34,.5,dry,'sine',.004);
+    deityNoise(.23,dry,t+.35,.28,520,170,1.4,'lowpass');
+    osc(86,'triangle',.16,temple,t+.38,.42,.004,.38);
+
+    // 0.80-1.50: coral masculino discreto, templo, metal e energia crescente.
+    [98,146.83,196].forEach((freq,index)=>{
+      osc(freq,index===0?'triangle':'sine',index===0?.09:.045,temple,t+.74,.72,.1,.5);
+    });
+    deityNoise(.07,temple,t+.78,.66,520,1900,.7,'bandpass');
+    deitySweep(t+.82,190,590,.55,.07,temple,'triangle',.22);
+    deityMetal(temple,t+1.01,570,.075,.43);
+
+    // Acento individual. Fornecedores sem perfil usam somente a assinatura universal.
+    switch(id){
+      case 'zeus':
+        deityNoise(.26,dry,t+.73,.24,2400,310,.65,'lowpass');
+        deitySweep(t+.76,170,58,.26,.22,dry,'triangle',.003);
+        deityNoise(.12,temple,t+.84,.16,4100,1700,3.2,'bandpass');
+        break;
+      case 'ares':
+        deityMetal(dry,t+.78,430,.13,.28);
+        deityNoise(.13,dry,t+.79,.12,2500,740,2.5,'bandpass');
+        deitySweep(t+.91,104,58,.28,.22,dry,'sine',.003);
+        break;
+      case 'hecate':
+        deitySweep(t+.73,420,1120,.42,.075,temple,'sine',.31);
+        deityNoise(.075,temple,t+.82,.48,640,2450,4.2,'bandpass');
+        deitySweep(t+.96,246,369,.31,.05,temple,'triangle',.2);
+        break;
+      case 'poseidon':
+        deityNoise(.18,temple,t+.69,.62,170,720,.72,'bandpass');
+        deitySweep(t+.76,68,104,.5,.18,dry,'sine',.22);
+        break;
+      case 'artemis':
+        deitySweep(t+.7,240,910,.2,.075,dry,'triangle',.16);
+        deitySweep(t+.9,980,280,.16,.13,dry,'triangle',.002);
+        deityNoise(.08,temple,t+.94,.24,4200,2100,1.8,'bandpass');
+        break;
+      case 'hefesto':
+        deityNoise(.18,dry,t+.76,.13,1850,620,2.4,'bandpass');
+        deitySweep(t+.76,124,58,.28,.24,dry,'sine',.002);
+        deityMetal(temple,t+.78,510,.15,.58);
+        break;
+      case 'hermes':
+        deityNoise(.17,dry,t+.61,.18,480,2800,1.35,'bandpass');
+        osc(880,'triangle',.09,temple,t+.82,.24,.003,.2);
+        osc(1174.66,'triangle',.08,temple,t+.96,.24,.003,.2);
+        break;
+      case 'dionisio':
+        deityMetal(temple,t+.83,1260,.065,.3);
+        osc(440,'triangle',.08,dry,t+.91,.22,.003,.2);
+        osc(659.25,'sine',.055,temple,t+1.03,.3,.003,.27);
+        break;
+      case 'selene':
+        deityMetal(temple,t+.79,1046.5,.07,.52);
+        osc(1567.98,'sine',.055,temple,t+1.08,.55,.05,.48);
+        break;
+      case 'atena':
+        deityMetal(dry,t+.8,540,.105,.31);
+        deityNoise(.085,dry,t+.8,.11,2250,820,2.8,'bandpass');
+        osc(523.25,'triangle',.065,temple,t+1.02,.34,.003,.3);
+        break;
+      case 'moros':
+        deitySweep(t+.74,118,82,.08,.15,dry,'sine',.002);
+        deityNoise(.06,dry,t+.74,.045,1500,480,2.2,'bandpass');
+        osc(110,'sine',.11,temple,t+.91,.72,.02,.64);
+        deityMetal(temple,t+1.0,330,.045,.48);
+        break;
+      case 'hercules':
+        deitySweep(t+.7,96,48,.38,.29,dry,'sine',.003);
+        deityNoise(.2,dry,t+.71,.2,680,190,.9,'lowpass');
+        deitySweep(t+.93,92,54,.27,.2,dry,'triangle',.003);
+        deityNoise(.055,temple,t+1.02,.38,460,1180,1.8,'bandpass');
+        deitySweep(t+1.05,138,82,.35,.045,temple,'sawtooth',.08);
+        break;
+    }
+
+    // 1.50-2.00: ting brilhante da bencao, com cauda curta de templo.
+    osc(1760,'sine',.13,dry,t+1.5,.34,.002,.31);
+    osc(2637.02,'sine',.075,temple,t+1.515,.52,.002,.48);
+    osc(3520,'sine',.032,temple,t+1.54,.42,.002,.39);
+    return true;
+  }
+
   function setMusicVol(v){ musicVol=v; if(musicGain){ musicGain.gain.cancelScheduledValues(ctx.currentTime); musicGain.gain.setValueAtTime(v,ctx.currentTime); } }
   function setSfxVol(v){ sfxVol=v; if(sfxGain) sfxGain.gain.value=v; }
   function setAttackVol(v){ attackVol=v; if(attackGain) attackGain.gain.value=attackEnabled?v:0; }
@@ -22276,7 +22454,7 @@ const Audio = (function(){
   return {
     init, stopMusic,
     playMenuMusic, playCombatMusic, playBossMusic, playCampMusic,
-    playDeathStinger, playBossDefeat, playBossSpawn,
+    playDeathStinger, playBossDefeat, playBossSpawn, playDeityArrival,
     sfxSword, sfxBow, sfxAxe, sfxHit, sfxPlayerHit, sfxCoin,
     sfxEnemyDeath, sfxLevelUp, sfxWaveClear, sfxMenuClick, sfxShopBuy, sfxPetCapture,
     setMusicVol, setSfxVol, setAttackVol, setAttackEnabled, toggle,
