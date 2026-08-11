@@ -3905,6 +3905,283 @@ canvas, img {
   #card-screen .card-active-blessings { order:3; }
 }
 
+/* Placa divina sem as bordas laterais ornamentadas. */
+.deity-nameplate {
+  border:0;
+  border-top:3px solid var(--deity-gold-pale);
+  border-bottom:3px solid var(--deity-gold-pale);
+  border-radius:0;
+  clip-path:none;
+  background:linear-gradient(180deg,#052218,#03130d);
+  box-shadow:inset 0 1px rgba(84,255,151,.16),inset 0 -1px rgba(84,255,151,.12);
+}
+.deity-nameplate::before,.deity-nameplate::after { display:none; }
+
+/* HUD da campanha — ferro verde, ouro envelhecido e ornamentos de cripta. */
+body.campaign-hud-active #ui-top {
+  top:max(16px,var(--safe-top));
+  width:min(1120px,calc(100vw - 44px));
+  min-height:82px;
+  display:grid;
+  grid-template-columns:minmax(220px,2.15fr) repeat(4,minmax(82px,.72fr)) minmax(94px,.82fr);
+  gap:0;
+  align-items:stretch;
+  padding:8px 25px;
+  border:2px solid #8c7b32;
+  border-radius:5px;
+  background:
+    linear-gradient(90deg,rgba(116,102,40,.18),transparent 13% 87%,rgba(116,102,40,.18)),
+    linear-gradient(180deg,#102019 0%,#07130f 48%,#091711 100%);
+  box-shadow:
+    0 0 0 3px #030806,
+    0 0 0 5px #334425,
+    inset 0 0 0 2px rgba(205,177,71,.14),
+    inset 0 -16px 28px rgba(0,0,0,.34),
+    0 10px 28px rgba(0,0,0,.72);
+  pointer-events:none;
+}
+body.campaign-hud-active #ui-top::before,
+body.campaign-hud-active #ui-top::after {
+  content:'✦';
+  position:absolute;
+  top:50%;
+  width:42px;
+  height:42px;
+  display:grid;
+  place-items:center;
+  color:#c5ad50;
+  font-size:17px;
+  background:radial-gradient(circle,#13261c 0 37%,#07110c 39% 57%,#6f672d 59% 63%,#07110c 65%);
+  border:2px solid #8c7b32;
+  box-shadow:0 0 0 3px #0a150f,0 0 0 5px #46512b,0 0 16px rgba(0,0,0,.8);
+  transform:translateY(-50%) rotate(45deg);
+}
+body.campaign-hud-active #ui-top::before { left:-23px; }
+body.campaign-hud-active #ui-top::after { right:-23px; }
+body.campaign-hud-active #ui-top .stat-box,
+body.campaign-hud-active #coin-display {
+  min-width:0;
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  padding:3px 12px;
+  border:0;
+  border-left:1px solid rgba(132,113,44,.46);
+  border-radius:0;
+  background:transparent;
+  box-shadow:inset 1px 0 rgba(5,10,7,.9);
+  text-shadow:none;
+}
+body.campaign-hud-active #ui-top .campaign-health-stat {
+  display:grid;
+  grid-template-columns:auto 1fr;
+  grid-template-rows:auto 13px;
+  align-content:center;
+  column-gap:10px;
+  row-gap:7px;
+  padding-left:4px;
+  padding-right:22px;
+  border-left:0;
+  box-shadow:none;
+}
+body.campaign-hud-active #ui-top .stat-label,
+body.campaign-hud-active #coin-display::before {
+  color:#9d8738;
+  font:700 12px/1 'Courier New',monospace;
+  letter-spacing:.7px;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+body.campaign-hud-active #ui-top .stat-value,
+body.campaign-hud-active #coin-display {
+  color:#f2df9a;
+  font:800 23px/1 'Courier New',monospace;
+  letter-spacing:1px;
+  text-shadow:0 2px 0 #251d08,0 0 8px rgba(236,199,85,.18);
+}
+body.campaign-hud-active #ui-top .campaign-health-stat .stat-label {
+  grid-column:1;
+  grid-row:1;
+  color:#db443b;
+  font-size:20px;
+  text-shadow:0 1px 0 #3b0808;
+}
+body.campaign-hud-active #ui-top .campaign-health-stat .stat-value {
+  grid-column:2;
+  grid-row:1;
+  justify-self:start;
+  font-size:17px;
+  color:#f4e9bf;
+}
+body.campaign-hud-active #hpv::after {
+  content:' / ' attr(data-max);
+  color:#d7ca9d;
+}
+.campaign-health-track {
+  display:none;
+}
+body.campaign-hud-active .campaign-health-track {
+  grid-column:1/-1;
+  grid-row:2;
+  display:block;
+  width:100%;
+  height:13px;
+  padding:2px;
+  overflow:hidden;
+  border:1px solid #34482c;
+  border-radius:2px;
+  background:#020805;
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.9),0 0 0 1px rgba(144,120,41,.24);
+}
+#campaign-health-fill {
+  display:block;
+  width:100%;
+  height:100%;
+  background:linear-gradient(180deg,#56f064 0%,#28b842 48%,#158029 100%);
+  box-shadow:inset 0 1px rgba(220,255,218,.62),0 0 7px rgba(53,227,80,.5);
+  transition:width .14s ease,filter .18s ease;
+}
+#campaign-health-fill.danger {
+  background:linear-gradient(180deg,#ff675c,#c92928 55%,#771313);
+  box-shadow:inset 0 1px rgba(255,225,215,.52),0 0 8px rgba(255,55,45,.55);
+}
+body.campaign-hud-active #coin-display::before {
+  content:'◉ OURO';
+  display:block;
+}
+body.campaign-hud-active #p2-hp-box,
+body.campaign-hud-active #p2-lv-box {
+  border-left-color:rgba(66,131,151,.5);
+}
+
+body.campaign-hud-active #hud-bottom {
+  width:min(1120px,calc(100vw - 24px));
+  height:150px;
+  padding:0;
+  background:none;
+  border-radius:0;
+  pointer-events:none;
+}
+body.campaign-hud-active #xp-bar-wrap,
+body.campaign-hud-active #xp2-bar-wrap,
+body.campaign-hud-active #hint { display:none!important; }
+body.campaign-hud-active #weapon-slots-wrap {
+  position:absolute;
+  left:18px;
+  bottom:14px;
+  display:flex;
+  gap:12px;
+  margin:0;
+  align-items:flex-end;
+  pointer-events:none;
+}
+body.campaign-hud-active .weapon-slots-group {
+  position:relative;
+  display:flex;
+  gap:10px;
+  padding:20px 15px 13px;
+  border:2px solid #83742e;
+  border-radius:4px;
+  background:
+    radial-gradient(circle at 50% -20%,rgba(78,127,58,.26),transparent 48%),
+    linear-gradient(155deg,#102119,#07120d 68%,#0c1b13);
+  box-shadow:0 0 0 3px #030806,0 0 0 5px #334425,inset 0 0 0 2px rgba(198,169,61,.1),0 12px 28px rgba(0,0,0,.72);
+}
+body.campaign-hud-active .weapon-slots-group::before {
+  content:'☠';
+  position:absolute;
+  top:-19px;
+  left:50%;
+  width:44px;
+  height:30px;
+  display:grid;
+  place-items:center;
+  color:#b6a14d;
+  font-size:18px;
+  background:#0d1d15;
+  border:2px solid #81722e;
+  border-radius:50% 50% 7px 7px;
+  box-shadow:0 0 0 3px #071009;
+  transform:translateX(-50%);
+}
+body.campaign-hud-active .weapon-slots-group::after {
+  content:'❧';
+  position:absolute;
+  right:-9px;
+  bottom:-11px;
+  color:#5f8b3a;
+  font-size:25px;
+  text-shadow:-233px 0 #5f8b3a;
+  transform:rotate(-20deg);
+}
+body.campaign-hud-active .weapon-slots-group .wg-label { display:none; }
+body.campaign-hud-active .wslot {
+  width:76px;
+  height:68px;
+  border:2px solid #75682d;
+  border-radius:2px;
+  background:linear-gradient(145deg,rgba(15,31,23,.96),rgba(4,11,8,.98));
+  box-shadow:inset 0 0 0 2px #020604,inset 0 0 14px rgba(61,91,47,.18),0 0 0 1px rgba(187,158,59,.16);
+}
+body.campaign-hud-active .wslot.empty { border-style:solid;border-color:#514b27; }
+body.campaign-hud-active .wslot .wicon {
+  font-size:31px;
+  filter:sepia(.45) saturate(.75) brightness(.82) drop-shadow(0 2px 1px #000);
+}
+body.campaign-hud-active .wslot.empty .wicon { color:#6a6133;font-size:24px;opacity:.58; }
+body.campaign-hud-active .wslot .wname { display:none; }
+
+@media(max-width:980px){
+  body.campaign-hud-active #ui-top {
+    top:max(7px,var(--safe-top));
+    width:calc(100vw - 24px);
+    min-height:68px;
+    grid-template-columns:minmax(175px,1.8fr) repeat(4,minmax(62px,.68fr)) minmax(72px,.75fr);
+    padding:6px 18px;
+  }
+  body.campaign-hud-active #ui-top .stat-box,
+  body.campaign-hud-active #coin-display { padding:2px 7px; }
+  body.campaign-hud-active #ui-top .stat-label,
+  body.campaign-hud-active #coin-display::before { font-size:9px;letter-spacing:.3px; }
+  body.campaign-hud-active #ui-top .stat-value,
+  body.campaign-hud-active #coin-display { font-size:18px; }
+  body.campaign-hud-active #ui-top .campaign-health-stat { padding-right:14px; }
+  body.campaign-hud-active #weapon-slots-wrap { transform:scale(.82);transform-origin:bottom left; }
+}
+@media(max-width:720px){
+  body.campaign-hud-active #ui-top {
+    width:calc(100vw - 14px);
+    min-height:56px;
+    grid-template-columns:minmax(126px,1.6fr) repeat(5,minmax(0,1fr));
+    padding:4px 9px;
+  }
+  body.campaign-hud-active #ui-top::before,
+  body.campaign-hud-active #ui-top::after { display:none; }
+  body.campaign-hud-active #ui-top .stat-box,
+  body.campaign-hud-active #coin-display { padding:1px 3px;gap:2px; }
+  body.campaign-hud-active #ui-top .stat-label,
+  body.campaign-hud-active #coin-display::before { font-size:7px; }
+  body.campaign-hud-active #ui-top .stat-value,
+  body.campaign-hud-active #coin-display { font-size:13px;letter-spacing:0; }
+  body.campaign-hud-active #ui-top .campaign-health-stat { column-gap:5px;row-gap:3px;padding-right:7px; }
+  body.campaign-hud-active #ui-top .campaign-health-stat .stat-label { font-size:13px; }
+  body.campaign-hud-active #ui-top .campaign-health-stat .stat-value { font-size:11px; }
+  body.campaign-hud-active .campaign-health-track { height:8px;padding:1px; }
+  body.campaign-hud-active #hud-bottom {
+    bottom:calc(var(--mobile-controls-height,0px) + max(4px,var(--safe-bottom,0px)));
+  }
+  body.campaign-hud-active #weapon-slots-wrap {
+    display:flex!important;
+    left:4px;
+    bottom:4px;
+    transform:scale(.58);
+    transform-origin:bottom left;
+  }
+}
+
 </style>
 
 </head>
@@ -3912,11 +4189,11 @@ canvas, img {
 
 <!-- ══ HUD (shown during gameplay) ══ -->
 <div id="ui-top">
-  <div class="stat-box"><div class="stat-label">❤️ Vida P1</div><div class="stat-value" id="hpv">100</div></div>
-  <div class="stat-box"><div class="stat-label">⚔️ Onda</div><div class="stat-value" id="wav">1</div></div>
-  <div class="stat-box"><div class="stat-label">💀 Mortos</div><div class="stat-value" id="kiv">0</div></div>
+  <div class="stat-box campaign-health-stat"><div class="stat-label">♥</div><div class="stat-value" id="hpv" data-max="100">100</div><div class="campaign-health-track"><span id="campaign-health-fill"></span></div></div>
+  <div class="stat-box"><div class="stat-label">💀 Onda</div><div class="stat-value" id="wav">1</div></div>
+  <div class="stat-box"><div class="stat-label">⚔ Mortos</div><div class="stat-value" id="kiv">0</div></div>
   <div class="stat-box"><div class="stat-label">⭐ Nív.P1</div><div class="stat-value" id="lev">1</div></div>
-  <div class="stat-box"><div class="stat-label">⏱️ Tempo</div><div class="stat-value" id="tiv">0:30</div></div>
+  <div class="stat-box"><div class="stat-label">⌛ Tempo</div><div class="stat-value" id="tiv">0:30</div></div>
   <div id="coin-display">🪙 0</div>
   <div class="stat-box p2" id="p2-hp-box" style="display:none"><div class="stat-label">💙 Vida P2</div><div class="stat-value" id="hpv2">100</div></div>
   <div class="stat-box p2" id="p2-lv-box" style="display:none"><div class="stat-label">⭐ Nív.P2</div><div class="stat-value" id="lev2">1</div></div>
@@ -12995,7 +13272,17 @@ function buildFuseUI(){
 // UI UPDATE
 // ═══════════════════════════════════════════════════════
 function updateUI(){
-  document.getElementById('hpv').textContent=Math.max(0,Math.ceil(player.hp));
+  const hpValue=document.getElementById('hpv');
+  const hpNow=Math.max(0,Math.ceil(player.hp));
+  const hpMax=Math.max(1,Math.ceil(player.maxHp));
+  hpValue.textContent=hpNow;
+  hpValue.dataset.max=hpMax;
+  const healthFill=document.getElementById('campaign-health-fill');
+  if(healthFill){
+    const healthPct=Math.max(0,Math.min(100,player.hp/player.maxHp*100));
+    healthFill.style.width=healthPct+'%';
+    healthFill.classList.toggle('danger',healthPct<=25);
+  }
   document.getElementById('wav').textContent=wave;
   document.getElementById('kiv').textContent=kills;
   document.getElementById('lev').textContent=player.level;
@@ -13003,11 +13290,7 @@ function updateUI(){
   const s=Math.max(0,Math.ceil(waveTimer/1000));
   document.getElementById('tiv').textContent=campaignBossWave?'BOSS':`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
   document.getElementById('xp-bar').style.width=(player.xp/player.xpToNext*100)+'%';
-  document.getElementById('coin-display').textContent='🪙 '+totalCoins;
-  // Show class name in HP label
-  const cdef=CLASS_DEFS[player.classId];
-  const hpLabel=document.querySelector('#ui-top .stat-box:first-child .stat-label');
-  if(hpLabel&&cdef) hpLabel.textContent=`${cdef.badge} ❤`;
+  document.getElementById('coin-display').textContent=totalCoins;
   if(gameMode===2&&player2){
     document.getElementById('hpv2').textContent=Math.max(0,Math.ceil(player2.hp));
     document.getElementById('lev2').textContent=player2.level;
@@ -15185,7 +15468,25 @@ const OGRE_SPR=[['   XXXX      L  ','  XPPPPX     L  ',' XPPPPPPX   XLX ',' XPOP
   <script>
 // BACKGROUND
 // ═══════════════════════════════════════════════════════
-let currentArena = 'castle'; // 'castle' | 'snow' | 'forest' | 'volcano'
+let currentArena = 'castle'; // 'crypt' | 'castle' | 'snow' | 'forest' | 'desert' | 'volcano'
+const campaignCryptImage=new Image();
+campaignCryptImage.decoding='async';
+campaignCryptImage.src='assets/backgrounds/campaign-crypt.png';
+
+function drawCampaignCryptBG(bc){
+  if(!campaignCryptImage.complete||!campaignCryptImage.naturalWidth) return false;
+  bc.save();
+  bc.imageSmoothingEnabled=true;
+  bc.imageSmoothingQuality='high';
+  bc.drawImage(campaignCryptImage,0,0,W,H);
+  bc.restore();
+  return true;
+}
+
+campaignCryptImage.addEventListener('load',()=>{
+  if(currentArena!=='crypt'||!bgCanvas) return;
+  drawCampaignCryptBG(bgCanvas.getContext('2d'));
+},{once:true});
 
 function buildBG(arenaType) {
   currentArena = arenaType || 'castle';
@@ -15193,7 +15494,10 @@ function buildBG(arenaType) {
   bgCanvas.width=W; bgCanvas.height=H;
   const bc = bgCanvas.getContext('2d');
   bc.imageSmoothingEnabled=false;
-  if(currentArena==='snow') buildSnowBG(bc);
+  if(currentArena==='crypt'){
+    if(!drawCampaignCryptBG(bc)) buildCastleBG(bc);
+  }
+  else if(currentArena==='snow') buildSnowBG(bc);
   else if(currentArena==='forest') buildForestBG(bc);
   else if(currentArena==='volcano') buildVolcanoBG(bc);
   else if(currentArena==='desert') buildDesertBG(bc);
@@ -15698,7 +16002,7 @@ function drawBGGround(bc){
 
 function drawAnimTorches(t){
   // A floresta já possui iluminação natural; tochas pertencem aos outros mapas.
-  if(currentArena==='forest'||currentArena==='desert'||currentArena==='volcano') return;
+  if(currentArena==='crypt'||currentArena==='forest'||currentArena==='desert'||currentArena==='volcano') return;
   if(currentArena==='snow'){
     // Snow arena — floating ice crystals instead of torches
     [[W/2-60,148],[W/2+50,148],[100*0.3,285*0.62],[100*0.7,285*0.62],[W-100*0.7,285*0.62],[W-100*0.3,285*0.62]].forEach(([x,y])=>{
@@ -20977,7 +21281,7 @@ function campaignArenaForWave(nextWave){
   if(nextWave>=16) return 'desert';
   if(nextWave>=11) return 'snow';
   if(nextWave>=6) return 'forest';
-  return 'castle';
+  return 'crypt';
 }
 
 function resetCampaignMapObjects(){
@@ -21498,6 +21802,7 @@ function beginGame(){
   gameMode=_selMode; difficulty=_selDiff;
   hideAllScreens();
   document.body.classList.toggle('boss-rush-no-coins',!!bossRushMode);
+  document.body.classList.toggle('campaign-hud-active',!bossRushMode);
   // Show/hide P2 UI
   const is2p=gameMode===2;
   document.getElementById('p2-hp-box').style.display=is2p?'':'none';
@@ -21530,7 +21835,7 @@ function beginGame(){
   if(typeof updateBlessingsHUD==='function') updateBlessingsHUD();
   if(typeof resetShopPurchases==='function') resetShopPurchases();
   webBlobs=[]; webPuddles=[];
-  buildBG('castle');
+  buildBG(bossRushMode?'castle':'crypt');
   weaponSlots=[null,null,null]; weaponSlots2=[null,null,null];
   updateWeaponUI();
   state='playing';
@@ -26317,6 +26622,7 @@ window.DNG = DNG;
 
 window.startDungeonMode = function(){
   hideAllScreens();
+  document.body.classList.remove('campaign-hud-active');
   document.getElementById('ui-top').style.display='none';
   const hb=document.getElementById('hud-bottom'); if(hb) hb.style.display='none';
   document.getElementById('canvas').style.display='block';
