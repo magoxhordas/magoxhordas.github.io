@@ -15475,6 +15475,9 @@ let currentArena = 'castle'; // 'crypt' | 'castle' | 'snow' | 'forest' | 'desert
 const campaignCryptImage=new Image();
 campaignCryptImage.decoding='async';
 campaignCryptImage.src='assets/backgrounds/campaign-crypt.png';
+const campaignHauntedForestImage=new Image();
+campaignHauntedForestImage.decoding='async';
+campaignHauntedForestImage.src='assets/backgrounds/campaign-haunted-forest.png';
 
 function drawCampaignCryptBG(bc){
   if(!campaignCryptImage.complete||!campaignCryptImage.naturalWidth) return false;
@@ -15486,9 +15489,24 @@ function drawCampaignCryptBG(bc){
   return true;
 }
 
+function drawCampaignHauntedForestBG(bc){
+  if(!campaignHauntedForestImage.complete||!campaignHauntedForestImage.naturalWidth) return false;
+  bc.save();
+  bc.imageSmoothingEnabled=true;
+  bc.imageSmoothingQuality='high';
+  bc.drawImage(campaignHauntedForestImage,0,0,W,H);
+  bc.restore();
+  return true;
+}
+
 campaignCryptImage.addEventListener('load',()=>{
   if(currentArena!=='crypt'||!bgCanvas) return;
   drawCampaignCryptBG(bgCanvas.getContext('2d'));
+},{once:true});
+
+campaignHauntedForestImage.addEventListener('load',()=>{
+  if(currentArena!=='forest'||!bgCanvas) return;
+  drawCampaignHauntedForestBG(bgCanvas.getContext('2d'));
 },{once:true});
 
 function buildBG(arenaType) {
@@ -15501,7 +15519,9 @@ function buildBG(arenaType) {
     if(!drawCampaignCryptBG(bc)) buildCastleBG(bc);
   }
   else if(currentArena==='snow') buildSnowBG(bc);
-  else if(currentArena==='forest') buildForestBG(bc);
+  else if(currentArena==='forest'){
+    if(!drawCampaignHauntedForestBG(bc)) buildForestBG(bc);
+  }
   else if(currentArena==='volcano') buildVolcanoBG(bc);
   else if(currentArena==='desert') buildDesertBG(bc);
   else buildCastleBG(bc);
@@ -16096,10 +16116,132 @@ function drawCryptAmbience(t){
   ctx.restore();
 }
 
+function hauntedEyeVisibility(t,period,phase=0,brief=false){
+  const p=((t+phase)%period)/period;
+  if(brief){
+    if(p<.58||p>.83) return 0;
+    if((p>.66&&p<.69)||(p>.75&&p<.78)) return .08;
+    return .92;
+  }
+  if(p>.7) return 0;
+  if((p>.46&&p<.49)||(p>.57&&p<.605)) return .05;
+  return .88;
+}
+
+function drawHauntedEyePair(x,y,t,{period=7600,phase=0,tree=false,scale=1}={}){
+  const visibility=hauntedEyeVisibility(t,period,phase,tree);
+  const gap=(tree?3.2:3.8)*scale;
+  const eyeW=(tree?2.4:2.8)*scale;
+  const eyeH=(tree?1.15:1.3)*scale;
+
+  // Apaga os olhos pintados na arte durante o período oculto.
+  ctx.save();
+  ctx.globalCompositeOperation='source-over';
+  ctx.fillStyle=tree?'rgba(7,3,10,.92)':'rgba(0,0,2,.96)';
+  ctx.beginPath();ctx.ellipse(x,y,(gap+eyeW+2)*scale,(eyeH+2.2)*scale,0,0,Math.PI*2);ctx.fill();
+  if(visibility>.1){
+    ctx.globalCompositeOperation='screen';
+    const glow=ctx.createRadialGradient(x,y,0,x,y,12*scale);
+    glow.addColorStop(0,`rgba(255,37,36,${.44*visibility})`);
+    glow.addColorStop(.35,`rgba(185,0,38,${.22*visibility})`);
+    glow.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=glow;ctx.fillRect(x-14*scale,y-10*scale,28*scale,20*scale);
+    ctx.fillStyle=`rgba(255,46,42,${visibility})`;
+    ctx.beginPath();ctx.ellipse(x-gap,y,eyeW,eyeH,-.18,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(x+gap,y,eyeW,eyeH,.18,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=`rgba(255,190,105,${visibility*.72})`;
+    ctx.fillRect(Math.round(x-gap),Math.round(y),1,1);
+    ctx.fillRect(Math.round(x+gap),Math.round(y),1,1);
+  }
+  ctx.restore();
+}
+
+function drawHauntedLantern(x,y,t,phase){
+  const level=Math.floor((t/720+phase)%3);
+  const levels=[.38,.62,.88];
+  const strength=levels[level]*(.96+.04*Math.sin(t*.017+phase));
+  ctx.save();
+  ctx.globalCompositeOperation='screen';
+  const radius=20+level*3;
+  const glow=ctx.createRadialGradient(x,y,1,x,y,radius);
+  glow.addColorStop(0,`rgba(255,75,48,${.58*strength})`);
+  glow.addColorStop(.3,`rgba(223,7,35,${.32*strength})`);
+  glow.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=glow;ctx.fillRect(x-radius,y-radius,radius*2,radius*2);
+  ctx.fillStyle=`rgba(255,54,43,${.25+.45*strength})`;
+  ctx.fillRect(Math.round(x-3),Math.round(y-5),6,10);
+  ctx.fillStyle=`rgba(255,200,123,${.25+.55*strength})`;
+  ctx.fillRect(Math.round(x-1),Math.round(y-3),2,5);
+  ctx.restore();
+}
+
+function drawHauntedMushroomPulse(x,y,t,phase,scale=1){
+  const pulse=.45+.35*(.5+.5*Math.sin(t*.0023+phase));
+  ctx.save();
+  ctx.globalCompositeOperation='screen';
+  const radius=(7+5*pulse)*scale;
+  const glow=ctx.createRadialGradient(x,y,0,x,y,radius);
+  glow.addColorStop(0,`rgba(255,38,54,${.2*pulse})`);
+  glow.addColorStop(.5,`rgba(170,0,46,${.12*pulse})`);
+  glow.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=glow;ctx.fillRect(x-radius,y-radius,radius*2,radius*2);
+  ctx.globalAlpha=.18+.3*pulse;
+  ctx.fillStyle='#ff4b55';
+  ctx.beginPath();ctx.ellipse(x,y-1.6*scale,3.7*scale,1.8*scale,0,Math.PI,Math.PI*2);ctx.fill();
+  ctx.restore();
+}
+
+function drawHauntedForestAmbience(t){
+  // Sombras quase imperceptíveis atravessam a entrada da caverna.
+  ctx.save();
+  ctx.globalCompositeOperation='source-over';
+  ctx.fillStyle='rgba(0,0,4,.2)';
+  for(let i=0;i<3;i++){
+    const drift=Math.sin(t*.00018+i*2.3)*13;
+    ctx.beginPath();
+    ctx.ellipse(W*.5+drift+i*4-5,H*.365+i*6,24-i*3,49+i*5,.08*Math.sin(t*.00012+i),0,Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  [[W*.078,H*.254,0],[W*.328,H*.259,1.1],[W*.842,H*.291,2.2]]
+    .forEach(([x,y,phase])=>drawHauntedLantern(x,y,t,phase));
+
+  // Três grupos independentes dentro da caverna e dois rostos nas árvores.
+  drawHauntedEyePair(W*.510,H*.326,t,{period:8200,phase:0,scale:.9});
+  drawHauntedEyePair(W*.484,H*.359,t,{period:10300,phase:1800,scale:.68});
+  drawHauntedEyePair(W*.534,H*.372,t,{period:9100,phase:3900,scale:.68});
+  drawHauntedEyePair(W*.181,H*.322,t,{period:11700,phase:2100,tree:true,scale:1.05});
+  drawHauntedEyePair(W*.899,H*.324,t,{period:13200,phase:6400,tree:true,scale:1.05});
+
+  [
+    [W*.231,H*.475,.2,.8],[W*.830,H*.586,1.7,1],
+    [W*.079,H*.727,2.8,1.05],[W*.484,H*.752,4.1,.9],
+    [W*.947,H*.658,5.4,.62],[W*.903,H*.533,3.2,.56]
+  ].forEach(([x,y,phase,scale])=>drawHauntedMushroomPulse(x,y,t,phase,scale));
+
+  // Partículas roxas e vermelhas orbitam a boca da caverna sem poluir a arena.
+  ctx.save();
+  ctx.globalCompositeOperation='screen';
+  for(let i=0;i<14;i++){
+    const age=(t*.000055+i*.071)%1;
+    const angle=i*2.399+t*.00012*(i%2?1:-1);
+    const radius=16+age*52+(i%3)*5;
+    const x=W*.5+Math.cos(angle)*radius;
+    const y=H*.36+Math.sin(angle)*radius*.45-age*18;
+    const alpha=Math.sin(age*Math.PI)*(.16+(i%4)*.025);
+    ctx.globalAlpha=alpha;
+    ctx.fillStyle=i%3===0?'#ff354d':'#b341d8';
+    ctx.beginPath();ctx.arc(x,y,1+(i%3)*.45,0,Math.PI*2);ctx.fill();
+  }
+  ctx.restore();
+}
+
 function drawAnimTorches(t){
   if(currentArena==='crypt'){ drawCryptAmbience(t); return; }
+  if(currentArena==='forest'){ drawHauntedForestAmbience(t); return; }
   // A floresta já possui iluminação natural; tochas pertencem aos outros mapas.
-  if(currentArena==='forest'||currentArena==='desert'||currentArena==='volcano') return;
+  if(currentArena==='desert'||currentArena==='volcano') return;
   if(currentArena==='snow'){
     // Snow arena — floating ice crystals instead of torches
     [[W/2-60,148],[W/2+50,148],[100*0.3,285*0.62],[100*0.7,285*0.62],[W-100*0.7,285*0.62],[W-100*0.3,285*0.62]].forEach(([x,y])=>{
@@ -21405,6 +21547,8 @@ function advWave(){
 function spawnWaveObstacles(arenaType=currentArena){
   // Limpar obstáculos estáticos anteriores (não estruturas do jogador)
   structures = structures.filter(s => s.type && ['beacon','entroot','palantir','hobbit','shield','eagle','ballista'].includes(s.type));
+  // FUNDO-2 já possui árvores, pedras e raízes próprias; os obstáculos verdes antigos destoam da arte.
+  if(arenaType==='forest') return;
   const count = 2 + Math.floor(Math.random()*3); // 2-4 obstáculos por onda
   for(let i=0;i<count;i++){
     // Posição aleatória na arena (evitar bordas e área central do jogador)
@@ -21559,7 +21703,7 @@ function drawWaveAnnounce(t){
   const bossColors={5:'#aabbff',10:'#888840',15:'#88ddff',20:'#c8a840',25:'#ff4400'};
   const isBossWave=wave%5===0&&wave>=5;
   const label=isBossWave?(bossLabels[wave]||`⚠ ONDA ${wave} — BOSS!`):
-    wave===6?`🌲 ONDA ${wave} — FLORESTA SOMBRIA!`:wave===11?`❄ ONDA ${wave} — PICOS NEVADOS!`:wave===16?`🏜 ONDA ${wave} — DESERTO DAS CINZAS!`:wave===21?`🌋 ONDA ${wave} — PROFUNDEZAS VULCÂNICAS!`:`⚔ ONDA ${wave} ⚔`;
+    wave===6?`🌲 ONDA ${wave} — FLORESTA ASSOMBRADA!`:wave===11?`❄ ONDA ${wave} — PICOS NEVADOS!`:wave===16?`🏜 ONDA ${wave} — DESERTO DAS CINZAS!`:wave===21?`🌋 ONDA ${wave} — PROFUNDEZAS VULCÂNICAS!`:`⚔ ONDA ${wave} ⚔`;
   ctx.fillStyle=isBossWave?(bossColors[wave]||'#ff4400'):wave===6?'#88cc44':wave===11?'#a8d4f0':wave===16?'#c8a050':wave===21?'#ff6622':'#f0d080';
   ctx.fillText(label,W/2,H/2+8);
   ctx.restore();
@@ -21723,7 +21867,7 @@ function loop(ts){
       spawnTimer=spawnInt;
     }
     // ── Biome transitions ──
-    if(wave===6&&currentArena!=='forest'){ buildBG('forest'); if(typeof Audio!=='undefined')Audio.playCombatMusic('forest'); spawnLevelUpNotice(W/2,H/2-30,'🌲 FLORESTA SOMBRIA! 🌲',0); }
+    if(wave===6&&currentArena!=='forest'){ buildBG('forest'); if(typeof Audio!=='undefined')Audio.playCombatMusic('forest'); spawnLevelUpNotice(W/2,H/2-30,'🌲 FLORESTA ASSOMBRADA! 🌲',0); }
     if(wave===11&&currentArena!=='snow'){ buildBG('snow'); if(typeof Audio!=='undefined')Audio.playCombatMusic('snow'); spawnLevelUpNotice(W/2,H/2-30,'❄ PICOS NEVADOS! ❄',0); }
     if(wave===16&&currentArena!=='desert'){ buildBG('desert'); if(typeof Audio!=='undefined')Audio.playCombatMusic('desert'); spawnLevelUpNotice(W/2,H/2-30,'🏜 DESERTO DAS CINZAS! 🏜',0); }
     if(wave===21&&currentArena!=='volcano'){ buildBG('volcano'); if(typeof Audio!=='undefined')Audio.playCombatMusic('volcano'); spawnLevelUpNotice(W/2,H/2-30,'🌋 PROFUNDEZAS VULCÂNICAS! 🌋',0); }
@@ -21828,7 +21972,7 @@ function loop(ts){
   // Blizzard snow overlay in snow arena
   if(currentArena==='snow') drawBlizzard(t);
   if(currentArena==='volcano') drawVolcanoEmbers(t);
-  if(currentArena==='forest') drawForestAmbient(t);
+  // A nova floresta possui partículas roxas/vermelhas próprias em drawHauntedForestAmbience().
   if(currentArena==='desert') drawAshParticles(t);
   ctx.restore(); // end screen shake
   } catch(err){ console.error('[Draw]', err); }
