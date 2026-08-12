@@ -15543,6 +15543,9 @@ campaignHauntedForestImage.src='assets/backgrounds/campaign-haunted-forest.png';
 const campaignFrozenCastleImage=new Image();
 campaignFrozenCastleImage.decoding='async';
 campaignFrozenCastleImage.src='assets/backgrounds/campaign-frozen-castle.png';
+const campaignFossilDesertImage=new Image();
+campaignFossilDesertImage.decoding='async';
+campaignFossilDesertImage.src='assets/backgrounds/campaign-fossil-desert.png';
 
 function drawCampaignCryptBG(bc){
   if(!campaignCryptImage.complete||!campaignCryptImage.naturalWidth) return false;
@@ -15574,6 +15577,16 @@ function drawCampaignFrozenCastleBG(bc){
   return true;
 }
 
+function drawCampaignFossilDesertBG(bc){
+  if(!campaignFossilDesertImage.complete||!campaignFossilDesertImage.naturalWidth) return false;
+  bc.save();
+  bc.imageSmoothingEnabled=true;
+  bc.imageSmoothingQuality='high';
+  bc.drawImage(campaignFossilDesertImage,0,0,W,H);
+  bc.restore();
+  return true;
+}
+
 campaignCryptImage.addEventListener('load',()=>{
   if(currentArena!=='crypt'||!bgCanvas) return;
   drawCampaignCryptBG(bgCanvas.getContext('2d'));
@@ -15587,6 +15600,11 @@ campaignHauntedForestImage.addEventListener('load',()=>{
 campaignFrozenCastleImage.addEventListener('load',()=>{
   if(currentArena!=='snow'||!bgCanvas) return;
   drawCampaignFrozenCastleBG(bgCanvas.getContext('2d'));
+},{once:true});
+
+campaignFossilDesertImage.addEventListener('load',()=>{
+  if(currentArena!=='desert'||!bgCanvas) return;
+  drawCampaignFossilDesertBG(bgCanvas.getContext('2d'));
 },{once:true});
 
 function buildBG(arenaType) {
@@ -15605,7 +15623,9 @@ function buildBG(arenaType) {
     if(!drawCampaignHauntedForestBG(bc)) buildForestBG(bc);
   }
   else if(currentArena==='volcano') buildVolcanoBG(bc);
-  else if(currentArena==='desert') buildDesertBG(bc);
+  else if(currentArena==='desert'){
+    if(!drawCampaignFossilDesertBG(bc)) buildDesertBG(bc);
+  }
   else buildCastleBG(bc);
 }
 
@@ -21833,7 +21853,7 @@ function drawWaveAnnounce(t){
   const bossColors={5:'#aabbff',10:'#888840',15:'#88ddff',20:'#c8a840',25:'#ff4400'};
   const isBossWave=wave%5===0&&wave>=5;
   const label=isBossWave?(bossLabels[wave]||`⚠ ONDA ${wave} — BOSS!`):
-    wave===6?`🌲 ONDA ${wave} — FLORESTA ASSOMBRADA!`:wave===11?`❄ ONDA ${wave} — PICOS NEVADOS!`:wave===16?`🏜 ONDA ${wave} — DESERTO DAS CINZAS!`:wave===21?`🌋 ONDA ${wave} — PROFUNDEZAS VULCÂNICAS!`:`⚔ ONDA ${wave} ⚔`;
+    wave===6?`🌲 ONDA ${wave} — FLORESTA ASSOMBRADA!`:wave===11?`❄ ONDA ${wave} — FORTALEZA CONGELADA!`:wave===16?`🏜 ONDA ${wave} — RUÍNAS FÓSSEIS!`:wave===21?`🌋 ONDA ${wave} — PROFUNDEZAS VULCÂNICAS!`:`⚔ ONDA ${wave} ⚔`;
   ctx.fillStyle=isBossWave?(bossColors[wave]||'#ff4400'):wave===6?'#88cc44':wave===11?'#a8d4f0':wave===16?'#c8a050':wave===21?'#ff6622':'#f0d080';
   ctx.fillText(label,W/2,H/2+8);
   ctx.restore();
@@ -22000,7 +22020,7 @@ function loop(ts){
     // ── Biome transitions ──
     if(wave===6&&currentArena!=='forest'){ buildBG('forest'); if(typeof Audio!=='undefined')Audio.playCombatMusic('forest'); spawnLevelUpNotice(W/2,H/2-30,'🌲 FLORESTA ASSOMBRADA! 🌲',0); }
     if(wave===11&&currentArena!=='snow'){ buildBG('snow'); if(typeof Audio!=='undefined')Audio.playCombatMusic('snow'); spawnLevelUpNotice(W/2,H/2-30,'❄ FORTALEZA CONGELADA! ❄',0); }
-    if(wave===16&&currentArena!=='desert'){ buildBG('desert'); if(typeof Audio!=='undefined')Audio.playCombatMusic('desert'); spawnLevelUpNotice(W/2,H/2-30,'🏜 DESERTO DAS CINZAS! 🏜',0); }
+    if(wave===16&&currentArena!=='desert'){ buildBG('desert'); if(typeof Audio!=='undefined')Audio.playCombatMusic('desert'); spawnLevelUpNotice(W/2,H/2-30,'🏜 RUÍNAS FÓSSEIS! 🏜',0); }
     if(wave===21&&currentArena!=='volcano'){ buildBG('volcano'); if(typeof Audio!=='undefined')Audio.playCombatMusic('volcano'); spawnLevelUpNotice(W/2,H/2-30,'🌋 PROFUNDEZAS VULCÂNICAS! 🌋',0); }
     // ── Boss spawns at wave 5,10,15,20,25 ──
     if(!wildPetFight&&wave%5===0&&wave>=5&&!bossSpawnedThisWave&&!bossMajor){
@@ -22104,23 +22124,61 @@ function loop(ts){
   if(currentArena==='snow') drawBlizzard(t);
   if(currentArena==='volcano') drawVolcanoEmbers(t);
   // A nova floresta possui partículas roxas/vermelhas próprias em drawHauntedForestAmbience().
-  if(currentArena==='desert') drawAshParticles(t);
+  if(currentArena==='desert') drawDesertDust(t);
   ctx.restore(); // end screen shake
   } catch(err){ console.error('[Draw]', err); }
 }
 
 // ─── Ash particles overlay (desert) ───
-const ashParticles = Array.from({length:40},(_,i)=>({
-  x:Math.random()*W, y:Math.random()*H,
-  speed:8+Math.random()*18, drift:10+Math.random()*20,
-  size:i%5===0?3:i%3===0?2:1, phase:Math.random()*Math.PI*2,
+const desertSandParticles=Array.from({length:24},(_,i)=>({
+  x:Math.random()*W,
+  y:H*(.69+Math.random()*.28),
+  speed:5+Math.random()*10,
+  lift:1+Math.random()*3,
+  size:i%9===0?2:1,
+  phase:Math.random()*Math.PI*2,
 }));
-function drawAshParticles(t){
-  ctx.save(); ctx.globalAlpha=0.45;
-  for(const p of ashParticles){
-    p.y-=(p.speed*0.016)*0.5; p.x+=(p.drift*0.016)*Math.sin(t*0.002+p.phase);
-    if(p.y<-4){ p.y=H+4; p.x=Math.random()*W; }
-    ctx.fillStyle='rgba(160,100,50,0.7)';
+const desertDustGusts=[
+  {period:11200,start:.12,duration:.16,y:.55,side:'left',phase:.4},
+  {period:13900,start:.48,duration:.13,y:.71,side:'right',phase:2.1},
+  {period:17300,start:.76,duration:.11,y:.84,side:'left',phase:4.3}
+];
+function drawDesertDust(t){
+  ctx.save();
+  ctx.globalCompositeOperation='screen';
+
+  // Rajadas curtas e translúcidas, restritas às laterais e ao plano de fundo.
+  for(const gust of desertDustGusts){
+    const cycle=((t+gust.phase*1000)%gust.period)/gust.period;
+    if(cycle<gust.start||cycle>gust.start+gust.duration) continue;
+    const age=(cycle-gust.start)/gust.duration;
+    const fade=Math.sin(age*Math.PI);
+    const direction=gust.side==='left'?1:-1;
+    const origin=gust.side==='left'?-W*.12:W*1.12;
+    const travel=direction*(W*.46*age);
+    ctx.lineCap='round';
+    for(let i=0;i<4;i++){
+      const y=H*gust.y+(i-1.5)*5+Math.sin(t*.0012+i+gust.phase)*2;
+      const x=origin+travel+direction*i*13;
+      const length=46+i*15;
+      const grad=ctx.createLinearGradient(x,y,x+direction*length,y);
+      grad.addColorStop(0,'rgba(255,221,154,0)');
+      grad.addColorStop(.45,`rgba(236,183,101,${.08*fade})`);
+      grad.addColorStop(1,'rgba(255,221,154,0)');
+      ctx.strokeStyle=grad;ctx.lineWidth=1+i*.35;
+      ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo(x+direction*length*.5,y-2,x+direction*length,y+1);ctx.stroke();
+    }
+  }
+
+  // Poucos grãos viajam perto do chão, sem cobrir personagens ou o fóssil central.
+  ctx.globalCompositeOperation='source-over';
+  for(const p of desertSandParticles){
+    p.x+=p.speed*.016;
+    p.y+=Math.sin(t*.0014+p.phase)*p.lift*.012;
+    if(p.x>W+3){p.x=-3;p.y=H*(.69+Math.random()*.28);}
+    const floorFade=Math.max(0,Math.min(1,(p.y-H*.64)/(H*.33)));
+    ctx.globalAlpha=(.18+.16*Math.sin(t*.0011+p.phase)**2)*floorFade;
+    ctx.fillStyle=p.size===2?'#f5c46d':'#d99142';
     ctx.fillRect(Math.round(p.x),Math.round(p.y),p.size,p.size);
   }
   ctx.restore();
@@ -22764,6 +22822,79 @@ const Audio = (function(){
   }
 
   // ══════════════════════════════════
+  // RUÍNAS FÓSSEIS — ondas 16–20
+  // Deserto antigo, horizonte vasto e tensão mística sem clima de aventura alegre.
+  // ══════════════════════════════════
+  function playFossilDesertMusic(){
+    if(!ctx||!enabled) return;
+    stopMusic(.42);
+    const myGen=++_gen;
+    markMusicTheme('fossil-desert');
+    setTimeout(()=>{if(_gen===myGen)musicGain.gain.setValueAtTime(musicVol,ctx.currentTime);},520);
+
+    const dry=ctx.createGain();dry.gain.value=.42;dry.connect(musicGain);
+    const ruins=ctx.createGain();ruins.gain.value=.31;ruins.connect(musicGain);
+    const reverb=makeReverb(3.4,.32);
+    const reverbGain=ctx.createGain();reverbGain.gain.value=.38;
+    ruins.connect(reverb);reverb.connect(reverbGain);reverbGain.connect(musicGain);
+    const reedFilter=ctx.createBiquadFilter();reedFilter.type='bandpass';reedFilter.frequency.value=980;reedFilter.Q.value=1.25;reedFilter.connect(ruins);
+    trackNodes.push({stop:()=>{try{dry.disconnect();ruins.disconnect();reverb.disconnect();reverbGain.disconnect();reedFilter.disconnect();}catch(e){}}});
+
+    const ROOT=146.83;
+    const scale=[0,1,3,5,7,8,10,12,13,15];
+    const BPM=58,BEAT=60/BPM,BAR=BEAT*4;
+    const calls=[
+      [[7,.5,.72],[5,1.55,.48],[3,2.58,.88]],
+      [[8,.35,.65],[7,1.28,.58],[5,2.72,.9]],
+      [[5,.7,.48],[6,1.48,.62],[3,2.42,.5],[1,3.12,.62]],
+      [[7,.42,1.05],[8,2.02,.55],[5,3.02,.62]]
+    ];
+    const buriedChords=[[0,3,7],[0,5,8],[1,5,7],[0,3,8]];
+    let t=ctx.currentTime+.18;
+
+    function fossilBars(rem=96){
+      if(_gen!==myGen||!enabled||rem<=0){currentTrack=null;return;}
+      const barIndex=96-rem;
+      const phase=barIndex%4;
+
+      // Horizonte aberto: pedal grave e quintas longas, com bastante silêncio interno.
+      osc(n(ROOT*.5,scale[phase===2?1:0]),'sine',.085,dry,t,BAR*1.03,.42,1.05);
+      buriedChords[phase].forEach((si,index)=>{
+        osc(n(ROOT,scale[si]),index===0?'triangle':'sine',index===0?.034:.018,ruins,t,BAR*.9,.68,1.18);
+      });
+
+      // Sopro quente distante e areia raspando pedras antigas.
+      noise(.015,ruins,t+BEAT*(.32+phase*.17),BAR*.62,420+phase*85,1.05);
+      noise(.012,reedFilter,t+BEAT*3.36,.28,1750+phase*180,5.4);
+
+      // Frases modais lembram uma flauta de osso, nunca uma melodia festiva.
+      calls[phase].forEach(([si,start,dur],index)=>{
+        const at=t+start*BEAT;
+        const freq=n(ROOT*2,scale[si]);
+        osc(freq,index%2?'sine':'triangle',index===0?.043:.031,reedFilter,at,dur*BEAT*.88,.045,dur*BEAT*.62);
+        osc(freq*.501,'sine',.012,ruins,at+.025,dur*BEAT*.78,.06,dur*BEAT*.68);
+      });
+
+      // Impactos ocos e raros sugerem ruínas soterradas, sem virar bateria moderna.
+      if(barIndex%2===0){
+        const at=t+BEAT*(2.72+(phase%2)*.18);
+        const hitGain=ctx.createGain();hitGain.gain.setValueAtTime(.11,at);hitGain.gain.exponentialRampToValueAtTime(.001,at+.34);hitGain.connect(dry);
+        const hit=ctx.createOscillator();hit.type='sine';hit.frequency.setValueAtTime(104,at);hit.frequency.exponentialRampToValueAtTime(72,at+.31);
+        hit.connect(hitGain);try{hit.start(at);hit.stop(at+.38);}catch(e){}
+        trackNodes.push({stop:()=>{try{hit.stop(0);}catch(e){}try{hitGain.disconnect();}catch(e){}}});
+      }
+      if(barIndex%4===1){
+        const boneAt=t+BEAT*3.18;
+        [[1,.029],[1.47,.012],[2.12,.007]].forEach(([ratio,vol])=>osc(ROOT*3*ratio,'sine',vol,ruins,boneAt,BEAT*1.4,.003,BEAT*1.3));
+      }
+
+      t+=BAR;
+      currentTrack=_addTimeout(()=>fossilBars(rem-1),(BAR-.1)*1000);
+    }
+    fossilBars();
+  }
+
+  // ══════════════════════════════════
   // COMBAT — arenas abertas
   // Percussion-forward, clear mid
   // Key: D minor, 96 BPM
@@ -22780,6 +22911,7 @@ const Audio = (function(){
   function playCombatMusic(theme='castle'){
     if(theme==='crypt'){playCryptMusic();return;}
     if(theme==='snow'){playFrozenMusic();return;}
+    if(theme==='desert'){playFossilDesertMusic();return;}
     if(!ctx||!enabled) return;
     stopMusic(0.2);
     const myGen = ++_gen;
@@ -23302,7 +23434,7 @@ const Audio = (function(){
 
   return {
     init, stopMusic,
-    playMenuMusic, playCryptMusic, playFrozenMusic, playCombatMusic, playBossMusic, playCampMusic,
+    playMenuMusic, playCryptMusic, playFrozenMusic, playFossilDesertMusic, playCombatMusic, playBossMusic, playCampMusic,
     playDeathStinger, playBossDefeat, playBossSpawn, playDeityArrival,
     sfxSword, sfxBow, sfxAxe, sfxHit, sfxPlayerHit, sfxCoin,
     sfxEnemyDeath, sfxLevelUp, sfxWaveClear, sfxMenuClick, sfxShopBuy, sfxPetCapture,
