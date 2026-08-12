@@ -21537,31 +21537,16 @@ function advWave(){
   const d=DIFF[difficulty]||DIFF.medium;
   spawnInt=Math.max(d.spawnMin,d.spawnBase-wave*d.spawnStep);
   bossSpawnedThisWave=false;
-  // Geração procedural de obstáculos por bioma
+  // Remove qualquer obstáculo aleatório legado ao trocar de onda.
   const nextArena=campaignArenaForWave(wave);
   if(nextArena!==currentArena) resetCampaignMapObjects();
   spawnWaveObstacles(nextArena);
 }
 
-// Obstáculos procedurais — gerados a cada nova onda
-function spawnWaveObstacles(arenaType=currentArena){
-  // Limpar obstáculos estáticos anteriores (não estruturas do jogador)
+// A campanha não gera mais pedras, árvores ou rochas aleatórias.
+// Estruturas compradas/construídas pelo jogador são preservadas.
+function spawnWaveObstacles(){
   structures = structures.filter(s => s.type && ['beacon','entroot','palantir','hobbit','shield','eagle','ballista'].includes(s.type));
-  // FUNDO-2 já possui árvores, pedras e raízes próprias; os obstáculos verdes antigos destoam da arte.
-  if(arenaType==='forest') return;
-  const count = 2 + Math.floor(Math.random()*3); // 2-4 obstáculos por onda
-  for(let i=0;i<count;i++){
-    // Posição aleatória na arena (evitar bordas e área central do jogador)
-    const x = 80 + Math.random()*(W-160);
-    const y = 230 + Math.random()*(H-270);
-    // Evitar spawn muito perto do centro (onde o jogador começa)
-    if(Math.hypot(x-W/2,y-H*0.72)<70) continue;
-    if(arenaType==='forest') structures.push(new ForestTree(x,y));
-    else if(arenaType==='snow') structures.push(new SnowRock(x,y));
-    else if(arenaType==='desert') structures.push(new DesertRock(x,y));
-    else if(arenaType==='volcano') structures.push(new LavaRock(x,y));
-    else structures.push(new CastleRock(x,y));
-  }
 }
 
 // Obstáculos do bioma — Castelo: pedras
