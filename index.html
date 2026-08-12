@@ -3976,16 +3976,28 @@ body.campaign-hud-active #coin-display {
   text-shadow:none;
 }
 body.campaign-hud-active #ui-top .campaign-health-stat {
-  display:grid;
-  grid-template-columns:auto 1fr;
-  grid-template-rows:auto 13px;
-  align-content:center;
-  column-gap:10px;
-  row-gap:7px;
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  justify-content:center;
+  gap:4px;
   padding-left:4px;
   padding-right:22px;
   border-left:0;
   box-shadow:none;
+}
+body.campaign-hud-active .campaign-health-player {
+  width:100%;
+  display:grid;
+  grid-template-columns:auto 1fr;
+  grid-template-rows:auto 10px;
+  align-items:center;
+  column-gap:9px;
+  row-gap:3px;
+}
+body.campaign-hud-active .campaign-health-player-p2 {
+  padding-top:4px;
+  border-top:1px solid rgba(72,134,158,.28);
 }
 body.campaign-hud-active #ui-top .stat-label,
 body.campaign-hud-active #coin-display::before {
@@ -4002,21 +4014,26 @@ body.campaign-hud-active #coin-display {
   letter-spacing:1px;
   text-shadow:0 2px 0 #251d08,0 0 8px rgba(236,199,85,.18);
 }
-body.campaign-hud-active #ui-top .campaign-health-stat .stat-label {
+body.campaign-hud-active #ui-top .campaign-health-player .stat-label {
   grid-column:1;
   grid-row:1;
   color:#db443b;
-  font-size:20px;
+  font-size:17px;
   text-shadow:0 1px 0 #3b0808;
 }
-body.campaign-hud-active #ui-top .campaign-health-stat .stat-value {
+body.campaign-hud-active #ui-top .campaign-health-player .stat-value {
   grid-column:2;
   grid-row:1;
   justify-self:start;
-  font-size:17px;
+  font-size:15px;
   color:#f4e9bf;
 }
-body.campaign-hud-active #hpv::after {
+body.campaign-hud-active #ui-top .campaign-health-player-p2 .stat-label {
+  color:#58baf0;
+  text-shadow:0 1px 0 #08263b;
+}
+body.campaign-hud-active #hpv::after,
+body.campaign-hud-active #hpv2::after {
   content:' / ' attr(data-max);
   color:#d7ca9d;
 }
@@ -4028,15 +4045,16 @@ body.campaign-hud-active .campaign-health-track {
   grid-row:2;
   display:block;
   width:100%;
-  height:13px;
-  padding:2px;
+  height:10px;
+  padding:1px;
   overflow:hidden;
   border:1px solid #34482c;
   border-radius:2px;
   background:#020805;
   box-shadow:inset 0 2px 4px rgba(0,0,0,.9),0 0 0 1px rgba(144,120,41,.24);
 }
-#campaign-health-fill {
+#campaign-health-fill,
+#campaign-health-fill-p2 {
   display:block;
   width:100%;
   height:100%;
@@ -4044,7 +4062,12 @@ body.campaign-hud-active .campaign-health-track {
   box-shadow:inset 0 1px rgba(220,255,218,.62),0 0 7px rgba(53,227,80,.5);
   transition:width .14s ease,filter .18s ease;
 }
-#campaign-health-fill.danger {
+#campaign-health-fill-p2 {
+  background:linear-gradient(180deg,#58d7ff 0%,#278fc2 52%,#165b8d 100%);
+  box-shadow:inset 0 1px rgba(220,248,255,.62),0 0 7px rgba(55,174,236,.42);
+}
+#campaign-health-fill.danger,
+#campaign-health-fill-p2.danger {
   background:linear-gradient(180deg,#ff675c,#c92928 55%,#771313);
   box-shadow:inset 0 1px rgba(255,225,215,.52),0 0 8px rgba(255,55,45,.55);
 }
@@ -4052,9 +4075,32 @@ body.campaign-hud-active #coin-display::before {
   content:'◉ OURO';
   display:block;
 }
-body.campaign-hud-active #p2-hp-box,
+body.campaign-hud-active .campaign-level-player {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+}
+body.campaign-hud-active.campaign-coop-active .campaign-level-stat {
+  gap:4px;
+}
+body.campaign-hud-active.campaign-coop-active .campaign-level-player {
+  width:100%;
+  flex-direction:row;
+  gap:5px;
+}
+body.campaign-hud-active.campaign-coop-active .campaign-level-player .stat-label { font-size:9px; }
+body.campaign-hud-active.campaign-coop-active .campaign-level-player .stat-value { font-size:17px; }
 body.campaign-hud-active #p2-lv-box {
-  border-left-color:rgba(66,131,151,.5);
+  padding-top:4px;
+  border-top:1px solid rgba(72,134,158,.32);
+}
+body.campaign-hud-active #p2-lv-box .stat-label { color:#58aacf; }
+body.campaign-hud-active #p2-lv-box .stat-value { color:#a8ddf3; }
+body.campaign-hud-active:not(.campaign-coop-active) .campaign-health-player-p2,
+body.campaign-hud-active:not(.campaign-coop-active) #p2-lv-box {
+  display:none!important;
 }
 
 body.campaign-hud-active #hud-bottom {
@@ -4168,10 +4214,15 @@ body.campaign-hud-active .wslot .wname { display:none; }
   body.campaign-hud-active #coin-display::before { font-size:7px; }
   body.campaign-hud-active #ui-top .stat-value,
   body.campaign-hud-active #coin-display { font-size:13px;letter-spacing:0; }
-  body.campaign-hud-active #ui-top .campaign-health-stat { column-gap:5px;row-gap:3px;padding-right:7px; }
-  body.campaign-hud-active #ui-top .campaign-health-stat .stat-label { font-size:13px; }
-  body.campaign-hud-active #ui-top .campaign-health-stat .stat-value { font-size:11px; }
+  body.campaign-hud-active #ui-top .campaign-health-stat { gap:2px;padding-right:7px; }
+  body.campaign-hud-active .campaign-health-player { column-gap:4px;row-gap:2px;grid-template-rows:auto 7px; }
+  body.campaign-hud-active .campaign-health-player-p2 { padding-top:2px; }
+  body.campaign-hud-active #ui-top .campaign-health-player .stat-label { font-size:11px; }
+  body.campaign-hud-active #ui-top .campaign-health-player .stat-value { font-size:9px; }
   body.campaign-hud-active .campaign-health-track { height:8px;padding:1px; }
+  body.campaign-hud-active.campaign-coop-active .campaign-level-player { gap:2px; }
+  body.campaign-hud-active.campaign-coop-active .campaign-level-player .stat-label { font-size:6px; }
+  body.campaign-hud-active.campaign-coop-active .campaign-level-player .stat-value { font-size:11px; }
   body.campaign-hud-active #hud-bottom {
     bottom:calc(var(--mobile-controls-height,0px) + max(4px,var(--safe-bottom,0px)));
   }
@@ -4191,14 +4242,15 @@ body.campaign-hud-active .wslot .wname { display:none; }
 
 <!-- ══ HUD (shown during gameplay) ══ -->
 <div id="ui-top">
-  <div class="stat-box campaign-health-stat"><div class="stat-label">♥</div><div class="stat-value" id="hpv" data-max="100">100</div><div class="campaign-health-track"><span id="campaign-health-fill"></span></div></div>
+  <div class="stat-box campaign-health-stat">
+    <div class="campaign-health-player"><div class="stat-label" title="Vida P1">♥</div><div class="stat-value" id="hpv" data-max="100">100</div><div class="campaign-health-track"><span id="campaign-health-fill"></span></div></div>
+    <div class="campaign-health-player campaign-health-player-p2 p2" id="p2-hp-box" style="display:none"><div class="stat-label" title="Vida P2">♥</div><div class="stat-value" id="hpv2" data-max="100">100</div><div class="campaign-health-track"><span id="campaign-health-fill-p2"></span></div></div>
+  </div>
   <div class="stat-box"><div class="stat-label">💀 Onda</div><div class="stat-value" id="wav">1</div></div>
   <div class="stat-box"><div class="stat-label">⚔ Mortos</div><div class="stat-value" id="kiv">0</div></div>
-  <div class="stat-box"><div class="stat-label">⭐ Nív.P1</div><div class="stat-value" id="lev">1</div></div>
+  <div class="stat-box campaign-level-stat"><div class="campaign-level-player"><div class="stat-label">⭐ Nív.P1</div><div class="stat-value" id="lev">1</div></div><div class="campaign-level-player p2" id="p2-lv-box" style="display:none"><div class="stat-label">⭐ Nív.P2</div><div class="stat-value" id="lev2">1</div></div></div>
   <div class="stat-box"><div class="stat-label">⌛ Tempo</div><div class="stat-value" id="tiv">0:30</div></div>
   <div id="coin-display">🪙 0</div>
-  <div class="stat-box p2" id="p2-hp-box" style="display:none"><div class="stat-label">💙 Vida P2</div><div class="stat-value" id="hpv2">100</div></div>
-  <div class="stat-box p2" id="p2-lv-box" style="display:none"><div class="stat-label">⭐ Nív.P2</div><div class="stat-value" id="lev2">1</div></div>
 </div>
 <canvas id="canvas" width="640" height="480"></canvas>
 <div id="hud-bottom">
@@ -13294,7 +13346,17 @@ function updateUI(){
   document.getElementById('xp-bar').style.width=(player.xp/player.xpToNext*100)+'%';
   document.getElementById('coin-display').textContent=totalCoins;
   if(gameMode===2&&player2){
-    document.getElementById('hpv2').textContent=Math.max(0,Math.ceil(player2.hp));
+    const hpValue2=document.getElementById('hpv2');
+    const hpNow2=Math.max(0,Math.ceil(player2.hp));
+    const hpMax2=Math.max(1,Math.ceil(player2.maxHp));
+    hpValue2.textContent=hpNow2;
+    hpValue2.dataset.max=hpMax2;
+    const healthFill2=document.getElementById('campaign-health-fill-p2');
+    if(healthFill2){
+      const healthPct2=Math.max(0,Math.min(100,player2.hp/player2.maxHp*100));
+      healthFill2.style.width=healthPct2+'%';
+      healthFill2.classList.toggle('danger',healthPct2<=25);
+    }
     document.getElementById('lev2').textContent=player2.level;
     document.getElementById('xp2-bar').style.width=(player2.xp/player2.xpToNext*100)+'%';
   }
@@ -15478,6 +15540,9 @@ campaignCryptImage.src='assets/backgrounds/campaign-crypt.png';
 const campaignHauntedForestImage=new Image();
 campaignHauntedForestImage.decoding='async';
 campaignHauntedForestImage.src='assets/backgrounds/campaign-haunted-forest.png';
+const campaignFrozenCastleImage=new Image();
+campaignFrozenCastleImage.decoding='async';
+campaignFrozenCastleImage.src='assets/backgrounds/campaign-frozen-castle.png';
 
 function drawCampaignCryptBG(bc){
   if(!campaignCryptImage.complete||!campaignCryptImage.naturalWidth) return false;
@@ -15499,6 +15564,16 @@ function drawCampaignHauntedForestBG(bc){
   return true;
 }
 
+function drawCampaignFrozenCastleBG(bc){
+  if(!campaignFrozenCastleImage.complete||!campaignFrozenCastleImage.naturalWidth) return false;
+  bc.save();
+  bc.imageSmoothingEnabled=true;
+  bc.imageSmoothingQuality='high';
+  bc.drawImage(campaignFrozenCastleImage,0,0,W,H);
+  bc.restore();
+  return true;
+}
+
 campaignCryptImage.addEventListener('load',()=>{
   if(currentArena!=='crypt'||!bgCanvas) return;
   drawCampaignCryptBG(bgCanvas.getContext('2d'));
@@ -15507,6 +15582,11 @@ campaignCryptImage.addEventListener('load',()=>{
 campaignHauntedForestImage.addEventListener('load',()=>{
   if(currentArena!=='forest'||!bgCanvas) return;
   drawCampaignHauntedForestBG(bgCanvas.getContext('2d'));
+},{once:true});
+
+campaignFrozenCastleImage.addEventListener('load',()=>{
+  if(currentArena!=='snow'||!bgCanvas) return;
+  drawCampaignFrozenCastleBG(bgCanvas.getContext('2d'));
 },{once:true});
 
 function buildBG(arenaType) {
@@ -15518,7 +15598,9 @@ function buildBG(arenaType) {
   if(currentArena==='crypt'){
     if(!drawCampaignCryptBG(bc)) buildCastleBG(bc);
   }
-  else if(currentArena==='snow') buildSnowBG(bc);
+  else if(currentArena==='snow'){
+    if(!drawCampaignFrozenCastleBG(bc)) buildSnowBG(bc);
+  }
   else if(currentArena==='forest'){
     if(!drawCampaignHauntedForestBG(bc)) buildForestBG(bc);
   }
@@ -16237,27 +16319,87 @@ function drawHauntedForestAmbience(t){
   ctx.restore();
 }
 
+function drawFrozenFlame(x,y,t,phase=0,scale=1){
+  const sway=(Math.sin(t*.010+phase)+Math.sin(t*.023+phase*1.7)*.38)*2.1*scale;
+  const pulse=.9+.07*Math.sin(t*.006+phase)+.03*Math.sin(t*.019+phase);
+  ctx.save();
+  ctx.globalCompositeOperation='screen';
+  const radius=29*scale*pulse;
+  const glow=ctx.createRadialGradient(x,y,1,x,y,radius);
+  glow.addColorStop(0,'rgba(177,246,255,.56)');
+  glow.addColorStop(.3,'rgba(34,184,255,.33)');
+  glow.addColorStop(1,'rgba(0,35,96,0)');
+  ctx.fillStyle=glow;ctx.fillRect(x-radius,y-radius,radius*2,radius*2);
+  ctx.fillStyle='rgba(23,148,255,.75)';
+  ctx.beginPath();ctx.moveTo(x-5*scale,y+5*scale);
+  ctx.bezierCurveTo(x-7*scale,y-scale,x+sway-2*scale,y-9*scale,x+sway*.8,y-17*scale);
+  ctx.bezierCurveTo(x+sway+5*scale,y-7*scale,x+7*scale,y-2*scale,x+5*scale,y+5*scale);
+  ctx.closePath();ctx.fill();
+  ctx.fillStyle='rgba(117,238,255,.9)';
+  ctx.beginPath();ctx.moveTo(x-3*scale,y+4*scale);
+  ctx.quadraticCurveTo(x+sway*.55-2*scale,y-4*scale,x+sway*.65,y-12*scale);
+  ctx.quadraticCurveTo(x+sway+4*scale,y-2*scale,x+3*scale,y+4*scale);
+  ctx.closePath();ctx.fill();
+  ctx.fillStyle='rgba(235,255,255,.96)';
+  ctx.beginPath();ctx.moveTo(x-1.5*scale,y+3*scale);
+  ctx.quadraticCurveTo(x+sway*.25,y-2*scale,x+sway*.3,y-7*scale);
+  ctx.quadraticCurveTo(x+2*scale,y-scale,x+1.5*scale,y+3*scale);
+  ctx.closePath();ctx.fill();
+  for(let i=0;i<2;i++){
+    const age=(t*.00022+phase*.13+i*.47)%1;
+    ctx.globalAlpha=Math.sin(age*Math.PI)*.5;
+    ctx.fillStyle='#aaf5ff';
+    ctx.fillRect(Math.round(x+Math.sin(age*8+phase+i)*4*scale),Math.round(y-8*scale-age*16*scale),1.5*scale,1.5*scale);
+  }
+  ctx.restore();
+}
+
+function drawFrozenCastleAmbience(t){
+  // As duas chamas coincidem com os suportes centrais da arte 2896x2172.
+  drawFrozenFlame(W*.366,H*.325,t,.3,.9);
+  drawFrozenFlame(W*.634,H*.320,t,2.4,.9);
+
+  // Pulso muito discreto nos grandes conjuntos de cristais da fortaleza.
+  ctx.save();ctx.globalCompositeOperation='screen';
+  [
+    [W*.070,H*.338,40,0],[W*.074,H*.462,29,1.2],[W*.147,H*.445,23,2.5],
+    [W*.316,H*.371,20,3.1],[W*.365,H*.325,25,.7],[W*.634,H*.320,25,2.1],
+    [W*.884,H*.464,31,4.2],[W*.952,H*.414,22,5.1]
+  ].forEach(([x,y,radius,phase])=>{
+    const pulse=.42+.18*(.5+.5*Math.sin(t*.0017+phase));
+    const glow=ctx.createRadialGradient(x,y,0,x,y,radius);
+    glow.addColorStop(0,`rgba(117,235,255,${pulse*.36})`);
+    glow.addColorStop(.45,`rgba(31,145,255,${pulse*.17})`);
+    glow.addColorStop(1,'rgba(0,20,90,0)');
+    ctx.fillStyle=glow;ctx.fillRect(x-radius,y-radius,radius*2,radius*2);
+  });
+
+  // Reflexos da lua deslizam lentamente nas rachaduras do rio congelado.
+  const drift=(Math.sin(t*.00024)+1)*.5;
+  [
+    [.10,.57,.29,.55,0],[.33,.63,.52,.61,1.4],[.57,.56,.78,.59,2.3],
+    [.16,.75,.39,.72,3.2],[.50,.78,.70,.74,4.1],[.72,.88,.91,.84,5.2]
+  ].forEach(([x1,y1,x2,y2,phase],i)=>{
+    const alpha=.035+.04*(.5+.5*Math.sin(t*.0007+phase));
+    const slide=(drift-.5)*(9+i%2*5);
+    const g=ctx.createLinearGradient(W*x1+slide,H*y1,W*x2+slide,H*y2);
+    g.addColorStop(0,'rgba(128,222,255,0)');
+    g.addColorStop(.48,`rgba(184,239,255,${alpha})`);
+    g.addColorStop(1,'rgba(128,222,255,0)');
+    ctx.strokeStyle=g;ctx.lineWidth=i%3===0?2:1.2;
+    ctx.beginPath();ctx.moveTo(W*x1+slide,H*y1);
+    ctx.quadraticCurveTo(W*(x1+x2)*.5+slide,H*((y1+y2)*.5-.018),W*x2+slide,H*y2);ctx.stroke();
+  });
+  ctx.restore();
+}
+
 function drawAnimTorches(t){
   if(currentArena==='crypt'){ drawCryptAmbience(t); return; }
   if(currentArena==='forest'){ drawHauntedForestAmbience(t); return; }
   // A floresta já possui iluminação natural; tochas pertencem aos outros mapas.
   if(currentArena==='desert'||currentArena==='volcano') return;
   if(currentArena==='snow'){
-    // Snow arena — floating ice crystals instead of torches
-    [[W/2-60,148],[W/2+50,148],[100*0.3,285*0.62],[100*0.7,285*0.62],[W-100*0.7,285*0.62],[W-100*0.3,285*0.62]].forEach(([x,y])=>{
-      const pulse=0.7+0.3*Math.sin(t*0.004+x);
-      const g=ctx.createRadialGradient(x,y,0,x,y,22*pulse);
-      g.addColorStop(0,`rgba(140,210,255,${0.55*pulse})`); g.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.fillStyle=g; ctx.fillRect(x-24,y-24,48,48);
-      // Crystal shape
-      ctx.fillStyle='rgba(200,235,255,0.85)';
-      ctx.save(); ctx.translate(x,y); ctx.rotate(t*0.002);
-      ctx.fillRect(-2,-10,4,20); ctx.fillRect(-10,-2,20,4);
-      ctx.rotate(Math.PI/4);
-      ctx.fillStyle='rgba(160,210,245,0.6)';
-      ctx.fillRect(-2,-8,4,16); ctx.fillRect(-8,-2,16,4);
-      ctx.restore();
-    });
+    drawFrozenCastleAmbience(t);
     return;
   }
   const f1=0.8+0.2*Math.sin(t*0.008);
@@ -21544,9 +21686,12 @@ function advWave(){
 }
 
 // A campanha não gera mais pedras, árvores ou rochas aleatórias.
-// Estruturas compradas/construídas pelo jogador são preservadas.
+// A limpeza também roda durante a partida para neutralizar qualquer chamada legada tardia.
+function removeCampaignRandomObjects(){
+  structures=structures.filter(s=>s&&s.type!=='obstacle');
+}
 function spawnWaveObstacles(){
-  structures = structures.filter(s => s.type && ['beacon','entroot','palantir','hobbit','shield','eagle','ballista'].includes(s.type));
+  removeCampaignRandomObjects();
 }
 
 // Obstáculos do bioma — Castelo: pedras
@@ -21711,21 +21856,21 @@ function drawBossWarning(t){
 }
 
 // ─── Blizzard snow particle overlay ───
-const snowParticles = Array.from({length:90},(_,i)=>({
+const snowParticles = Array.from({length:42},(_,i)=>({
   x:Math.random()*W, y:Math.random()*H,
-  speed:30+Math.random()*50,
-  drift:8+Math.random()*20,
-  size:i%5===0?3:i%3===0?2:1,
+  speed:12+Math.random()*23,
+  drift:3+Math.random()*9,
+  size:i%11===0?2:1,
   phase:Math.random()*Math.PI*2,
 }));
 function drawBlizzard(t){
-  ctx.save(); ctx.globalAlpha=0.7;
+  ctx.save(); ctx.globalAlpha=.46;
   for(const p of snowParticles){
     p.y+=(p.speed*0.016);
-    p.x+=(p.drift*0.016)+Math.sin(t*0.002+p.phase)*0.5;
+    p.x+=(p.drift*0.016)+Math.sin(t*.0012+p.phase)*.22;
     if(p.y>H+4){ p.y=-4; p.x=Math.random()*W; }
     if(p.x>W+4) p.x=-4;
-    ctx.fillStyle='rgba(220,238,255,0.85)';
+    ctx.fillStyle='rgba(225,245,255,.78)';
     ctx.fillRect(Math.round(p.x),Math.round(p.y),p.size,p.size);
   }
   ctx.restore();
@@ -21802,6 +21947,7 @@ function loop(ts){
 
   if(state==='playing'){
     try {
+    removeCampaignRandomObjects();
     player.update(dt,enemies);
     player.updateAbility(dt);
     if(gameMode===2&&player2&&!player2.dead){ player2.update(dt,enemies); player2.updateAbility(dt); }
@@ -21853,7 +21999,7 @@ function loop(ts){
     }
     // ── Biome transitions ──
     if(wave===6&&currentArena!=='forest'){ buildBG('forest'); if(typeof Audio!=='undefined')Audio.playCombatMusic('forest'); spawnLevelUpNotice(W/2,H/2-30,'🌲 FLORESTA ASSOMBRADA! 🌲',0); }
-    if(wave===11&&currentArena!=='snow'){ buildBG('snow'); if(typeof Audio!=='undefined')Audio.playCombatMusic('snow'); spawnLevelUpNotice(W/2,H/2-30,'❄ PICOS NEVADOS! ❄',0); }
+    if(wave===11&&currentArena!=='snow'){ buildBG('snow'); if(typeof Audio!=='undefined')Audio.playCombatMusic('snow'); spawnLevelUpNotice(W/2,H/2-30,'❄ FORTALEZA CONGELADA! ❄',0); }
     if(wave===16&&currentArena!=='desert'){ buildBG('desert'); if(typeof Audio!=='undefined')Audio.playCombatMusic('desert'); spawnLevelUpNotice(W/2,H/2-30,'🏜 DESERTO DAS CINZAS! 🏜',0); }
     if(wave===21&&currentArena!=='volcano'){ buildBG('volcano'); if(typeof Audio!=='undefined')Audio.playCombatMusic('volcano'); spawnLevelUpNotice(W/2,H/2-30,'🌋 PROFUNDEZAS VULCÂNICAS! 🌋',0); }
     // ── Boss spawns at wave 5,10,15,20,25 ──
@@ -22031,6 +22177,7 @@ function beginGame(){
   document.body.classList.toggle('campaign-hud-active',!bossRushMode);
   // Show/hide P2 UI
   const is2p=gameMode===2;
+  document.body.classList.toggle('campaign-coop-active',is2p&&!bossRushMode);
   document.getElementById('p2-hp-box').style.display=is2p?'':'none';
   document.getElementById('p2-lv-box').style.display=is2p?'':'none';
   document.getElementById('xp2-bar-wrap').style.display=is2p?'':'none';
@@ -22081,6 +22228,7 @@ function beginGame(){
 
 function endGame(){
   state='dead';
+  document.body.classList.remove('campaign-coop-active');
   const wasBossRush=bossRushMode;
   // Reset boss rush
   if(wasBossRush){
@@ -22551,6 +22699,71 @@ const Audio = (function(){
   }
 
   // ══════════════════════════════════
+  // FORTALEZA CONGELADA — ondas 11–15
+  // Dark fantasy frio, melancólico e esparso, sem pulso frenético.
+  // ══════════════════════════════════
+  function playFrozenMusic(){
+    if(!ctx||!enabled) return;
+    stopMusic(.45);
+    const myGen=++_gen;
+    markMusicTheme('frozen');
+    setTimeout(()=>{if(_gen===myGen)musicGain.gain.setValueAtTime(musicVol,ctx.currentTime);},560);
+
+    const dry=ctx.createGain();dry.gain.value=.38;dry.connect(musicGain);
+    const hall=ctx.createGain();hall.gain.value=.36;hall.connect(musicGain);
+    const reverb=makeReverb(4.2,.28);
+    const reverbGain=ctx.createGain();reverbGain.gain.value=.44;
+    hall.connect(reverb);reverb.connect(reverbGain);reverbGain.connect(musicGain);
+    const coldFilter=ctx.createBiquadFilter();coldFilter.type='lowpass';coldFilter.frequency.value=1650;coldFilter.Q.value=.7;coldFilter.connect(hall);
+    trackNodes.push({stop:()=>{try{dry.disconnect();hall.disconnect();reverb.disconnect();reverbGain.disconnect();coldFilter.disconnect();}catch(e){}}});
+
+    const ROOT=146.83;
+    const scale=[0,2,3,5,7,8,11,12,14,15];
+    const BPM=50,BEAT=60/BPM,BAR=BEAT*4;
+    const laments=[
+      [[7,.35,1.4],[5,2.15,.8],[3,3.1,.7]],
+      [[8,.2,1.7],[7,2.3,1.1]],
+      [[5,.55,.75],[7,1.55,.8],[3,2.7,1.15]],
+      [[11,.4,1.25],[8,2.05,.7],[7,3.05,.75]]
+    ];
+    const chords=[[0,3,7],[0,5,8],[2,5,7],[0,3,8]];
+    let t=ctx.currentTime+.2;
+
+    function frozenBars(rem=96){
+      if(_gen!==myGen||!enabled||rem<=0){currentTrack=null;return;}
+      const barIndex=96-rem;
+      const phase=barIndex%4;
+
+      // Pedra gelada e vento distante sustentam o perigo, sem bateria.
+      osc(n(ROOT*.5,scale[phase===2?2:0]),'sine',.09,dry,t,BAR*1.04,.55,1.2);
+      chords[phase].forEach((si,index)=>{
+        osc(n(ROOT,scale[si]),index===0?'triangle':'sine',index===0?.034:.021,coldFilter,t,BAR*.94,.72,1.3);
+      });
+      noise(.012,hall,t+BEAT*(.55+phase*.18),BAR*.72,520+phase*95,1.15);
+
+      // Lamento curto e espaçado, com timbre vítreo de castelo congelado.
+      laments[phase].forEach(([si,start,dur],index)=>{
+        const at=t+start*BEAT;
+        const freq=n(ROOT*2,scale[si]);
+        osc(freq,'sine',index===0?.05:.036,hall,at,dur*BEAT*.92,.07,dur*BEAT*.74);
+        osc(freq*2.003,'sine',.011,coldFilter,at+.012,dur*BEAT*.7,.02,dur*BEAT*.6);
+      });
+
+      // Pequenos reflexos musicais de gelo, raros e irregulares.
+      if(barIndex%2===0){
+        const at=t+BEAT*(3.28+(phase%2)*.12);
+        const bell=n(ROOT*4,scale[7+(phase%3)]);
+        [[1,.036],[1.498,.014],[2.01,.009]].forEach(([ratio,vol])=>osc(bell*ratio,'sine',vol,hall,at,BEAT*1.65,.003,BEAT*1.55));
+      }
+      if(barIndex%4===3) noise(.018,hall,t+BEAT*3.52,.42,2250,7.2);
+
+      t+=BAR;
+      currentTrack=_addTimeout(()=>frozenBars(rem-1),(BAR-.11)*1000);
+    }
+    frozenBars();
+  }
+
+  // ══════════════════════════════════
   // COMBAT — arenas abertas
   // Percussion-forward, clear mid
   // Key: D minor, 96 BPM
@@ -22566,6 +22779,7 @@ const Audio = (function(){
 
   function playCombatMusic(theme='castle'){
     if(theme==='crypt'){playCryptMusic();return;}
+    if(theme==='snow'){playFrozenMusic();return;}
     if(!ctx||!enabled) return;
     stopMusic(0.2);
     const myGen = ++_gen;
@@ -23088,7 +23302,7 @@ const Audio = (function(){
 
   return {
     init, stopMusic,
-    playMenuMusic, playCryptMusic, playCombatMusic, playBossMusic, playCampMusic,
+    playMenuMusic, playCryptMusic, playFrozenMusic, playCombatMusic, playBossMusic, playCampMusic,
     playDeathStinger, playBossDefeat, playBossSpawn, playDeityArrival,
     sfxSword, sfxBow, sfxAxe, sfxHit, sfxPlayerHit, sfxCoin,
     sfxEnemyDeath, sfxLevelUp, sfxWaveClear, sfxMenuClick, sfxShopBuy, sfxPetCapture,
