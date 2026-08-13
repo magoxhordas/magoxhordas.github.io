@@ -6942,7 +6942,7 @@ function cookRecipe(id){
 }
 function applyCookingBuffs(p){
   for(const b of activeCookingBuffs){
-    if(b.effect.hp_restore) p.hp = Math.min(p.maxHp, p.hp + b.effect.hp_restore);
+    if(b.effect.hp_restore) healCampaignPlayer(p,b.effect.hp_restore,undefined,undefined,false);
     if(b.effect.dmg_mult) p.dmgMult = (p.dmgMult||1) * b.effect.dmg_mult;
     if(b.effect.speed_mult) p.speed *= b.effect.speed_mult;
     if(b.effect.dodge_bonus) p.dmgReduce = Math.min(0.5,(p.dmgReduce||0)+b.effect.dodge_bonus);
@@ -6950,11 +6950,11 @@ function applyCookingBuffs(p){
 }
 function applyCookingWaveRegen(p){
   for(const b of activeCookingBuffs){
-    if(b.effect.regen_per_wave) p.hp = Math.min(p.maxHp, p.hp + p.maxHp*b.effect.regen_per_wave);
+    if(b.effect.regen_per_wave) healCampaignPlayer(p,p.maxHp*b.effect.regen_per_wave,undefined,undefined,true);
   }
 }
 function applyCookingLifesteal(p){
-  for(const b of activeCookingBuffs) if(b.effect.lifesteal) p.hp=Math.min(p.maxHp,p.hp+b.effect.lifesteal);
+  for(const b of activeCookingBuffs) if(b.effect.lifesteal) healCampaignPlayer(p,b.effect.lifesteal,undefined,undefined,true);
 }
 
 // ══════════════════════════════════════════════════════════
@@ -8083,7 +8083,7 @@ function applyCardWaveRegen(){
   const pls=[player,...(gameMode===2&&player2?[player2]:[])].filter(p=>p&&!p.dead);
   for(const pl of pls){
     const regen=pl.cardEffects?.regenPerWave||0;
-    if(regen>0){ pl.hp=Math.min(pl.maxHp,pl.hp+regen); spawnLevelUpNotice(pl.x,pl.y-30,`+${regen}💚`,0); }
+    if(regen>0){ const healed=healCampaignPlayer(pl,regen); spawnLevelUpNotice(pl.x,pl.y-30,`+${Math.round(healed)}💚`,0); }
   }
 }
 
@@ -8500,6 +8500,13 @@ function applyMetaUpgrades(pl){
     else if(t==='damageDefense'){pl.dmg*=1+v;pl.dmgReduce=Math.min(.65,(pl.dmgReduce||0)+v);}
     else if(t==='damageMaxHp'){pl.dmg*=1+v;increaseMaxHp(pl,v);}
     else if(t==='critBoth'){add(e,'critChance',v);add(e,'critMultBonus',card.secondary[card.rarityIndex]);}
+    else if(t==='abilityCd'){
+      add(e,'abilityCd',v);
+      // As habilidades de mago, guerreiro e arqueiro disparam junto do ataque.
+      // Neles, acelerar o ataque tambem acelera a habilidade. O Viking usa o
+      // cooldown proprio do Grito de Guerra, atualizado em updateAbility().
+      if(pl.classId!=='viking')pl.atkCd/=1+v;
+    }
     else add(e,t,v);
     e.lastHitAt=e.lastHitAt||performance.now();
   }
@@ -9978,7 +9985,7 @@ const DIFF = {
   easy: {
     enemyHp:0.80, enemyDmg:0.60, enemySpd:0.84,
     enemyLateHp:0.008, enemyLateDmg:0.007,
-    bossHp:0.90, bossDmg:0.28,
+    bossHp:1.15, bossDmg:0.78,
     coinMult:1.12, coinFactor:0.23,
     playerHp:120, playerArmorCap:0.55, waveLen:34000,
     spawnBase:2800, spawnMin:1400, spawnStep:45,
@@ -9990,7 +9997,7 @@ const DIFF = {
   medium: {
     enemyHp:1.00, enemyDmg:0.82, enemySpd:0.95,
     enemyLateHp:0.012, enemyLateDmg:0.010,
-    bossHp:1.05, bossDmg:0.40,
+    bossHp:1.45, bossDmg:1.00,
     coinMult:1.00, coinFactor:0.23,
     playerHp:100, playerArmorCap:0.50, waveLen:32000,
     spawnBase:2350, spawnMin:1100, spawnStep:52,
@@ -10002,7 +10009,7 @@ const DIFF = {
   hard: {
     enemyHp:1.25, enemyDmg:1.05, enemySpd:1.05,
     enemyLateHp:0.016, enemyLateDmg:0.014,
-    bossHp:1.32, bossDmg:0.58,
+    bossHp:1.80, bossDmg:1.30,
     coinMult:0.86, coinFactor:0.23,
     playerHp:85, playerArmorCap:0.45, waveLen:29000,
     spawnBase:2150, spawnMin:900, spawnStep:55,
@@ -11749,7 +11756,7 @@ const CLASS_DEFS = {
     stats:{ vida:40, dano:90, veloc:55, crit:50 },
     ability:'Prisão de Geada',
     abilityDesc:'Lentidão; 2º acerto congela por 2s.',
-    baseHp:95, baseDmg:25, baseSpd:132, baseAtk:640, baseRange:310, baseMulti:0,
+    baseHp:95, baseDmg:24, baseSpd:132, baseAtk:640, baseRange:310, baseMulti:0,
     abilityKey:'frost',
     previewPalKey:'PAL_WIZARD',
     shopItems:[
@@ -11787,7 +11794,7 @@ const CLASS_DEFS = {
     stats:{ vida:95, dano:65, veloc:50, crit:40 },
     ability:'Lâmina Incendiária',
     abilityDesc:'Ataques deixam fogo no chão.',
-    baseHp:135, baseDmg:30, baseSpd:118, baseAtk:800, baseRange:225, baseMulti:0,
+    baseHp:135, baseDmg:28, baseSpd:118, baseAtk:800, baseRange:225, baseMulti:0,
     abilityKey:'fire',
     previewPalKey:'PAL_WARRIOR_P',
     shopItems:[
@@ -11822,7 +11829,7 @@ const CLASS_DEFS = {
     stats:{ vida:35, dano:65, veloc:95, crit:85 },
     ability:'Flecha de Plasma',
     abilityDesc:'Liga 2 inimigos e replica o dano.',
-    baseHp:80, baseDmg:16, baseSpd:156, baseAtk:780, baseRange:330, baseMulti:1,
+    baseHp:80, baseDmg:15, baseSpd:156, baseAtk:780, baseRange:330, baseMulti:1,
     abilityKey:'plasma',
     previewPalKey:'PAL_ARCHER_P',
     shopItems:[
@@ -11860,7 +11867,7 @@ const CLASS_DEFS = {
     stats:{ vida:80, dano:85, veloc:60, crit:65 },
     ability:'Grito de Guerra',
     abilityDesc:'Converte 15% do dano em vida por 5s.',
-    baseHp:125, baseDmg:32, baseSpd:135, baseAtk:780, baseRange:250, baseMulti:0,
+    baseHp:125, baseDmg:29, baseSpd:135, baseAtk:780, baseRange:250, baseMulti:0,
     abilityKey:'berserk',
     previewPalKey:'PAL_VIKING_P',
     shopItems:[
@@ -12043,9 +12050,9 @@ function rollBossRarity(){
 
 const BOSS_RARITY_SCALE = {
   common:  { hpMult:1.0, scaleMult:1.0, col:'#aaaaaa', label:'COMUM' },
-  rare:    { hpMult:1.15, scaleMult:1.06, col:'#44aaff', label:'RARO' },
-  epic:    { hpMult:1.30, scaleMult:1.11, col:'#cc66ff', label:'ÉPICO' },
-  legendary:{ hpMult:1.50, scaleMult:1.17, col:'#ffcc00', label:'LENDÁRIO' },
+  rare:    { hpMult:1.60, scaleMult:1.30, col:'#44aaff', label:'RARO' },
+  epic:    { hpMult:2.20, scaleMult:1.60, col:'#cc66ff', label:'ÉPICO' },
+  legendary:{ hpMult:3.00, scaleMult:2.00, col:'#ffcc00', label:'LENDÁRIO' },
 };
 
 function applyBossRarity(boss){
@@ -13917,7 +13924,6 @@ function swordAttack(player, enemies, rarity, manualTarget=null){
       }
       // Fire trail
       if(player.cardEffects?.fireTrail && Math.random()<0.4) _spawnFirePatch(e.x, e.y);
-      if(e.dead){ applyCardLifesteal(player,e.x,e.y); applyCardLightning(player,e.x,e.y); }
     }
   }
   const skinAttack=typeof getHeroSkinAttackColors==='function'?getHeroSkinAttackColors():null;
@@ -13944,7 +13950,7 @@ function bowAttack(player, enemies, rarity, manualTarget=null){
   const skinAttack=typeof getHeroSkinAttackColors==='function'?getHeroSkinAttackColors():null;
   const arrowColor=skinAttack?.primary||'#88cc44';
   const arrowAccent=skinAttack?.secondary||'#ccff88';
-  projs.push(new WeaponProj(player.x,player.y,angle,dmg,'bow',arrowColor,arrowAccent));
+  projs.push(new WeaponProj(player.x,player.y,angle,dmg,'bow',arrowColor,arrowAccent,player));
   // Bow draw particles — leaf/feather burst
   spawnParts(player.x,player.y-10,arrowColor,5,45);
   spawnParts(player.x,player.y-10,arrowAccent,3,35);
@@ -13976,7 +13982,6 @@ function axeAttack(player, enemies, rarity, manualTarget=null){
         e.x+=Math.cos(ang)*kb; e.y+=Math.sin(ang)*kb;
       }
       if(player.cardEffects?.fireTrail) _spawnFirePatch(e.x, e.y);
-      if(e.dead){ applyCardLifesteal(player,e.x,e.y); applyCardLightning(player,e.x,e.y); }
     }
   }
   const skinAttack=typeof getHeroSkinAttackColors==='function'?getHeroSkinAttackColors():null;
@@ -13997,9 +14002,10 @@ function axeAttack(player, enemies, rarity, manualTarget=null){
 // WEAPON PROJECTILE (arrow)
 // ═══════════════════════════════════════════════════════
 class WeaponProj {
-  constructor(x,y,angle,dmg,wtype,color,secondaryColor=null){
+  constructor(x,y,angle,dmg,wtype,color,secondaryColor=null,owner=null){
     this.x=x; this.y=y; this.angle=angle; this.dmg=dmg; this.wtype=wtype; this.color=color;
     this.secondaryColor=secondaryColor;
+    this.owner=owner;
     const spd=wtype==='bow'?500:350;
     this.vx=Math.cos(angle)*spd; this.vy=Math.sin(angle)*spd;
     this.radius=6; this.dead=false; this.born=Date.now(); this.life=1600;
@@ -17021,6 +17027,7 @@ class Player {
           let diff=ea-angle; while(diff>Math.PI)diff-=Math.PI*2; while(diff<-Math.PI)diff+=Math.PI*2;
           if(Math.abs(diff)>arc/2) continue;
         }
+        if(isViking&&hits===0) triggerVikingWarCry(this);
         const dmg=(typeof applyCardCrit==='function')?applyCardCrit(this,this.dmg,e):this.dmg;
         e.takeDmg(dmg); hits++;
         // efeito de classe: viking sempre (roubo de vida); guerreiro até 2 focos de fogo por golpe
@@ -17880,20 +17887,13 @@ function updateFirePatches(dt){
     const fp=firePatches[i];
     fp.timer-=dt*1000;
     if(fp.timer<=0){ firePatches.splice(i,1); continue; }
-    // Damage enemies inside
-    if(Math.floor(fp.timer)%200<20){
-      const tgts=allTargets(enemies);
-      for(const e of tgts){
-        if(e.dead) continue;
-        if(Math.hypot(e.x-fp.x,e.y-fp.y)<fp.r){
-          e.takeDmg(8);
-          if(e.dead){
-            const nearPl=[player,...(gameMode===2&&player2?[player2]:[])].filter(p=>p&&!p.dead)
-              .sort((a,b)=>Math.hypot(a.x-fp.x,a.y-fp.y)-Math.hypot(b.x-fp.x,b.y-fp.y))[0];
-            if(nearPl){ applyCardLifesteal(nearPl,e.x,e.y); applyCardLightning(nearPl,e.x,e.y); }
-          }
-        }
-      }
+    fp.dmgTick=(fp.dmgTick??0)-dt*1000;
+    if(fp.dmgTick>0)continue;
+    fp.dmgTick=400;
+    const damage=fp.dmgPerSec??8;
+    for(const e of allTargets(enemies)){
+      if(!e||e.dead)continue;
+      if(Math.hypot(e.x-fp.x,e.y-fp.y)<fp.r+(e.radius||0))e.takeDmg(damage);
     }
   }
 }
@@ -18026,9 +18026,43 @@ function spawnEnemy(){
 // ═══════════════════════════════════════════════════════
 // COLLISIONS
 // ═══════════════════════════════════════════════════════
+function triggerVikingWarCry(owner){
+  if(!owner||owner.classId!=='viking'||owner.abilityTimer>0)return false;
+  const duration=owner.berserkDur*(1+(owner.cardEffects?.buffDuration||0));
+  owner.berserkActive=true;
+  owner.berserkTimer=duration;
+  owner.abilityTimer=12000;
+  spawnParts(owner.x,owner.y,'#ff5a3d',12,58);
+  spawnLevelUpNotice(owner.x,owner.y-30,'GRITO DE GUERRA',owner.idx||0);
+  return true;
+}
+window.triggerVikingWarCry=triggerVikingWarCry;
+
+function healCampaignPlayer(owner,amount,x,y,useBlessing=true){
+  if(!owner||amount<=0||owner.hp>=owner.maxHp)return 0;
+  const boosted=amount*(1+(useBlessing?(owner.cardEffects?.healingMult||0):0));
+  const healed=Math.min(boosted,owner.maxHp-owner.hp);
+  owner.hp+=healed;
+  if(healed>0&&x!=null&&y!=null)spawnParts(x,y,'#ff4466',4,30);
+  return healed;
+}
+window.healCampaignPlayer=healCampaignPlayer;
+
+function applyBlessingKnockback(owner,enemy){
+  const force=owner?.cardEffects?.extraKnockback||0;
+  if(!force||!enemy||enemy.dead)return;
+  const angle=Math.atan2(enemy.y-owner.y,enemy.x-owner.x);
+  const distance=Math.min(85,force*.45);
+  enemy.x+=Math.cos(angle)*distance;
+  enemy.y+=Math.sin(angle)*distance;
+  if(typeof clampCampaignEntity==='function')clampCampaignEntity(enemy,enemy.radius||12);
+}
+window.applyBlessingKnockback=applyBlessingKnockback;
+
 function applyClassHitEffect(proj, enemy){
   const owner=proj.owner;
   if(!owner) return;
+  applyBlessingKnockback(owner,enemy);
   if(typeof notifyBlessingSpecial==='function') notifyBlessingSpecial(owner);
   const cid=owner.classId;
   if(cid==='mage'){
@@ -18044,7 +18078,7 @@ function applyClassHitEffect(proj, enemy){
     }
   } else if(cid==='warrior'){
     // Incendiary Blade: leave fire patch on ground
-    firePatches.push({x:enemy.x,y:enemy.y,timer:owner.fireDur,r:28,dmgTick:0,dmgPerSec:owner.dmg*0.18}); // FIX: r faltava (crash de gradiente + dano nunca acertava)
+    firePatches.push({x:enemy.x,y:enemy.y,timer:owner.fireDur,r:28,dmgTick:0,dmgPerSec:owner.dmg*0.18,owner}); // FIX: r faltava (crash de gradiente + dano nunca acertava)
   } else if(cid==='archer'){
     // Plasma Link: chain damage to nearby enemies
     const linked=enemies.filter(e=>!e.dead&&e!==enemy&&Math.hypot(e.x-enemy.x,e.y-enemy.y)<80).slice(0,owner.plasmaChain||1);
@@ -18060,15 +18094,13 @@ function applyClassHitEffect(proj, enemy){
     }
     // Ignite arrow — leave a fire patch where it hits
     if(owner.igniteSelf){
-      firePatches.push({x:enemy.x,y:enemy.y,timer:900,r:24,dmgTick:0,dmgPerSec:owner.dmg*0.15}); // FIX: r faltava
+      firePatches.push({x:enemy.x,y:enemy.y,timer:900,r:24,dmgTick:0,dmgPerSec:owner.dmg*0.15,owner}); // FIX: r faltava
       spawnParts(enemy.x,enemy.y,'#ff6600',4,30);
     }
   } else if(cid==='viking'){
     // Vampirism via berserk
     if(owner.berserkActive){
-      const heal=proj.dmg*owner.lifeSteal;
-      owner.hp=Math.min(owner.maxHp, owner.hp+heal);
-      if(Math.random()<0.3) spawnParts(owner.x,owner.y,'#ff4466',4,30);
+      healCampaignPlayer(owner,proj.dmg*owner.lifeSteal,owner.x,owner.y);
     }
   }
 }
@@ -20901,12 +20933,9 @@ function collide(){
       if(Math.hypot(p.x-e.x,p.y-e.y)<p.radius+e.radius){
         const dmgMult = e.frozen ? 1.5 : 1.0;
         const finalDmg = typeof applyCardCrit==='function' ? applyCardCrit(p.owner||player, p.dmg*dmgMult, e) : p.dmg*dmgMult;
-        const wasDead = e.hp <= finalDmg;
         e.takeDmg(finalDmg);
         applyClassHitEffect(p, e);
         p.dead=true;
-        if(wasDead&&typeof applyCardLifesteal==='function') applyCardLifesteal(p.owner||player, e.x, e.y);
-        if(wasDead&&typeof applyCardLightning==='function') applyCardLightning(p.owner||player, e.x, e.y);
         break;
       }
     }
@@ -21026,15 +21055,6 @@ function collide(){
           pl.webbed=true; pl.webbedTimer=Math.max(pl.webbedTimer||0, 1200);
         }
       }
-    }
-  }
-  // Fire patches — warrior ability
-  for(const fp of firePatches){
-    fp.timer-=16; fp.dmgTick-=16;
-    if(fp.dmgTick<=0){
-      fp.dmgTick=400;
-      for(const e of nearbyEnemies(fp.x,fp.y,38)) if(!e.dead&&Math.hypot(e.x-fp.x,e.y-fp.y)<38) e.takeDmg(fp.dmgPerSec);
-      if(bossOrc&&!bossOrc.dead&&Math.hypot(bossOrc.x-fp.x,bossOrc.y-fp.y)<50) bossOrc.takeDmg(fp.dmgPerSec);
     }
   }
   // Coins — give XP + fly animation on touch
@@ -22274,13 +22294,16 @@ function loop(ts){
       else bossMajor=(wave>30&&wave%10===0)?new BossBrute(wave):new BossOrc(wave);
       // FIX v10: raridade de boss (Solo Leveling) existia mas nunca era aplicada
       if(typeof applyBossRarity==='function') applyBossRarity(bossMajor);
-      // Campaign-only difficulty scaling; boss behavior and abilities are unchanged.
+      // Recupera a resistencia original e aumenta a pressao a cada novo bioma.
       const bossDiff=DIFF[difficulty]||DIFF.medium;
-      bossMajor.hp=Math.round(bossMajor.hp*bossDiff.bossHp);
-      bossMajor.maxHp=Math.round(bossMajor.maxHp*bossDiff.bossHp);
-      bossMajor.damage=(bossMajor.damage||30)*bossDiff.bossDmg;
+      const bossTier=Math.max(0,Math.floor((wave-5)/5));
+      const bossWaveHp=1+bossTier*.08;
+      const bossWaveDmg=1+bossTier*.04;
+      bossMajor.hp=Math.round(bossMajor.hp*bossDiff.bossHp*bossWaveHp);
+      bossMajor.maxHp=Math.round(bossMajor.maxHp*bossDiff.bossHp*bossWaveHp);
+      bossMajor.damage=(bossMajor.damage||30)*bossDiff.bossDmg*bossWaveDmg;
       if(bossMajor.shieldMax){
-        bossMajor.shieldMax=Math.round(bossMajor.shieldMax*bossDiff.bossHp);
+        bossMajor.shieldMax=Math.round(bossMajor.shieldMax*bossDiff.bossHp*bossWaveHp);
         bossMajor.shieldHp=bossMajor.shieldMax;
       }
       if(typeof Audio!=='undefined'){
