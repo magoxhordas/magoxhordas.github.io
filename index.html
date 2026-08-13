@@ -486,6 +486,24 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 .vic-btn:hover { border-color:#f0d080; box-shadow:0 0 22px rgba(200,168,75,0.35); transform:translateY(-2px); }
 .vic-btn.secondary { border-color:rgba(100,80,28,0.4); color:#8a7030; font-size:17px; }
 .vic-btn.secondary:hover { border-color:rgba(200,168,75,0.5); color:#c8a040; }
+.vic-auto-return {
+  min-height:18px; margin-top:11px; position:relative; z-index:2;
+  color:#806528; font-size:12px; letter-spacing:2px; text-transform:uppercase;
+}
+#victory-screen.campaign-clear {
+  background:
+    radial-gradient(ellipse at 50% 18%,rgba(255,64,12,.28) 0%,transparent 48%),
+    radial-gradient(ellipse at 15% 85%,rgba(145,0,0,.22) 0%,transparent 48%),
+    radial-gradient(ellipse at 85% 85%,rgba(120,20,0,.18) 0%,transparent 48%),
+    linear-gradient(180deg,rgba(14,1,2,.985) 0%,rgba(4,2,3,.99) 100%);
+}
+#victory-screen.campaign-clear .vic-emblem { filter:drop-shadow(0 0 24px rgba(255,74,22,.9)); }
+#victory-screen.campaign-clear .vic-title {
+  color:#ffd06a;
+  text-shadow:0 0 30px rgba(255,72,18,1),0 0 75px rgba(150,8,0,.72),0 4px 16px #000;
+}
+#victory-screen.campaign-clear .vic-sub { color:#bd5932; }
+#victory-screen.campaign-clear .vic-panel { border-color:rgba(220,92,35,.42); }
 /* ══ SISTEMA DE CARTAS — BÊNÇÃOS ══ */
 /* ══════════════════════════════════════════════════
    BÊNÇÃOS — Dark Fantasy / Mordor theme
@@ -4677,18 +4695,19 @@ body.campaign-hud-active .wslot .wname { display:none; }
 <!-- ══ TELA DE VITÓRIA — BOSS RUSH ══ -->
 <div id="victory-screen">
   <div id="victory-particles"></div>
-  <div class="vic-emblem">🏆</div>
-  <div class="vic-title">VITÓRIA!</div>
-  <div class="vic-sub">— Todas as criaturas foram derrotadas —</div>
+  <div class="vic-emblem" id="vic-emblem">🏆</div>
+  <div class="vic-title" id="vic-title">VITÓRIA!</div>
+  <div class="vic-sub" id="vic-sub">— Todas as criaturas foram derrotadas —</div>
   <div class="vic-rune-line"></div>
   <div class="vic-panel">
     <div class="vic-stats" id="vic-stats"></div>
     <div class="vic-bosses" id="vic-bosses"></div>
   </div>
   <div class="vic-btns">
-    <button class="vic-btn" onclick="closeVictory('menu')">MENU PRINCIPAL</button>
-    <button class="vic-btn secondary" onclick="closeVictory('hub')">🏕 ACAMPAMENTO</button>
+    <button class="vic-btn" id="vic-menu-btn" onclick="closeVictory('menu')">MENU PRINCIPAL</button>
+    <button class="vic-btn secondary" id="vic-hub-btn" onclick="closeVictory('hub')">🏕 ACAMPAMENTO</button>
   </div>
+  <div class="vic-auto-return" id="vic-auto-return"></div>
 </div>
 
 <!-- ══ HUB / ACAMPAMENTO ══ -->
@@ -11575,6 +11594,10 @@ function spawnNextBossRush(){
   }
 }
 
+let campaignCompletionPending=false;
+let campaignVictoryReturnTimer=null;
+let campaignVictoryCountdownTimer=null;
+
 function endBossRush(victory){
   if(victory&&typeof GameSettings!=='undefined'&&typeof GameSettings.recordBossRushVictory==='function') GameSettings.recordBossRushVictory(bossRushQueue);
   bossRushMode=false;
@@ -11584,34 +11607,56 @@ function endBossRush(victory){
     spawnLevelUpNotice(W/2,H/2-40,'🏆 BOSS RUSH CONCLUÍDO!',0);
     spawnParts(W/2,H/2,'#f0d080',30,120);
     spawnParts(W/2,H/2,'#ff9922',20,100);
-    setTimeout(()=>showVictoryScreen(),2600);
+    setTimeout(()=>showVictoryScreen('bossrush'),2600);
   } else {
     setTimeout(()=>endGame(),0);
   }
 }
 
-function showVictoryScreen(){
+function showVictoryScreen(mode='bossrush'){
   if(raf){cancelAnimationFrame(raf);raf=null;}
+  const campaignClear=mode==='campaign';
+  const screen=document.getElementById('victory-screen');
+  screen.classList.toggle('campaign-clear',campaignClear);
+  document.getElementById('vic-emblem').textContent=campaignClear?'👑':'🏆';
+  document.getElementById('vic-title').textContent=campaignClear?'JOGO CONCLUÍDO!':'VITÓRIA!';
+  document.getElementById('vic-sub').textContent=campaignClear
+    ?'— O BALROG CAIU · A CAMPANHA FOI ZERADA —'
+    :'— Todas as criaturas foram derrotadas —';
+  const hubBtn=document.getElementById('vic-hub-btn');
+  hubBtn.style.display=campaignClear?'none':'';
+  document.getElementById('vic-menu-btn').textContent=campaignClear?'VOLTAR AO MENU AGORA':'MENU PRINCIPAL';
   // Stats
   const p2line=gameMode===2&&player2?`<br>Nível P2: <b>${player2.level}</b>`:'';
   document.getElementById('vic-stats').innerHTML=
-    `Ondas sobrevividas: <b>${totalWavesSurvived}</b><br>`+
+    (campaignClear?`Campanha concluída: <b>Onda 25</b><br>`:`Ondas sobrevividas: <b>${totalWavesSurvived}</b><br>`)+
     `Monstros eliminados: <b>${kills}</b><br>`+
     `Nível P1: <b>${player?player.level:1}</b>${p2line}`;
   // Boss chips
   const bossDiv=document.getElementById('vic-bosses');
   bossDiv.innerHTML='';
-  (bossRushQueue||[]).forEach((b,i)=>{
+  const clearedBosses=campaignClear?[
+    {icon:'💀',name:'Rei Esqueleto'},
+    {icon:'🕷',name:'Aracne'},
+    {icon:'❄',name:'Behemoth Glacial'},
+    {icon:'🐍',name:'Verme da Areia'},
+    {icon:'🔥',name:'Balrog'}
+  ]:(bossRushQueue||[]);
+  clearedBosses.forEach((b,i)=>{
     const chip=document.createElement('div');
     chip.className='vic-boss-chip';
     chip.style.animationDelay=`${i*0.14+0.25}s`;
-    chip.innerHTML=`<span class="pixel-inline">${bossRushPixelIcon(b,22)} ${b.name} <span style="color:#88cc44;font-size:12px;">✓</span></span>`;
+    chip.innerHTML=campaignClear
+      ?`<span class="pixel-inline">${b.icon} ${b.name} <span style="color:#88cc44;font-size:12px;">✓</span></span>`
+      :`<span class="pixel-inline">${bossRushPixelIcon(b,22)} ${b.name} <span style="color:#88cc44;font-size:12px;">✓</span></span>`;
     bossDiv.appendChild(chip);
   });
   // Particles
   const pDiv=document.getElementById('victory-particles');
   pDiv.innerHTML='';
-  const colors=['#f0d080','#ff9922','#ffcc44','#ff6600','#ffffff','#ffee88'];
+  const colors=campaignClear
+    ?['#ffbd4a','#ff5a20','#d51c16','#ff8126','#ffd878','#82130e']
+    :['#f0d080','#ff9922','#ffcc44','#ff6600','#ffffff','#ffee88'];
   for(let i=0;i<40;i++){
     const p=document.createElement('div');
     p.className='vic-particle';
@@ -11622,15 +11667,57 @@ function showVictoryScreen(){
       `animation-delay:${Math.random()*2.5}s;opacity:0.85;`;
     pDiv.appendChild(p);
   }
-  savePersistentData();
-  document.getElementById('victory-screen').classList.add('open');
+  savePersistentData(true);
+  screen.classList.add('open');
+  const autoReturn=document.getElementById('vic-auto-return');
+  if(campaignVictoryReturnTimer) clearTimeout(campaignVictoryReturnTimer);
+  if(campaignVictoryCountdownTimer) clearInterval(campaignVictoryCountdownTimer);
+  if(campaignClear){
+    let seconds=9;
+    autoReturn.textContent=`Retornando ao menu em ${seconds}s`;
+    campaignVictoryCountdownTimer=setInterval(()=>{
+      seconds--;
+      autoReturn.textContent=seconds>0?`Retornando ao menu em ${seconds}s`:'Retornando ao menu...';
+    },1000);
+    campaignVictoryReturnTimer=setTimeout(()=>closeVictory('menu'),9000);
+  }else{
+    autoReturn.textContent='';
+  }
 }
 
 function closeVictory(dest){
-  document.getElementById('victory-screen').classList.remove('open');
+  if(campaignVictoryReturnTimer) clearTimeout(campaignVictoryReturnTimer);
+  if(campaignVictoryCountdownTimer) clearInterval(campaignVictoryCountdownTimer);
+  campaignVictoryReturnTimer=null;
+  campaignVictoryCountdownTimer=null;
+  const screen=document.getElementById('victory-screen');
+  screen.classList.remove('open','campaign-clear');
   document.getElementById('victory-particles').innerHTML='';
+  document.getElementById('vic-auto-return').textContent='';
   if(dest==='hub') goToHub();
-  else goMainMenu();
+  else {
+    goMainMenu();
+    if(typeof Audio!=='undefined') Audio.playMenuMusic();
+  }
+}
+
+function completeCampaign(){
+  if(campaignCompletionPending||state==='victory') return;
+  campaignCompletionPending=true;
+  state='victory';
+  document.body.classList.remove('campaign-coop-active');
+  totalWavesSurvived++;
+  growFarm(1);
+  const d=DIFF[difficulty]||DIFF.medium;
+  totalCoins+=Math.max(1,Math.round(d.waveBonusBase+25*d.waveBonusRate));
+  if(SaveSystem.readNumber('mvh_max_wave',0)<25) SaveSystem.writeText('mvh_max_wave',25);
+  SaveSystem.writeText('mvh_campaign_complete','1');
+  savePersistentData(true);
+  spawnParts(W/2,H/2,'#ffcc44',36,145);
+  spawnParts(W/2,H/2,'#ff4a18',30,125);
+  spawnLevelUpNotice(W/2,H/2-44,'👑 O BALROG CAIU!',0);
+  if(typeof Audio!=='undefined') Audio.stopMusic(.9);
+  setTimeout(()=>showVictoryScreen('campaign'),1900);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -15546,6 +15633,9 @@ campaignFrozenCastleImage.src='assets/backgrounds/campaign-frozen-castle.png';
 const campaignFossilDesertImage=new Image();
 campaignFossilDesertImage.decoding='async';
 campaignFossilDesertImage.src='assets/backgrounds/campaign-fossil-desert.png';
+const campaignVolcanicAbyssImage=new Image();
+campaignVolcanicAbyssImage.decoding='async';
+campaignVolcanicAbyssImage.src='assets/backgrounds/campaign-volcanic-abyss.png';
 
 function drawCampaignCryptBG(bc){
   if(!campaignCryptImage.complete||!campaignCryptImage.naturalWidth) return false;
@@ -15587,6 +15677,16 @@ function drawCampaignFossilDesertBG(bc){
   return true;
 }
 
+function drawCampaignVolcanicAbyssBG(bc){
+  if(!campaignVolcanicAbyssImage.complete||!campaignVolcanicAbyssImage.naturalWidth) return false;
+  bc.save();
+  bc.imageSmoothingEnabled=true;
+  bc.imageSmoothingQuality='high';
+  bc.drawImage(campaignVolcanicAbyssImage,0,0,W,H);
+  bc.restore();
+  return true;
+}
+
 campaignCryptImage.addEventListener('load',()=>{
   if(currentArena!=='crypt'||!bgCanvas) return;
   drawCampaignCryptBG(bgCanvas.getContext('2d'));
@@ -15607,6 +15707,11 @@ campaignFossilDesertImage.addEventListener('load',()=>{
   drawCampaignFossilDesertBG(bgCanvas.getContext('2d'));
 },{once:true});
 
+campaignVolcanicAbyssImage.addEventListener('load',()=>{
+  if(currentArena!=='volcano'||!bgCanvas) return;
+  drawCampaignVolcanicAbyssBG(bgCanvas.getContext('2d'));
+},{once:true});
+
 function buildBG(arenaType) {
   currentArena = arenaType || 'castle';
   bgCanvas = document.createElement('canvas');
@@ -15622,7 +15727,9 @@ function buildBG(arenaType) {
   else if(currentArena==='forest'){
     if(!drawCampaignHauntedForestBG(bc)) buildForestBG(bc);
   }
-  else if(currentArena==='volcano') buildVolcanoBG(bc);
+  else if(currentArena==='volcano'){
+    if(!drawCampaignVolcanicAbyssBG(bc)) buildVolcanoBG(bc);
+  }
   else if(currentArena==='desert'){
     if(!drawCampaignFossilDesertBG(bc)) buildDesertBG(bc);
   }
@@ -16413,11 +16520,97 @@ function drawFrozenCastleAmbience(t){
   ctx.restore();
 }
 
+function drawVolcanicAbyssAmbience(t){
+  ctx.save();
+
+  // Miragem mínima entre o horizonte e o chão, redesenhada antes das entidades.
+  if(bgCanvas){
+    ctx.save();
+    ctx.beginPath();ctx.rect(0,H*.16,W,H*.36);ctx.clip();
+    ctx.globalAlpha=.075;
+    for(let y=Math.round(H*.17);y<H*.52;y+=5){
+      const offset=Math.sin(t*.00115+y*.19)*(.65+(y/H)*1.25);
+      ctx.drawImage(bgCanvas,0,y,W,4,offset,y,W,4);
+    }
+    ctx.restore();
+  }
+
+  // Lava nas laterais: fluxos lentos e independentes seguem as bordas da arena.
+  for(const side of [-1,1]){
+    const edgeX=side<0?0:W;
+    const dir=side<0?1:-1;
+    ctx.save();
+    ctx.beginPath();ctx.rect(side<0?0:W*.92,H*.37,W*.08,H*.3);ctx.clip();
+    for(let lane=0;lane<3;lane++){
+      const pulse=.24+.12*Math.sin(t*(.00072+lane*.00008)+lane*1.8+(side>0?1.1:0));
+      const wave=Math.sin(t*.0011+lane*2.2)*2.4;
+      ctx.strokeStyle=`rgba(255,${62+lane*24},8,${pulse})`;
+      ctx.lineWidth=1+lane*.55;
+      ctx.shadowColor='#ff2a00';ctx.shadowBlur=3+lane;
+      ctx.beginPath();
+      ctx.moveTo(edgeX+dir*2,H*(.42+lane*.035));
+      ctx.bezierCurveTo(edgeX+dir*(18+wave),H*(.47+lane*.02),edgeX+dir*(34-wave),H*(.53+lane*.022),edgeX+dir*3,H*(.59+lane*.03));
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  ctx.shadowBlur=0;
+
+  // Cristais rubros respiram em ciclos diferentes, sem piscar em sincronia.
+  [
+    [W*.165,H*.31,47,0,.00078],[W*.82,H*.33,45,2.1,.00063],[W*.055,H*.64,27,4.3,.00091]
+  ].forEach(([x,y,r,phase,speed],index)=>{
+    const pulse=.12+.11*(.5+.5*Math.sin(t*speed+phase));
+    const flash=Math.max(0,Math.sin(t*.00019+phase*2.7)-.955)*(index===1?1.3:1.05);
+    const glow=ctx.createRadialGradient(x,y,0,x,y,r);
+    glow.addColorStop(0,`rgba(255,132,172,${pulse+flash})`);
+    glow.addColorStop(.32,`rgba(255,24,92,${pulse*.72})`);
+    glow.addColorStop(1,'rgba(255,0,40,0)');
+    ctx.fillStyle=glow;ctx.fillRect(x-r,y-r,r*2,r*2);
+  });
+
+  // Fumaça lenta em várias profundidades ao redor do vulcão.
+  [
+    [.17,.36,60,1.1,.035],[.29,.29,52,2.6,.028],[.69,.31,58,4.2,.03],[.86,.37,66,5.4,.032]
+  ].forEach(([nx,ny,r,phase,alpha])=>{
+    const rise=(t*.0028+phase*19)%42;
+    const x=W*nx+Math.sin(t*.00018+phase)*10;
+    const y=H*ny-rise*.42;
+    const smoke=ctx.createRadialGradient(x,y,2,x,y,r);
+    smoke.addColorStop(0,`rgba(38,7,8,${alpha+.018})`);
+    smoke.addColorStop(.55,`rgba(12,5,8,${alpha})`);
+    smoke.addColorStop(1,'rgba(8,2,3,0)');
+    ctx.fillStyle=smoke;ctx.fillRect(x-r,y-r*.65,r*2,r*1.3);
+  });
+
+  // A cratera permanece viva; uma erupção maior surge raramente e só no fundo.
+  const eruptionCycle=(t%28600)/28600;
+  const rareEruption=eruptionCycle<.052?Math.sin((eruptionCycle/.052)*Math.PI):0;
+  const craterPulse=.14+.08*Math.sin(t*.00135);
+  const craterX=W*.505,craterY=H*.155;
+  const craterGlow=ctx.createRadialGradient(craterX,craterY,1,craterX,craterY,48+rareEruption*24);
+  craterGlow.addColorStop(0,`rgba(255,224,80,${craterPulse+rareEruption*.21})`);
+  craterGlow.addColorStop(.28,`rgba(255,62,5,${craterPulse*.8+rareEruption*.12})`);
+  craterGlow.addColorStop(1,'rgba(120,0,0,0)');
+  ctx.fillStyle=craterGlow;ctx.fillRect(craterX-76,craterY-74,152,126);
+  if(rareEruption>0){
+    ctx.globalAlpha=rareEruption*.45;
+    for(let i=0;i<8;i++){
+      const spread=(i-3.5)*6+Math.sin(t*.002+i)*4;
+      const rise=14+(i%4)*7+rareEruption*22;
+      ctx.fillStyle=i%3===0?'#ffd15c':'#ff4a12';
+      ctx.fillRect(Math.round(craterX+spread),Math.round(craterY-rise),i%4===0?3:2,i%3===0?3:2);
+    }
+  }
+  ctx.restore();
+}
+
 function drawAnimTorches(t){
   if(currentArena==='crypt'){ drawCryptAmbience(t); return; }
   if(currentArena==='forest'){ drawHauntedForestAmbience(t); return; }
   // A floresta já possui iluminação natural; tochas pertencem aos outros mapas.
-  if(currentArena==='desert'||currentArena==='volcano') return;
+  if(currentArena==='volcano'){ drawVolcanicAbyssAmbience(t); return; }
+  if(currentArena==='desert') return;
   if(currentArena==='snow'){
     drawFrozenCastleAmbience(t);
     return;
@@ -22052,16 +22245,20 @@ function loop(ts){
     // Update bossMajor
     if(bossMajor&&!bossMajor.dead) bossMajor.update(dt,player.x,player.y);
     if(bossMajor&&bossMajor.dead){
+      const defeatedBossWave=wave;
       bossMajor=null;
       if(typeof Audio!=='undefined'){
         Audio.playBossDefeat();
-        if(!bossRushMode)setTimeout(()=>{if(state==='playing'&&!bossMajor)Audio.playCombatMusic(currentArena||'castle');},700);
+        if(!bossRushMode&&defeatedBossWave!==25)setTimeout(()=>{if(state==='playing'&&!bossMajor)Audio.playCombatMusic(currentArena||'castle');},700);
       }
       // In boss rush: trigger next boss after brief pause
       if(bossRushMode){
         spawnParts(W/2,H/2,'#ffcc44',20,120);
         spawnLevelUpNotice(W/2,H/2-40,'🏆 BOSS DERROTADO!',0);
         setTimeout(()=>{ if(bossRushMode&&state==='playing') spawnNextBossRush(); },2000);
+      }else if(defeatedBossWave===25){
+        completeCampaign();
+        return;
       }else if(wave>=5&&wave%5===0){
         // Boss waves have no timer: defeating the boss is the only victory condition.
         endWave();
@@ -22183,21 +22380,25 @@ function drawDesertDust(t){
   }
   ctx.restore();
 }
-const emberParticles = Array.from({length:50},(_,i)=>({
+const emberParticles = Array.from({length:30},(_,i)=>({
   x:Math.random()*W, y:Math.random()*H,
-  speed:20+Math.random()*40,
-  drift:(Math.random()-0.5)*15,
-  size:i%4===0?3:i%3===0?2:1,
+  speed:7+Math.random()*22,
+  drift:(Math.random()-0.5)*10,
+  size:i%11===0?2:1,
   phase:Math.random()*Math.PI*2,
+  ash:i%3===0,
 }));
 function drawVolcanoEmbers(t){
-  ctx.save(); ctx.globalAlpha=0.6;
+  ctx.save();
   for(const p of emberParticles){
     p.y-=(p.speed*0.016);
-    p.x+=(p.drift*0.016)+Math.sin(t*0.003+p.phase)*0.4;
+    p.x+=(p.drift*0.016)+Math.sin(t*0.0017+p.phase)*0.22;
     if(p.y<-4){ p.y=H+4; p.x=Math.random()*W; }
     if(p.x>W+4) p.x=-4; if(p.x<-4) p.x=W+4;
-    ctx.fillStyle=`rgba(255,${80+Math.floor(60*Math.sin(t*0.005+p.phase))},0,0.9)`;
+    const pulse=.24+.22*(.5+.5*Math.sin(t*.0025+p.phase));
+    ctx.fillStyle=p.ash
+      ?`rgba(35,22,22,${.20+pulse*.42})`
+      :`rgba(255,${74+Math.floor(48*Math.sin(t*.002+p.phase))},12,${pulse})`;
     ctx.fillRect(Math.round(p.x),Math.round(p.y),p.size,p.size);
   }
   ctx.restore();
@@ -22230,6 +22431,7 @@ function drawForestAmbient(t){
 // ═══════════════════════════════════════════════════════
 function beginGame(){
   gameMode=_selMode; difficulty=_selDiff;
+  campaignCompletionPending=false;
   hideAllScreens();
   document.body.classList.toggle('boss-rush-no-coins',!!bossRushMode);
   document.body.classList.toggle('campaign-hud-active',!bossRushMode);
@@ -22895,6 +23097,85 @@ const Audio = (function(){
   }
 
   // ══════════════════════════════════
+  // INFERNO ANCESTRAL — ondas 21–25
+  // Calor, ameaça e ritual vulcânico: energia constante sem bateria moderna.
+  // ══════════════════════════════════
+  function playAncientVolcanoMusic(){
+    if(!ctx||!enabled) return;
+    stopMusic(.38);
+    const myGen=++_gen;
+    markMusicTheme('ancient-volcano');
+    setTimeout(()=>{if(_gen===myGen)musicGain.gain.setValueAtTime(musicVol,ctx.currentTime);},480);
+
+    const dry=ctx.createGain();dry.gain.value=.46;dry.connect(musicGain);
+    const ritual=ctx.createGain();ritual.gain.value=.34;ritual.connect(musicGain);
+    const reverb=makeReverb(3.0,.37);
+    const reverbGain=ctx.createGain();reverbGain.gain.value=.42;
+    ritual.connect(reverb);reverb.connect(reverbGain);reverbGain.connect(musicGain);
+    const fireFilter=ctx.createBiquadFilter();fireFilter.type='bandpass';fireFilter.frequency.value=620;fireFilter.Q.value=.72;fireFilter.connect(ritual);
+    const hornFilter=ctx.createBiquadFilter();hornFilter.type='lowpass';hornFilter.frequency.value=920;hornFilter.Q.value=1.1;hornFilter.connect(ritual);
+    trackNodes.push({stop:()=>{try{dry.disconnect();ritual.disconnect();reverb.disconnect();reverbGain.disconnect();fireFilter.disconnect();hornFilter.disconnect();}catch(e){}}});
+
+    const ROOT=110;
+    const scale=[0,1,3,5,6,7,10,12,13,15,17];
+    const BPM=70,BEAT=60/BPM,BAR=BEAT*4;
+    const buriedChords=[[0,6,8],[0,5,7],[1,6,9],[0,3,6]];
+    const hornCalls=[
+      [[7,.34,.72],[6,1.72,.48],[3,2.58,.72]],
+      [[10,.28,.58],[7,1.35,.66],[6,2.72,.8]],
+      [[6,.42,.55],[7,1.18,.46],[3,2.18,.9]],
+      [[5,.3,.62],[3,1.48,.56],[1,2.45,.48],[0,3.12,.68]]
+    ];
+    let t=ctx.currentTime+.16;
+
+    function ritualImpact(at,heavy=false){
+      const g=ctx.createGain();g.gain.setValueAtTime(heavy?.18:.115,at);g.gain.exponentialRampToValueAtTime(.001,at+(heavy?.58:.38));g.connect(dry);
+      const o=ctx.createOscillator();o.type='sine';o.frequency.setValueAtTime(heavy?126:108,at);o.frequency.exponentialRampToValueAtTime(heavy?82:88,at+(heavy?.48:.31));
+      o.connect(g);try{o.start(at);o.stop(at+(heavy?.62:.43));}catch(e){}
+      noise(heavy?.045:.025,ritual,at+.012,heavy?.28:.2,270,1.1);
+      trackNodes.push({stop:()=>{try{o.stop(0);}catch(e){}try{g.disconnect();}catch(e){}}});
+    }
+
+    function volcanoBars(rem=96){
+      if(_gen!==myGen||!enabled||rem<=0){currentTrack=null;return;}
+      const barIndex=96-rem;
+      const phase=barIndex%4;
+
+      // O vulcão sustenta um pedal grave e acordes com trítono, como um lugar vivo.
+      osc(n(ROOT,scale[phase===2?1:0]),'sine',.095,dry,t,BAR*1.04,.32,.95);
+      osc(n(ROOT*.5,scale[phase===3?3:0]),'triangle',.052,dry,t,BAR*.98,.38,.86);
+      buriedChords[phase].forEach((si,index)=>{
+        osc(n(ROOT*2,scale[si]),index===0?'triangle':'sine',index===0?.036:.02,ritual,t,BAR*.9,.42,1.05);
+      });
+
+      // Golpes cerimoniais largos: marcam o pulso sem formar uma bateria moderna.
+      ritualImpact(t,barIndex%4===0);
+      ritualImpact(t+BEAT*2.55,false);
+      if(barIndex%2===1) ritualImpact(t+BEAT*3.34,false);
+
+      // Fogo, pedra e ar quente mantêm movimento entre os ataques.
+      noise(.018,fireFilter,t+BEAT*.22,BAR*.72,520+phase*55,.82);
+      noise(.012,ritual,t+BEAT*2.02,.46,1280+phase*90,2.4);
+      hornCalls[phase].forEach(([si,start,dur],index)=>{
+        const at=t+start*BEAT;
+        const freq=n(ROOT*2,scale[si]);
+        osc(freq,index===0?'sawtooth':'triangle',index===0?.032:.026,hornFilter,at,dur*BEAT*.88,.09,dur*BEAT*.54);
+        osc(freq*.5,'sine',.014,ritual,at+.03,dur*BEAT*.76,.08,dur*BEAT*.64);
+      });
+
+      // Metal ancestral distante e irregular, como ressonância sob a rocha.
+      if(barIndex%4===2){
+        const at=t+BEAT*3.08;
+        [[1,.026],[1.505,.012],[2.04,.007]].forEach(([ratio,vol])=>osc(ROOT*4*ratio,'sine',vol,ritual,at,BEAT*1.75,.003,BEAT*1.62));
+      }
+
+      t+=BAR;
+      currentTrack=_addTimeout(()=>volcanoBars(rem-1),(BAR-.1)*1000);
+    }
+    volcanoBars();
+  }
+
+  // ══════════════════════════════════
   // COMBAT — arenas abertas
   // Percussion-forward, clear mid
   // Key: D minor, 96 BPM
@@ -22912,6 +23193,7 @@ const Audio = (function(){
     if(theme==='crypt'){playCryptMusic();return;}
     if(theme==='snow'){playFrozenMusic();return;}
     if(theme==='desert'){playFossilDesertMusic();return;}
+    if(theme==='volcano'){playAncientVolcanoMusic();return;}
     if(!ctx||!enabled) return;
     stopMusic(0.2);
     const myGen = ++_gen;
@@ -23434,7 +23716,7 @@ const Audio = (function(){
 
   return {
     init, stopMusic,
-    playMenuMusic, playCryptMusic, playFrozenMusic, playFossilDesertMusic, playCombatMusic, playBossMusic, playCampMusic,
+    playMenuMusic, playCryptMusic, playFrozenMusic, playFossilDesertMusic, playAncientVolcanoMusic, playCombatMusic, playBossMusic, playCampMusic,
     playDeathStinger, playBossDefeat, playBossSpawn, playDeityArrival,
     sfxSword, sfxBow, sfxAxe, sfxHit, sfxPlayerHit, sfxCoin,
     sfxEnemyDeath, sfxLevelUp, sfxWaveClear, sfxMenuClick, sfxShopBuy, sfxPetCapture,
