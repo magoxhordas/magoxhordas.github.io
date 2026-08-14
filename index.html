@@ -1322,6 +1322,25 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 .coll-weapon-tier-name { color:var(--tier-color); font-size:11px; font-weight:bold; letter-spacing:1px; }
 .coll-weapon-tier-stats { color:#aa9568; font-size:11px; white-space:nowrap; }
 .coll-weapon-power { margin-top:5px; color:#c7b483; font-size:11px; line-height:1.45; }
+.coll-boon-card {
+  --boon-color:#c8a84b;
+  border:1px solid color-mix(in srgb,var(--boon-color) 30%,transparent);
+  border-left:3px solid var(--boon-color); border-radius:6px;
+  background:linear-gradient(120deg,color-mix(in srgb,var(--boon-color) 7%,transparent),rgba(0,0,0,.42));
+  padding:8px 9px; margin-bottom:7px;
+}
+.coll-boon-head { display:flex; align-items:center; gap:7px; }
+.coll-boon-title { min-width:0; flex:1; }
+.coll-boon-name { font-size:13px; font-weight:bold; color:#f0d080; line-height:1.25; }
+.coll-boon-role { margin-top:2px; font-size:9px; color:var(--boon-color); letter-spacing:1.2px; }
+.coll-boon-desc { margin:6px 0 7px; color:#9d865e; font-size:11px; line-height:1.45; }
+.coll-boon-rarity-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px; }
+.coll-boon-rarity {
+  min-width:0; padding:4px 5px; border:1px solid color-mix(in srgb,var(--rarity-color) 42%,transparent);
+  border-radius:4px; background:rgba(0,0,0,.34);
+}
+.coll-boon-rarity-name { color:var(--rarity-color); font-size:8px; font-weight:bold; letter-spacing:.8px; }
+.coll-boon-rarity-value { margin-top:2px; color:#d8c59a; font-size:9px; line-height:1.25; }
 .coll-card-badge {
   position:absolute; top:6px; right:6px;
   font-size:9px; font-weight:bold; letter-spacing:1px; padding:2px 5px;
@@ -8644,6 +8663,8 @@ function applyMetaUpgrades(pl){
   };
 
   window.DEITY_BLESSINGS_V2=Object.freeze(DEITIES);
+  window.DEITY_BLESSING_RARITIES=Object.freeze(RARITY_ORDER.map(id=>Object.freeze({id,...RARITY_META[id]})));
+  window.formatDeityBlessingValue=cardValueText;
 })();
 
 </script>
@@ -11256,12 +11277,16 @@ function collBlessingIcon(card){
   const id=card.id||'';
   if(id.startsWith('zeus_')) return collGameIcon('lightning');
   if(id.startsWith('ares_')) return collGameIcon('sword',{W:'#ef6b50',S:'#9b281f'});
+  if(id.startsWith('hecate_')) return collGameIcon('shadow',{P:'#ba68e8',p:'#582a78'});
+  if(id.startsWith('selene_')) return collGameIcon('moon',{W:'#eaf5ff',B:'#76aee8'});
+  if(id.startsWith('moros_')) return collGameIcon('clock',{W:'#c9b7d8',S:'#5b426f'});
   if(id.startsWith('atena_')) return collGameIcon('shield');
   if(id.startsWith('hermes_')) return collGameIcon('boots',{G:'#e6d05e',g:'#a98522'});
   if(id.startsWith('dioni_')) return collGameIcon('potion',{P:'#9d4fc3',G:'#d68af0'});
   if(id.startsWith('hefesto_')) return collGameIcon('hammer',{S:'#ef8a45',W:'#f1b55e'});
   if(id.startsWith('artemis_')) return collGameIcon('bow');
   if(id.startsWith('poseidon_')) return collGameIcon('wave');
+  if(id.startsWith('hercules_')) return collGameIcon('axe',{W:'#f2d07a',S:'#9d642a'});
   if(id.startsWith('sauron_')) return collGameIcon('eye');
   if(id.startsWith('nazgul_')) return collGameIcon('shadow');
   if(id.startsWith('ents_')) return collGameIcon('tree');
@@ -11518,31 +11543,50 @@ function renderCollPets(grid){
 
 // ── BÊNÇÃOS ──
 function renderCollBlessings(grid){
-  const godGroups={};
-  CARD_DEFS.forEach(c=>{if(!godGroups[c.god])godGroups[c.god]=[];godGroups[c.god].push(c);});
-  Object.entries(godGroups).forEach(([god,cards])=>{
-    const sample=cards[0];
-    const rc=CARD_RARITY[sample.rarity]||CARD_RARITY.comum;
-    const godIcon=collBlessingIcon(sample);
-    const godName=collGodName(god);
-    grid.appendChild(collCard(godIcon, godName, cards.length+' cartas', false, ()=>{
+  const deities=Array.isArray(window.DEITY_BLESSINGS_V2)?window.DEITY_BLESSINGS_V2:[];
+  const rarities=Array.isArray(window.DEITY_BLESSING_RARITIES)?window.DEITY_BLESSING_RARITIES:[
+    {id:'comum',label:'COMUM',color:'#79e89a'},
+    {id:'rara',label:'RARA',color:'#58a8ff'},
+    {id:'epica',label:'EPICA',color:'#c86cff'},
+    {id:'lendaria',label:'LENDARIA',color:'#ffd35a'}
+  ];
+  const valueText=typeof window.formatDeityBlessingValue==='function'
+    ?window.formatDeityBlessingValue
+    :(boon,value)=>`+${Math.round(value*100)}%`;
+  deities.forEach(deity=>{
+    const boons=Array.isArray(deity.boons)?deity.boons:[];
+    const godIcon=collBlessingIcon({id:`${deity.id}_codex`});
+    grid.appendChild(collCard(godIcon, deity.name, `${boons.length} bênçãos`, false, ()=>{
       const det=document.getElementById('coll-detail');det.className='coll-detail visible';
-      const cardHtml=cards.map(c=>{
-        const cr=CARD_RARITY[c.rarity]||CARD_RARITY.comum;
-        return `<div style="background:rgba(0,0,0,0.4);border:1px solid ${cr.color}33;border-radius:4px;padding:6px 8px;margin-bottom:4px;">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
-            ${collIconHtml(collBlessingIcon(c),30)}
-            <div>
-              <div style="font-size:14px;font-weight:bold;color:#f0d080;">${c.name}</div>
-              <div style="font-size:11px;color:${cr.color};letter-spacing:1px;">${cr.label}</div>
+      const boonHtml=boons.map(boon=>{
+        const rarityHtml=rarities.map((rarity,index)=>{
+          const value=boon.values?.[index]??0;
+          return `<div class="coll-boon-rarity" style="--rarity-color:${rarity.color}">
+            <div class="coll-boon-rarity-name">${rarity.label}</div>
+            <div class="coll-boon-rarity-value">${valueText(boon,value,index)}</div>
+          </div>`;
+        }).join('');
+        return `<div class="coll-boon-card" style="--boon-color:${rarities[3].color}">
+          <div class="coll-boon-head">
+            ${collIconHtml(collBlessingIcon(boon),30)}
+            <div class="coll-boon-title">
+              <div class="coll-boon-name">${boon.name}</div>
+              <div class="coll-boon-role">${boon.role||'DANO'}</div>
             </div>
-            <div style="margin-left:auto;font-size:12px;color:#c8a84b;text-align:right;">${c.value}</div>
           </div>
-          <div style="font-size:11px;color:#8a7050;line-height:1.5;">${c.desc}</div>
+          <div class="coll-boon-desc">${boon.desc}</div>
+          <div class="coll-boon-rarity-grid">${rarityHtml}</div>
         </div>`;
       }).join('');
-      det.innerHTML=`<div style="display:flex;align-items:center;gap:8px;font-size:20px;font-weight:bold;color:#f0d080;margin-bottom:4px;">${collIconHtml(godIcon,42)} ${godName}</div><div style="font-size:12px;color:#5a4020;margin-bottom:8px;">${cards.length} bênçãos disponíveis</div>${cardHtml}`;
-    }, null, rc.color));
+      det.innerHTML=`<div class="coll-det-header">
+        <div class="coll-det-icon">${collIconHtml(godIcon,48)}</div>
+        <div class="coll-det-info">
+          <div class="coll-det-name">${deity.name}</div>
+          <div class="coll-det-type">${deity.title}</div>
+          <div class="coll-det-kills">${boons.length} bênçãos · 4 raridades</div>
+        </div>
+      </div><div class="coll-det-divider"></div>${boonHtml}`;
+    }, null, '#c8a84b'));
   });
 }
 
