@@ -23033,6 +23033,12 @@ function beginGame(){
   gameMode=_selMode; difficulty=_selDiff;
   campaignCompletionPending=false;
   hideAllScreens();
+  // Modos como a Dungeon ocultam a HUD com estilos inline. Limpe-os antes de
+  // iniciar uma partida para que campanha e Boss Rush recuperem seus layouts CSS.
+  const topHud=document.getElementById('ui-top');
+  const bottomHud=document.getElementById('hud-bottom');
+  if(topHud) topHud.style.removeProperty('display');
+  if(bottomHud) bottomHud.style.removeProperty('display');
   document.body.classList.toggle('boss-rush-no-coins',!!bossRushMode);
   document.body.classList.toggle('campaign-hud-active',!bossRushMode);
   // Show/hide P2 UI
@@ -26116,8 +26122,8 @@ const DNG={
     // Restore canvas size
     const cv=document.getElementById('canvas');
     if(cv){cv.style.width='';cv.style.height='';}
-    document.getElementById('ui-top').style.display='flex';
-    const hb2=document.getElementById('hud-bottom'); if(hb2) hb2.style.display='flex';
+    const topHud=document.getElementById('ui-top'); if(topHud) topHud.style.removeProperty('display');
+    const hb2=document.getElementById('hud-bottom'); if(hb2) hb2.style.removeProperty('display');
   },
 
   _updateHUD(){
