@@ -1308,6 +1308,20 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 }
 .coll-card-name { font-size:14px; color:#c8a84b; font-weight:bold; letter-spacing:.5px; line-height:1.3; }
 .coll-card-hint { font-size:11px; color:#3a2e12; margin-top:2px; letter-spacing:.5px; }
+.coll-weapon-class {
+  margin-top:3px; padding:2px 6px; border:1px solid currentColor; border-radius:3px;
+  font-size:9px; font-weight:bold; letter-spacing:1.2px; text-transform:uppercase;
+  background:rgba(0,0,0,.32);
+}
+.coll-weapon-tier {
+  border:1px solid var(--tier-color); border-left-width:3px; border-radius:5px;
+  background:linear-gradient(100deg,color-mix(in srgb,var(--tier-color) 10%,transparent),rgba(0,0,0,.34));
+  padding:8px 9px; margin-bottom:7px;
+}
+.coll-weapon-tier-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.coll-weapon-tier-name { color:var(--tier-color); font-size:11px; font-weight:bold; letter-spacing:1px; }
+.coll-weapon-tier-stats { color:#aa9568; font-size:11px; white-space:nowrap; }
+.coll-weapon-power { margin-top:5px; color:#c7b483; font-size:11px; line-height:1.45; }
 .coll-card-badge {
   position:absolute; top:6px; right:6px;
   font-size:9px; font-weight:bold; letter-spacing:1px; padding:2px 5px;
@@ -4930,7 +4944,8 @@ body.campaign-hud-active .wslot .wname { display:none; }
   </div>
   <!-- Tabs -->
   <div class="coll-tabs">
-    <button class="coll-tab active" id="coll-tab-items"    onclick="collSetTab('items')"><span class="coll-tab-rune">ᛟ</span> Relíquias</button>
+    <button class="coll-tab active" id="coll-tab-weapons"  onclick="collSetTab('weapons')"><span class="coll-tab-rune">⚔</span> Armas</button>
+    <button class="coll-tab"        id="coll-tab-items"    onclick="collSetTab('items')"><span class="coll-tab-rune">ᛟ</span> Relíquias</button>
     <button class="coll-tab"        id="coll-tab-enemies"  onclick="collSetTab('enemies')"><span class="coll-tab-rune">ᚦ</span> Bestiário</button>
     <button class="coll-tab"        id="coll-tab-classes"  onclick="collSetTab('classes')"><span class="coll-tab-rune">ᛉ</span> Heróis</button>
     <button class="coll-tab"        id="coll-tab-bosses"   onclick="collSetTab('bosses')"><span class="coll-tab-rune">ᛃ</span> Senhores</button>
@@ -10040,36 +10055,44 @@ function renderShopInventory(){
   const panel = document.getElementById('shop-inv-slots');
   if(!panel) return;
   panel.innerHTML = '';
-  for(let i=0;i<3;i++){
-    const w = weaponSlots[i];
-    const div = document.createElement('div');
-    const isSel = shopSelectedSlot && shopSelectedSlot.idx===i;
-    if(!w){
-      div.className = 'shop-inv-slot empty-slot';
-      div.innerHTML = `<span style="opacity:0.28;">${gamePixelIconHtml('chest',22)}</span><span style="font-size:12px;color:#3a2a10;">Vazio</span>`;
-    } else {
-      const def = WEAPON_DEFS[w.type];
-      const rc = RARITY_COLORS[w.rarity];
-      div.className = 'shop-inv-slot'+(isSel?' selected-slot':'');
-      div.style.borderColor = isSel?rc:`${rc}44`;
-      const wd = WEAPON_DEFS[w.type];
-      const mult = RARITY_MULT[w.rarity]||1;
-      const dmg = Math.round(wd.baseDmg*mult);
-      const dmgDone = weaponDmgDone[i]||0;
-      const dmgTxt = dmgDone>0?`<span class="pixel-inline" style="color:#ff8844;font-size:11px;">${gamePixelIconHtml('sword',12)} ${dmgDone} dano/onda</span>`:'';
-      const weaponKind=({sword:'sword',bow:'bow',axe:'axe'})[w.type]||'orb';
-      div.innerHTML = `<span class="slt-icon">${gamePixelIconHtml(weaponKind,28)}</span><div class="slt-info"><div class="slt-name">${wd.name}</div><div class="slt-rar" style="color:${rc}">${RARITY_NAMES[w.rarity].toUpperCase()}</div><div class="slt-stats">Dano <span class="hi">${dmg}</span> · CD <span class="hi">${(wd.cd/1000).toFixed(1)}s</span></div>${dmgTxt}</div>`;
-      div.onclick = ()=>shopSelectSlot(i);
+  const groups=[{pidx:0,label:'P1',slots:weaponSlots}];
+  if(gameMode===2)groups.push({pidx:1,label:'P2',slots:weaponSlots2});
+  for(const group of groups){
+    if(gameMode===2){
+      const label=document.createElement('div');
+      label.style.cssText='grid-column:1/-1;color:#80673a;font-size:11px;letter-spacing:2px;margin-top:4px;';
+      label.textContent=`${group.label} · ${CLASS_DEFS[group.pidx===0?selectedClass.p1:selectedClass.p2]?.name||''}`;
+      panel.appendChild(label);
     }
-    panel.appendChild(div);
+    for(let i=0;i<3;i++){
+      const w = group.slots[i];
+      const div = document.createElement('div');
+      const isSel = shopSelectedSlot && shopSelectedSlot.pidx===group.pidx&&shopSelectedSlot.idx===i;
+      if(!w){
+        div.className = 'shop-inv-slot empty-slot';
+        div.innerHTML = `<span style="opacity:0.28;">${gamePixelIconHtml('chest',22)}</span><span style="font-size:12px;color:#3a2a10;">Vazio</span>`;
+      } else {
+        const wd = WEAPON_DEFS[w.type];
+        if(!wd)continue;
+        const rc = RARITY_COLORS[w.rarity];
+        div.className = 'shop-inv-slot'+(isSel?' selected-slot':'');
+        div.style.borderColor = isSel?rc:`${rc}44`;
+        const dmg = Math.round(campaignWeaponDamage(wd,w.rarity));
+        const dmgDone = w.damageDone||0;
+        const dmgTxt = dmgDone>0?`<span class="pixel-inline" style="color:#ff8844;font-size:11px;">${gamePixelIconHtml('sword',12)} ${Math.round(dmgDone)} dano/onda</span>`:'';
+        div.innerHTML = `<span class="slt-icon">${gamePixelIconHtml(wd.pixelIcon||'orb',28)}</span><div class="slt-info"><div class="slt-name">${wd.name}</div><div class="slt-rar" style="color:${rc}">${RARITY_NAMES[w.rarity].toUpperCase()}</div><div class="slt-stats">Dano <span class="hi">${dmg}</span> · CD <span class="hi">${(campaignWeaponCooldown(wd,w.rarity,group.pidx===0?player:player2,w)/1000).toFixed(1)}s</span></div>${dmgTxt}</div>`;
+        div.onclick = ()=>shopSelectSlot(i,group.pidx);
+      }
+      panel.appendChild(div);
+    }
   }
   renderShopSlotActions();
 }
 
-function shopSelectSlot(idx){
-  const w = weaponSlots[idx];
+function shopSelectSlot(idx,pidx=0){
+  const w = getSlots(pidx)[idx];
   if(!w) return;
-  shopSelectedSlot = (shopSelectedSlot && shopSelectedSlot.idx===idx) ? null : {idx};
+  shopSelectedSlot = (shopSelectedSlot && shopSelectedSlot.pidx===pidx&&shopSelectedSlot.idx===idx) ? null : {idx,pidx};
   renderShopInventory();
 }
 
@@ -10077,41 +10100,44 @@ function renderShopSlotActions(){
   const actDiv = document.getElementById('shop-slot-actions');
   if(!actDiv) return;
   if(!shopSelectedSlot){ actDiv.style.display='none'; return; }
-  const w = weaponSlots[shopSelectedSlot.idx];
+  const slots=getSlots(shopSelectedSlot.pidx||0);
+  const w = slots[shopSelectedSlot.idx];
   if(!w){ actDiv.style.display='none'; return; }
   actDiv.style.display='block';
   const def = WEAPON_DEFS[w.type];
   const rv={common:3,uncommon:6,rare:10,epic:16,legendary:25}[w.rarity]||3;
-  document.getElementById('shop-sel-label').innerHTML=`<span class="pixel-inline">${gamePixelIconHtml(({sword:'sword',bow:'bow',axe:'axe'})[w.type]||'orb',15)} ${def.name} · ${RARITY_NAMES[w.rarity]}</span>`;
+  document.getElementById('shop-sel-label').innerHTML=`<span class="pixel-inline">${gamePixelIconHtml(def.pixelIcon||'orb',15)} ${def.name} · ${RARITY_NAMES[w.rarity]}</span>`;
   document.getElementById('recycle-val').innerHTML=`<span class="pixel-inline">${gamePixelIconHtml('coin',12)} +${rv}</span>`;
   const {idx} = shopSelectedSlot;
-  const canUp = w.rarity!=='legendary' && weaponSlots.some((s,si)=>si!==idx&&s&&s.type===w.type&&s.rarity===w.rarity);
+  const canUp = w.rarity!=='legendary' && slots.some((s,si)=>si!==idx&&s&&s.type===w.type&&s.rarity===w.rarity);
   const btn=document.getElementById('btn-upgrade');
   if(btn){btn.className='shop-slot-btn upgrade'+(canUp?'':' disabled');btn.disabled=!canUp;}
 }
 
 function shopRecycleSelected(){
   if(!shopSelectedSlot) return;
-  const {idx} = shopSelectedSlot;
-  const w = weaponSlots[idx]; if(!w) return;
+  const {idx,pidx=0} = shopSelectedSlot;
+  const slots=getSlots(pidx);
+  const w = slots[idx]; if(!w) return;
   const rv={common:3,uncommon:6,rare:10,epic:16,legendary:25}[w.rarity]||3;
   totalCoins+=rv;
   document.getElementById('shop-coins-val').textContent=totalCoins;
   document.getElementById('coin-display').textContent='🪙 '+totalCoins;
-  weaponSlots[idx]=null; shopSelectedSlot=null;
+  slots[idx]=null; shopSelectedSlot=null;
   updateWeaponUI(); renderShopInventory();
   if(typeof spawnLevelUpNotice==='function') spawnLevelUpNotice(W/2,H/2-30,`♻ Reciclado! +🪙${rv}`,0);
 }
 
 function shopUpgradeSelected(){
   if(!shopSelectedSlot) return;
-  const {idx} = shopSelectedSlot;
-  const w = weaponSlots[idx]; if(!w||w.rarity==='legendary') return;
-  const mi = weaponSlots.findIndex((s,si)=>si!==idx&&s&&s.type===w.type&&s.rarity===w.rarity);
+  const {idx,pidx=0} = shopSelectedSlot;
+  const slots=getSlots(pidx);
+  const w = slots[idx]; if(!w||w.rarity==='legendary') return;
+  const mi = slots.findIndex((s,si)=>si!==idx&&s&&s.type===w.type&&s.rarity===w.rarity);
   if(mi<0) return;
   const nr=nextRarity(w.rarity);
-  weaponSlots[idx]={type:w.type,rarity:nr,timer:0};
-  weaponSlots[mi]=null; shopSelectedSlot=null;
+  slots[idx]={...w,rarity:nr,timer:0};
+  slots[mi]=null; shopSelectedSlot=null;
   updateWeaponUI(); renderShopInventory(); buildFuseUI();
   if(typeof spawnLevelUpNotice==='function') spawnLevelUpNotice(W/2,H/2-30,`⬆ UPGRADE → ${RARITY_NAMES[nr]}!`,0);
 }
@@ -10119,24 +10145,24 @@ function shopUpgradeSelected(){
 // ═══════════════════════════════════════════════════════
 // COLEÇÃO / ENCICLOPÉDIA
 // ═══════════════════════════════════════════════════════
-let collTab='items';
+let collTab='weapons';
 let defeatedEnemies={};
 try{ defeatedEnemies=SaveSystem.readJSON('mvh_enemies',{}); }catch(e){}
 
 function openCollection(){
   // Refresh kill data from localStorage
   try{ defeatedEnemies=SaveSystem.readJSON('mvh_enemies',{}); }catch(e){}
-  collTab='items';
+  collTab='weapons';
   hideAllScreens();
   document.getElementById('collection-screen').style.display='flex';
-  collSetTab('items');
+  collSetTab('weapons');
 }
 function showCollection(){ openCollection(); }
 function closeCollection(){ showScreen('main-menu'); }
 
 function collSetTab(tab){
   collTab=tab;
-  ['items','enemies','classes','bosses','pets','blessings','dungeon'].forEach(t=>{
+  ['weapons','items','enemies','classes','bosses','pets','blessings','dungeon'].forEach(t=>{
     const b=document.getElementById('coll-tab-'+t);
     if(b) b.className='coll-tab'+(t===tab?' active':'');
   });
@@ -10162,7 +10188,8 @@ function _updateCollProgress(){
 function renderCollGrid(){
   const grid=document.getElementById('coll-grid');
   grid.innerHTML='';
-  if(collTab==='items') renderCollItems(grid);
+  if(collTab==='weapons') renderCollWeapons(grid);
+  else if(collTab==='items') renderCollItems(grid);
   else if(collTab==='enemies') renderCollEnemies(grid);
   else if(collTab==='classes') renderCollClasses(grid);
   else if(collTab==='bosses')  renderCollBosses(grid);
@@ -10981,6 +11008,143 @@ const COLL_ICON_SPRITES={
     '         S '
   ]
 };
+
+// Ícones exclusivos das 32 armas da campanha. Cada silhueta é desenhada
+// pixel a pixel e reutilizada na loja, HUD, fusão e Códex.
+Object.assign(COLL_ICON_SPRITES,{
+  mage_fire_staff:[
+    '    YRY    ','   YRORRY  ','    RRR    ','     NN    ','    NN     ',
+    '   NN      ','  NN       ',' NN        ','NN         ',' N         ','NNN        '
+  ],
+  mage_lightning_staff:[
+    '   YYY  Y  ','     YYY   ','    YY     ','   YY      ','    YNN    ',
+    '    NN     ','   NN      ','  NN       ',' NN        ','NN         ',' NNN       '
+  ],
+  mage_ice_staff:[
+    '    BWB    ','   BWWWB   ','  BBWWWBB  ','   BWWWB   ','    BNB    ',
+    '    NN     ','   NN      ','  NN       ',' NN        ','NN         ',' NNN       '
+  ],
+  mage_arcane_staff:[
+    '   PPPPP   ','  PPBWBPP  ','  PBWWWBP  ','  PPBWBPP  ','   PPNP   ',
+    '    NN     ','   NN      ','  NN       ',' NN        ','NN         ',' NNN       '
+  ],
+  mage_poison_staff:[
+    '  G     G  ','   GGGGG   ','  GGWgWGG  ','  GGGgGGG  ','   GGNGG   ',
+    '    NN     ','   NN      ','  NN       ',' NN        ','NN         ',' NNN       '
+  ],
+  mage_shadow_staff:[
+    '   PPPPP   ','  PPDDDDP  ',' PPDDPPPP  ',' PPDDPPPP  ','  PPDDNNP  ',
+    '    NN     ','   NN      ','  NN       ',' NN        ','NN         ',' NNN       '
+  ],
+  mage_solar_staff:[
+    'Y Y  Y  Y Y',' Y YYY Y  ','  YYYYYYY  ','YYYWWWWWYYY','  YYYYYYY  ',
+    '    NN     ','   NN      ','  NN       ',' NN        ','NN         ',' NNN       '
+  ],
+  mage_wind_staff:[
+    '  BBBBBB   ',' BB    BB  ','B   WWW  B ',' BBWW  BBB ','   BBBBB   ',
+    '    NN     ','   NN      ','  NN       ',' NN        ','NN         ',' NNN       '
+  ],
+
+  warrior_longsword:[
+    '        WW ','       WSW ','      WSW  ','     WSW   ','    WSW    ',
+    '   WSW     ','  WSW      ',' YYYYYYY   ','   NN      ','   NN      ','  NNNN     '
+  ],
+  warrior_greatsword:[
+    '    WWW    ','   WSSSW   ','   WSSSW   ','   WSSSW   ','   WSSSW   ',
+    '   WSSSW   ','   WSSSW   ',' YYYYYYYYY ','    NN     ','   NNNN    ','  NNNNNN   '
+  ],
+  warrior_spear:[
+    '        W  ','       WWW ','      WSW  ','     NN    ','    NN     ',
+    '   NN      ','  NN       ',' NN        ','NN         ','N          ','           '
+  ],
+  warrior_warhammer:[
+    ' SSSSSSSSS ','SSWWWWWWWSS','SSWSSSSSWSS',' SSSSSSSSS ','    NNN    ',
+    '    NNN    ','    NNN    ','    NNN    ','    NNN    ','   NNNNN   ','           '
+  ],
+  warrior_warshield:[
+    '  SSSSSSS  ',' SSWWWWWSS ','SSWDDDDDWSS','SSWDYYDDWSS','SSWDDYDDWSS',
+    ' SSWDDDWSS ','  SSWWWSS  ','   SSWSS   ','    SSS    ','     S     ','           '
+  ],
+  warrior_twinblades:[
+    'W         W',' WW     WW ','  WW   WW  ','   WW WW   ','    WWW    ',
+    '   YYYYY   ','  NN   NN  ',' NN     NN ','NN       NN','N         N','           '
+  ],
+  warrior_chainblade:[
+    '      WWWW ','     WSSSW ','      WSW  ','     SNS   ','    S S    ',
+    '   S S     ','  S S      ',' S S       ','S S        ',' NN        ','NNN        '
+  ],
+  warrior_spikedmace:[
+    '  S  S  S  ',' SSSSSSSSS ','SSWSWSWSWSS',' SSSSSSSSS ','  S  N  S  ',
+    '     N     ','     N     ','     N     ','     N     ','    NNN    ','           '
+  ],
+
+  archer_shortbow:[
+    '  GGG      ',' GG GG     ','GG   GG  W ','G     G WW ','GYYYYYYYSWW',
+    'G     G WW ','GG   GG  W ',' GG GG     ','  GGG      ','           ','           '
+  ],
+  archer_longbow:[
+    ' GGG       ','G  GG      ','G   GG   W ','G    GG WW ','GYYYYYYYSWW',
+    'G    GG WW ','G   GG   W ','G  GG      ',' GGG       ','           ','           '
+  ],
+  archer_crossbow:[
+    ' GG     GG ','  GG   GG  ','   GG GG   ','SSSYYYYYSSS','  NNWNN    ',
+    '   NNN     ','   NNN     ','   NNN     ','  NNNNN    ','           ','           '
+  ],
+  archer_poisonbow:[
+    '  GGG      ',' GG gG     ','GG   GG  G ','G     G GG ','GgggggggWGG',
+    'G     G GG ','GG   GG  G ',' GG gG     ','  GGG      ','       G   ','           '
+  ],
+  archer_explosivebow:[
+    '  RRR      ',' RR RR     ','RR   RR  Y ','R     R YY ','ROOOOOOOSYY',
+    'R     R YY ','RR   RR  Y ',' RR RR     ','  RRR      ','       ROR ','        R  '
+  ],
+  archer_ricochetbow:[
+    '  YYY   Y  ',' YY YY   Y ','YY   YY  Y ','Y     Y YY ','YYYYYYYYSWW',
+    'Y     Y  Y ','YY   YY Y  ',' YY YYY    ','  YYY YYY  ','        YY ','           '
+  ],
+  archer_frostbow:[
+    '  BBB      ',' BB WB     ','BB   BB  B ','B     B BB ','BWWWWWWWSBB',
+    'B     B BB ','BB   BB  B ',' BB WB     ','  BBB      ','       BWB ','        B  '
+  ],
+  archer_thunderbow:[
+    '  YYY   Y  ',' YY YY YYY ','YY   YYY   ','Y    YY YY ','YYYYYYYYSWW',
+    'Y   YY  YY ','YY YYY  Y  ',' YYY YY    ','  YYY      ','      YYY  ','       Y   '
+  ],
+
+  viking_waraxe:[
+    '  SSSSSYY  ',' SSSYYYYYY ','SSSSYYYYYY ',' SSSSSYY   ','    NN     ',
+    '    NN     ','    NN     ','    NN     ','   NNN     ','  NN NN    ','           '
+  ],
+  viking_twinaxes:[
+    'SSS     SSS',' SSS   SSS ','  SSN NSS  ','    NNN    ','   NNNNN   ',
+    '  NN   NN  ',' NN     NN ','NN       NN','N         N','           ','           '
+  ],
+  viking_throwingaxe:[
+    '     SSSS  ','   SSSYYSS ','  SYYYYYYSS',' SYYYYYSS  ','   SSN     ',
+    '    NN     ','   NN      ','  NN       ',' NN        ','NN         ',' NNN       '
+  ],
+  viking_stormhammer:[
+    ' Y SSSSS Y ','YYYSSWSSYYY','  YSSSSSY  ','   SSSSS   ','    NNN    ',
+    '  Y NNN Y  ',' YYYNNNYYY ','    NNN    ','   NNNNN   ','     Y     ','           '
+  ],
+  viking_bloodaxe:[
+    '  RRRRRRR  ',' RRRORRRRR ','RRROORRRRR ',' RRRORRR   ','    NN     ',
+    '    NN     ','    NN     ','  R NN R   ',' RRRNNRRR  ','  R NN R   ','           '
+  ],
+  viking_frostaxe:[
+    '  BBWBWBB  ',' BBWWWWBBB ','BBWWWWWWBB ',' BBWWWWB   ','    NN     ',
+    '    NN     ','  B NN B   ',' BBBNNBBB  ','  B NN B   ','    NN     ','           '
+  ],
+  viking_nordicspear:[
+    '        Y  ','       YWY ','      YWY  ','     YNY   ','    NNY    ',
+    '   NNY     ','  NNY      ',' NNY       ','NNY        ','N          ','           '
+  ],
+  viking_colossalaxe:[
+    'SSSSSSSSYY ','SSSSYYYYYYY','SSYYYYYYYYY',' SSSYYYYYY ','   SNNYY   ',
+    '    NN     ','    NN     ','   NNNN    ','   NNNN    ','  NN  NN   ',' NN    NN  '
+  ]
+});
+
 function collGameIcon(kind,pal){
   return {spr:COLL_ICON_SPRITES[kind]||COLL_ICON_SPRITES.orb,pal:{...COLL_ICON_PAL,...(pal||{})}};
 }
@@ -11139,45 +11303,48 @@ function collStatBar(label,val,max,color,unit){
 
 // ── ARMAS ──
 function renderCollWeapons(grid){
-  const weapons=[
-    {id:'sword',icon:collGameIcon('sword'), svgColor:'#88aaff', name:'Espada',  desc:'Ataque em arco corpo a corpo. Acerta múltiplos inimigos em cone amplo.', baseDmg:25,baseRange:60, baseCd:900, wtype:'Melee · Arco'},
-    {id:'bow',  icon:collGameIcon('bow'),   svgColor:'#88cc44', name:'Arco',    desc:'Flechas velozes à distância. Atira na direção do inimigo mais próximo.', baseDmg:18,baseRange:320,baseCd:700, wtype:'Ranged · Single'},
-    {id:'axe',  icon:collGameIcon('axe'),   svgColor:'#ff8844', name:'Machado', desc:'Giro devastador em área total. Acerta TODOS inimigos ao redor.', baseDmg:20,baseRange:75, baseCd:1200,wtype:'Área · Full 360°'},
-  ];
-  weapons.forEach(w=>{
-    const card = collCard(w.icon, w.name, w.wtype, false, ()=>showCollWeaponDetail(w), null, w.svgColor);
-    grid.appendChild(card);
-  });
+  const classLabels={mage:'Mago',warrior:'Guerreiro',archer:'Arqueiro',viking:'Viking'};
+  const elementLabels={fire:'Fogo',ice:'Gelo',electric:'Elétrico',poison:'Veneno',shadow:'Sombras',arcane:'Arcano',solar:'Solar',wind:'Vento',blood:'Sangue',physical:'Físico'};
+  for(const classId of ['mage','warrior','archer','viking']){
+    for(const spec of CAMPAIGN_WEAPON_SPECS[classId]||[]){
+      const def=WEAPON_DEFS[spec[0]];if(!def)continue;
+      const element=campaignWeaponElement(def.id);
+      const icon=collGameIcon(def.pixelIcon);
+      const card=collCard(icon,def.name,elementLabels[element]||'Físico',false,()=>showCollWeaponDetail(def),null,def.color);
+      const badge=document.createElement('div');
+      badge.className='coll-weapon-class';badge.style.color=CLASS_DEFS[classId]?.color||def.color;badge.textContent=classLabels[classId];
+      card.appendChild(badge);grid.appendChild(card);
+    }
+  }
 }
 
 function showCollWeaponDetail(w){
   const det=document.getElementById('coll-detail');
   det.className='coll-detail visible';
-  const rarRows=RARITIES.map(r=>{
-    const c=RARITY_COLORS[r];
-    const dmg=Math.round(w.baseDmg*RARITY_MULT[r]);
-    const cd=(w.baseCd/1000).toFixed(2);
-    return `<div style="background:rgba(0,0,0,0.35);border:1px solid ${c}44;border-radius:4px;padding:6px 10px;margin-bottom:5px;display:flex;align-items:center;justify-content:space-between;">
-      <div style="font-size:12px;font-weight:bold;color:${c};letter-spacing:1px;">${RARITY_NAMES[r].toUpperCase()}</div>
-      <div style="font-size:14px;color:#a09060;">DANO <b style="color:${c}">${dmg}</b> &nbsp; CD <b style="color:#c8a84b">${cd}s</b></div>
+  const classNames={mage:'Mago · Magia',warrior:'Guerreiro · Corpo a corpo',archer:'Arqueiro · Longo alcance',viking:'Viking · Corpo a corpo'};
+  const elementNames={fire:'Fogo',ice:'Gelo',electric:'Elétrico',poison:'Veneno',shadow:'Sombras',arcane:'Arcano',solar:'Solar',wind:'Vento',blood:'Sangue',physical:'Físico'};
+  const rarRows=RARITIES.map((r,index)=>{
+    const c=RARITY_COLORS[r],dmg=Math.round(campaignWeaponDamage(w,r)),cd=(campaignWeaponCooldown(w,r)/1000).toFixed(2),power=w.stages[index]||w.stages[0];
+    return `<div class="coll-weapon-tier" style="--tier-color:${c}">
+      <div class="coll-weapon-tier-head"><div class="coll-weapon-tier-name">${RARITY_NAMES[r].toUpperCase()}</div><div class="coll-weapon-tier-stats">${dmg} DANO · ${cd}s</div></div>
+      <div class="coll-weapon-power">${power}</div>
     </div>`;
   }).join('');
   det.innerHTML=`
     <div class="coll-det-header">
-      <div class="coll-det-icon">${collIconHtml(w.icon,54)}</div>
+      <div class="coll-det-icon">${collIconHtml(collGameIcon(w.pixelIcon),54)}</div>
       <div class="coll-det-info">
         <div class="coll-det-name">${w.name}</div>
-        <div class="coll-det-type">${w.wtype}</div>
+        <div class="coll-det-type">${classNames[w.classId]} · ${elementNames[campaignWeaponElement(w.id)]}</div>
       </div>
     </div>
     <div class="coll-det-divider"></div>
-    <div style="font-size:14px;color:#9a8050;line-height:1.7;margin-bottom:10px;">${w.desc}</div>
     <div class="coll-det-stats">
       ${collStatBar('Dano',w.baseDmg,60,'#ff6655')}
-      ${collStatBar('Alcance',w.baseRange,400,'#44aaff')}
-      ${collStatBar('Veloc.',+(1000/w.baseCd).toFixed(1),2,'#44dd66','×/s')}
+      ${collStatBar('Alcance',w.range,400,'#44aaff')}
+      ${collStatBar('Veloc.',+(1000/w.cd).toFixed(1),2,'#44dd66','×/s')}
     </div>
-    <div style="font-size:11px;color:#5a4020;letter-spacing:2px;text-transform:uppercase;margin:10px 0 6px;">ESCALONAMENTO POR RARIDADE</div>
+    <div style="font-size:11px;color:#5a4020;letter-spacing:2px;text-transform:uppercase;margin:10px 0 6px;">PODERES POR RARIDADE</div>
     ${rarRows}`;
 }
 
@@ -13279,26 +13446,79 @@ function getArmorReduction(){
   <script>
 // WEAPON DEFINITIONS
 // ═══════════════════════════════════════════════════════
-const WEAPON_DEFS = {
-  sword: {
-    icon:'⚔️', name:'Espada', type:'melee',
-    desc: (r)=>`Arma corpo a corpo. Causa ${Math.round(25*RARITY_MULT[r])} dmg em arco.`,
-    baseDmg:25, range:60, cd:860, color:'#c8d8ff',
-    attack(player, enemies, rarity, target){ swordAttack(player, enemies, rarity, target); }
-  },
-  bow: {
-    icon:'🏹', name:'Arco', type:'ranged',
-    desc: (r)=>`Atira uma flecha precisa. Causa ${Math.round(16*RARITY_MULT[r])} dmg.`,
-    baseDmg:16, range:310, cd:740, color:'#88cc44',
-    attack(player, enemies, rarity, target){ bowAttack(player, enemies, rarity, target); }
-  },
-  axe: {
-    icon:'🪓', name:'Machado', type:'spin',
-    desc: (r)=>`Gira ao redor. Causa ${Math.round(22*RARITY_MULT[r])} dmg contínuo.`,
-    baseDmg:22, range:78, cd:1150, color:'#ff8844',
-    attack(player, enemies, rarity, target){ axeAttack(player, enemies, rarity, target); }
-  }
+const CAMPAIGN_WEAPON_POWER={common:1,uncommon:1.12,rare:1.25,epic:1.42,legendary:1.62};
+const CAMPAIGN_WEAPON_SPEED={common:1,uncommon:1.04,rare:1.08,epic:1.12,legendary:1.16};
+const CAMPAIGN_WEAPON_SPECS={
+  mage:[
+    ['mage_fire_staff','Cajado de Fogo','mage_fire_staff','#ff3b30',24,310,980,['Bola de Fogo: 100% de dano e pequena explosão.','Brasa Arcana: explosão 20% maior.','Chamas Duplas: 2 bolas de 65%.','Fogo Vivo: 2 bolas de 75% e queimadura por 3s.','Caminho das Chamas: 3 bolas de 65% e rastros de fogo.']],
+    ['mage_lightning_staff','Cajado de Raio','mage_lightning_staff','#ffd83d',22,320,920,['Descarga: raio de 100%.','Condutor: +15% de alcance da descarga.','Corrente Elétrica: salta para um segundo alvo.','Alta Voltagem: atinge 3 alvos e pode interromper.','Tempestade: a cada 4 ataques, atinge 4 inimigos.']],
+    ['mage_ice_staff','Cajado de Gelo','mage_ice_staff','#45a9ff',21,305,900,['Estilhaço: 90% de dano e lentidão.','Geada Densa: lentidão dura mais.','Estilhaços Duplos: 2 projéteis de 60%.','Congelamento: 3 acertos congelam o alvo.','Ruptura Glacial: congelados explodem ao morrer.']],
+    ['mage_arcane_staff','Cajado Arcano','mage_arcane_staff','#b866ff',23,330,840,['Míssil Arcano: projétil perseguidor.','Foco Arcano: teleguiamento e alcance maiores.','Mísseis Gêmeos: 2 projéteis de 60%.','Barragem: 3 projéteis de 50% que perfuram.','Sobrecarga: a cada 5 ataques dispara 6 mísseis.']],
+    ['mage_poison_staff','Cajado Venenoso','mage_poison_staff','#52d63b',20,300,940,['Orbe Tóxico: 80% e veneno por 4s.','Toxina Concentrada: veneno mais intenso.','Esporos: 2 projéteis e 2 cargas.','Contaminação: veneno acumula 3 cargas.','Epidemia: a morte transmite veneno a 2 alvos.']],
+    ['mage_shadow_staff','Cajado das Sombras','mage_shadow_staff','#5a39a9',25,340,1050,['Orbe Sombrio: 100% e perfura 1 alvo.','Véu Escuro: +10% de dano.','Penumbra: perfura 2 alvos.','Eco Sombrio: repete 55% após 0,35s.','Eclipse: eco de 70% também viaja para trás.']],
+    ['mage_solar_staff','Cajado Solar','mage_solar_staff','#ffd24a',27,350,1250,['Raio Solar: feixe de 3 ticks.','Clarão: +12% de alcance.','Luz Concentrada: 4 ticks e alcance maior.','Superaquecimento: último tick recebe +50%.','Sol Absoluto: o feixe atinge 2 alvos laterais.']],
+    ['mage_wind_staff','Cajado do Vento','mage_wind_staff','#80e9ff',19,250,820,['Rajada: cone de 70% com empurrão.','Corrente Forte: empurrão ampliado.','Vendaval: cone 30% maior e 90% de dano.','Dupla Rajada: segunda rajada de 55%.','Tornado: a cada 4 ataques, múltiplos hits e empurrão.']],
+  ],
+  warrior:[
+    ['warrior_longsword','Espada Longa','warrior_longsword','#d8e2ef',27,112,780,['Corte frontal de 100%.','Corte Treinado: arco 12% maior.','Combo: 80% + 60%.','Tríplice Corte: 80% + 60% + 70%.','Lâmina de Impacto: terceiro ataque cria onda frontal.']],
+    ['warrior_greatsword','Espadão','warrior_greatsword','#b9c4d0',38,128,1320,['Golpe Pesado de 145%.','Peso Forjado: +10% de área.','Corte Amplo: +30% de área e 160%.','Quebra-Defesa: alvo recebe +10% de dano.','Ruptura: golpe cria fissura frontal.']],
+    ['warrior_spear','Lança','warrior_spear','#e0c58c',29,180,900,['Estocada de 120% em linha.','Haste Longa: +15% de alcance.','Perfura até 2 inimigos.','Alcance Mortal: +35% e perfura 4.','Falange: a cada 3 ataques, 3 estocadas em leque.']],
+    ['warrior_warhammer','Martelo de Guerra','warrior_warhammer','#aab0b8',34,95,1180,['Golpe de 130% em pequena área.','Cabeça Reforçada: +12% de área.','Área aumentada em 25%.','Todo terceiro golpe atordoa inimigos comuns.','Terremoto: terceiro golpe cria onda circular.']],
+    ['warrior_warshield','Escudo de Guerra','warrior_warshield','#71899d',20,88,760,['Escudada de 80%, empurrão e +3% defesa.','Guarda Firme: +4% defesa.','Escudo raro: +5% defesa.','Contra-Ataque: 20% de chance ao receber dano.','Fortaleza: contra-ataque gera onda frontal.']],
+    ['warrior_twinblades','Lâminas Gêmeas','warrior_twinblades','#f0d0c8',18,92,520,['2 cortes rápidos de 55%.','Fio Duplo: +8% velocidade de ataque.','3 cortes de 45%.','Terceiro ataque causa sangramento.','Frenesi: 8 acertos concedem +20% velocidade.']],
+    ['warrior_chainblade','Corrente com Lâmina','warrior_chainblade','#bfc4c9',25,145,930,['Ataque semicircular de 90%.','Elo Reforçado: +18% de alcance.','Alcance aumentado em 35%.','Gancho: puxa inimigos pequenos.','Redemoinho: quarto ataque gira 360° com 125%.']],
+    ['warrior_spikedmace','Maça Espinhosa','warrior_spikedmace','#9fa3a8',31,90,980,['Golpe de 110%.','Cravos Longos: +8% de dano.','130% e pequeno stagger.','Armadura Quebrada: alvo recebe +8% dano.','Esmagamento: alvos quebrados explodem.']],
+  ],
+  archer:[
+    ['archer_shortbow','Arco Curto','archer_shortbow','#70d36d',15,290,520,['Flecha rápida de 85%.','Corda Leve: +12% velocidade de ataque.','+25% velocidade de ataque.','Terceiro ataque dispara 2 flechas.','Chuva Rápida: quinto ataque dispara 4 flechas.']],
+    ['archer_longbow','Arco Longo','archer_longbow','#9acb67',28,390,1050,['Flecha lenta de 140%.','Mira Longa: +12% de alcance.','Perfura 1 inimigo.','+25% crítico e perfura 2.','Tiro Perfeito: quinto ataque causa 200% e perfura 5.']],
+    ['archer_crossbow','Besta Pesada','archer_crossbow','#c7a56b',36,370,1450,['Virote lento de 175%.','Mecanismo Reforçado: +10% de dano.','Disparo de 200%.','+40% de dano contra elites e chefes.','Balista: terceiro tiro causa 250% e perfura 3.']],
+    ['archer_poisonbow','Arco Venenoso','archer_poisonbow','#52d63b',17,320,760,['80% de dano e veneno.','Toxina: veneno causa mais dano.','Veneno dura 5s.','Acumula até 3 cargas.','Veneno Propagado: morte transfere carga.']],
+    ['archer_explosivebow','Arco Explosivo','archer_explosivebow','#ff3b30',23,320,980,['100% e pequena explosão de 40%.','Pó Reforçado: explosão +15%.','Explosão aumenta 30%.','Explosão causa 70%.','Flecha Bomba: quarto tiro explode por 130%.']],
+    ['archer_ricochetbow','Arco Ricochete','archer_ricochetbow','#e6d46e',19,325,820,['Flecha de 100%.','Quina Perfeita: alcance +10%.','1 ricochete de 55%.','2 ricochetes: 100% → 65% → 40%.','Pinball: até 4 alvos.']],
+    ['archer_frostbow','Arco Gélido','archer_frostbow','#45a9ff',18,325,800,['90% e 20% de slow.','Ponta Gelada: slow dura mais.','Slow de 30%.','3 acertos congelam por 0,7s.','Flecha Glacial: congelados recebem +30% crítico.']],
+    ['archer_thunderbow','Arco Trovejante','archer_thunderbow','#ffd83d',21,335,870,['Flecha elétrica de 100%.','Carga Estática: +12% de alcance.','Raio salta para outro alvo com 40%.','2 saltos: 100% → 50% → 30%.','Tempestade: quinto ataque cria 3 raios.']],
+  ],
+  viking:[
+    ['viking_waraxe','Machado de Guerra','viking_waraxe','#e1a05b',32,105,880,['Corte semicircular de 120%.','Fio Nórdico: +8% de área.','140% e área +15%.','Centro do golpe causa +30%.','Decapita inimigos comuns abaixo de 15% de vida.']],
+    ['viking_twinaxes','Machados Gêmeos','viking_twinaxes','#f0b86c',22,92,590,['2 ataques de 60%.','Punhos Rápidos: +10% de velocidade.','2 ataques de 70%.','Terceiro combo realiza giro de 100%.','Berserker: 10 acertos concedem +25% velocidade.']],
+    ['viking_throwingaxe','Machado de Arremesso','viking_throwingaxe','#d4b079',25,300,930,['Vai e volta, causando 70% por passagem.','Lançamento Longo: +15% de alcance.','80% e maior distância.','Atinge até 4 inimigos por trajeto.','Bumerangue: ao voltar, gira ao redor do Viking.']],
+    ['viking_stormhammer','Martelo da Tempestade','viking_stormhammer','#ffd83d',31,105,1020,['Golpe de 120%.','Carga Rúnica: +10% de dano.','Raio atinge outro inimigo por 40%.','Raio atinge 2 inimigos.','Ira da Tempestade: quarto golpe invoca 3 raios.']],
+    ['viking_bloodaxe','Machado de Sangue','viking_bloodaxe','#c74343',28,100,820,['100% e 2% de roubo de vida.','Sangue Quente: 2,5% de roubo de vida.','110% e 3% de roubo de vida.','Vida baixa concede até +25% de dano.','Sede de Sangue: abaixo de 35%, velocidade e roubo aumentam.']],
+    ['viking_frostaxe','Machado Congelado','viking_frostaxe','#45a9ff',30,104,920,['110% e slow de 15%.','Gume Frio: slow dura mais.','Slow de 25%.','Quarto ataque congela por 0,6s.','Ruptura: alvo congelado lança 3 estilhaços.']],
+    ['viking_nordicspear','Lança Nórdica','viking_nordicspear','#d8c590',29,185,900,['Estocada longa de 110%.','Haste de Freixo: +15% alcance.','Perfura 2 inimigos.','No alcance máximo causa +40%.','Investida de Odin: terceiro ataque espectral de 150%.']],
+    ['viking_colossalaxe','Machado Colossal','viking_colossalaxe','#9f795d',46,130,1650,['Ataque lentíssimo de 180%.','Peso Colossal: +10% de área.','Golpe de 210%.','Impacto Brutal: onda curta de 80%.','Ragnarok: terceiro ataque causa 250% em 360° e onda externa.']],
+  ],
 };
+
+const WEAPON_DEFS={};
+for(const [classId,list] of Object.entries(CAMPAIGN_WEAPON_SPECS)){
+  for(const [id,name,pixelIcon,color,baseDmg,range,cd,stages] of list){
+    WEAPON_DEFS[id]={id,classId,name,pixelIcon,icon:pixelIcon,type:classId==='archer'?'ranged':(classId==='mage'?'magic':'melee'),color,baseDmg,range,cd,stages,
+      desc:r=>stages[Math.max(0,RARITIES.indexOf(r))]||stages[0],
+      attack(player,enemies,rarity,target,weapon){campaignClassWeaponAttack(player,enemies,rarity,target,weapon,id);}};
+  }
+}
+
+function campaignWeaponDamage(def,rarity){return def.baseDmg*(CAMPAIGN_WEAPON_POWER[rarity]||1);}
+function campaignWeaponCooldown(def,rarity,player=null,weapon=null){
+  let cd=def.cd/(CAMPAIGN_WEAPON_SPEED[rarity]||1);
+  if(weapon?.berserkTimer>0)cd*=def.id==='viking_twinaxes'?.75:.80;
+  if(def.id==='viking_bloodaxe'&&rarity==='legendary'&&player&&player.hp/player.maxHp<.35)cd*=.80;
+  return cd;
+}
+function campaignWeaponElement(type=''){
+  if(type.includes('fire')||type.includes('explosive'))return 'fire';
+  if(type.includes('ice')||type.includes('frost')||type.includes('frozen'))return 'ice';
+  if(type.includes('lightning')||type.includes('thunder')||type.includes('storm'))return 'electric';
+  if(type.includes('poison'))return 'poison';
+  if(type.includes('shadow'))return 'shadow';
+  if(type.includes('arcane'))return 'arcane';
+  if(type.includes('solar'))return 'solar';
+  if(type.includes('wind'))return 'wind';
+  if(type.includes('blood'))return 'blood';
+  return 'physical';
+}
 
 // ═══════════════════════════════════════════════════════
 // PLAYER WEAPONS INVENTORY
@@ -13311,23 +13531,29 @@ function getSlots(pidx){ return pidx===0?weaponSlots:weaponSlots2; }
 
 function addWeapon(type, rarity, pidx){
   const slots=getSlots(pidx);
+  const def=WEAPON_DEFS[type];
+  const expectedClass=pidx===0?selectedClass.p1:selectedClass.p2;
+  if(!def||def.classId!==expectedClass) return false;
   for(let i=0;i<3;i++){
-    if(slots[i]&&slots[i].type===type&&slots[i].rarity===rarity){
-      slots[i]={type,rarity:nextRarity(rarity),timer:0};
+    if(rarity!=='legendary'&&slots[i]&&slots[i].type===type&&slots[i].rarity===rarity){
+      slots[i]={...slots[i],rarity:nextRarity(rarity),timer:0};
       updateWeaponUI(); return true;
     }
   }
   for(let i=0;i<3;i++){
-    if(!slots[i]){ slots[i]={type,rarity,timer:0}; updateWeaponUI(); return true; }
+    if(!slots[i]){ slots[i]={type,rarity,timer:0,attackCount:0,hitCount:0,damageDone:0}; updateWeaponUI(); return true; }
   }
   return false;
 }
 
 function canAddWeapon(type, rarity, pidx){
   const slots=getSlots(pidx);
+  const def=WEAPON_DEFS[type];
+  const expectedClass=pidx===0?selectedClass.p1:selectedClass.p2;
+  if(!def||def.classId!==expectedClass) return false;
   for(let i=0;i<3;i++){
     if(!slots[i]) return true;
-    if(slots[i]&&slots[i].type===type&&slots[i].rarity===rarity) return true;
+    if(rarity!=='legendary'&&slots[i]&&slots[i].type===type&&slots[i].rarity===rarity) return true;
   }
   return false;
 }
@@ -13343,10 +13569,11 @@ function updateWeaponUI(){
         slot.innerHTML='<span class="wicon">➕</span><span class="wname">Vazio</span>';
       } else {
         const def=WEAPON_DEFS[w.type];
-        const rc=`rarity-${w.rarity}`;
         const base=prefix==='wslot'?'wslot':'wslot p2-slot';
+        if(!def){slot.className=`${base} empty`;slot.innerHTML='<span class="wicon">➕</span><span class="wname">Vazio</span>';continue;}
+        const rc=`rarity-${w.rarity}`;
         slot.className=`${base} ${rc}`;
-        slot.innerHTML=`<span style="position:absolute;top:-7px;right:-4px;font-size:11px;padding:1px 4px;border-radius:3px;font-weight:bold;background:${RARITY_COLORS[w.rarity]}22;color:${RARITY_COLORS[w.rarity]};">${RARITY_NAMES[w.rarity].substring(0,3).toUpperCase()}</span><span class="wicon">${def.icon}</span><span class="wname">${def.name}</span>`;
+        slot.innerHTML=`<span style="position:absolute;top:-7px;right:-4px;font-size:11px;padding:1px 4px;border-radius:3px;font-weight:bold;background:${RARITY_COLORS[w.rarity]}22;color:${RARITY_COLORS[w.rarity]};">${RARITY_NAMES[w.rarity].substring(0,3).toUpperCase()}</span><span class="wicon">${gamePixelIconHtml(def.pixelIcon||'orb',22)}</span><span class="wname">${def.name}</span>`;
       }
     }
   };
@@ -13372,7 +13599,7 @@ function getFusiblePairs(pidx){
 function fuseWeapons(pidx,si,sj,type,rarity){
   const slots=getSlots(pidx);
   const newRar=nextRarity(rarity);
-  slots[si]={type,rarity:newRar,timer:0};
+  slots[si]={...slots[si],rarity:newRar,timer:0};
   slots[sj]=null;
   updateWeaponUI();
   buildFuseUI();
@@ -13402,7 +13629,7 @@ function buildFuseUI(){
       <span class="fuse-badge" style="background:${curC}20;color:${curC};border:1px solid ${curC}55;">
         ${RARITY_NAMES[p.rarity].toUpperCase()} ×2${p.pidx===1?' · P2':''}
       </span>
-      <span class="fuse-icon">${def.icon}</span>
+      <span class="fuse-icon">${gamePixelIconHtml(def.pixelIcon||'orb',24)}</span>
       <div>
         <div class="fuse-label" style="color:${curC}">${def.name}</div>
         <div class="fuse-sub" style="color:#5a4018">${RARITY_NAMES[p.rarity]}</div>
@@ -13511,23 +13738,33 @@ function drawLevelNotices(){
 // SMART SHOP — items filtered by player class
 // ═══════════════════════════════════════════════════════
 
-// Universal items available to ALL classes
-const SHOP_UNIVERSAL = [
-  {id:'universal_pocao_vida',icon:'🍶',name:'Poção da Vida',flavour:'"Sangue dos dragões."',desc:'Recupera toda a vida',price:18,apply:p=>{p.hp=p.maxHp;},rarity:'common',consumable:true},
-  {icon:'⚔️',name:'Espada Comum',      flavour:'"Simples mas eficaz."',       desc:'Arma de corpo a corpo',     price:8,  wtype:'sword', rarity:'common'},
-  {icon:'🏹',name:'Arco Comum',        flavour:'"Cada flecha conta."',         desc:'Arma de longo alcance',     price:8,  wtype:'bow',   rarity:'common'},
-  {icon:'🪓',name:'Machado Comum',     flavour:'"Corta até os mais duros."',   desc:'Arma AoE giratória',        price:8,  wtype:'axe',   rarity:'common'},
-  {icon:'⚔️',name:'Espada Rara',       flavour:'"Encantada pelos elfos."',     desc:'Espada poderosa',           price:22, wtype:'sword', rarity:'rare'},
-  {icon:'🏹',name:'Arco Raro',         flavour:'"Flechas de luz pura."',       desc:'Arco potente',              price:22, wtype:'bow',   rarity:'rare'},
-  {icon:'🪓',name:'Machado Épico',     flavour:'"Lenda das montanhas."',       desc:'Machado devastador',        price:30, wtype:'axe',   rarity:'epic'},
-];
+function campaignShopRarityForWave(){
+  const roll=Math.random();
+  const w=Math.max(1,wave||1);
+  if(w>=21&&roll<0.07)return 'legendary';
+  if(w>=16&&roll<0.22)return 'epic';
+  if(w>=11&&roll<0.43)return 'rare';
+  if(w>=6&&roll<0.68)return 'uncommon';
+  return 'common';
+}
+
+function makeCampaignWeaponOffer(type,pidx){
+  const def=WEAPON_DEFS[type];
+  const rarity=campaignShopRarityForWave();
+  const basePrice={common:9,uncommon:14,rare:21,epic:30,legendary:42}[rarity];
+  return {id:`campaign_${pidx}_${type}_${rarity}`,name:def.name,desc:def.desc(rarity),price:basePrice,
+    wtype:type,rarity,pidx,classId:def.classId,isCampaignWeapon:true,pixelIcon:def.pixelIcon,unique:false};
+}
 
 function getClassShopItems(){
-  // Build pool: 70% class-specific + 30% universal
-  const cid = selectedClass.p1;
-  const def = CLASS_DEFS[cid];
-  const classItems = def ? def.shopItems : [];
-  return [...classItems, ...SHOP_UNIVERSAL];
+  const playerDefs=[{pidx:0,classId:selectedClass.p1}];
+  if(gameMode===2)playerDefs.push({pidx:1,classId:selectedClass.p2});
+  const items=[];
+  for(const pd of playerDefs){
+    const defs=Object.values(WEAPON_DEFS).filter(def=>def.classId===pd.classId);
+    for(const def of defs)items.push(makeCampaignWeaponOffer(def.id,pd.pidx));
+  }
+  return items;
 }
 
 let shopPool=[];
@@ -13541,8 +13778,7 @@ function shopItemKey(item){
   return `item_${String(item.name||'sem_nome').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')}`;
 }
 function shopItemIsUnique(item){
-  // Armas repetidas continuam permitidas somente porque alimentam a fusão ×2.
-  return !!item&&item.unique!==false&&!item.wtype&&!item.consumable;
+  return !!item&&item.unique!==false&&!item.isCampaignWeapon&&!item.wtype&&!item.consumable;
 }
 function shopItemAlreadyPurchased(item){
   return shopItemIsUnique(item)&&shopPurchasedUnique.has(shopItemKey(item));
@@ -13567,10 +13803,17 @@ function buildShopPool(){
   const available=getClassShopItems().filter(item=>!shopItemAlreadyPurchased(item)).sort(()=>Math.random()-0.5);
   const result=Array(SHOP_OPTION_COUNT).fill(null);
   for(let i=0;i<SHOP_OPTION_COUNT;i++) if(shopLocked[i]) result[i]=shopPool[i];
+  if(gameMode===2){
+    for(const pidx of [0,1]){
+      if(result.some(r=>r&&r.pidx===pidx))continue;
+      const empty=result.findIndex(r=>!r);const offer=available.find(a=>a.pidx===pidx&&!result.some(r=>r&&r.name===a.name&&r.pidx===a.pidx));
+      if(empty>=0&&offer)result[empty]=offer;
+    }
+  }
   let ai=0;
   for(let i=0;i<SHOP_OPTION_COUNT;i++){
     if(result[i]) continue;
-    while(ai<available.length && result.some(r=>r&&r.name===available[ai].name)) ai++;
+    while(ai<available.length && result.some(r=>r&&r.name===available[ai].name&&r.pidx===available[ai].pidx)) ai++;
     if(ai<available.length) result[i]=available[ai++];
     else result[i]=null;
   }
@@ -13586,7 +13829,8 @@ function renderShopGrid(){
   const titleEl=document.getElementById('shop-title-text');
   if(titleEl&&def){
     const titleIcons={mage:'orb',warrior:'sword',archer:'bow',viking:'axe'};
-    titleEl.innerHTML=`<span class="pixel-inline">${gamePixelIconHtml(titleIcons[cid]||'hammer',26)} Ferreiro da ${def.name}</span>`;
+    const p2Title=gameMode===2?` + ${CLASS_DEFS[selectedClass.p2]?.name||'P2'}`:'';
+    titleEl.innerHTML=`<span class="pixel-inline">${gamePixelIconHtml(titleIcons[cid]||'hammer',26)} Arsenal da ${def.name}${p2Title}</span>`;
   }
   for(let i=0;i<SHOP_OPTION_COUNT;i++){
     const item=shopPool[i];
@@ -13595,27 +13839,24 @@ function renderShopGrid(){
     const locked=shopLocked[i];
     const cantAfford=totalCoins<shopPrice(item);
     const card=document.createElement('div');
-    const isClassItem=def&&def.shopItems&&def.shopItems.some(ci=>ci.name===item.name);
+    const offerDef=WEAPON_DEFS[item.wtype];
+    const offerClass=CLASS_DEFS[item.classId];
     card.className=`s-card r-${itemRarity}${locked?' locked-card':''}${cantAfford&&!locked?' cant-afford':''}`;
     card.dataset.idx=i;
     const rarCol={common:'#9a9487',uncommon:'#43cf70',rare:'#4b9eff',epic:'#be55ee',legendary:'#e1b936'}[itemRarity];
     card.style.setProperty('--shop-rarity',rarCol);
-    const classBadge=item.isStructure
-      ? `<span class="shop-item-badge" style="color:#cc9900;border-color:#cc9900;">ESTRUTURA</span>`
-      : isClassItem?`<span class="shop-item-badge" style="color:${def.color||'#f0d080'};border-color:${def.color||'#f0d080'};">${def.name.toUpperCase()}</span>`
-      : '';
+    const classBadge=offerClass?`<span class="shop-item-badge" style="color:${offerClass.color||'#f0d080'};border-color:${offerClass.color||'#f0d080'};">${gameMode===2?`P${item.pidx+1} · `:''}${offerClass.name.toUpperCase()}</span>`:'';
     // Weapon stats block (only for weapons)
     let weaponStatsHtml = '';
     if(item.wtype && WEAPON_DEFS[item.wtype]){
       const wd = WEAPON_DEFS[item.wtype];
-      const mult = RARITY_MULT[itemRarity]||1;
-      const dmg = Math.round(wd.baseDmg * mult);
-      const cd  = (wd.cd/1000).toFixed(2);
+      const dmg = Math.round(campaignWeaponDamage(wd,itemRarity));
+      const cd  = (campaignWeaponCooldown(wd,itemRarity)/1000).toFixed(2);
       const rng = wd.range;
-      const type= wd.type==='melee'?'Corpo a corpo':wd.type==='ranged'?'Longo alcance':'Área';
+      const type= wd.type==='melee'?'Corpo a corpo':wd.type==='ranged'?'Longo alcance':'Magia';
       weaponStatsHtml = `<div class="s-weapon-summary"><b>${dmg}</b> dano · ${cd}s · ${rng} alcance<br><span>${type}</span></div>`;
     }
-    const itemIcon=(typeof collItemIcon==='function')?collItemIcon(item,cid):'orb';
+    const itemIcon=offerDef?.pixelIcon||'orb';
     card.innerHTML=`
       <div class="s-card-top">
         <div class="s-card-icon">${gamePixelIconHtml(itemIcon,84)}</div>
@@ -13623,10 +13864,10 @@ function renderShopGrid(){
           <div class="s-card-info">
             <div class="s-card-name">${item.name}${classBadge}</div>
             <div class="s-card-rarity" style="color:${rarCol}">${rarityFlavour[itemRarity]||'COMUM'}</div>
-            ${item.wtype?`<div class="s-card-type">${WEAPON_DEFS[item.wtype]?.name||''}</div>`:''}
+            ${item.wtype?`<div class="s-card-type">ARMA DE ${offerClass?.name.toUpperCase()||''}</div>`:''}
           </div>
           ${weaponStatsHtml}
-          <div class="s-card-effect">${item.desc}${item.wtype&&gameMode===2?'<br><span style="font-size:11px;color:#4a3a18;">(P1 e P2)</span>':''}</div>
+          <div class="s-card-effect">${item.desc}</div>
         </div>
       </div>
       <div class="s-card-actions">
@@ -13661,13 +13902,12 @@ function shopBuy(i, e){
   e.stopPropagation();
   const item=shopPool[i];
   if(!item||shopItemAlreadyPurchased(item)||totalCoins<shopPrice(item)) return;
-  if(item.wtype&&(!canAddWeapon(item.wtype,item.rarity,0)||(gameMode===2&&!canAddWeapon(item.wtype,item.rarity,1)))) return;
+  if(item.wtype&&!canAddWeapon(item.wtype,item.rarity,item.pidx||0)) return;
   totalCoins-=shopPrice(item);
   document.getElementById('shop-coins-val').textContent=totalCoins;
   document.getElementById('coin-display').textContent='🪙 '+totalCoins;
   if(item.wtype){
-    addWeapon(item.wtype,item.rarity,0);
-    if(gameMode===2) addWeapon(item.wtype,item.rarity,1);
+    addWeapon(item.wtype,item.rarity,item.pidx||0);
   } else if(item.isStructure){
     item.apply(); // structures use no player arg — placed near player
   } else {
@@ -13887,6 +14127,136 @@ function allTargets(enemies){
   ];
 }
 
+function nearestWeaponTargets(player,enemies,range,limit=1,exclude=[]){
+  const skipped=new Set(exclude);
+  return allTargets(enemies).filter(e=>e&&!e.dead&&!skipped.has(e)&&Math.hypot(e.x-player.x,e.y-player.y)<=range)
+    .sort((a,b)=>Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y)).slice(0,limit);
+}
+function weaponDamage(player,weapon,target,amount,color){
+  if(!target||target.dead)return 0;
+  const dmg=typeof applyCardCrit==='function'?applyCardCrit(player,amount,target):amount;
+  target.takeDmg(dmg);weapon.damageDone=(weapon.damageDone||0)+dmg;
+  if(typeof applyClassHitEffect==='function')applyClassHitEffect({owner:player,dmg,weapon},target);
+  spawnParts(target.x,target.y,color||'#ffffff',5,38);
+  return dmg;
+}
+function weaponKnockback(player,target,force){
+  if(!target||target.dead||target.type?.startsWith('boss'))return;
+  const a=Math.atan2(target.y-player.y,target.x-player.x);target.x+=Math.cos(a)*force;target.y+=Math.sin(a)*force;
+  if(typeof clampCampaignEntity==='function')clampCampaignEntity(target,target.radius||12);
+}
+function weaponCone(player,enemies,angle,range,arc,weapon,amount,color,onHit){
+  let count=0;
+  for(const e of allTargets(enemies)){
+    if(!e||e.dead||Math.hypot(e.x-player.x,e.y-player.y)>range+(e.radius||0))continue;
+    const ea=Math.atan2(e.y-player.y,e.x-player.x);let diff=ea-angle;while(diff>Math.PI)diff-=Math.PI*2;while(diff<-Math.PI)diff+=Math.PI*2;
+    if(Math.abs(diff)>arc/2)continue;
+    weaponDamage(player,weapon,e,amount,color);if(onHit)onHit(e);count++;
+  }
+  return count;
+}
+function weaponBurst(player,enemies,x,y,radius,weapon,amount,color,onHit){
+  for(const e of allTargets(enemies))if(e&&!e.dead&&Math.hypot(e.x-x,e.y-y)<=radius+(e.radius||0)){weaponDamage(player,weapon,e,amount,color);if(onHit)onHit(e);}
+  spawnParts(x,y,color,10,65);
+}
+function weaponChain(player,enemies,start,count,damages,weapon,color){
+  let current=start;const hit=[];
+  for(let i=0;i<count&&current;i++){
+    weaponDamage(player,weapon,current,damages[Math.min(i,damages.length-1)],color);hit.push(current);
+    current=allTargets(enemies).filter(e=>e&&!e.dead&&!hit.includes(e)&&Math.hypot(e.x-current.x,e.y-current.y)<130)
+      .sort((a,b)=>Math.hypot(a.x-current.x,a.y-current.y)-Math.hypot(b.x-current.x,b.y-current.y))[0];
+  }
+}
+function applyWeaponSlow(target,pct,duration,owner){
+  if(!target||target.slowImmune)return;target.slowed=true;target.slowTimer=Math.max(target.slowTimer||0,duration);target.weaponSlow=Math.max(target.weaponSlow||0,pct);target.weaponSlowTimer=Math.max(target.weaponSlowTimer||0,duration);
+  if(owner)target._lastWeaponOwner=owner;
+}
+function weaponShieldReduction(player){
+  if(!player)return 0;const shield=getSlots(player.idx).find(w=>w&&w.type==='warrior_warshield');
+  if(!shield)return 0;return {common:.03,uncommon:.04,rare:.05,epic:.05,legendary:.05}[shield.rarity]||0;
+}
+function weaponShieldCounter(player){
+  if(!player)return;const shield=getSlots(player.idx).find(w=>w&&w.type==='warrior_warshield'&&(w.rarity==='epic'||w.rarity==='legendary'));
+  if(!shield||Math.random()>=.20)return;const def=WEAPON_DEFS[shield.type],target=nearestWeaponTargets(player,enemies,def.range,1)[0];if(!target)return;
+  const angle=Math.atan2(target.y-player.y,target.x-player.x);weaponCone(player,enemies,angle,def.range,Math.PI*.75,shield,campaignWeaponDamage(def,shield.rarity)*.8,def.color,e=>weaponKnockback(player,e,40));
+  if(shield.rarity==='legendary')weaponBurst(player,enemies,player.x+Math.cos(angle)*80,player.y+Math.sin(angle)*80,55,shield,campaignWeaponDamage(def,shield.rarity)*.7,def.color);
+}
+function applyWeaponPoison(target,owner,weapon,dps,duration,maxStacks){
+  if(!target||target.dead)return;target.weaponPoisons=target.weaponPoisons||[];
+  const active=target.weaponPoisons.filter(p=>p.owner===owner&&p.type===weapon.type);
+  if(active.length>=maxStacks)active[0].timer=duration;else target.weaponPoisons.push({owner,type:weapon.type,dps,timer:duration,weapon});
+}
+function applyWeaponBurn(target,owner,weapon,dps,duration){
+  if(!target||target.dead)return;target.weaponBurn={owner,dps,timer:duration,weapon};
+}
+
+function campaignClassWeaponAttack(player,enemies,rarity,manualTarget,weapon,type){
+  const def=WEAPON_DEFS[type];if(!def)return;const tier=RARITIES.indexOf(rarity),base=campaignWeaponDamage(def,rarity);
+  weapon.attackCount=(weapon.attackCount||0)+1;
+  const targets=nearestWeaponTargets(player,enemies,def.range,8);const target=targets[0];const aimTarget=manualTarget||target;if(!aimTarget)return;
+  const angle=Math.atan2(aimTarget.y-player.y,aimTarget.x-player.x),col=def.color;
+  const shoot=(a,dmg,opts={})=>{const shotOpts={...opts};if(shotOpts.homing&&!shotOpts.target)shotOpts.target=manualTarget||target;const p=new CampaignWeaponProj(player.x,player.y,a,dmg,player,weapon,shotOpts);projs.push(p);return p;};
+  if(def.classId==='mage'){
+    if(type==='mage_fire_staff'){
+      const shots=tier>=4?3:tier>=2?2:1,mult=tier>=4?.65:tier>=3?.75:tier>=2?.65:1;
+      for(let i=0;i<shots;i++)shoot(angle+(i-(shots-1)/2)*.16,base*mult,{color:col,homing:true,explode:tier===0?28:tier>=1?34:30,burn:tier>=3?{dps:base*(tier>=4?.25:.20),duration:3000}:null,fireTrail:tier>=4});
+    }else if(type==='mage_lightning_staff'){
+      if(!target)return;
+      const n=tier>=4&&weapon.attackCount%4===0?4:tier>=3?3:tier>=2?2:1;
+      weaponChain(player,enemies,target,n,tier>=4&&weapon.attackCount%4===0?[base*.7]:[base,base*.6,base*.35],weapon,col);
+      meleeAnims.push(new MeleeAnim('arrow',player.x,player.y,angle,def.range*(tier>=1?1.15:1),col,260));
+      if(tier>=3&&Math.random()<.18&&!target.type?.startsWith('boss')){target.slowed=true;target.slowTimer=Math.max(target.slowTimer||0,250);}
+    }else if(type==='mage_ice_staff'){
+      const shots=tier>=2?2:1;for(let i=0;i<shots;i++)shoot(angle+(i?-.1:.1),base*(shots===2?.6:.9),{color:col,homing:true,slow:{pct:tier>=2?.25:.20,duration:tier>=1?2600:2000},iceHits:tier>=3?3:0,glacial:tier>=4});
+    }else if(type==='mage_arcane_staff'){
+      let shots=tier>=3?3:tier>=2?2:1,mult=shots===3?.5:shots===2?.6:1;if(tier>=4&&weapon.attackCount%5===0){shots=6;mult=.35;}
+      for(let i=0;i<shots;i++){const t=targets[i%Math.max(1,targets.length)]||aimTarget;shoot(Math.atan2(t.y-player.y,t.x-player.x)+(i-(shots-1)/2)*.06,base*mult,{color:col,homing:true,target:t,pierce:tier>=3?1:0});}
+    }else if(type==='mage_poison_staff'){
+      const shots=tier>=2?2:1;for(let i=0;i<shots;i++)shoot(angle+(i?-.11:.11),base*(shots===2?.5:.8),{color:col,homing:true,poison:{dps:base*(tier>=1?.16:.12),duration:4000,maxStacks:tier>=3?3:tier>=2?2:1,spread:tier>=4}});
+    }else if(type==='mage_shadow_staff'){
+      shoot(angle,base*(tier>=2?1.1:1),{color:col,pierce:tier>=2?2:1,echo:tier>=3?{delay:350,mult:tier>=4?.7:.55,reverse:tier>=4}:null});
+    }else if(type==='mage_solar_staff'){
+      if(!target)return;
+      const ticks=tier>=2?4:3,range=def.range*(tier>=2?1.2:tier>=1?1.12:1);for(let i=0;i<ticks;i++){setTimeout(()=>{if(state!=='playing')return;const dmg=base/ticks*(tier>=3&&i===ticks-1?1.5:1);weaponDamage(player,weapon,target,dmg,col);if(tier>=4&&i===ticks-1){nearestWeaponTargets(player,enemies,range,3,[target]).slice(0,2).forEach(e=>weaponDamage(player,weapon,e,dmg*.45,col));}},i*110);}meleeAnims.push(new MeleeAnim('arrow',player.x,player.y,angle,range,col,500));
+    }else if(type==='mage_wind_staff'){
+      const range=def.range*(tier>=2?1.3:1),dmg=base*(tier>=2?.9:.7);weaponCone(player,enemies,angle,range,Math.PI*.55,weapon,dmg,col,e=>weaponKnockback(player,e,tier>=1?38:26));
+      meleeAnims.push(new MeleeAnim('sword',player.x,player.y,angle,range,col,300));
+      if(tier>=3)setTimeout(()=>weaponCone(player,enemies,angle,range,Math.PI*.55,weapon,base*.55,col,e=>weaponKnockback(player,e,30)),300);
+      if(tier>=4&&weapon.attackCount%4===0)weaponBurst(player,enemies,player.x+Math.cos(angle)*90,player.y+Math.sin(angle)*90,90,weapon,base*.35,col,e=>weaponKnockback(player,e,45));
+    }
+  }else if(def.classId==='archer'){
+    const common={color:col,target:target||null,pierce:0};
+    if(type==='archer_shortbow'){
+      let shots=tier>=4&&weapon.attackCount%5===0?4:tier>=3&&weapon.attackCount%3===0?2:1,mult=shots===4?.45:shots===2?.65:.85;for(let i=0;i<shots;i++)shoot(angle+(i-(shots-1)/2)*.12,base*mult,{...common});
+    }else if(type==='archer_longbow')shoot(angle,base*(tier>=4&&weapon.attackCount%5===0?2:1.4),{...common,pierce:tier>=4&&weapon.attackCount%5===0?5:tier>=3?2:tier>=2?1:0,critBonus:tier>=3?.25:0});
+    else if(type==='archer_crossbow')shoot(angle,base*(tier>=4&&weapon.attackCount%3===0?2.5:tier>=2?2:1.75),{...common,pierce:tier>=4&&weapon.attackCount%3===0?3:0,bossBonus:tier>=3?.4:0,speed:.72});
+    else if(type==='archer_poisonbow')shoot(angle,base*.8,{...common,poison:{dps:base*.13,duration:tier>=2?5000:4000,maxStacks:tier>=3?3:1,spread:tier>=4}});
+    else if(type==='archer_explosivebow')shoot(angle,base,{...common,explode:tier>=4&&weapon.attackCount%4===0?72:tier>=2?46:35,explodeMult:tier>=4&&weapon.attackCount%4===0?1.3:tier>=3?.7:tier>=2?.52:.4});
+    else if(type==='archer_ricochetbow')shoot(angle,base,{...common,ricochet:tier>=4?3:tier>=3?2:tier>=2?1:0,ricochetMult:tier>=4?.7:tier>=3?.65:.55});
+    else if(type==='archer_frostbow')shoot(angle,base*.9,{...common,slow:{pct:tier>=2?.30:.20,duration:tier>=1?2600:2000},iceHits:tier>=3?3:0,frozenCrit:tier>=4?.3:0});
+    else if(type==='archer_thunderbow'){shoot(angle,base,{...common});const n=tier>=3?3:tier>=2?2:1;if(target)weaponChain(player,enemies,target,n,[0,base*(tier>=3?.5:.4),base*.3],weapon,col);if(tier>=4&&weapon.attackCount%5===0)nearestWeaponTargets(player,enemies,def.range,4,target?[target]:[]).slice(0,3).forEach(e=>weaponDamage(player,weapon,e,base*.45,col));}
+  }else{
+    const isWarrior=def.classId==='warrior';
+    const counter=weapon.attackCount;
+    if(type==='warrior_longsword'){const swings=tier>=3?3:tier>=2?2:1;for(let i=0;i<swings;i++)setTimeout(()=>weaponCone(player,enemies,angle,def.range*(tier>=3&&i===2?1.2:1),Math.PI*(tier>=1?.92:.82),weapon,base*([1,.8,.7][i]||.6),col),i*105);if(tier>=4&&counter%3===0)weaponBurst(player,enemies,player.x+Math.cos(angle)*120,player.y+Math.sin(angle)*120,55,weapon,base*.65,col);}
+    else if(type==='warrior_greatsword'){weaponCone(player,enemies,angle,def.range*(tier>=2?1.3:tier>=1?1.1:1),Math.PI*.85,weapon,base*(tier>=2?1.6:1.45),col,e=>{if(tier>=3){e.weaponVulnerable=.10;e.weaponVulnerableTimer=3000;}});if(tier>=4)weaponBurst(player,enemies,player.x+Math.cos(angle)*130,player.y+Math.sin(angle)*130,50,weapon,base*.8,col);}
+    else if(type==='warrior_spear'||type==='viking_nordicspear'){shoot(angle,base*(type==='viking_nordicspear'?(tier>=3?1.5:1.1):1.2),{color:col,pierce:tier>=4?6:tier>=3?4:tier>=2?2:0,speed:1.2});if(tier>=4&&counter%3===0)shoot(angle,base*1.5,{color:'#e8e0ff',pierce:8,speed:1.4});}
+    else if(type==='warrior_warhammer'){weaponBurst(player,enemies,player.x+Math.cos(angle)*60,player.y+Math.sin(angle)*60,def.range*(tier>=2?1.25:tier>=1?1.12:1),weapon,base*1.3,col,e=>{if(tier>=3&&counter%3===0&&!e.type?.startsWith('boss')){e.slowed=true;e.slowTimer=600;}});if(tier>=4&&counter%3===0)weaponBurst(player,enemies,player.x,player.y,150,weapon,base*.6,col);}
+    else if(type==='warrior_warshield'){weaponCone(player,enemies,angle,def.range,Math.PI*.75,weapon,base*.8,col,e=>weaponKnockback(player,e,45));}
+    else if(type==='warrior_twinblades'){const swings=tier>=2?3:2;for(let i=0;i<swings;i++)setTimeout(()=>weaponCone(player,enemies,angle+(i%2?-.12:.12),def.range,Math.PI*.58,weapon,base*(tier>=2?.45:.55),col,e=>{weapon.hitCount=(weapon.hitCount||0)+1;if(tier>=3&&i===swings-1)applyWeaponBurn(e,player,weapon,base*.15,3000);if(tier>=4&&weapon.hitCount%8===0)weapon.berserkTimer=3000;}),i*80);}
+    else if(type==='warrior_chainblade'){const range=def.range*(tier>=2?1.35:tier>=1?1.18:1);weaponCone(player,enemies,angle,range,Math.PI,weapon,base*.9,col,e=>{if(tier>=3)weaponKnockback(player,e,-20);});if(tier>=4&&counter%4===0)weaponBurst(player,enemies,player.x,player.y,range,weapon,base*1.25,col);}
+    else if(type==='warrior_spikedmace'){weaponCone(player,enemies,angle,def.range,Math.PI*.7,weapon,base*(tier>=2?1.3:tier>=1?1.18:1.1),col,e=>{if(tier>=2&&!e.type?.startsWith('boss')){e.slowed=true;e.slowTimer=180;}if(tier>=3){e.weaponVulnerable=.08;e.weaponVulnerableTimer=3000;}if(tier>=4&&e.weaponVulnerable)weaponBurst(player,enemies,e.x,e.y,38,weapon,base*.45,col);});}
+    else if(type==='viking_waraxe'){weaponCone(player,enemies,angle,def.range*(tier>=2?1.15:tier>=1?1.08:1),Math.PI,weapon,base*(tier>=2?1.4:1.2),col,e=>{if(tier>=3&&Math.hypot(e.x-player.x,e.y-player.y)<def.range*.55)weaponDamage(player,weapon,e,base*.3,col);if(tier>=4&&!e.type?.startsWith('boss')&&e.hp<e.maxHp*.15)weaponDamage(player,weapon,e,base*2,col);});}
+    else if(type==='viking_twinaxes'){for(let i=0;i<2;i++)setTimeout(()=>weaponCone(player,enemies,angle+(i?-.15:.15),def.range,Math.PI*.65,weapon,base*(tier>=2?.7:.6),col,e=>{weapon.hitCount=(weapon.hitCount||0)+1;if(tier>=4&&weapon.hitCount%10===0)weapon.berserkTimer=3000;}),i*85);if(tier>=3&&counter%3===0)weaponBurst(player,enemies,player.x,player.y,def.range,weapon,base,col);}
+    else if(type==='viking_throwingaxe')shoot(angle,base*(tier>=2?.8:.7),{color:col,pierce:tier>=3?4:1,boomerang:true,returnSpin:tier>=4,rangeMult:tier>=2?1.2:tier>=1?1.15:1});
+    else if(type==='viking_stormhammer'){weaponCone(player,enemies,angle,def.range,Math.PI*.8,weapon,base*1.2,col);const extra=tier>=3?2:tier>=2?1:0;nearestWeaponTargets(player,enemies,def.range*2.2,extra,[target]).forEach(e=>weaponDamage(player,weapon,e,base*.4,col));if(tier>=4&&counter%4===0)nearestWeaponTargets(player,enemies,def.range*2.2,3).forEach(e=>weaponDamage(player,weapon,e,base*.6,col));}
+    else if(type==='viking_bloodaxe'){const low=1-player.hp/player.maxHp,dmg=base*(tier>=3?1+Math.min(.25,low*.35):tier>=2?1.1:1);weaponCone(player,enemies,angle,def.range,Math.PI,weapon,dmg,col);}
+    else if(type==='viking_frostaxe'){weaponCone(player,enemies,angle,def.range,Math.PI,weapon,base*1.1,col,e=>{applyWeaponSlow(e,tier>=2?.25:.15,tier>=1?2400:1800,player);if(tier>=3&&counter%4===0){e.frozen=true;e.frozenTimer=600;}if(tier>=4&&e.frozen){const around=nearestWeaponTargets(player,enemies,def.range*2,3,[e]);around.forEach(x=>weaponDamage(player,weapon,x,base*.35,col));}});}
+    else if(type==='viking_colossalaxe'){weaponBurst(player,enemies,player.x,player.y,def.range*(tier>=1?1.1:1),weapon,base*(tier>=2?2.1:1.8),col);if(tier>=3)weaponBurst(player,enemies,player.x+Math.cos(angle)*def.range,player.y+Math.sin(angle)*def.range,55,weapon,base*.8,col);if(tier>=4&&counter%3===0){weaponBurst(player,enemies,player.x,player.y,def.range,weapon,base*2.5,col);weaponBurst(player,enemies,player.x,player.y,def.range*1.65,weapon,base*.75,col);}}
+    meleeAnims.push(new MeleeAnim(isWarrior?'sword':'axe',player.x,player.y,angle,def.range,col,420));
+  }
+}
+
 function swordAttack(player, enemies, rarity, manualTarget=null){
   const def=WEAPON_DEFS.sword;
   const r=def.range;
@@ -14045,6 +14415,68 @@ class WeaponProj {
     const g=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,12);
     g.addColorStop(0,this.color+'99'); g.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=g; ctx.fillRect(this.x-12,this.y-12,24,24);
+  }
+}
+
+class CampaignWeaponProj{
+  constructor(x,y,angle,dmg,owner,weapon,opts={}){
+    this.x=x;this.y=y;this.angle=angle;this.dmg=dmg;this.owner=owner;this.weapon=weapon;this.opts=opts;
+    this.color=opts.color||'#ffffff';this.radius=opts.radius||7;this.dead=false;this.born=Date.now();this.life=2200*(opts.rangeMult||1);
+    this.speed=420*(opts.speed||1);this.vx=Math.cos(angle)*this.speed;this.vy=Math.sin(angle)*this.speed;
+    this.target=opts.target||null;this.homing=!!opts.homing;this.pierce=opts.pierce||0;this.hitTargets=new Set();this.trail=[];this.isCampaignWeaponProj=true;
+    this.originX=x;this.originY=y;this.returning=false;
+  }
+  update(dt){
+    if(this.opts.echo&&!this._echoScheduled){
+      this._echoScheduled=true;const echo=this.opts.echo;
+      setTimeout(()=>{if(state!=='playing')return;const p=new CampaignWeaponProj(this.originX,this.originY,this.angle,this.dmg*echo.mult,this.owner,this.weapon,{...this.opts,echo:null,fireTrail:false});projs.push(p);if(echo.reverse)projs.push(new CampaignWeaponProj(this.originX,this.originY,this.angle+Math.PI,this.dmg*echo.mult,this.owner,this.weapon,{...this.opts,echo:null,fireTrail:false}));},echo.delay);
+    }
+    this.trail.push({x:this.x,y:this.y});if(this.trail.length>12)this.trail.shift();
+    if(this.homing&&this.target&&!this.target.dead){let desired=Math.atan2(this.target.y-this.y,this.target.x-this.x),diff=desired-this.angle;while(diff>Math.PI)diff-=Math.PI*2;while(diff<-Math.PI)diff+=Math.PI*2;this.angle+=diff*.16;this.vx=Math.cos(this.angle)*this.speed;this.vy=Math.sin(this.angle)*this.speed;}
+    if(this.opts.boomerang&&!this.returning&&Math.hypot(this.x-this.originX,this.y-this.originY)>160*(this.opts.rangeMult||1)){this.returning=true;this.hitTargets.clear();}
+    if(this.returning){const desired=Math.atan2(this.owner.y-this.y,this.owner.x-this.x);this.angle=desired;this.vx=Math.cos(desired)*this.speed;this.vy=Math.sin(desired)*this.speed;if(Math.hypot(this.x-this.owner.x,this.y-this.owner.y)<15){if(this.opts.returnSpin)weaponBurst(this.owner,enemies,this.owner.x,this.owner.y,85,this.weapon,this.dmg*.6,this.color);this.dead=true;return;}}
+    this.x+=this.vx*dt;this.y+=this.vy*dt;
+    if(this.opts.fireTrail&&Math.random()<.35)firePatches.push({x:this.x,y:this.y,timer:3000,r:22,dmgTick:0,dmgPerSec:this.dmg*.25,owner:this.owner,noStackKey:this.weapon.type});
+    if(Date.now()-this.born>this.life||this.x<-40||this.x>W+40||this.y<-40||this.y>H+40)this.dead=true;
+  }
+  draw(){
+    const type=this.weapon?.type||'',element=campaignWeaponElement(type),def=WEAPON_DEFS[type];
+    const isArrow=def?.classId==='archer'||type.includes('spear');
+    ctx.save();
+    for(let i=0;i<this.trail.length;i++){
+      const a=(i+1)/this.trail.length,p=this.trail[i],size=Math.max(1,Math.round(1+a*3));
+      ctx.globalAlpha=a*(element==='shadow'?.28:.52);ctx.fillStyle=this.color;
+      if(element==='electric'){ctx.fillRect(p.x-size,p.y-size/2,size*2,Math.max(1,size/2));if(i%2===0){ctx.fillStyle='#fff7a8';ctx.fillRect(p.x,p.y-2,2,2);}}
+      else if(element==='fire'){ctx.fillStyle=i%2?'#ff3b30':'#ff8a22';ctx.fillRect(p.x-size/2,p.y-size/2,size,size);}
+      else ctx.fillRect(p.x-size/2,p.y-size/2,size,size);
+    }
+    ctx.globalAlpha=1;ctx.translate(this.x,this.y);ctx.rotate(this.angle);ctx.shadowBlur=12;ctx.shadowColor=this.color;
+    if(element==='electric'){
+      ctx.strokeStyle='#ffd83d';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-10,-5);ctx.lineTo(-3,2);ctx.lineTo(1,-3);ctx.lineTo(7,4);ctx.lineTo(12,0);ctx.stroke();
+      ctx.strokeStyle='#fff7a8';ctx.lineWidth=1;ctx.stroke();
+    }else if(isArrow){
+      ctx.strokeStyle=this.color;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-13,0);ctx.lineTo(6,0);ctx.stroke();
+      ctx.fillStyle=this.color;ctx.beginPath();ctx.moveTo(11,0);ctx.lineTo(3,-5);ctx.lineTo(3,5);ctx.closePath();ctx.fill();
+      ctx.fillStyle=element==='ice'?'#d9f5ff':element==='fire'?'#ffbe45':'#f6f0d8';ctx.fillRect(-14,-3,4,2);ctx.fillRect(-14,1,4,2);
+    }else if(type==='viking_throwingaxe'){
+      ctx.strokeStyle='#8a5a2d';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-7,5);ctx.lineTo(7,-5);ctx.stroke();
+      ctx.fillStyle=this.color;ctx.beginPath();ctx.moveTo(2,-7);ctx.lineTo(10,-8);ctx.lineTo(8,1);ctx.lineTo(4,0);ctx.closePath();ctx.fill();
+    }else if(element==='ice'){
+      ctx.fillStyle='#45a9ff';ctx.beginPath();ctx.moveTo(11,0);ctx.lineTo(0,-7);ctx.lineTo(-8,0);ctx.lineTo(0,7);ctx.closePath();ctx.fill();
+      ctx.fillStyle='#d9f5ff';ctx.beginPath();ctx.moveTo(6,0);ctx.lineTo(0,-3);ctx.lineTo(-2,0);ctx.lineTo(0,3);ctx.closePath();ctx.fill();
+    }else if(element==='fire'){
+      ctx.fillStyle='#ff3b30';ctx.beginPath();ctx.moveTo(9,0);ctx.quadraticCurveTo(1,-10,-8,-4);ctx.lineTo(-4,0);ctx.lineTo(-8,5);ctx.quadraticCurveTo(2,9,9,0);ctx.fill();
+      ctx.fillStyle='#ffbe45';ctx.beginPath();ctx.arc(2,0,4,0,Math.PI*2);ctx.fill();
+    }else if(element==='poison'){
+      ctx.fillStyle='#52d63b';ctx.beginPath();ctx.arc(0,0,7,0,Math.PI*2);ctx.fill();ctx.fillStyle='#b9ff70';ctx.beginPath();ctx.arc(3,-3,2,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(-7,-6,2,0,Math.PI*2);ctx.fill();
+    }else if(element==='wind'){
+      ctx.strokeStyle='#80e9ff';ctx.lineWidth=2;for(const off of [-4,2]){ctx.beginPath();ctx.arc(-2,off,9,-.8,.8);ctx.stroke();}
+    }else if(element==='shadow'){
+      ctx.fillStyle='#160d2d';ctx.beginPath();ctx.arc(0,0,8,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#8b45e6';ctx.lineWidth=2;ctx.stroke();ctx.fillStyle='#c27aff';ctx.fillRect(1,-2,3,3);
+    }else{
+      ctx.fillStyle=this.color;ctx.beginPath();ctx.arc(0,0,this.radius,0,Math.PI*2);ctx.fill();ctx.fillStyle=element==='solar'?'#fff5a0':'#ffffff';ctx.fillRect(-2,-2,4,4);
+    }
+    ctx.restore();
   }
 }
 
@@ -16964,8 +17396,10 @@ class Player {
       const w=ws[i]; if(!w) continue;
       this.weapTimers[i]-=dt*1000;
       const def=WEAPON_DEFS[w.type];
-      const cd=def.cd/RARITY_MULT[w.rarity]*0.85;
-      if(this.weapTimers[i]<=0&&attackAllowed){def.attack(this,el,w.rarity,manualTarget);this.weapTimers[i]=cd;}
+      if(!def||def.classId!==this.classId)continue;
+      if(w.berserkTimer>0)w.berserkTimer=Math.max(0,w.berserkTimer-dt*1000);
+      const cd=campaignWeaponCooldown(def,w.rarity,this,w);
+      if(this.weapTimers[i]<=0&&attackAllowed){def.attack(this,el,w.rarity,manualTarget,w);this.weapTimers[i]=cd;}
     }
   }
 
@@ -17077,8 +17511,9 @@ class Player {
     if(typeof shouldBlessingDodge==='function'&&shouldBlessingDodge(this)) return;
     const d=DIFF[difficulty]||DIFF.medium;
     const blessingMult=typeof getBlessingIncomingDamageMultiplier==='function'?getBlessingIncomingDamageMultiplier(this):1;
-    const reduced=a*blessingMult*(1-Math.min(d.playerArmorCap,this.dmgReduce||0));
+    const reduced=a*blessingMult*(1-Math.min(d.playerArmorCap,(this.dmgReduce||0)+weaponShieldReduction(this)));
     this.hp-=reduced; this.inv=true; this.invT=600;
+    weaponShieldCounter(this);
     if(typeof notifyBlessingDamageTaken==='function') notifyBlessingDamageTaken(this,reduced);
     spawnParts(this.x,this.y,'#ff4444',8,65);
     // Screen shake ao receber dano
@@ -17438,11 +17873,22 @@ class Enemy {
       }
     }
 
+    if(this.weaponVulnerableTimer>0){this.weaponVulnerableTimer-=dt*1000;if(this.weaponVulnerableTimer<=0)this.weaponVulnerable=0;}
+    if(this.weaponSlowTimer>0){this.weaponSlowTimer-=dt*1000;if(this.weaponSlowTimer<=0)this.weaponSlow=0;}
+    if(this.weaponBurn?.timer>0){
+      this.weaponBurn.timer-=dt*1000;this._weaponBurnTick=(this._weaponBurnTick||0)+dt*1000;
+      if(this._weaponBurnTick>=500){this._weaponBurnTick-=500;const b=this.weaponBurn;b.weapon.damageDone=(b.weapon.damageDone||0)+b.dps*.5;this.takeDmg(b.dps*.5);}
+    }
+    if(this.weaponPoisons?.length){
+      this._weaponPoisonTick=(this._weaponPoisonTick||0)+dt*1000;
+      if(this._weaponPoisonTick>=500){this._weaponPoisonTick-=500;for(const p of this.weaponPoisons){p.weapon.damageDone=(p.weapon.damageDone||0)+p.dps*.5;this.takeDmg(p.dps*.5);}}
+      this.weaponPoisons.forEach(p=>p.timer-=dt*1000);this.weaponPoisons=this.weaponPoisons.filter(p=>p.timer>0);
+    }
     let speedMult=1;
     if(this.slowed && !this.slowImmune){
       this.slowTimer-=dt*1000;
       if(this.slowTimer<=0) this.slowed=false;
-      else speedMult=0.35;
+      else speedMult=this.weaponSlow?Math.max(.3,1-this.weaponSlow):0.35;
     }
     // Burrower underground — no move
     if(this.isBurrower && this.burrowState==='burrowing') return;
@@ -17463,6 +17909,7 @@ class Enemy {
     if(this.isSpecter && this.phased) return;
     // Shield orc: 50% frontal reduction (simplified: 50% always)
     if(this.hasShield) a*=0.5;
+    if(this.weaponVulnerable)a*=1+this.weaponVulnerable;
     this.hp-=a;
     spawnParts(this.x,this.y,'#88ff44',4,38);
     if(this.hp<=0){
@@ -17496,6 +17943,18 @@ class Enemy {
           spawnParts(this.x,this.y,'#ff6600',14,80);
           spawnParts(this.x,this.y,'#ffcc00',8,60);
         }
+      }
+      const deathX=this.x,deathY=this.y;
+      if(this.weaponPoisons?.length){
+        const spreading=this.weaponPoisons.find(p=>p.weapon?.rarity==='legendary'&&(p.type==='mage_poison_staff'||p.type==='archer_poisonbow'));
+        if(spreading){
+          const close=allTargets(enemies).filter(e=>e!==this&&!e.dead&&Math.hypot(e.x-deathX,e.y-deathY)<120).slice(0,2);
+          close.forEach(e=>applyWeaponPoison(e,spreading.owner,spreading.weapon,spreading.dps,spreading.timer||2000,3));
+        }
+      }
+      if(this.frozen&&this._lastWeaponOwner){
+        const glacial=getSlots(this._lastWeaponOwner.idx).find(w=>w&&w.type==='mage_ice_staff'&&w.rarity==='legendary');
+        if(glacial)weaponBurst(this._lastWeaponOwner,enemies,deathX,deathY,62,glacial,WEAPON_DEFS[glacial.type].baseDmg*.45,'#89e8ff',e=>applyWeaponSlow(e,.25,1800,this._lastWeaponOwner));
       }
       // Crystal golem splits into 2 mini-golems
       if(this.crystalSplit && !this._split){
@@ -17893,7 +18352,12 @@ function updateFirePatches(dt){
     const damage=fp.dmgPerSec??8;
     for(const e of allTargets(enemies)){
       if(!e||e.dead)continue;
-      if(Math.hypot(e.x-fp.x,e.y-fp.y)<fp.r+(e.radius||0))e.takeDmg(damage);
+      if(Math.hypot(e.x-fp.x,e.y-fp.y)<fp.r+(e.radius||0)){
+        if(fp.noStackKey){
+          e._fireTrailTick=e._fireTrailTick||{};const now=Date.now();if(now-(e._fireTrailTick[fp.noStackKey]||0)<360)continue;e._fireTrailTick[fp.noStackKey]=now;
+        }
+        const tickDamage=fp.noStackKey?damage*.4:damage;e.takeDmg(tickDamage);if(fp.owner&&fp.noStackKey){const w=getSlots(fp.owner.idx).find(x=>x&&x.type===fp.noStackKey);if(w)w.damageDone=(w.damageDone||0)+tickDamage;}
+      }
     }
   }
 }
@@ -18101,6 +18565,12 @@ function applyClassHitEffect(proj, enemy){
     // Vampirism via berserk
     if(owner.berserkActive){
       healCampaignPlayer(owner,proj.dmg*owner.lifeSteal,owner.x,owner.y);
+    }
+    const bloodWeapon=proj.weapon?.type==='viking_bloodaxe'?proj.weapon:null;
+    if(bloodWeapon){
+      const low=owner.hp/owner.maxHp<.35;
+      const steal=bloodWeapon.rarity==='legendary'?(low?.05:.03):bloodWeapon.rarity==='epic'?.03:bloodWeapon.rarity==='rare'?.03:bloodWeapon.rarity==='uncommon'?.025:.02;
+      healCampaignPlayer(owner,proj.dmg*steal,owner.x,owner.y,false);
     }
   }
 }
@@ -20930,31 +21400,46 @@ function collide(){
     // Player projectiles hit normal enemies
     for(const e of nearbyEnemies(p.x,p.y,p.radius)){
       if(e.dead) continue;
+      if(p.isCampaignWeaponProj&&p.hitTargets.has(e))continue;
       if(Math.hypot(p.x-e.x,p.y-e.y)<p.radius+e.radius){
         const dmgMult = e.frozen ? 1.5 : 1.0;
-        const finalDmg = typeof applyCardCrit==='function' ? applyCardCrit(p.owner||player, p.dmg*dmgMult, e) : p.dmg*dmgMult;
+        let projectileDamage=p.dmg*dmgMult;
+        if(p.isCampaignWeaponProj&&p.opts.bossBonus&&e.type?.startsWith('boss'))projectileDamage*=1+p.opts.bossBonus;
+        if(p.isCampaignWeaponProj&&p.opts.frozenCrit&&e.frozen)projectileDamage*=1+p.opts.frozenCrit;
+        const finalDmg = typeof applyCardCrit==='function' ? applyCardCrit(p.owner||player, projectileDamage, e) : projectileDamage;
         e.takeDmg(finalDmg);
-        applyClassHitEffect(p, e);
-        p.dead=true;
+        if(p.isCampaignWeaponProj){
+          p.weapon.damageDone=(p.weapon.damageDone||0)+finalDmg;p.hitTargets.add(e);
+          applyClassHitEffect({owner:p.owner,dmg:finalDmg,weapon:p.weapon},e);
+          if(p.opts.slow){applyWeaponSlow(e,p.opts.slow.pct,p.opts.slow.duration,p.owner);if(p.opts.iceHits){e.weaponIceHits=(e.weaponIceHits||0)+1;if(e.weaponIceHits>=p.opts.iceHits){e.weaponIceHits=0;e.frozen=true;e.frozenTimer=p.owner.classId==='archer'?700:800;e._lastWeaponOwner=p.owner;}}}
+          if(p.opts.poison)applyWeaponPoison(e,p.owner,p.weapon,p.opts.poison.dps,p.opts.poison.duration,p.opts.poison.maxStacks);
+          if(p.opts.burn)applyWeaponBurn(e,p.owner,p.weapon,p.opts.burn.dps,p.opts.burn.duration);
+          if(p.opts.explode)weaponBurst(p.owner,enemies,e.x,e.y,p.opts.explode,p.weapon,p.dmg*(p.opts.explodeMult||.35),p.color);
+          if(p.opts.ricochet>0){const next=allTargets(enemies).filter(x=>x&&!x.dead&&!p.hitTargets.has(x)&&Math.hypot(x.x-e.x,x.y-e.y)<150)[0];if(next){p.target=next;p.homing=true;p.opts.ricochet--;p.dmg*=p.opts.ricochetMult||.6;p.angle=Math.atan2(next.y-p.y,next.x-p.x);p.vx=Math.cos(p.angle)*p.speed;p.vy=Math.sin(p.angle)*p.speed;}}
+        }
+        if(!p.isCampaignWeaponProj)applyClassHitEffect(p, e);
+        const ricochetContinues=p.isCampaignWeaponProj&&p.homing&&p.target&&!p.target.dead&&!p.hitTargets.has(p.target);
+        if(p.isCampaignWeaponProj&&(p.pierce>0||ricochetContinues)){if(p.pierce>0)p.pierce--;}
+        else p.dead=true;
         break;
       }
     }
     // Player projectiles hit bosses
     if(!p.dead&&bossOrc&&!bossOrc.dead&&Math.hypot(p.x-bossOrc.x,p.y-bossOrc.y)<p.radius+bossOrc.radius){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossOrc):p.dmg;
-      bossOrc.takeDmg(dmg); applyClassHitEffect(p,bossOrc); p.dead=true;
+      bossOrc.takeDmg(dmg); if(p.isCampaignWeaponProj){p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossOrc);}else applyClassHitEffect(p,bossOrc); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
     }
     if(!p.dead&&bossSkel&&!bossSkel.dead&&Math.hypot(p.x-bossSkel.x,p.y-bossSkel.y)<p.radius+bossSkel.radius){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossSkel):p.dmg;
-      bossSkel.takeDmg(dmg); applyClassHitEffect(p,bossSkel); p.dead=true;
+      bossSkel.takeDmg(dmg); if(p.isCampaignWeaponProj){p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossSkel);}else applyClassHitEffect(p,bossSkel); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
     }
     if(!p.dead&&bossSpider&&!bossSpider.dead&&Math.hypot(p.x-bossSpider.x,p.y-bossSpider.y)<p.radius+bossSpider.radius){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossSpider):p.dmg;
-      bossSpider.takeDmg(dmg); applyClassHitEffect(p,bossSpider); p.dead=true;
+      bossSpider.takeDmg(dmg); if(p.isCampaignWeaponProj){p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossSpider);}else applyClassHitEffect(p,bossSpider); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
     }
     if(!p.dead&&bossMajor&&!bossMajor.dead&&Math.hypot(p.x-bossMajor.x,p.y-bossMajor.y)<p.radius+(bossMajor.radius||36)){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossMajor):p.dmg;
-      bossMajor.takeDmg(dmg); applyClassHitEffect(p,bossMajor); p.dead=true;
+      bossMajor.takeDmg(dmg); if(p.isCampaignWeaponProj){p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossMajor);}else applyClassHitEffect(p,bossMajor); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
     }
     if(!p.dead&&petBoss&&!petBoss.dead&&!petBoss.tamed&&Math.hypot(p.x-petBoss.x,p.y-petBoss.y)<p.radius+petBoss.radius){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,petBoss):p.dmg;
@@ -21951,6 +22436,7 @@ function resetCampaignMapObjects(){
 
 function advWave(){
   weaponDmgDone=[0,0,0];
+  for(const w of [...weaponSlots,...weaponSlots2])if(w)w.damageDone=0;
   wave++;
   waveTimer=DIFF[difficulty].waveLen;
   const d=DIFF[difficulty]||DIFF.medium;
