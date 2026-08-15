@@ -11921,6 +11921,12 @@ function renderCollClasses(grid){
           <div><div style="font-size:14px;color:#f0d080;">${it.name}</div><div style="font-size:11px;color:#7a6030;">${it.values?`Comum: ${campaignShopBuffDescription(it,'common')} · Lendário: ${campaignShopBuffDescription(it,'legendary')}`:it.desc}</div></div>
           <span style="font-size:10px;color:#c8a84b;margin-left:auto;">ÚNICO</span>
         </div>`).join('');
+        const universalItems=window.CAMPAIGN_UNIVERSAL_ITEMS||[];
+        const universalList=universalItems.map(it=>`<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+          ${collIconHtml(collItemIcon(it,'universal'),28)}
+          <div><div style="font-size:14px;color:#79e89a;">${it.name}</div><div style="font-size:11px;color:#63806b;">Comum: ${campaignShopBuffDescription(it,'common')} · Lendário: ${campaignShopBuffDescription(it,'legendary')}</div></div>
+          <span style="font-size:10px;color:#79e89a;margin-left:auto;">TODAS AS CLASSES</span>
+        </div>`).join('');
         det.innerHTML=`
           <div style="border-bottom:2px solid ${col}44;padding-bottom:8px;margin-bottom:8px;">
             <div style="margin-bottom:4px;">${collIconHtml(clsIcon,54)}</div>
@@ -11935,6 +11941,8 @@ function renderCollClasses(grid){
           </div>
           <div style="font-size:11px;color:#5a4020;letter-spacing:2px;margin:6px 0 4px;">BUFFS EXCLUSIVOS DA LOJA (${activeClassBuffs.length})</div>
           <div style="max-height:130px;overflow-y:auto;">${itemList}</div>
+          <div style="font-size:11px;color:#4f7d5d;letter-spacing:2px;margin:10px 0 4px;">ITENS UNIVERSAIS DA LOJA (${universalItems.length})</div>
+          <div style="max-height:130px;overflow-y:auto;">${universalList}</div>
         `;
       }
     , null, cd.color));

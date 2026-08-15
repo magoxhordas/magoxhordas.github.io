@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
+assert.match(html,/ITENS UNIVERSAIS DA LOJA/,'O Códex deve listar os itens universais da campanha.');
 const scripts=[...html.matchAll(/<script(?:[^>]*)>([\s\S]*?)<\/script>/gi)].map(match=>match[1]);
 const shopSource=scripts.find(source=>source.includes('// SHOP SYSTEM'));
 assert.ok(shopSource,'O script da loja da campanha não foi encontrado.');
