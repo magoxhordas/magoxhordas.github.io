@@ -625,6 +625,10 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
   border-color:rgba(100,70,30,0.6);
   box-shadow:0 2px 12px rgba(0,0,0,0.8);
 }
+.bless-card.r-incomum {
+  border-color:rgba(48,178,92,0.78);
+  box-shadow:0 2px 16px rgba(48,178,92,0.18),0 0 7px rgba(72,220,124,0.12);
+}
 .bless-card.r-rara {
   border-color:rgba(180,80,0,0.8);
   box-shadow:0 2px 20px rgba(180,60,0,0.2), 0 0 6px rgba(200,80,0,0.1);
@@ -3826,6 +3830,7 @@ canvas, img {
   transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease;
 }
 #card-screen .bless-card.r-comum{--rarity:#79e89a}
+#card-screen .bless-card.r-incomum{--rarity:#43d477}
 #card-screen .bless-card.r-rara{--rarity:#58a8ff}
 #card-screen .bless-card.r-epica{--rarity:#c86cff}
 #card-screen .bless-card.r-lendaria{--rarity:#ffd35a}
@@ -5689,7 +5694,7 @@ const LOOT_SEED_TYPES = ['semente_trigo','semente_tomate','semente_erva'];
 const LOOT_SEED_RARE  = ['semente_cogumelo_lua','semente_raiz_sangue'];
 
 function rollLootDrop(x, y){
-  const chance = 0.12 + (metaUpgrades.sorte_loot||0)*0.15;
+  const chance = Math.min(.60,0.12 + (metaUpgrades.sorte_loot||0)*0.15 + (typeof getCampaignShopLootBonus==='function'?getCampaignShopLootBonus():0));
   if(Math.random() > chance) return;
 
   const pool = [];
@@ -6430,8 +6435,9 @@ class PetWildBoss {
         const d=Math.hypot(pl.x-this.x,pl.y-this.y);
         if(d<185){
           const ang=Math.atan2(pl.y-this.y,pl.x-this.x);
-          pl.x+=Math.cos(ang)*95;
-          pl.y+=Math.sin(ang)*95;
+          const knock=95*getCampaignShopKnockbackMultiplier(pl);
+          pl.x+=Math.cos(ang)*knock;
+          pl.y+=Math.sin(ang)*knock;
           pl.takeDmg(14);
         }
       }
@@ -8076,7 +8082,7 @@ function updateBlessingsHUD(){
     pip.textContent = b.icon;
     pip.style.animationDelay = `${i * 0.06}s`;
     // Color border by rarity
-    const bc = {lendaria:'rgba(255,200,40,0.5)',epica:'rgba(190,50,255,0.4)',rara:'rgba(40,140,255,0.4)',comum:'rgba(150,148,165,0.3)'};
+    const bc = {lendaria:'rgba(255,200,40,0.5)',epica:'rgba(190,50,255,0.4)',rara:'rgba(40,140,255,0.4)',incomum:'rgba(48,200,105,0.4)',comum:'rgba(150,148,165,0.3)'};
     pip.style.borderColor = bc[b.rarity] || bc.comum;
     hud.appendChild(pip);
   });
@@ -8157,9 +8163,10 @@ function applyMetaUpgrades(pl){
 (function(){
   'use strict';
 
-  const RARITY_ORDER=['comum','rara','epica','lendaria'];
+  const RARITY_ORDER=['comum','incomum','rara','epica','lendaria'];
   const RARITY_META={
     comum:{label:'COMUM',color:'#79e89a'},
+    incomum:{label:'INCOMUM',color:'#43d477'},
     rara:{label:'RARA',color:'#58a8ff'},
     epica:{label:'ÉPICA',color:'#c86cff'},
     lendaria:{label:'LENDÁRIA',color:'#ffd35a'}
@@ -8360,13 +8367,137 @@ function applyMetaUpgrades(pl){
     ])
   ];
 
+  // Catálogo v3: cinco bênçãos exclusivas por divindade e cinco raridades.
+  // Incomum usa o ponto intermediário entre Comum e Rara, preservando a
+  // progressão solicitada sem remover a raridade já usada pela campanha.
+  const V=(common,rare,epic,legendary,digits=4)=>[
+    common,Number(((common+rare)/2).toFixed(digits)),rare,epic,legendary
+  ];
+  const N=(id,name,icon,type,values,desc,role='DANO',extra={})=>B(id,name,icon,type,values,desc,role,extra);
+  const NEW_DEITY_BOONS={
+    zeus:[
+      N('zeus_overload','Sobrecarga Divina','⚡','zeusOverload',V(.40,.50,.65,.80),'Acertos carregam a tempestade; ao atingir o limite, o próximo ataque causa dano adicional.','COMBO',{hits:[6,6,5,5,4]}),
+      N('zeus_conductor','Condutor Olímpico','ϟ','zeusConductor',V(.01,.015,.02,.02),'Acertar sem pausas maiores que 1,2s acumula velocidade de ataque.','COMBO',{max:V(.10,.15,.20,.24)}),
+      N('zeus_critical_thunder','Trovão Crítico','✦','zeusCritical',V(.20,.30,.45,.60),'Um crítico energiza o próximo ataque.','CRÍTICO',{nextSpeed:[0,0,0,.15,0]}),
+      N('zeus_authority','Autoridade dos Céus','♛','zeusAuthority',V(.10,.16,.24,.32),'Aumenta o dano contra elites e chefes.','CHEFE',{boss:V(.06,.10,.16,.25)}),
+      N('zeus_storm_child','Filho da Tempestade','☈','zeusStorm',V(.10,.10,.15,.20),'Abaixo de 40% de vida, concede velocidade e poder ofensivo.','RISCO',{damage:[0,.04,.08,.15,.20]}),
+    ],
+    ares:[
+      N('ares_war_thirst','Sede de Guerra','🗡','aresFury',V(.03,.04,.05,.06),'Eliminações concedem Fúria por 4s e renovam a duração.','COMBO',{max:[3,4,4,5,5]}),
+      N('ares_open_wound','Ferida Aberta','🩸','aresWound',V(.02,.03,.04,.05),'Golpes consecutivos no mesmo alvo aumentam o dano contra ele.','CHEFE',{max:V(.12,.18,.24,.30)}),
+      N('ares_executioner','Carrasco','☠','aresExecute',V(.10,.15,.22,.30),'Abaixo de 50% de vida o alvo sofre mais dano; abaixo de 20%, o bônus dobra.','EXECUÇÃO'),
+      N('ares_pain_feeds_pain','Dor Alimenta Dor','⚔','aresRetaliation',V(.10,.15,.22,.30),'Depois de receber dano, entra em Retaliação por 3s.','RISCO',{speed:[0,0,0,.10,.20]}),
+      N('ares_last_war','Última Guerra','🔥','aresMissingHp',V(.15,.22,.32,.45),'Entre 50% e 10% de vida, o dano cresce continuamente.','RISCO',{speed:[0,0,0,0,.15]}),
+    ],
+    hecate:[
+      N('hecate_arcane_echo','Eco Arcano','🔮','hecateEcho',V(.50,.50,.60,.50),'Após várias ativações, fortalece ou repete a próxima habilidade.','MAGIA',{hits:[6,6,5,4,4]}),
+      N('hecate_rising_ritual','Ritual Crescente','◌','hecateRitual',V(.05,.06,.08,.10),'Alternar armas ou habilidades diferentes acumula dano ritual.','COMBO',{max:3}),
+      N('hecate_forbidden_knowledge','Conhecimento Proibido','☾','hecateForbidden',V(.08,.12,.18,.25),'Sacrifica vida máxima para reduzir recargas.','RISCO',{hpPenalty:V(.05,.07,.10,.12),skillDamage:[0,0,0,0,.12]}),
+      N('hecate_hidden_focus','Concentração Oculta','◈','hecateFocus',V(.10,.15,.22,.30),'Após 4s sem sofrer dano, aumenta o poder mágico.','MAGIA',{cooldown:[0,0,0,0,.10]}),
+      N('hecate_triple_path','Tríplice Caminho','△','hecateTriple',V(.12,.16,.22,.30),'Atacar com três armas diferentes concede Tríplice Poder por 3s.','COMBO',{speed:[0,0,0,.10,.15],cooldown:[0,0,0,0,.10]}),
+    ],
+    selene:[
+      N('selene_lunar_cycle','Ciclo Lunar','🌙','seleneCycle',V(.08,.12,.18,.25),'Alterna automaticamente entre Crescente, Cheia e Minguante.','FASES'),
+      N('selene_waxing_moon','Lua Crescente','☽','seleneMoving',V(.08,.12,.18,.25),'Movimentar-se acumula velocidade; parar começa a dissipá-la.','MOVIMENTO'),
+      N('selene_full_moon','Lua Cheia','●','seleneHighHp',V(.10,.15,.22,.30),'Acima de 80% da vida, aumenta o dano.','DANO',{crit:[0,0,0,0,.10]}),
+      N('selene_waning_moon','Lua Minguante','◐','seleneAfterHit',V(.10,.15,.22,.30),'Após receber dano, ganha resistência por 3s.','DEFESA',{speed:[0,0,0,0,.15]}),
+      N('selene_eclipse','Eclipse','◒','seleneEclipse',V(.12,.18,.25,.35),'Abaixo de 30% de vida desperta dano, defesa e velocidade.','RISCO',{defense:[0,0,.08,.12,.18],speed:[0,0,0,0,.15]}),
+    ],
+    moros:[
+      N('moros_inevitable','Inevitável','◇','morosInevitable',V(.02,.03,.04,.05),'Cada ataque não crítico aumenta temporariamente a chance crítica, até 30%.','CRÍTICO'),
+      N('moros_marked_fate','Destino Marcado','✴','morosMarked',V(.08,.07,.06,.05),'Um ataque periódico é crítico garantido.','DESTINO',{hits:[8,8,7,6,5]}),
+      N('moros_last_page','Última Página','▣','morosLowHpCrit',V(.08,.12,.18,.25),'Quanto menor a vida, maior a chance crítica.','RISCO',{critDamage:[0,0,0,0,.30]}),
+      N('moros_delayed_fate','Destino Adiado','⌛','morosRevive',V(.01,.01,.05,.10),'Uma vez por onda, dano fatal não mata.','SOBREVIVÊNCIA',{invuln:[0,.3,.6,1,1.5]}),
+      N('moros_omen','Presságio','⌛','morosOmen',V(.03,.05,.08,.12),'Melhora relativamente as chances de raridades superiores.','PROGRESSÃO'),
+    ],
+    atena:[
+      N('atena_counter','Contra-Ataque','🛡','atenaCounter',V(.30,.45,.65,1),'Evitar dano durante o dash fortalece o próximo ataque por 2s.','TÉCNICA',{crit:[0,0,0,.15,1]}),
+      N('atena_perfect_stance','Postura Perfeita','♜','atenaStance',V(.02,.02,.03,.04),'A cada 2s sem dano ganha uma carga defensiva, até 5.','DEFESA',{damage:[0,0,.01,.02,.03]}),
+      N('atena_aegis','Égide','◩','atenaAegis',V(.25,.35,.50,.70),'Após 6s ileso, reduz o primeiro ataque recebido.','DEFESA'),
+      N('atena_discipline','Disciplina','⚖','atenaDiscipline',V(.10,.15,.20,.25),'A cada 5 acertos sem sofrer dano, aumenta o dano até o limite.','TÉCNICA',{crit:[0,0,0,0,.10]}),
+      N('atena_perfect_battle','Batalha Perfeita','🏅','atenaMedals',V(.02,.03,.04,.05),'Cada 10 abates sem receber dano concede uma medalha, até 3.','TÉCNICA',{defense:[0,0,0,0,.02]}),
+    ],
+    hermes:[
+      N('hermes_momentum','Momentum','🪽','hermesMomentum',V(.10,.15,.20,.25),'Movimentar-se continuamente acumula velocidade.','MOVIMENTO'),
+      N('hermes_lightning_attack','Ataque Relâmpago','≋','hermesAfterDash',V(.15,.20,.28,.35),'Depois do dash, aumenta a velocidade de ataque por 1,5s.','RITMO',{damage:[0,0,0,0,.15]}),
+      N('hermes_impossible_step','Passo Impossível','➟','hermesDashReduce',V(.03,.04,.06,.08),'Acertos reduzem a recarga do dash, com limite por segundo.','UTILIDADE'),
+      N('hermes_never_stop','Sem Parar','»','hermesSpeedDamage',V(.08,.12,.18,.25),'Converte a velocidade de movimento atual em dano.','MOVIMENTO'),
+      N('hermes_divine_speed','Velocidade Divina','➶','hermesCycle',V(.10,.15,.20,.25),'Dash e ataques alimentam o ritmo um do outro.','COMBO'),
+    ],
+    dionisio:[
+      N('dionisio_divine_drunkenness','Embriaguez Divina','🍷','dionRandomBuff',V(.12,.16,.20,.25),'Eliminações podem conceder dano, movimento ou ataque por 4s.','CAOS',{power:V(.08,.10,.12,.15)}),
+      N('dionisio_double_toast','Brinde Duplo','🥂','dionDuration',V(.15,.25,.40,.60),'Buffs temporários duram mais.','UTILIDADE'),
+      N('dionisio_more_the_merrier','Quanto Mais, Melhor','🎉','dionBuffDamage',V(.03,.04,.05,.06),'Cada buff temporário ativo aumenta o dano.','CAOS',{max:V(.09,.12,.20,.30)}),
+      N('dionisio_hangover','Ressaca','♨','dionHangover',V(.05,.08,.10,.15),'Quando um buff termina, recebe um último impulso.','CAOS'),
+      N('dionisio_endless_party','Festa Sem Fim','♫','dionRenew',V(.08,.12,.18,.28),'Buffs podem renovar uma vez ao terminar.','CAOS'),
+    ],
+    hefesto:[
+      N('hefesto_tempering','Têmpera','🔨','hefestoTemper',V(.10,.15,.20,.25),'Usar continuamente a mesma arma acumula velocidade.','ARMA',{damage:[0,0,0,0,.10]}),
+      N('hefesto_specialist','Especialista da Forja','⚒','hefestoSpecialist',V(.03,.04,.05,.06),'Armas adicionais da mesma família fortalecem essa família.','ARMA',{speed:[0,0,0,0,.02]}),
+      N('hefesto_perfect_alloy','Liga Perfeita','◆','hefestoDiversity',V(.08,.12,.18,.25),'Três famílias diferentes equipadas fortalecem o arsenal.','ARMA',{speed:[0,0,0,0,.10]}),
+      N('hefesto_reinforcement','Reforço','⛏','hefestoReinforce',V(.08,.12,.18,.25),'A arma com mais eliminações começa a próxima onda fortalecida.','ARMA',{speed:[0,0,0,0,.10]}),
+      N('hefesto_masterpiece','Obra-Prima','✦','hefestoMasterpiece',V(.10,.15,.20,.30),'A arma de maior raridade recebe dano e velocidade especiais.','ARMA',{speed:[0,0,.05,.10,.10]}),
+    ],
+    artemis:[
+      N('artemis_rising_aim','Mira Crescente','◉','artemisAim',V(.08,.10,.14,.18),'A cada três acertos consecutivos acumula chance crítica.','PRECISÃO'),
+      N('artemis_perfect_hunt','Caçada Perfeita','🏹','artemisCritSpeed',V(.08,.12,.18,.25),'Críticos aumentam a velocidade de ataque por 2s.','CRÍTICO'),
+      N('artemis_predator','Predador','♞','artemisDistance',V(.10,.16,.24,.35),'Quanto mais distante o alvo, maior o dano.','PRECISÃO'),
+      N('artemis_weak_point','Ponto Fraco','⌖','artemisWeakPoint',V(.10,.15,.22,.30),'Acertos repetidos no mesmo alvo aumentam o dano recebido por ele.','CHEFE'),
+      N('artemis_supreme_hunter','Caçadora Suprema','✧','artemisSupreme',V(.15,.25,.35,.50),'Críticos fortalecem o próximo ataque.','CRÍTICO'),
+    ],
+    poseidon:[
+      N('poseidon_rising_tide','Maré Crescente','🌊','poseidonTide',V(.08,.12,.18,.25),'Acertos consecutivos acumulam dano de Maré.','COMBO'),
+      N('poseidon_against_current','Contra a Corrente','↕','poseidonDirection',V(.08,.12,.18,.25),'Avançar concede dano; recuar concede velocidade.','MOVIMENTO'),
+      N('poseidon_ocean_pressure','Pressão Oceânica','◉','poseidonPressure',V(.02,.03,.04,.05),'Cada três inimigos próximos concede resistência, até cinco níveis.','DEFESA'),
+      N('poseidon_high_tide','Maré Alta','↑','poseidonHighHp',V(.10,.15,.22,.30),'Acima de 70% de vida, aumenta a velocidade de ataque.','RITMO',{speed:[0,0,0,0,.10]}),
+      N('poseidon_relentless_tide','Maré Implacável','≈','poseidonRelentless',V(1,2,3,4),'No máximo da Maré, atrasa sua queda e pode conceder velocidade.','COMBO',{speed:[0,0,0,.08,.15]}),
+    ],
+    hercules:[
+      N('hercules_first_labor','Primeiro Trabalho','💪','herculesKills',V(.02,.03,.04,.05),'Cada 15 eliminações na onda concede Força.','PROVAÇÃO',{max:[3,3,3,3,4]}),
+      N('hercules_trial','Provação','♜','herculesElite',V(.12,.18,.25,.35),'Derrotar um elite fortalece o herói por 8s.','PROVAÇÃO',{defense:[0,0,0,.10,.15],speed:[0,0,0,0,.15]}),
+      N('hercules_lion_skin','Pele do Leão','♌','herculesLowHp',V(.12,.18,.25,.35),'Abaixo de 25% de vida, aumenta a defesa.','DEFESA',{attack:[0,0,0,0,.15]}),
+      N('hercules_rising_strength','Força Crescente','✊','herculesKillChain',V(.02,.03,.04,.05),'Abates separados por até 2s acumulam dano, até 5.','COMBO'),
+      N('hercules_twelve_labors','Doze Trabalhos','★','herculesFeats',V(.01,.015,.02,.02),'Feitos durante a run concedem marcas permanentes, até 12.','PROGRESSÃO',{hp:[0,0,0,0,.01]}),
+    ],
+    sauron:[
+      N('sauron_corrupting_power','Poder Corruptor','👁','sauronCorruption',V(.12,.18,.27,.40),'Sacrifica vida máxima para obter dano.','CORRUPÇÃO',{hpPenalty:V(.05,.07,.10,.12)}),
+      N('sauron_domination','Dominação','♛','sauronDomination',V(.03,.04,.05,.06),'Eliminações consecutivas acumulam poder temporário.','COMBO',{max:[3,4,4,5,5]}),
+      N('sauron_watchful_eye','Olho Vigilante','◉','sauronTarget',V(.12,.18,.26,.38),'Atacar repetidamente o mesmo alvo aumenta o dano contra ele.','CHEFE'),
+      N('sauron_dark_will','Vontade Sombria','◼','sauronLowHp',V(.15,.22,.32,.45),'Quanto menor a vida, maior o dano.','RISCO',{defense:[0,0,0,0,.20]}),
+      N('sauron_one_ring','Um Anel','◉','sauronRing',V(.08,.12,.18,.25),'Amplifica bônus de bênçãos, mas também suas penalidades.','RISCO',{penalty:V(.04,.05,.07,.10)}),
+    ],
+    nazgul:[
+      N('nazgul_spectral_form','Forma Espectral','♟','nazgulDodge',V(.03,.05,.08,.12),'Concede chance de ignorar dano por completo.','ESQUIVA'),
+      N('nazgul_dark_hunt','Caçada Sombria','🗡','nazgulAfterDash',V(.25,.40,.60,.90),'Depois do dash, fortalece o próximo ataque por 1,5s.','ASSASSINATO',{crit:[0,0,0,0,.25]}),
+      N('nazgul_rising_terror','Terror Crescente','☠','nazgulKillSpeed',V(.04,.06,.08,.10),'Cada sequência de cinco abates sem dano concede velocidade, até 3 cargas.','COMBO'),
+      N('nazgul_phantom_blade','Lâmina Fantasma','✦','nazgulCritDodge',V(.02,.03,.05,.08),'Críticos aumentam a esquiva por 2s.','CRÍTICO'),
+      N('nazgul_relentless_specter','Espectro Implacável','◌','nazgulCycle',V(.20,.30,.45,.70),'Esquiva fortalece ataque; crítico fortalece esquiva.','COMBO',{dodge:[0,0,0,.03,.06]}),
+    ],
+    ents:[
+      N('ents_growing_bark','Casca Crescente','🌳','entsWaveDefense',V(.01,.015,.02,.025),'Cada onda concluída aumenta permanentemente a defesa da run.','CRESCIMENTO',{max:V(.05,.075,.10,.15)}),
+      N('ents_deep_roots','Raízes Profundas','♣','entsNoDash',V(.08,.12,.18,.25),'Após 3s sem dash, aumenta a defesa.','DEFESA',{damage:[0,0,0,0,.10]}),
+      N('ents_ancestral_growth','Crescimento Ancestral','🌱','entsTempHp',V(.02,.03,.04,.05),'Cada 20 abates na onda aumenta temporariamente a vida máxima, até 5.','CRESCIMENTO'),
+      N('ents_resilience','Resiliência','❧','entsResilience',V(.15,.22,.30,.40),'Perder mais de 20% da vida em 3s concede defesa por 3s.','DEFESA',{speed:[0,0,0,0,.15]}),
+      N('ents_forest_elder','Ancião da Floresta','♚','entsElder',V(.10,.15,.20,.30),'Preserva uma parte do crescimento temporário obtido durante a onda.','CRESCIMENTO'),
+    ],
+  };
+  for(const deity of DEITIES)deity.boons=NEW_DEITY_BOONS[deity.id]||deity.boons;
+
   const DEITY_MAP=Object.fromEntries(DEITIES.map(d=>[d.id,d]));
   let selectedCardOffer=null;
   let selectedCardElement=null;
 
   function pct(value){ return `${Math.round(value*100)}%`; }
   function cardValueText(boon,value,rarityIndex){
+    const at=key=>Array.isArray(boon[key])?boon[key][rarityIndex]:boon[key];
     const type=boon.type;
+    if(type==='zeusOverload')return `${at('hits')} acertos · +${pct(value)} no próximo ataque`;
+    if(type==='hecateEcho')return `a cada ${at('hits')} ativações · +${pct(value)} de poder`;
+    if(type==='morosMarked')return `${at('hits')}º ataque crítico garantido`;
+    if(type==='morosRevive')return `sobrevive com ${Math.max(1,Math.round(value*100))}% de vida · 1 vez/onda`;
+    if(type==='poseidonRelentless')return `+${String(value).replace('.',',')}s antes da Maré cair`;
+    if(type==='entsWaveDefense')return `+${String((value*100).toFixed(1)).replace('.',',')}% defesa/onda · teto ${pct(at('max'))}`;
+    if(type==='hecateForbidden'||type==='sauronCorruption')return `−${pct(at('hpPenalty'))} vida · +${pct(value)} poder`;
     if(type==='critBoth') return `+${pct(value)} chance · +${pct(boon.secondary[rarityIndex])} dano crítico`;
     if(type==='killHealPct') return `+${String((value*100).toFixed(1)).replace('.',',')}% da vida por eliminação`;
     if(type==='growthHp') return `+${String((value*100).toFixed(1)).replace('.',',')}% de vida a cada 10 eliminações`;
@@ -8374,7 +8505,8 @@ function applyMetaUpgrades(pl){
     if(type==='killAtk'||type==='killDamage') return `+${pct(value)} por acúmulo · máximo 5`;
     if(type==='damageDefense'||type==='damageMaxHp'||type==='lowHpDamageSpeed'||type==='afterDashBoth') return `+${pct(value)} em ambos os atributos`;
     const labels={damage:'dano',meleeDamage:'dano corpo a corpo',attackSpeed:'velocidade de ataque',consecutive:'dano máximo',bossDamage:'dano contra chefes',specialDamage:'dano especial',safeDamage:'dano',buffDuration:'duração',specialNormal:'dano de ataque',maxHp:'vida máxima',defense:'defesa',safeSpeed:'velocidade',highHp80Damage:'dano',crit:'chance crítica',critDmg:'dano crítico',low30Defense:'defesa',rarityBoost:'raridade superior',lowHpCrit:'chance crítica',highHp70Damage:'dano',dashDefense:'defesa',move:'velocidade',movingDamage:'dano',projectile:'alcance e velocidade',lowHpDefense:'defesa máxima',healing:'cura recebida',killSpeed:'velocidade',highEnemy:'dano',highHpAtk:'velocidade de ataque',afterDamage:'dano',missingHpDamage:'dano máximo',lowEnemy:'dano',afterDamageDefense:'defesa',dodge:'esquiva',rootsDefense:'defesa'};
-    return `+${pct(value)} ${labels[type]||'bônus'}`;
+    const roleLabels={DANO:'dano',COMBO:'poder de combo',CRÍTICO:'chance crítica',CHEFE:'dano especializado',RISCO:'poder máximo',MAGIA:'poder mágico',FASES:'bônus da fase',MOVIMENTO:'velocidade',DESTINO:'efeito de destino',SOBREVIVÊNCIA:'sobrevivência',PROGRESSÃO:'progressão',TÉCNICA:'eficiência',RITMO:'velocidade de ataque',CAOS:'efeito temporário',ARMA:'poder da arma',PRECISÃO:'precisão',DEFESA:'defesa',PROVAÇÃO:'dano',CORRUPÇÃO:'poder',ESQUIVA:'esquiva',ASSASSINATO:'dano',CRESCIMENTO:'crescimento'};
+    return `+${pct(value)} ${labels[type]||roleLabels[boon.role]||'bônus'}`;
   }
 
   function materialize(deity,boon,rarity){
@@ -8395,10 +8527,10 @@ function applyMetaUpgrades(pl){
     const pls=[typeof player!=='undefined'?player:null,typeof player2!=='undefined'?player2:null].filter(Boolean);
     const omen=Math.max(0,...pls.map(p=>p.cardEffects?.rarityBoost||0));
     const late=wave>20?3:wave>10?1.5:0;
-    const weights={comum:60,rara:27+late*2,epica:10+late,lendaria:3+(wave>15?1:0)};
+    const weights={comum:48,incomum:25,rara:18+late*1.2,epica:7+late*.6,lendaria:2+(wave>15?1:0)};
     const shift=Math.min(18,omen*100);
     weights.comum=Math.max(24,weights.comum-shift);
-    weights.rara+=shift*.55; weights.epica+=shift*.30; weights.lendaria+=shift*.15;
+    weights.incomum+=shift*.20;weights.rara+=shift*.42;weights.epica+=shift*.25;weights.lendaria+=shift*.13;
     let roll=Math.random()*Object.values(weights).reduce((a,b)=>a+b,0);
     for(const rarity of RARITY_ORDER){roll-=weights[rarity];if(roll<=0)return rarity;}
     return 'comum';
@@ -8409,12 +8541,20 @@ function applyMetaUpgrades(pl){
     if(!deities.length) return [];
     const deity=randomItem(deities);
     const owned=ownedIds();
-    const pool=deity.boons.filter(boon=>!owned.has(boon.id));
+    let pool=deity.boons.filter(boon=>!owned.has(boon.id));
     const offers=[];
     while(offers.length<Math.min(3,count,pool.length)){
       const index=Math.floor(Math.random()*pool.length);
       const boon=pool.splice(index,1)[0];
       offers.push(materialize(deity,boon,rollCardRarity()));
+      if(boon.id==='hefesto_specialist')pool=pool.filter(item=>item.id!=='hefesto_perfect_alloy');
+      if(boon.id==='hefesto_perfect_alloy')pool=pool.filter(item=>item.id!=='hefesto_specialist');
+    }
+    const guarantee=[typeof player!=='undefined'?player:null,typeof player2!=='undefined'?player2:null]
+      .filter(Boolean).find(pl=>(pl.cardEffects?.omenGuarantee||0)>0);
+    if(guarantee&&offers.length&&!offers.some(card=>card.rarityIndex>=2)){
+      offers[0]=materialize(deity,deity.boons.find(boon=>boon.id===offers[0].id),randomItem(['rara','epica','lendaria']));
+      guarantee.cardEffects.omenGuarantee--;
     }
     offers.deityId=deity.id;
     return offers;
@@ -8503,7 +8643,7 @@ function applyMetaUpgrades(pl){
     const activePlayers=[typeof player!=='undefined'?player:null,...(gameMode===2&&typeof player2!=='undefined'&&player2?[player2]:[])].filter(p=>p&&!p.dead);
     activePlayers.forEach(pl=>applyDeityBoon(pl,card));
     activeCardBlessings.push(card);updateBlessingsHUD();
-    const colors={comum:'#79e89a',rara:'#58a8ff',epica:'#c86cff',lendaria:'#ffd35a'};
+    const colors={comum:'#79e89a',incomum:'#43d477',rara:'#58a8ff',epica:'#c86cff',lendaria:'#ffd35a'};
     spawnLevelUpNotice(W/2,H/2-50,`${card.icon} ${card.name}!`,0);
     if(typeof parts!=='undefined'&&Array.isArray(parts)){
       spawnParts(W/2,H/2,colors[card.rarity],card.rarity==='lendaria'?34:22,95);
@@ -8585,14 +8725,16 @@ function applyMetaUpgrades(pl){
 
   applyCardCrit=function(pl,baseDmg,target){
     if(!pl)return baseDmg;
-    const e=pl.cardEffects||{};let damage=baseDmg*(1+dynamicDamageBonus(pl,target));
+    const e=pl.cardEffects||{};let damage=baseDmg*(1+dynamicDamageBonus(pl,target)+getCampaignShopDamageBonus(pl,target));
     if((pl.classId==='warrior'||pl.classId==='viking')&&e.meleeDamage)damage*=1+e.meleeDamage;
-    let chance=e.critChance||0;
+    let chance=(e.critChance||0)+getCampaignShopCritBonus(pl),didCrit=false;
     if(e.lowHpCrit)chance+=e.lowHpCrit*(1-hpRatio(pl));
     if(chance>0&&Math.random()<chance){
-      damage*=2.5+(e.critMultBonus||0);e.critAtkUntil=performance.now()+temporaryDuration(pl,2600);
+      didCrit=true;damage*=2.5+(e.critMultBonus||0);e.critAtkUntil=performance.now()+temporaryDuration(pl,2600);
       spawnParts(pl.x,pl.y-10,'#ffd35a',6,45);
     }
+    pl._lastAttackWasCrit=didCrit;
+    if(target){target._lastDamageOwner=pl;target._lastHitCrit=didCrit;}
     return damage;
   };
 
@@ -8608,6 +8750,8 @@ function applyMetaUpgrades(pl){
       e.growthKills=(e.growthKills||0)+1;
       if(e.growthKills%10===0&&(e.growthStacks||0)<10){e.growthStacks=(e.growthStacks||0)+1;increaseMaxHp(pl,e.growthHp);spawnLevelUpNotice(pl.x,pl.y-28,'CRESCIMENTO ANCESTRAL',pl.idx||0);}
     }
+    const killed=[...allTargets(enemies)].find(target=>target&&target.dead&&target.x===x&&target.y===y);
+    if(killed)notifyCampaignShopTargetKilled(pl,killed);
   };
 
   window.notifyBlessingDash=function(pl){
@@ -8655,6 +8799,330 @@ function applyMetaUpgrades(pl){
     pl.atkCd=pl.atkCd/(e._atkFactor||1)*atkFactor;pl.speed=pl.speed/(e._speedFactor||1)*speedFactor;
     e._atkFactor=atkFactor;e._speedFactor=speedFactor;
   };
+
+  // Motor v3 compartilhado pelas 75 bênçãos. O estado fica por jogador para
+  // funcionar tanto no solo quanto no cooperativo sem misturar sequências.
+  const legacyBlessingWaveRegen=applyCardWaveRegen;
+  function boon(pl,id){return pl?.cardEffects?.boons?.[id]||null;}
+  function bv(card,key='value',fallback=0){
+    if(!card)return fallback;
+    const raw=key==='value'?card.value:card[key];
+    return Array.isArray(raw)?(raw[card.rarityIndex]??fallback):(raw??fallback);
+  }
+  function blessingAmp(pl,value){const ring=boon(pl,'sauron_one_ring');return value*(1+bv(ring));}
+  function penaltyAmp(pl,value){const ring=boon(pl,'sauron_one_ring');return value*(1+bv(ring,'penalty'));}
+  function changeMaxHp(pl,delta,heal=true){
+    if(!pl||!Number.isFinite(delta)||!delta)return 0;
+    const old=pl.maxHp;pl.maxHp=Math.max(1,pl.maxHp+delta);
+    if(heal&&delta>0)pl.hp=Math.min(pl.maxHp,pl.hp+delta);else pl.hp=Math.min(pl.maxHp,Math.max(1,pl.hp));
+    return pl.maxHp-old;
+  }
+  function targetState(e,target){
+    if(!target)return {};
+    e.targetStates=e.targetStates||new WeakMap();
+    let state=e.targetStates.get(target);if(!state){state={};e.targetStates.set(target,state);}return state;
+  }
+  function sourceKey(pl,weapon){return weapon?.type||`${pl?.classId||'hero'}_base`;}
+  function slotsFor(pl){
+    if(typeof getSlots==='function')return getSlots(pl.idx)||[];
+    if(typeof weaponSlots!=='undefined')return pl.idx===1?(typeof weaponSlots2!=='undefined'?weaponSlots2:[]):weaponSlots;
+    return [];
+  }
+  function weaponFamily(weapon){
+    if(!weapon)return 'base';
+    if(typeof campaignWeaponElement==='function')return campaignWeaponElement(weapon.type)||'physical';
+    return String(weapon.type||'base').split('_')[1]||'base';
+  }
+  function rarityRank(rarity){return ({common:0,uncommon:1,rare:2,epic:3,legendary:4})[rarity]??0;}
+  function isEliteTarget(target){return !!target&&!isBossTarget(target)&&(target.elite||target.isElite||(target.maxHp||0)>=300);}
+  function activeTempBuffs(e,now=performance.now()){return (e.tempBuffs||[]).filter(buff=>buff.until>now);}
+  function tempDuration(pl,ms){
+    const toast=boon(pl,'dionisio_double_toast');let mult=1+bv(toast);
+    if(toast?.rarityIndex===4&&Math.random()<.15)mult*=2;
+    return ms*mult;
+  }
+  function addTempBuff(pl,type,value,ms,renewed=false){
+    const e=effect(pl),now=performance.now();e.tempBuffs=e.tempBuffs||[];
+    e.tempBuffs.push({type,value,baseMs:ms,until:now+tempDuration(pl,ms),renewed});
+  }
+  function addHerculesFeat(pl,label){
+    const card=boon(pl,'hercules_twelve_labors'),e=effect(pl);if(!card||(e.herculesFeats||0)>=12)return;
+    e.herculesFeats=(e.herculesFeats||0)+1;
+    if(bv(card,'hp')>0)changeMaxHp(pl,pl.maxHp*blessingAmp(pl,bv(card,'hp')));
+    if(typeof spawnLevelUpNotice==='function')spawnLevelUpNotice(pl.x,pl.y-30,`★ FEITO: ${label}`,pl.idx||0);
+  }
+
+  applyDeityBoon=function(pl,card){
+    const e=effect(pl);e.boons=e.boons||{};e.boons[card.id]=card;
+    e.lastDamageAt=e.lastDamageAt||performance.now();e.lastDashAt=e.lastDashAt||performance.now();
+    e.waveDamageTaken=e.waveDamageTaken||0;e.morosFatalReady=e.morosFatalReady!==false;
+    if(card.id==='hecate_forbidden_knowledge'||card.id==='sauron_corrupting_power'){
+      const penalty=penaltyAmp(pl,bv(card,'hpPenalty'));changeMaxHp(pl,-pl.maxHp*penalty,false);
+    }
+    if(card.id==='sauron_one_ring'){
+      for(const id of ['hecate_forbidden_knowledge','sauron_corrupting_power']){
+        const risky=boon(pl,id);if(risky)changeMaxHp(pl,-pl.maxHp*bv(risky,'hpPenalty')*bv(card,'penalty'),false);
+      }
+    }
+    if(card.id==='moros_omen'){
+      e.rarityBoost=(e.rarityBoost||0)+bv(card);
+      if(card.rarityIndex===4)e.omenGuarantee=(e.omenGuarantee||0)+1;
+    }
+    if(card.id==='moros_delayed_fate')e.morosFatalReady=true;
+  };
+  window.applyDeityBoon=applyDeityBoon;
+
+  function currentDirectionState(pl,target){
+    if(!target||(!pl._moveDx&&!pl._moveDy))return 0;
+    const len=Math.hypot(target.x-pl.x,target.y-pl.y)||1;
+    return ((pl._moveDx||0)*(target.x-pl.x)+(pl._moveDy||0)*(target.y-pl.y))/len;
+  }
+  function hefestusWeaponBonuses(pl,weapon){
+    if(!weapon)return {damage:0,speed:0};
+    const slots=slotsFor(pl).filter(Boolean),family=weaponFamily(weapon);let damage=0,speed=0;
+    const temper=boon(pl,'hefesto_tempering'),e=effect(pl);
+    if(temper&&e.temperSource===sourceKey(pl,weapon)){
+      damage+=e.temperFull&&temper.rarityIndex===4?bv(temper,'damage'):0;
+      speed+=Math.min(bv(temper),(e.temperCount||0)*.02);
+    }
+    const specialist=boon(pl,'hefesto_specialist');
+    if(specialist){const extra=Math.max(0,slots.filter(item=>weaponFamily(item)===family).length-1);damage+=extra*bv(specialist);if(specialist.rarityIndex===4)speed+=extra*bv(specialist,'speed');}
+    const alloy=boon(pl,'hefesto_perfect_alloy');
+    if(alloy&&new Set(slots.map(weaponFamily)).size>=3){damage+=bv(alloy);speed+=bv(alloy,'speed');}
+    const reinforce=boon(pl,'hefesto_reinforcement');
+    if(reinforce&&e.reinforcedWeapon===weapon.type){damage+=bv(reinforce);speed+=bv(reinforce,'speed');}
+    const masterpiece=boon(pl,'hefesto_masterpiece');
+    if(masterpiece&&slots.length){
+      const sorted=slots.slice().sort((a,b)=>rarityRank(b.rarity)-rarityRank(a.rarity));
+      if(weapon===sorted[0]){damage+=bv(masterpiece);speed+=bv(masterpiece,'speed');}
+      else if(masterpiece.rarityIndex===4&&weapon===sorted[1])damage+=bv(masterpiece)*.5;
+    }
+    return {damage,speed};
+  }
+  function blessingAttackSpeed(pl,weapon){
+    const e=effect(pl),now=performance.now(),hp=hpRatio(pl);let bonus=0;
+    const conductor=boon(pl,'zeus_conductor');if(conductor)bonus+=(e.zeusConductor||0)*bv(conductor);
+    if(now<(e.zeusOverloadSpeedUntil||0))bonus+=.20;
+    const storm=boon(pl,'zeus_storm_child');if(storm&&hp<.4)bonus+=bv(storm);
+    const fury=boon(pl,'ares_war_thirst');if(fury?.rarityIndex===4&&now<(e.aresFuryUntil||0))bonus+=(e.aresFury||0)*.02;
+    const retaliate=boon(pl,'ares_pain_feeds_pain');if(retaliate&&now<(e.aresRetaliateUntil||0))bonus+=bv(retaliate,'speed');
+    const lastWar=boon(pl,'ares_last_war');if(lastWar&&lastWar.rarityIndex===4&&hp<.5)bonus+=bv(lastWar,'speed')*Math.min(1,(.5-hp)/.4);
+    const forbidden=boon(pl,'hecate_forbidden_knowledge');if(forbidden)bonus+=bv(forbidden);
+    const focus=boon(pl,'hecate_hidden_focus');if(focus&&now-(e.lastDamageAt||0)>=4000)bonus+=bv(focus,'cooldown');
+    const triple=boon(pl,'hecate_triple_path');if(triple&&now<(e.hecateTripleUntil||0)){bonus+=bv(triple,'speed')+bv(triple,'cooldown');}
+    const hdash=boon(pl,'hermes_lightning_attack');if(hdash&&now<(e.hermesDashUntil||0))bonus+=bv(hdash);
+    const hcycle=boon(pl,'hermes_divine_speed');if(hcycle&&now<(e.hermesCycleUntil||0))bonus+=bv(hcycle);
+    const art=boon(pl,'artemis_perfect_hunt');if(art&&now<(e.artemisCritUntil||0))bonus+=bv(art);
+    const high=boon(pl,'poseidon_high_tide');if(high&&hp>.7)bonus+=bv(high);
+    const lion=boon(pl,'hercules_lion_skin');if(lion&&hp<.25)bonus+=bv(lion,'attack');
+    for(const buff of activeTempBuffs(e,now))if(buff.type==='attack')bonus+=buff.value;
+    bonus+=hefestusWeaponBonuses(pl,weapon).speed;
+    if(e._nextAttackSpeed){bonus+=e._nextAttackSpeed;e._nextAttackSpeed=0;}
+    return blessingAmp(pl,bonus);
+  }
+
+  window.notifyBlessingAttack=function(pl,target,sourceDamage,weapon=null){
+    if(!pl)return 1;const e=effect(pl),now=performance.now(),source=sourceKey(pl,weapon);
+    e.currentTarget=target;e.currentWeapon=weapon;e.attackBonus=0;e.attackCritBonus=0;e.forceCrit=false;
+    if(e.zeusOverloadReady){e.attackBonus+=e.zeusOverloadReady;e.zeusOverloadReady=0;if(boon(pl,'zeus_overload')?.rarityIndex===4)e.zeusOverloadSpeedUntil=now+2000;}
+    const consume=(key,cardId,critKey)=>{const card=boon(pl,cardId);if(card&&e[key]&&now<(e[key+'Until']||Infinity)){e.attackBonus+=e[key];e[key]=0;if(critKey)e.attackCritBonus+=bv(card,critKey);return card;}return null;};
+    const thunder=consume('zeusThunderReady','zeus_critical_thunder');
+    if(thunder&&thunder.rarityIndex===3)e._nextAttackSpeed=(e._nextAttackSpeed||0)+bv(thunder,'nextSpeed');
+    e._usingZeusThunder=!!thunder;
+    const supreme=consume('artemisSupremeReady','artemis_supreme_hunter');e._usingArtemisSupreme=!!supreme;
+    consume('atenaCounterReady','atena_counter','crit');
+    consume('nazgulDashReady','nazgul_dark_hunt','crit');
+    consume('nazgulCycleReady','nazgul_relentless_specter');
+    const marked=boon(pl,'moros_marked_fate');if(marked){e.morosAttack=(e.morosAttack||0)+1;if(e.morosAttack>=bv(marked,'hits')){e.morosAttack=0;e.forceCrit=true;e.morosMarkedCrit=marked.rarityIndex===4;}}
+    const ritual=boon(pl,'hecate_rising_ritual');if(ritual&&source!==e.hecateLastSource){e.hecateRitual=Math.min(3,(e.hecateRitual||0)+1);e.hecateLastSource=source;}
+    const echo=boon(pl,'hecate_arcane_echo');if(echo){e.hecateEcho=(e.hecateEcho||0)+1;if(e.hecateEcho>=bv(echo,'hits')){e.hecateEcho=0;if(echo.rarityIndex===4)e.hecateEchoRepeat=true;else e.attackBonus+=bv(echo);}}
+    const triple=boon(pl,'hecate_triple_path');if(triple){e.hecateTripleSources=e.hecateTripleSources||[];if(!e.hecateTripleSources.includes(source))e.hecateTripleSources.push(source);if(e.hecateTripleSources.length>=3){e.hecateTripleSources=[];e.hecateTripleUntil=now+3000;}}
+    const temper=boon(pl,'hefesto_tempering');if(temper){if(e.temperSource===source)e.temperCount=Math.min(13,(e.temperCount||0)+1);else{e.temperSource=source;e.temperCount=1;}e.temperFull=(e.temperCount*.02)>=bv(temper);}
+    const speed=blessingAttackSpeed(pl,weapon);return 1/(1+Math.max(0,speed));
+  };
+
+  function dynamicDamageBonusV3(pl,target,weapon){
+    const e=effect(pl),now=performance.now(),hp=hpRatio(pl),thp=hpRatio(target);let bonus=e.attackBonus||0;
+    const conductor=boon(pl,'zeus_conductor');if(conductor&&conductor.rarityIndex===4&&(e.zeusConductor||0)>=12)bonus+=.10;
+    const authority=boon(pl,'zeus_authority');if(authority){if(isBossTarget(target))bonus+=bv(authority,'boss')+(now<(e.zeusBossPowerUntil||0)?.10:0);else if(isEliteTarget(target))bonus+=bv(authority);}
+    const storm=boon(pl,'zeus_storm_child');if(storm&&hp<.4)bonus+=bv(storm,'damage');
+    const fury=boon(pl,'ares_war_thirst');if(fury&&now<(e.aresFuryUntil||0))bonus+=(e.aresFury||0)*bv(fury);
+    const wound=boon(pl,'ares_open_wound');if(wound&&target)bonus+=Math.min(bv(wound,'max'),(targetState(e,target).aresWounds||0)*bv(wound));
+    const execute=boon(pl,'ares_executioner');if(execute&&thp<.5)bonus+=bv(execute)*(thp<.2?2:1);
+    const retaliate=boon(pl,'ares_pain_feeds_pain');if(retaliate&&now<(e.aresRetaliateUntil||0))bonus+=bv(retaliate);
+    const lastWar=boon(pl,'ares_last_war');if(lastWar&&hp<.5)bonus+=bv(lastWar)*Math.min(1,(.5-hp)/.4);
+    const ritual=boon(pl,'hecate_rising_ritual');if(ritual)bonus+=(e.hecateRitual||0)*bv(ritual);
+    const forbidden=boon(pl,'hecate_forbidden_knowledge');if(forbidden)bonus+=bv(forbidden,'skillDamage');
+    const focus=boon(pl,'hecate_hidden_focus');if(focus&&now-(e.lastDamageAt||0)>=4000)bonus+=bv(focus);
+    const triple=boon(pl,'hecate_triple_path');if(triple&&now<(e.hecateTripleUntil||0))bonus+=bv(triple);
+    const cycle=boon(pl,'selene_lunar_cycle');if(cycle&&e.selenePhase===1)bonus+=bv(cycle)+(e.selenePreviousPhase===1?bv(cycle)*.5:0);
+    const full=boon(pl,'selene_full_moon');if(full&&hp>.8)bonus+=bv(full);
+    const eclipse=boon(pl,'selene_eclipse');if(eclipse&&e.seleneEclipse)bonus+=bv(eclipse);
+    const stance=boon(pl,'atena_perfect_stance');if(stance)bonus+=(e.atenaStance||0)*bv(stance,'damage');
+    const discipline=boon(pl,'atena_discipline');if(discipline)bonus+=e.atenaDisciplineDamage||0;
+    const medals=boon(pl,'atena_perfect_battle');if(medals)bonus+=(e.atenaMedals||0)*bv(medals);
+    if(now<(e.atenaAegisPowerUntil||0))bonus+=.20;
+    const hDash=boon(pl,'hermes_lightning_attack');if(hDash&&now<(e.hermesDashUntil||0))bonus+=bv(hDash,'damage');
+    const speedDmg=boon(pl,'hermes_never_stop');if(speedDmg)bonus+=bv(speedDmg)*Math.min(1,e.movementPower||0);
+    const dir=boon(pl,'poseidon_against_current');if(dir&&currentDirectionState(pl,target)>.15)bonus+=bv(dir);
+    const dion=boon(pl,'dionisio_more_the_merrier');if(dion)bonus+=Math.min(bv(dion,'max'),activeTempBuffs(e,now).length*bv(dion));
+    for(const buff of activeTempBuffs(e,now))if(buff.type==='damage')bonus+=buff.value;
+    if(now<(e.dionHangoverUntil||0)&&e.dionHangoverType==='damage')bonus+=e.dionHangoverValue||0;
+    bonus+=hefestusWeaponBonuses(pl,weapon).damage;
+    const distance=boon(pl,'artemis_predator');if(distance&&target){const ideal=Math.max(120,pl.range||120);bonus+=bv(distance)*Math.min(1,Math.hypot(target.x-pl.x,target.y-pl.y)/ideal);}
+    const weak=boon(pl,'artemis_weak_point');if(weak&&target)bonus+=targetState(e,target).artemisWeak||0;
+    const tide=boon(pl,'poseidon_rising_tide');if(tide)bonus+=e.poseidonTide||0;
+    const hk=boon(pl,'hercules_first_labor');if(hk)bonus+=(e.herculesWork||0)*bv(hk);
+    const trial=boon(pl,'hercules_trial');if(trial&&now<(e.herculesTrialUntil||0))bonus+=bv(trial);
+    const chain=boon(pl,'hercules_rising_strength');if(chain)bonus+=(e.herculesChain||0)*bv(chain);
+    const feats=boon(pl,'hercules_twelve_labors');if(feats)bonus+=(e.herculesFeats||0)*bv(feats);
+    const domination=boon(pl,'sauron_domination');if(domination&&now-(e.sauronLastKill||0)<4500)bonus+=(e.sauronStacks||0)*bv(domination);
+    const eye=boon(pl,'sauron_watchful_eye');if(eye&&target)bonus+=targetState(e,target).sauronEye||0;
+    const will=boon(pl,'sauron_dark_will');if(will)bonus+=bv(will)*(1-hp);
+    const corrupt=boon(pl,'sauron_corrupting_power');if(corrupt)bonus+=bv(corrupt);
+    const roots=boon(pl,'ents_deep_roots');if(roots?.rarityIndex===4&&now-(e.lastDashAt||0)>=3000)bonus+=bv(roots,'damage');
+    return blessingAmp(pl,bonus);
+  }
+
+  applyCardCrit=function(pl,baseDmg,target,weapon=null){
+    if(!pl)return baseDmg;const e=effect(pl),now=performance.now();
+    let damage=baseDmg*(1+dynamicDamageBonusV3(pl,target,weapon)+getCampaignShopDamageBonus(pl,target));
+    let chance=getCampaignShopCritBonus(pl)+(e.attackCritBonus||0)+(e.morosCritMiss||0),force=!!e.forceCrit;
+    const marked=boon(pl,'moros_marked_fate');
+    const last=boon(pl,'moros_last_page');if(last)chance+=bv(last)*(1-hpRatio(pl));
+    const full=boon(pl,'selene_full_moon');if(full?.rarityIndex===4&&hpRatio(pl)>.8)chance+=bv(full,'crit');
+    const aim=boon(pl,'artemis_rising_aim');if(aim)chance+=e.artemisAim||0;
+    const discipline=boon(pl,'atena_discipline');if(discipline?.rarityIndex===4&&(e.atenaDisciplineDamage||0)>=bv(discipline))chance+=bv(discipline,'crit');
+    if(target){const ts=targetState(e,target),wound=boon(pl,'ares_open_wound'),eye=boon(pl,'sauron_watchful_eye');if(wound?.rarityIndex===4&&ts.aresWounds*bv(wound)>=bv(wound,'max'))chance+=.15;if(eye?.rarityIndex===4&&(ts.sauronEye||0)>=bv(eye))chance+=.10;}
+    const didCrit=force||Math.random()<Math.max(0,chance);
+    if(didCrit){
+      let critMult=2.5;if(e.morosMarkedCrit&&marked)critMult+=.50;if(last?.rarityIndex===4&&hpRatio(pl)<.2)critMult+=bv(last,'critDamage');damage*=critMult;
+      e.morosCritMiss=0;e.zeusThunderReady=bv(boon(pl,'zeus_critical_thunder'));
+      const artSpeed=boon(pl,'artemis_perfect_hunt');if(artSpeed)e.artemisCritUntil=now+2000;
+      const supreme=boon(pl,'artemis_supreme_hunter');if(supreme)e.artemisSupremeReady=bv(supreme);
+      const phantom=boon(pl,'nazgul_phantom_blade');if(phantom){e.nazgulCritDodge=bv(phantom);e.nazgulCritDodgeUntil=now+2000;}
+      const specter=boon(pl,'nazgul_relentless_specter');if(specter&&specter.rarityIndex>=3){e.nazgulCycleDodge=bv(specter,'dodge');e.nazgulCycleDodgeUntil=now+2000;}
+      if(e._usingZeusThunder&&boon(pl,'zeus_critical_thunder')?.rarityIndex===4)e.zeusThunderReady=bv(boon(pl,'zeus_critical_thunder'));
+      if(e._usingArtemisSupreme&&supreme?.rarityIndex===4)e.artemisSupremeReady=bv(supreme)*.5;
+      if(typeof spawnParts==='function')spawnParts(pl.x,pl.y-10,'#ffd35a',6,45);
+    }else{
+      const inevitable=boon(pl,'moros_inevitable');if(inevitable)e.morosCritMiss=Math.min(.30,(e.morosCritMiss||0)+bv(inevitable));
+    }
+    e.attackBonus=0;e.attackCritBonus=0;e.forceCrit=false;e.morosMarkedCrit=false;e._usingZeusThunder=false;e._usingArtemisSupreme=false;
+    pl._lastAttackWasCrit=didCrit;if(target){target._lastDamageOwner=pl;target._lastHitCrit=didCrit;}
+    return damage;
+  };
+
+  window.notifyBlessingHit=function(pl,target,damage,weapon=null){
+    if(!pl||!target)return;const e=effect(pl),now=performance.now(),ts=targetState(e,target);e.lastHitAt=now;ts.lastWeapon=weapon;
+    const overload=boon(pl,'zeus_overload');if(overload){const step=(pl._lastAttackWasCrit&&overload.rarityIndex>=3)?2:1;e.zeusOverloadHits=(e.zeusOverloadHits||0)+step;let need=bv(overload,'hits');if(overload.rarityIndex===4&&boon(pl,'zeus_storm_child')&&hpRatio(pl)<.4)need--;if(e.zeusOverloadHits>=need){e.zeusOverloadHits=0;e.zeusOverloadReady=bv(overload);}}
+    const conductor=boon(pl,'zeus_conductor');if(conductor){e.zeusConductor=Math.min(Math.round(bv(conductor,'max')/bv(conductor)),(e.zeusConductor||0)+1);e.zeusConductorLast=now;}
+    const authority=boon(pl,'zeus_authority');if(authority&&isBossTarget(target)){e.zeusBossHits=(e.zeusBossHits||0)+1;if(authority.rarityIndex===4&&e.zeusBossHits>=10){e.zeusBossHits=0;e.zeusBossPowerUntil=now+3000;}}
+    const wound=boon(pl,'ares_open_wound');if(wound){if(e.aresTarget!==target&&now-(e.aresTargetAt||0)>2000)ts.aresWounds=0;e.aresTarget=target;e.aresTargetAt=now;ts.aresWounds=Math.min(Math.ceil(bv(wound,'max')/bv(wound)),(ts.aresWounds||0)+1);}
+    const discipline=boon(pl,'atena_discipline');if(discipline){e.atenaHits=(e.atenaHits||0)+1;if(e.atenaHits%5===0)e.atenaDisciplineDamage=Math.min(bv(discipline),(e.atenaDisciplineDamage||0)+bv(discipline)/5);}
+    const step=boon(pl,'hermes_impossible_step');if(step){if(now-(e.hermesDashBucketAt||0)>1000){e.hermesDashBucketAt=now;e.hermesDashBucket=0;}const cut=Math.min(bv(step)*1000,Math.max(0,200-(e.hermesDashBucket||0)));pl._dashCd=Math.max(0,(pl._dashCd||0)-cut);e.hermesDashBucket=(e.hermesDashBucket||0)+cut;}
+    const aim=boon(pl,'artemis_rising_aim');if(aim){e.artemisAimHits=(e.artemisAimHits||0)+1;e.artemisAimLast=now;if(e.artemisAimHits%3===0)e.artemisAim=Math.min(bv(aim),(e.artemisAim||0)+.01);}
+    const weak=boon(pl,'artemis_weak_point');if(weak){ts.artemisWeak=Math.min(bv(weak),(ts.artemisWeak||0)+bv(weak)/6);}
+    const tide=boon(pl,'poseidon_rising_tide');if(tide){e.poseidonTide=Math.min(bv(tide),(e.poseidonTide||0)+.01);e.poseidonTideLast=now;}
+    const eye=boon(pl,'sauron_watchful_eye');if(eye){ts.sauronEye=Math.min(bv(eye),(ts.sauronEye||0)+bv(eye)/6);}
+    if(e.hecateEchoRepeat){e.hecateEchoRepeat=false;setTimeout(()=>{if(target&&!target.dead){const echoDamage=damage*.5;target._lastDamageOwner=pl;target.takeDmg(echoDamage);if(typeof spawnParts==='function')spawnParts(target.x,target.y,'#b866ff',7,42);}},80);}
+    if(target.dead)window.notifyBlessingKill(pl,target,weapon);
+  };
+
+  window.notifyBlessingKill=function(pl,target,weapon=null){
+    if(!pl||!target||target._blessingKillNotified)return;target._blessingKillNotified=true;
+    const e=effect(pl),now=performance.now(),elite=isEliteTarget(target),boss=isBossTarget(target);
+    const fury=boon(pl,'ares_war_thirst');if(fury){e.aresFury=Math.min(bv(fury,'max'),(e.aresFury||0)+1);e.aresFuryUntil=now+tempDuration(pl,4000);}
+    const drunk=boon(pl,'dionisio_divine_drunkenness');if(drunk&&Math.random()<bv(drunk)){addTempBuff(pl,randomItem(['damage','speed','attack']),bv(drunk,'power'),4000);}
+    const work=boon(pl,'hercules_first_labor');if(work){e.herculesWaveKills=(e.herculesWaveKills||0)+1;if(e.herculesWaveKills%15===0)e.herculesWork=Math.min(bv(work,'max'),(e.herculesWork||0)+1);}
+    const hchain=boon(pl,'hercules_rising_strength');if(hchain){e.herculesChain=now-(e.herculesLastKill||0)<=2000?Math.min(5,(e.herculesChain||0)+1):1;e.herculesLastKill=now;if(e.herculesChain===5)addHerculesFeat(pl,'SEQUÊNCIA');}
+    const trial=boon(pl,'hercules_trial');if(trial&&elite){e.herculesTrialUntil=now+tempDuration(pl,8000);addHerculesFeat(pl,'ELITE');}
+    if(boss)addHerculesFeat(pl,'CHEFE');
+    const domination=boon(pl,'sauron_domination');if(domination){e.sauronStacks=now-(e.sauronLastKill||0)<4500?Math.min(bv(domination,'max'),(e.sauronStacks||0)+1):1;e.sauronLastKill=now;}
+    const terror=boon(pl,'nazgul_rising_terror');if(terror){e.nazgulKills=(e.nazgulKills||0)+1;if(e.nazgulKills%5===0)e.nazgulTerror=Math.min(3,(e.nazgulTerror||0)+1);}
+    const battle=boon(pl,'atena_perfect_battle');if(battle){e.atenaCleanKills=(e.atenaCleanKills||0)+1;if(e.atenaCleanKills>=10){e.atenaCleanKills=0;e.atenaMedals=Math.min(3,(e.atenaMedals||0)+1);}}
+    const growth=boon(pl,'ents_ancestral_growth');if(growth){e.entsWaveKills=(e.entsWaveKills||0)+1;if(e.entsWaveKills%20===0&&(e.entsGrowthStacks||0)<5){e.entsGrowthStacks=(e.entsGrowthStacks||0)+1;const delta=changeMaxHp(pl,pl.maxHp*blessingAmp(pl,bv(growth)));e.entsTempHp=(e.entsTempHp||0)+delta;}}
+    const used=weapon||targetState(e,target).lastWeapon;if(used){e.hefestoKills=e.hefestoKills||{};e.hefestoKills[used.type]=(e.hefestoKills[used.type]||0)+1;}
+  };
+
+  applyCardLifesteal=function(pl,x,y){
+    if(!pl)return;const e=effect(pl),heal=(e.lifeSteal||0)+(e.killHealPct?pl.maxHp*e.killHealPct:0);
+    if(heal>0)healCampaignPlayer(pl,heal,x,y);
+    const killed=typeof allTargets==='function'?allTargets(enemies).find(target=>target&&target.dead&&target.x===x&&target.y===y):null;
+    if(killed){notifyCampaignShopTargetKilled(pl,killed);window.notifyBlessingKill(pl,killed,null);}
+  };
+
+  window.notifyBlessingDash=function(pl){const e=effect(pl),now=performance.now();e.lastDashAt=now;e.hermesDashUntil=now+1500;e.hermesCycleUntil=now+1500;e.nazgulDashReady=bv(boon(pl,'nazgul_dark_hunt'));e.nazgulDashReadyUntil=now+1500;if(boon(pl,'hermes_divine_speed')?.rarityIndex===4)e.weaponDashReduction=.10;};
+  window.notifyBlessingDashAvoid=function(pl){const card=boon(pl,'atena_counter');if(card){const e=effect(pl);e.atenaCounterReady=bv(card);e.atenaCounterReadyUntil=performance.now()+2000;e.attackCritBonus=bv(card,'crit');}};
+  window.notifyBlessingSpecial=function(){/* compatibilidade: ativações são contadas em notifyBlessingAttack */};
+  window.notifyBlessingDamageTaken=function(pl,amount=0){
+    if(!pl)return;const e=effect(pl),now=performance.now();e.lastDamageAt=now;e.waveDamageTaken=(e.waveDamageTaken||0)+amount;
+    const retaliation=boon(pl,'ares_pain_feeds_pain');if(retaliation&&now>=(e.aresRetaliateReadyAt||0)){e.aresRetaliateUntil=now+3000;e.aresRetaliateReadyAt=now+(retaliation.rarityIndex===4?4000:5000);}
+    if(boon(pl,'selene_waning_moon'))e.seleneAfterHitUntil=now+3000;
+    e.atenaStance=Math.max(0,(e.atenaStance||0)-2);e.atenaDisciplineDamage=(e.atenaDisciplineDamage||0)*.5;e.atenaMedals=Math.max(0,(e.atenaMedals||0)-1);e.atenaCleanKills=0;
+    e.nazgulTerror=Math.max(0,(e.nazgulTerror||0)-1);e.nazgulKills=0;
+    const resilience=boon(pl,'ents_resilience');if(resilience){if(now-(e.entDamageWindowAt||0)>3000){e.entDamageWindowAt=now;e.entDamageWindow=0;}e.entDamageWindow=(e.entDamageWindow||0)+amount;if(e.entDamageWindow>=pl.maxHp*.20&&now>=(e.entResilienceReadyAt||0)){e.entResilienceUntil=now+3000;e.entResilienceReadyAt=now+10000;e.entDamageWindow=0;}}
+  };
+  window.shouldBlessingDodge=function(pl){
+    if(!pl)return false;const e=effect(pl),now=performance.now();let chance=bv(boon(pl,'nazgul_spectral_form'));
+    if(now<(e.nazgulCritDodgeUntil||0))chance+=e.nazgulCritDodge||0;if(now<(e.nazgulCycleDodgeUntil||0))chance+=e.nazgulCycleDodge||0;
+    if(chance>0&&Math.random()<chance){const form=boon(pl,'nazgul_spectral_form');if(form?.rarityIndex===4)e.nazgulDodgeSpeedUntil=now+2000;const cycle=boon(pl,'nazgul_relentless_specter');if(cycle)e.nazgulCycleReady=bv(cycle);pl.inv=true;pl.invT=Math.max(pl.invT||0,220);if(typeof spawnParts==='function')spawnParts(pl.x,pl.y,'#8c78a8',10,55);return true;}return false;
+  };
+  window.shouldBlessingPreventDeath=function(pl){
+    const card=boon(pl,'moros_delayed_fate'),e=effect(pl);if(!card||!e.morosFatalReady)return false;e.morosFatalReady=false;
+    pl.hp=Math.max(1,Math.round(pl.maxHp*bv(card)));const inv=bv(card,'invuln');if(inv){pl.inv=true;pl.invT=Math.max(pl.invT||0,inv*1000);}if(card.rarityIndex===4)e.morosEscapeSpeedUntil=performance.now()+3000;
+    if(typeof spawnLevelUpNotice==='function')spawnLevelUpNotice(pl.x,pl.y-34,'⌛ DESTINO ADIADO',pl.idx||0);return true;
+  };
+  window.getBlessingIncomingDamageMultiplier=function(pl){
+    if(!pl)return 1;const e=effect(pl),now=performance.now(),hp=hpRatio(pl);let reduction=0;
+    const cycle=boon(pl,'selene_lunar_cycle');if(cycle&&e.selenePhase===2)reduction+=bv(cycle)+(e.selenePreviousPhase===2?bv(cycle)*.5:0);
+    const waning=boon(pl,'selene_waning_moon');if(waning&&now<(e.seleneAfterHitUntil||0))reduction+=bv(waning);
+    const eclipse=boon(pl,'selene_eclipse');if(eclipse&&e.seleneEclipse)reduction+=bv(eclipse,'defense');
+    const stance=boon(pl,'atena_perfect_stance');if(stance)reduction+=(e.atenaStance||0)*bv(stance);
+    const aegis=boon(pl,'atena_aegis');if(aegis&&now-(e.lastDamageAt||0)>=6000){reduction+=bv(aegis);e.lastDamageAt=now;if(aegis.rarityIndex===4)e.atenaAegisPowerUntil=now+2000;}
+    const pressure=boon(pl,'poseidon_ocean_pressure');if(pressure&&typeof allTargets==='function'){const near=allTargets(enemies).filter(target=>target&&!target.dead&&Math.hypot(target.x-pl.x,target.y-pl.y)<150).length;reduction+=Math.min(5,Math.floor(near/3))*bv(pressure);}
+    const trial=boon(pl,'hercules_trial');if(trial&&now<(e.herculesTrialUntil||0))reduction+=bv(trial,'defense');
+    const lion=boon(pl,'hercules_lion_skin');if(lion&&hp<.25)reduction+=bv(lion);
+    const will=boon(pl,'sauron_dark_will');if(will?.rarityIndex===4)reduction+=bv(will,'defense')*(1-hp);
+    const bark=boon(pl,'ents_growing_bark');if(bark)reduction+=e.entsWaveDefense||0;
+    const roots=boon(pl,'ents_deep_roots');if(roots&&now-(e.lastDashAt||0)>=3000)reduction+=bv(roots);
+    const resilience=boon(pl,'ents_resilience');if(resilience&&now<(e.entResilienceUntil||0))reduction+=bv(resilience);
+    const battle=boon(pl,'atena_perfect_battle');if(battle?.rarityIndex===4)reduction+=(e.atenaMedals||0)*bv(battle,'defense');
+    return 1-Math.min(.75,blessingAmp(pl,reduction));
+  };
+
+  window.updateBlessingEffects=function(pl,dt){
+    if(!pl)return;const e=effect(pl),now=performance.now();
+    if(e.zeusConductor&&now-(e.zeusConductorLast||0)>1200)e.zeusConductor=0;
+    const cycle=boon(pl,'selene_lunar_cycle');if(cycle){const duration=cycle.rarityIndex===4?10000:8000,elapsed=now-(e.seleneCycleAt||now);if(!e.seleneCycleAt)e.seleneCycleAt=now;if(elapsed>=duration){e.selenePreviousPhase=e.selenePhase??0;e.selenePreviousUntil=now+2000;e.selenePhase=((e.selenePhase??0)+1)%3;e.seleneCycleAt=now;}if(now>(e.selenePreviousUntil||0))e.selenePreviousPhase=-1;}
+    const smove=boon(pl,'selene_waxing_moon');if(smove){if(pl.isMoving){e.seleneMoveTime=(e.seleneMoveTime||0)+dt;e.seleneMove=Math.min(bv(smove),e.seleneMoveTime*.01);e.seleneStoppedAt=0;}else{e.seleneStoppedAt=e.seleneStoppedAt||now;if(now-e.seleneStoppedAt>1500){e.seleneMove=Math.max(0,(e.seleneMove||0)-dt*.04);e.seleneMoveTime=Math.max(0,(e.seleneMoveTime||0)-dt*4);}}}
+    const momentum=boon(pl,'hermes_momentum');if(momentum){e.hermesMoveTime=pl.isMoving?(e.hermesMoveTime||0)+dt:0;e.hermesMomentum=Math.min(bv(momentum),(e.hermesMoveTime||0)*.01);}
+    const eclipse=boon(pl,'selene_eclipse');if(eclipse){if(hpRatio(pl)<.30)e.seleneEclipse=true;else if(hpRatio(pl)>.40)e.seleneEclipse=false;}
+    const stance=boon(pl,'atena_perfect_stance');if(stance&&now-(e.lastDamageAt||0)>=2000){const earned=Math.min(5,Math.floor((now-(e.lastDamageAt||now))/2000));e.atenaStance=Math.max(e.atenaStance||0,earned);}
+    if((e.artemisAim||0)>0&&now-(e.artemisAimLast||0)>2000)e.artemisAim=Math.max(0,e.artemisAim-dt*.03);
+    const relentless=boon(pl,'poseidon_relentless_tide'),tide=boon(pl,'poseidon_rising_tide');if(tide&&e.poseidonTide&&now-(e.poseidonTideLast||0)>2000+(relentless?bv(relentless)*1000:0))e.poseidonTide=Math.max(0,e.poseidonTide-dt*.04);
+    const buffs=e.tempBuffs||[];for(let i=buffs.length-1;i>=0;i--){const buff=buffs[i];if(buff.until>now)continue;const renew=boon(pl,'dionisio_endless_party');if(renew&&!buff.renewed&&Math.random()<bv(renew)){buff.renewed=true;buff.until=now+tempDuration(pl,buff.baseMs);continue;}buffs.splice(i,1);const hang=boon(pl,'dionisio_hangover');if(hang){e.dionHangoverValue=bv(hang);e.dionHangoverType=hang.rarityIndex>=3?randomItem(['damage','speed']):'speed';e.dionHangoverUntil=now+(hang.rarityIndex===4?3000:2000);}}
+    let move=0;if(cycle&&e.selenePhase===0)move+=bv(cycle)+(e.selenePreviousPhase===0?bv(cycle)*.5:0);move+=e.seleneMove||0;move+=e.hermesMomentum||0;
+    const direction=boon(pl,'poseidon_against_current');if(direction&&currentDirectionState(pl,e.currentTarget)<-.15)move+=bv(direction);
+    const high=boon(pl,'poseidon_high_tide');if(high?.rarityIndex===4&&hpRatio(pl)>.7)move+=bv(high,'speed');
+    if(relentless&&tide&&e.poseidonTide>=bv(tide)&&relentless.rarityIndex>=3)move+=bv(relentless,'speed');
+    const waning=boon(pl,'selene_waning_moon');if(waning?.rarityIndex===4&&now<(e.seleneAfterHitUntil||0))move+=bv(waning,'speed');
+    if(e.seleneEclipse)move+=bv(eclipse,'speed');if(now<(e.herculesTrialUntil||0))move+=bv(boon(pl,'hercules_trial'),'speed');
+    move+=(e.nazgulTerror||0)*bv(boon(pl,'nazgul_rising_terror'));if(now<(e.nazgulDodgeSpeedUntil||0))move+=.15;if(now<(e.morosEscapeSpeedUntil||0))move+=.15;if(now<(e.entResilienceUntil||0))move+=bv(boon(pl,'ents_resilience'),'speed');
+    for(const buff of activeTempBuffs(e,now))if(buff.type==='speed')move+=buff.value;if(now<(e.dionHangoverUntil||0)&&e.dionHangoverType==='speed')move+=e.dionHangoverValue||0;
+    e.movementPower=Math.min(1,move/Math.max(.01,bv(boon(pl,'hermes_momentum'))||.25));const factor=1+blessingAmp(pl,move);pl.speed=pl.speed/(e._speedFactorV3||1)*factor;e._speedFactorV3=factor;
+  };
+
+  applyCardWaveRegen=function(){
+    legacyBlessingWaveRegen();const pls=[typeof player!=='undefined'?player:null,...(typeof gameMode!=='undefined'&&gameMode===2&&typeof player2!=='undefined'&&player2?[player2]:[])].filter(p=>p&&!p.dead);
+    for(const pl of pls){const e=effect(pl),bark=boon(pl,'ents_growing_bark');if(bark)e.entsWaveDefense=Math.min(bv(bark,'max'),(e.entsWaveDefense||0)+bv(bark));
+      if(e.entsTempHp){const elder=boon(pl,'ents_forest_elder'),keep=e.entsTempHp*bv(elder);changeMaxHp(pl,-e.entsTempHp,false);if(keep>0)changeMaxHp(pl,keep,true);e.entsTempHp=0;e.entsGrowthStacks=0;}
+      const reinforce=boon(pl,'hefesto_reinforcement');if(reinforce&&e.hefestoKills){e.reinforcedWeapon=Object.entries(e.hefestoKills).sort((a,b)=>b[1]-a[1])[0]?.[0]||null;}e.hefestoKills={};
+      if(boon(pl,'hercules_twelve_labors')&&(e.waveDamageTaken||0)===0)addHerculesFeat(pl,'ONDA PERFEITA');
+      e.waveDamageTaken=0;e.herculesWaveKills=0;e.herculesWork=0;e.entsWaveKills=0;e.morosFatalReady=true;e.zeusBossHits=0;
+    }
+  };
+  window.__DEITY_BLESSING_DEBUG__={boon,bv,dynamicDamageBonusV3,blessingAttackSpeed};
 
   resetCardBlessings=function(){
     activeCardBlessings=[];selectedCardOffer=null;selectedCardElement=null;
@@ -11237,6 +11705,7 @@ function gameItemPixelKind(idOrName){
 }
 requestAnimationFrame(()=>hydrateGamePixelIcons(document));
 function collItemIcon(it,classId){
+  if(it?.pixelIcon)return collGameIcon(it.pixelIcon);
   const n=(it.name||'').toLowerCase();
   // Ícones específicos vêm primeiro para evitar que palavras amplas como
   // "arcana" ou "gelo" façam vários itens diferentes parecerem iguais.
@@ -11446,10 +11915,11 @@ function renderCollClasses(grid){
           collStatBar('Velocidade',cd.stats.veloc, 100, '#44aaff'),
           collStatBar('Crítico',  cd.stats.crit,   100, '#ffcc44'),
         ].join('');
-        const itemList=cd.shopItems.map(it=>`<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+        const activeClassBuffs=(window.CAMPAIGN_CLASS_BUFFS?.[cd.id]||cd.shopItems);
+        const itemList=activeClassBuffs.map(it=>`<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
           ${collIconHtml(collItemIcon(it,cd.id),28)}
-          <div><div style="font-size:14px;color:#f0d080;">${it.name}</div><div style="font-size:11px;color:#7a6030;">${it.desc}</div></div>
-          <span style="font-size:12px;color:#c8a84b;margin-left:auto;">ᛟ ${it.price}</span>
+          <div><div style="font-size:14px;color:#f0d080;">${it.name}</div><div style="font-size:11px;color:#7a6030;">${it.values?`Comum: ${campaignShopBuffDescription(it,'common')} · Lendário: ${campaignShopBuffDescription(it,'legendary')}`:it.desc}</div></div>
+          <span style="font-size:10px;color:#c8a84b;margin-left:auto;">ÚNICO</span>
         </div>`).join('');
         det.innerHTML=`
           <div style="border-bottom:2px solid ${col}44;padding-bottom:8px;margin-bottom:8px;">
@@ -11463,7 +11933,7 @@ function renderCollClasses(grid){
             <div style="font-size:12px;font-weight:bold;color:${col};letter-spacing:1px;margin-bottom:3px;">ᛞ HABILIDADE: ${cd.ability}</div>
             <div style="font-size:12px;color:#a09060;">${cd.abilityDesc}</div>
           </div>
-          <div style="font-size:11px;color:#5a4020;letter-spacing:2px;margin:6px 0 4px;">ITENS DA LOJA (${cd.shopItems.length})</div>
+          <div style="font-size:11px;color:#5a4020;letter-spacing:2px;margin:6px 0 4px;">BUFFS EXCLUSIVOS DA LOJA (${activeClassBuffs.length})</div>
           <div style="max-height:130px;overflow-y:auto;">${itemList}</div>
         `;
       }
@@ -11546,6 +12016,7 @@ function renderCollBlessings(grid){
   const deities=Array.isArray(window.DEITY_BLESSINGS_V2)?window.DEITY_BLESSINGS_V2:[];
   const rarities=Array.isArray(window.DEITY_BLESSING_RARITIES)?window.DEITY_BLESSING_RARITIES:[
     {id:'comum',label:'COMUM',color:'#79e89a'},
+    {id:'incomum',label:'INCOMUM',color:'#43d477'},
     {id:'rara',label:'RARA',color:'#58a8ff'},
     {id:'epica',label:'EPICA',color:'#c86cff'},
     {id:'lendaria',label:'LENDARIA',color:'#ffd35a'}
@@ -11566,7 +12037,7 @@ function renderCollBlessings(grid){
             <div class="coll-boon-rarity-value">${valueText(boon,value,index)}</div>
           </div>`;
         }).join('');
-        return `<div class="coll-boon-card" style="--boon-color:${rarities[3].color}">
+        return `<div class="coll-boon-card" style="--boon-color:${rarities[rarities.length-1].color}">
           <div class="coll-boon-head">
             ${collIconHtml(collBlessingIcon(boon),30)}
             <div class="coll-boon-title">
@@ -11583,7 +12054,7 @@ function renderCollBlessings(grid){
         <div class="coll-det-info">
           <div class="coll-det-name">${deity.name}</div>
           <div class="coll-det-type">${deity.title}</div>
-          <div class="coll-det-kills">${boons.length} bênçãos · 4 raridades</div>
+          <div class="coll-det-kills">${boons.length} bênçãos · ${rarities.length} raridades</div>
         </div>
       </div><div class="coll-det-divider"></div>${boonHtml}`;
     }, null, '#c8a84b'));
@@ -13547,6 +14018,8 @@ for(const [classId,list] of Object.entries(CAMPAIGN_WEAPON_SPECS)){
 function campaignWeaponDamage(def,rarity){return def.baseDmg*(CAMPAIGN_WEAPON_POWER[rarity]||1);}
 function campaignWeaponCooldown(def,rarity,player=null,weapon=null){
   let cd=def.cd/(CAMPAIGN_WEAPON_SPEED[rarity]||1);
+  if(player)cd/=1+getCampaignShopAttackSpeedBonus(player);
+  if(player?.cardEffects?.weaponDashReduction){cd*=1-player.cardEffects.weaponDashReduction;player.cardEffects.weaponDashReduction=0;}
   if(weapon?.berserkTimer>0)cd*=def.id==='viking_twinaxes'?.75:.80;
   if(def.id==='viking_bloodaxe'&&rarity==='legendary'&&player&&player.hp/player.maxHp<.35)cd*=.80;
   return cd;
@@ -13782,8 +14255,148 @@ function drawLevelNotices(){
 // SMART SHOP — items filtered by player class
 // ═══════════════════════════════════════════════════════
 
+const CAMPAIGN_CLASS_BUFFS={
+  mage:[
+    {id:'mage_arcane_core',name:'Núcleo Arcano',pixelIcon:'orb',effect:'magicDamage',values:[.06,.08,.10,.15,.20]},
+    {id:'mage_spellbook',name:'Livro dos Feitiços',pixelIcon:'book',effect:'attackSpeed',values:[.05,.07,.09,.14,.18]},
+    {id:'mage_elemental_orb',name:'Orbe Elemental',pixelIcon:'double_orb',effect:'elementDuration',values:[.10,.14,.18,.25,.30]},
+    {id:'mage_arcane_hourglass',name:'Ampulheta Arcana',pixelIcon:'clock',effect:'cooldownReduction',values:[.04,.055,.07,.10,.14]},
+    {id:'mage_astral_cloak',name:'Manto Astral',pixelIcon:'shadow',effect:'astralDefense',values:[.03,.04,.05,.07,.09]},
+    {id:'mage_mana_fragment',name:'Fragmento de Mana',pixelIcon:'spark',effect:'spellDuplicate',values:[.03,.04,.05,.07,.09]},
+    {id:'mage_arcane_eye',name:'Olho Arcano',pixelIcon:'eye',effect:'magicCrit',values:[.04,.055,.07,.10,.13]},
+    {id:'mage_rune_circle',name:'Círculo Rúnico',pixelIcon:'ring',effect:'runeMax',values:[4,5,6,8,10]},
+  ],
+  warrior:[
+    {id:'warrior_reinforced_plate',name:'Placa Reforçada',pixelIcon:'armor',effect:'armor',values:[.04,.055,.07,.10,.13]},
+    {id:'warrior_whetstone',name:'Pedra de Afiar',pixelIcon:'stone',effect:'meleeDamage',values:[.06,.08,.10,.15,.20]},
+    {id:'warrior_gauntlet',name:'Manopla de Guerra',pixelIcon:'training',effect:'attackSpeed',values:[.05,.065,.08,.12,.16]},
+    {id:'warrior_guardian_medallion',name:'Medalhão do Guardião',pixelIcon:'shield',effect:'maxHpFlat',values:[8,11,14,22,30]},
+    {id:'warrior_broken_shield',name:'Escudo Quebrado',pixelIcon:'shield',effect:'revengeDamage',values:[.05,.065,.08,.12,.15]},
+    {id:'warrior_heavy_boots',name:'Botas Pesadas',pixelIcon:'boots',effect:'knockbackResist',values:[.20,.275,.35,.50,.70]},
+    {id:'warrior_iron_emblem',name:'Emblema de Ferro',pixelIcon:'armor',effect:'ironDefense',values:[.02,.025,.03,.04,.05]},
+    {id:'warrior_titan_heart',name:'Coração do Titã',pixelIcon:'heart',effect:'highHpDamage',values:[.05,.065,.08,.12,.15]},
+  ],
+  archer:[
+    {id:'archer_shooter_glove',name:'Luva do Atirador',pixelIcon:'training',effect:'attackSpeed',values:[.06,.08,.10,.15,.20]},
+    {id:'archer_eagle_eye',name:'Olho de Águia',pixelIcon:'target',effect:'critChance',values:[.05,.065,.08,.12,.15]},
+    {id:'archer_reinforced_quiver',name:'Aljava Reforçada',pixelIcon:'backpack',effect:'extraArrow',values:[.03,.04,.05,.07,.10]},
+    {id:'archer_wind_feather',name:'Pena do Vento',pixelIcon:'leaf',effect:'moveSpeed',values:[.04,.055,.07,.10,.13]},
+    {id:'archer_hunter_sight',name:'Mira de Caçador',pixelIcon:'eye',effect:'distanceDamage',values:[.06,.08,.10,.14,.18]},
+    {id:'archer_serrated_tip',name:'Ponta Serrilhada',pixelIcon:'bow',effect:'critBleed',values:[.10,.12,.14,.18,.22]},
+    {id:'archer_precision_medallion',name:'Medalhão da Precisão',pixelIcon:'target',effect:'safeCrit',values:[.03,.04,.05,.07,.10]},
+    {id:'archer_hunter_steps',name:'Passos do Caçador',pixelIcon:'boots',effect:'movingAttackSpeed',values:[.03,.04,.05,.08,.10]},
+  ],
+  viking:[
+    {id:'viking_war_horn',name:'Chifre de Guerra',pixelIcon:'axe',effect:'meleeDamage',values:[.06,.08,.10,.15,.20]},
+    {id:'viking_mead_mug',name:'Caneca de Hidromel',pixelIcon:'cup',effect:'vikingRegenInterval',values:[8000,7000,6000,4000,3000]},
+    {id:'viking_blood_rune',name:'Runa de Sangue',pixelIcon:'root',effect:'lifeStealPct',values:[.01,.015,.02,.03,.04]},
+    {id:'viking_odin_eye',name:'Olho de Odin',pixelIcon:'eye',effect:'critChance',values:[.04,.055,.07,.10,.13]},
+    {id:'viking_berserker_fury',name:'Fúria Berserker',pixelIcon:'fire',effect:'lowHpAttackSpeed',values:[.08,.10,.12,.18,.25]},
+    {id:'viking_thor_totem',name:'Totem de Thor',pixelIcon:'lightning',effect:'thorEvery',values:[12,11,10,8,7]},
+    {id:'viking_frozen_beard',name:'Barba Congelada',pixelIcon:'ice',effect:'slowAura',values:[.05,.065,.08,.12,.15]},
+    {id:'viking_valhalla_heart',name:'Coração de Valhalla',pixelIcon:'heart',effect:'killHealChance',values:[.01,.0125,.015,.02,.025]},
+  ],
+};
+
+const CAMPAIGN_UNIVERSAL_ITEMS=[
+  {id:'universal_light_boots',name:'Botas Ligeiras',pixelIcon:'boots',effect:'moveSpeed',values:[.04,.055,.07,.10,.13]},
+  {id:'universal_red_heart',name:'Coração Rubro',pixelIcon:'heart',effect:'maxHpFlat',values:[6,9,12,20,30]},
+  {id:'universal_combat_ration',name:'Ração de Combate',pixelIcon:'stew',effect:'universalRegenInterval',values:[10000,8500,7000,5000,4000]},
+  {id:'universal_agile_gloves',name:'Luvas Ágeis',pixelIcon:'training',effect:'attackSpeed',values:[.04,.055,.07,.11,.15]},
+  {id:'universal_luck_amulet',name:'Amuleto da Sorte',pixelIcon:'ring',effect:'shopLuck',values:[.05,.075,.10,.15,.22]},
+  {id:'universal_merchant_bag',name:'Bolsa do Mercador',pixelIcon:'backpack',effect:'goldBonus',values:[.03,.045,.06,.10,.15]},
+  {id:'universal_runic_magnet',name:'Ímã Rúnico',pixelIcon:'vortex',effect:'pickupRadius',values:[15,22,30,50,75]},
+  {id:'universal_golden_clover',name:'Trevo Dourado',pixelIcon:'leaf',effect:'dropBonus',values:[.04,.055,.07,.10,.14]},
+];
+
+function campaignShopPct(value,digits=0){return `${(value*100).toFixed(digits).replace('.',',').replace(/,0$/,'')}%`;}
+function campaignShopBuffDescription(spec,rarity){
+  const v=spec.values[Math.max(0,RARITIES.indexOf(rarity))]??spec.values[0];
+  const legendary=rarity==='legendary';
+  switch(spec.id){
+    case 'mage_arcane_core':return `+${campaignShopPct(v)} de dano mágico.${legendary?' Feitiços ganham +5% de área.':''}`;
+    case 'mage_spellbook':return `+${campaignShopPct(v)} de velocidade de ataque.${legendary?' A cada 8 ataques, o próximo intervalo cai pela metade.':''}`;
+    case 'mage_elemental_orb':return `+${campaignShopPct(v)} de duração para fogo, gelo e veneno.${legendary?' Efeitos elementais causam +8% de dano.':''}`;
+    case 'mage_arcane_hourglass':return `−${campaignShopPct(v,1)} de recarga de ataques, armas e habilidade.`;
+    case 'mage_astral_cloak':return `${campaignShopPct(v)} de redução de dano.${legendary?' Bloqueia um ataque a cada 15s.':''}`;
+    case 'mage_mana_fragment':return `${campaignShopPct(v)} de chance de duplicar um feitiço com 60% do dano.`;
+    case 'mage_arcane_eye':return `+${campaignShopPct(v,1)} de crítico mágico.${legendary?' Críticos geram um impacto arcano maior.':''}`;
+    case 'mage_rune_circle':return `Acertos consecutivos acumulam até +${v}% de dano; perde as cargas após 3s sem acertar.`;
+    case 'warrior_reinforced_plate':return `+${campaignShopPct(v,1)} de armadura.`;
+    case 'warrior_whetstone':return `+${campaignShopPct(v)} de dano corpo a corpo.${legendary?' Também concede +5% de crítico corpo a corpo.':''}`;
+    case 'warrior_gauntlet':return `+${campaignShopPct(v,1)} de velocidade de ataque.${legendary?' Todo 3º ataque é 10% mais rápido.':''}`;
+    case 'warrior_guardian_medallion':return `+${v} de vida máxima.${legendary?' Abaixo de 25% de vida, ganha 10% de defesa por 4s (20s de recarga).':''}`;
+    case 'warrior_broken_shield':return `Após sofrer dano, causa +${campaignShopPct(v,1)} por 2s.${legendary?' Também ganha +10% de velocidade de ataque.':''}`;
+    case 'warrior_heavy_boots':return `−${campaignShopPct(v,1)} de empurrão recebido.${legendary?' Também concede +5% de movimento.':''}`;
+    case 'warrior_iron_emblem':return `A cada 5 ataques, ganha ${campaignShopPct(v,1)} de defesa por 3s.`;
+    case 'warrior_titan_heart':return `Acima de 80% de vida, causa +${campaignShopPct(v,1)} de dano.`;
+    case 'archer_shooter_glove':return `+${campaignShopPct(v)} de velocidade de ataque.`;
+    case 'archer_eagle_eye':return `+${campaignShopPct(v,1)} de chance crítica.${legendary?' Projéteis críticos viajam 10% mais rápido.':''}`;
+    case 'archer_reinforced_quiver':return `${campaignShopPct(v)} de chance de disparar uma flecha extra com 50% do dano.`;
+    case 'archer_wind_feather':return `+${campaignShopPct(v,1)} de movimento.${legendary?' Abates críticos concedem +10% de movimento por 1s.':''}`;
+    case 'archer_hunter_sight':return `Até +${campaignShopPct(v)} de dano conforme a distância do alvo.`;
+    case 'archer_serrated_tip':return `Críticos causam sangramento de ${campaignShopPct(v)} do dano ao longo de 2s.`;
+    case 'archer_precision_medallion':return `Após 1s sem sofrer dano, ganha +${campaignShopPct(v)} de crítico.${legendary?' Também ganha +5% de dano.':''}`;
+    case 'archer_hunter_steps':return `Enquanto se move, ganha +${campaignShopPct(v)} de velocidade de ataque.${legendary?' Também causa +5% de dano.':''}`;
+    case 'viking_war_horn':return `+${campaignShopPct(v)} de dano corpo a corpo.${legendary?' Ataques corpo a corpo ganham +5% de área.':''}`;
+    case 'viking_mead_mug':return `Regenera 1 de vida a cada ${(v/1000).toFixed(1).replace('.0','')}s.`;
+    case 'viking_blood_rune':return `${campaignShopPct(v,1)} de roubo de vida, com limite de cura por segundo.`;
+    case 'viking_odin_eye':return `+${campaignShopPct(v,1)} de crítico.${legendary?' Críticos causam um pequeno impacto em área.':''}`;
+    case 'viking_berserker_fury':return `Quanto menor a vida, até +${campaignShopPct(v)} de velocidade de ataque abaixo de 25%.`;
+    case 'viking_thor_totem':return `A cada ${v} ataques, um raio atinge um inimigo próximo por 50% do dano da arma.`;
+    case 'viking_frozen_beard':return `Inimigos próximos sofrem ${campaignShopPct(v,1)} de lentidão.${legendary?' Após 3s próximos, recebem 20% por 1s.':''}`;
+    case 'viking_valhalla_heart':return `${campaignShopPct(v,2)} de chance por abate de recuperar 1 de vida; elites e chefes aumentam a chance.`;
+    case 'universal_light_boots':return `+${campaignShopPct(v,1)} de velocidade de movimento.`;
+    case 'universal_red_heart':return `+${v} de vida máxima.`;
+    case 'universal_combat_ration':return `Regenera 1 de vida a cada ${(v/1000).toFixed(1).replace('.0','')}s.`;
+    case 'universal_agile_gloves':return `+${campaignShopPct(v,1)} de velocidade de ataque.`;
+    case 'universal_luck_amulet':return `+${campaignShopPct(v,1)} de sorte na loja e nos drops; melhora a chance de raridades altas.`;
+    case 'universal_merchant_bag':return `+${campaignShopPct(v,1)} de moedas obtidas.${legendary?' O primeiro reroll de cada loja custa metade.':''}`;
+    case 'universal_runic_magnet':return `+${v} px de alcance para coletar moedas.${legendary?' Moedas são puxadas visualmente até o herói.':''}`;
+    case 'universal_golden_clover':return `+${campaignShopPct(v,1)} de chance de encontrar cura, moedas e recursos extras.`;
+  }
+  return 'Bônus permanente durante esta campanha.';
+}
+
+function getCampaignShopEffect(playerRef){return playerRef?(playerRef.shopEffects||(playerRef.shopEffects={})):{};}
+function applyCampaignShopItem(playerRef,spec,rarity){
+  if(!playerRef||!spec)return;
+  const e=getCampaignShopEffect(playerRef),idx=Math.max(0,RARITIES.indexOf(rarity)),v=spec.values[idx]??spec.values[0];
+  if(spec.effect==='attackSpeed')e.attackSpeed=(e.attackSpeed||0)+v;
+  else e[spec.effect]=v;
+  e[`${spec.id}Rarity`]=rarity;
+  if(spec.effect==='maxHpFlat'){playerRef.maxHp+=v;playerRef.hp=Math.min(playerRef.maxHp,playerRef.hp+v);}
+  if(spec.effect==='moveSpeed')playerRef.speed*=1+v;
+  if(spec.effect==='armor'||spec.effect==='astralDefense')playerRef.dmgReduce=Math.min(.65,(playerRef.dmgReduce||0)+v);
+  if(spec.id==='warrior_heavy_boots'&&rarity==='legendary')playerRef.speed*=1.05;
+  if(spec.id==='mage_arcane_core'&&rarity==='legendary')e.magicArea=.05;
+  if(spec.id==='mage_elemental_orb'&&rarity==='legendary')e.elementDamage=.08;
+  if(spec.id==='mage_astral_cloak'&&rarity==='legendary')e.astralBlock=true;
+  if(spec.id==='mage_arcane_eye'&&rarity==='legendary')e.magicCritImpact=true;
+  if(spec.id==='warrior_whetstone'&&rarity==='legendary')e.meleeCrit=.05;
+  if(spec.id==='warrior_gauntlet'&&rarity==='legendary')e.thirdAttackSpeed=true;
+  if(spec.id==='warrior_guardian_medallion'&&rarity==='legendary')e.guardianLowHp=true;
+  if(spec.id==='warrior_broken_shield'&&rarity==='legendary')e.revengeAttackSpeed=.10;
+  if(spec.id==='archer_eagle_eye'&&rarity==='legendary')e.critProjectileSpeed=.10;
+  if(spec.id==='archer_wind_feather'&&rarity==='legendary')e.critKillSpeed=.10;
+  if(spec.id==='archer_precision_medallion'&&rarity==='legendary')e.safeDamage=.05;
+  if(spec.id==='archer_hunter_steps'&&rarity==='legendary')e.movingDamage=.05;
+  if(spec.id==='viking_war_horn'&&rarity==='legendary')e.meleeArea=.05;
+  if(spec.id==='viking_odin_eye'&&rarity==='legendary')e.odinCritImpact=true;
+  if(spec.id==='viking_frozen_beard'&&rarity==='legendary')e.deepSlowAura=true;
+  if(spec.id==='universal_merchant_bag'&&rarity==='legendary')e.merchantRerollDiscount=true;
+  if(spec.id==='universal_runic_magnet'&&rarity==='legendary')e.magnetPull=true;
+  e.lastDamageAt=e.lastDamageAt||-Infinity;
+}
+
+function campaignShopMaxEffect(key){
+  const list=[typeof player!=='undefined'?player:null,...(typeof gameMode!=='undefined'&&gameMode===2&&typeof player2!=='undefined'&&player2?[player2]:[])].filter(Boolean);
+  return Math.max(0,...list.map(pl=>getCampaignShopEffect(pl)[key]||0));
+}
+
 function campaignShopRarityForWave(){
-  const roll=Math.random();
+  const luck=campaignShopMaxEffect('shopLuck');
+  const roll=Math.max(0,Math.random()-luck*.45);
   const w=Math.max(1,wave||1);
   if(w>=21&&roll<0.07)return 'legendary';
   if(w>=16&&roll<0.22)return 'epic';
@@ -13797,19 +14410,183 @@ function makeCampaignWeaponOffer(type,pidx){
   const rarity=campaignShopRarityForWave();
   const basePrice={common:9,uncommon:14,rare:21,epic:30,legendary:42}[rarity];
   return {id:`campaign_${pidx}_${type}_${rarity}`,name:def.name,desc:def.desc(rarity),price:basePrice,
-    wtype:type,rarity,pidx,classId:def.classId,isCampaignWeapon:true,pixelIcon:def.pixelIcon,unique:false};
+    wtype:type,rarity,pidx,classId:def.classId,isCampaignWeapon:true,category:'weapon',pixelIcon:def.pixelIcon,unique:false};
 }
 
-function getClassShopItems(){
+function makeCampaignBuffOffer(spec,pidx=null,universal=false){
+  const rarity=campaignShopRarityForWave();
+  const priceMap=universal?{common:8,uncommon:12,rare:18,epic:27,legendary:39}:{common:9,uncommon:13,rare:19,epic:28,legendary:41};
+  const classId=universal?null:(pidx===1?selectedClass.p2:selectedClass.p1);
+  return {id:spec.id,name:spec.name,desc:campaignShopBuffDescription(spec,rarity),price:priceMap[rarity],rarity,pidx,classId,
+    category:universal?'universal':'classBuff',isClassBuff:!universal,isUniversal:universal,pixelIcon:spec.pixelIcon,unique:true,spec,
+    apply(target){applyCampaignShopItem(target,spec,rarity);}};
+}
+
+function getClassShopItems(category='weapon',forcedPidx=null){
   const playerDefs=[{pidx:0,classId:selectedClass.p1}];
   if(gameMode===2)playerDefs.push({pidx:1,classId:selectedClass.p2});
   const items=[];
   for(const pd of playerDefs){
-    const defs=Object.values(WEAPON_DEFS).filter(def=>def.classId===pd.classId);
-    for(const def of defs)items.push(makeCampaignWeaponOffer(def.id,pd.pidx));
+    if(forcedPidx!=null&&pd.pidx!==forcedPidx)continue;
+    if(category==='weapon'){
+      const defs=Object.values(WEAPON_DEFS).filter(def=>def.classId===pd.classId);
+      for(const def of defs)items.push(makeCampaignWeaponOffer(def.id,pd.pidx));
+    }else if(category==='classBuff'){
+      for(const spec of CAMPAIGN_CLASS_BUFFS[pd.classId]||[])items.push(makeCampaignBuffOffer(spec,pd.pidx,false));
+    }
   }
+  if(category==='universal')for(const spec of CAMPAIGN_UNIVERSAL_ITEMS)items.push(makeCampaignBuffOffer(spec,null,true));
   return items;
 }
+
+window.CAMPAIGN_CLASS_BUFFS=CAMPAIGN_CLASS_BUFFS;
+window.CAMPAIGN_UNIVERSAL_ITEMS=CAMPAIGN_UNIVERSAL_ITEMS;
+
+function getCampaignShopDamageBonus(pl,target){
+  if(!pl)return 0;
+  const e=getCampaignShopEffect(pl),now=performance.now(),hp=pl.maxHp?pl.hp/pl.maxHp:1;
+  let bonus=0;
+  if(pl.classId==='mage')bonus+=e.magicDamage||0;
+  if(pl.classId==='warrior'||pl.classId==='viking')bonus+=e.meleeDamage||0;
+  if(pl.classId==='warrior'&&hp>.8)bonus+=e.highHpDamage||0;
+  if(now<(e.revengeUntil||0))bonus+=e.revengeDamage||0;
+  if(pl.classId==='archer'){
+    if(target&&e.distanceDamage){const distance=Math.hypot(target.x-pl.x,target.y-pl.y);bonus+=e.distanceDamage*Math.min(1,distance/Math.max(1,pl.range||300));}
+    if(now-(e.lastDamageAt||-Infinity)>=1000)bonus+=e.safeDamage||0;
+    if(pl.isMoving)bonus+=e.movingDamage||0;
+  }
+  if(target&&e.runeMax){
+    const mark=target._campaignRuneHits?.[pl.idx||0];
+    if(mark&&now-mark.at<3000)bonus+=Math.min(e.runeMax,mark.hits||0)/100;
+  }
+  return bonus;
+}
+
+function getCampaignShopCritBonus(pl){
+  if(!pl)return 0;
+  const e=getCampaignShopEffect(pl),now=performance.now();let chance=e.critChance||0;
+  if(pl.classId==='mage')chance+=e.magicCrit||0;
+  if((pl.classId==='warrior'||pl.classId==='viking'))chance+=e.meleeCrit||0;
+  if(pl.classId==='archer'&&now-(e.lastDamageAt||-Infinity)>=1000)chance+=e.safeCrit||0;
+  return chance;
+}
+
+function getCampaignShopAttackSpeedBonus(pl){
+  if(!pl)return 0;
+  const e=getCampaignShopEffect(pl),now=performance.now(),hp=pl.maxHp?Math.max(0,Math.min(1,pl.hp/pl.maxHp)):1;
+  let bonus=e.attackSpeed||0;
+  if(e.cooldownReduction)bonus+=1/(1-Math.min(.45,e.cooldownReduction))-1;
+  if(pl.classId==='viking'&&e.lowHpAttackSpeed)bonus+=e.lowHpAttackSpeed*Math.min(1,(1-hp)/.75);
+  if(pl.classId==='archer'&&pl.isMoving)bonus+=e.movingAttackSpeed||0;
+  if(now<(e.revengeUntil||0))bonus+=e.revengeAttackSpeed||0;
+  return bonus;
+}
+
+function notifyCampaignShopAttack(pl,target,sourceDamage,weapon=null){
+  if(!pl)return 1;
+  const e=getCampaignShopEffect(pl);e.attackCount=(e.attackCount||0)+1;
+  let cooldownMult=1;
+  if(pl.classId==='mage'&&e[`${'mage_spellbook'}Rarity`]==='legendary'&&e.attackCount%8===0)cooldownMult*=.5;
+  if(pl.classId==='warrior'&&e.thirdAttackSpeed&&e.attackCount%3===0)cooldownMult/=1.10;
+  if(e.ironDefense&&e.attackCount%5===0)e.ironDefenseUntil=performance.now()+3000;
+  const actualTarget=target&&(!target.dead||target._manualAim)?target:(typeof nearestWeaponTargets==='function'?nearestWeaponTargets(pl,enemies,Math.max(360,pl.range||0),1)[0]:null);
+  if(actualTarget&&pl.classId==='mage'&&e.spellDuplicate&&Math.random()<e.spellDuplicate&&typeof CampaignWeaponProj!=='undefined'){
+    const angle=Math.atan2(actualTarget.y-pl.y,actualTarget.x-pl.x),duplicateWeapon=weapon||{type:'mage_arcane_staff',damageDone:0};
+    projs.push(new CampaignWeaponProj(pl.x,pl.y,angle,(sourceDamage||pl.dmg)*.60,pl,duplicateWeapon,{color:'#b866ff',homing:!actualTarget._manualAim,target:actualTarget,pierce:0}));
+    spawnParts(pl.x,pl.y,'#d68cff',5,34);
+  }
+  if(actualTarget&&pl.classId==='archer'&&e.extraArrow&&Math.random()<e.extraArrow){
+    projs.push(new ArrowProj(pl.x,pl.y,actualTarget,(sourceDamage||pl.dmg)*.50,pl));
+    spawnParts(pl.x,pl.y,'#8dff71',4,32);
+  }
+  if(actualTarget&&pl.classId==='viking'&&e.thorEvery&&e.attackCount%e.thorEvery===0){
+    const lightningTarget=(typeof nearestWeaponTargets==='function'?nearestWeaponTargets(pl,enemies,360,1)[0]:actualTarget)||actualTarget;
+    if(lightningTarget){const lightningDamage=(sourceDamage||pl.dmg)*.50;lightningTarget._lastDamageOwner=pl;lightningTarget.takeDmg(lightningDamage);applyCampaignShopHitEffects(pl,lightningTarget,lightningDamage);spawnParts(lightningTarget.x,lightningTarget.y,'#ffd83d',10,65);spawnLevelUpNotice(lightningTarget.x,lightningTarget.y-18,'⚡ THOR',pl.idx||0);}
+  }
+  if(typeof notifyBlessingAttack==='function')cooldownMult*=notifyBlessingAttack(pl,actualTarget,sourceDamage,weapon);
+  return cooldownMult;
+}
+
+function campaignShopIncomingDamageMultiplier(pl){
+  if(!pl)return 1;
+  const e=getCampaignShopEffect(pl),now=performance.now(),hp=pl.maxHp?pl.hp/pl.maxHp:1;let reduction=0;
+  if(now<(e.ironDefenseUntil||0))reduction+=e.ironDefense||0;
+  if(e.guardianLowHp&&hp<.25){
+    if(now>=(e.guardianReadyAt||0)){e.guardianUntil=now+4000;e.guardianReadyAt=now+20000;}
+    if(now<(e.guardianUntil||0))reduction+=.10;
+  }
+  return 1-Math.min(.45,reduction);
+}
+
+function shouldCampaignShopBlock(pl){
+  const e=getCampaignShopEffect(pl),now=performance.now();
+  if(!e.astralBlock||now<(e.astralBlockReadyAt||0))return false;
+  e.astralBlockReadyAt=now+15000;spawnParts(pl.x,pl.y,'#c68cff',14,72);spawnLevelUpNotice(pl.x,pl.y-28,'BLOQUEIO ASTRAL',pl.idx||0);return true;
+}
+
+function notifyCampaignShopDamageTaken(pl){
+  const e=getCampaignShopEffect(pl),now=performance.now();e.lastDamageAt=now;
+  if(e.revengeDamage)e.revengeUntil=now+2000;
+}
+
+function notifyCampaignShopTargetKilled(pl,target){
+  if(!pl||!target||!target.dead||target._campaignShopKillNotified)return;
+  target._campaignShopKillNotified=true;
+  const e=getCampaignShopEffect(pl),boss=target===bossOrc||target===bossSkel||target===bossSpider||target===bossMajor||target===petBoss||target.isBoss;
+  const elite=!boss&&(target.maxHp||0)>300;
+  if(e.killHealChance&&Math.random()<e.killHealChance*(boss?3:elite?2:1)){
+    healCampaignPlayer(pl,1,target.x,target.y,false);spawnLevelUpNotice(pl.x,pl.y-24,'+1 VALHALLA',pl.idx||0);
+  }
+  if(pl.classId==='archer'&&e.critKillSpeed&&target._lastHitCrit)e.critKillSpeedUntil=performance.now()+1000;
+  if(e.dropBonus&&Math.random()<e.dropBonus){
+    if(Math.random()<.5){healCampaignPlayer(pl,Math.max(1,Math.round(pl.maxHp*.02)),target.x,target.y,false);spawnLevelUpNotice(target.x,target.y-18,'CURA EXTRA',pl.idx||0);}
+    else{totalCoins+=1;spawnLevelUpNotice(target.x,target.y-18,'+1 MOEDA',pl.idx||0);}
+  }
+}
+
+function applyCampaignShopHitEffects(pl,target,dmg){
+  if(!pl||!target)return;
+  const e=getCampaignShopEffect(pl),now=performance.now(),crit=!!pl._lastAttackWasCrit;
+  target._lastDamageOwner=pl;target._lastHitCrit=crit;
+  if(e.runeMax){target._campaignRuneHits=target._campaignRuneHits||{};const key=pl.idx||0,old=target._campaignRuneHits[key];target._campaignRuneHits[key]={hits:old&&now-old.at<3000?Math.min(e.runeMax,(old.hits||0)+1):1,at:now};}
+  if(e.lifeStealPct&&dmg>0){
+    if(now-(e.lifeStealWindowAt||0)>=1000){e.lifeStealWindowAt=now;e.lifeStealWindowHeal=0;}
+    const cap=Math.max(1,pl.maxHp*.06),heal=Math.min(dmg*e.lifeStealPct,cap-(e.lifeStealWindowHeal||0));
+    if(heal>0){e.lifeStealWindowHeal=(e.lifeStealWindowHeal||0)+heal;healCampaignPlayer(pl,heal,pl.x,pl.y,false);}
+  }
+  if(crit&&e.critBleed&&dmg>0&&!target.dead){
+    const tick=dmg*e.critBleed/4;for(let i=1;i<=4;i++)setTimeout(()=>{if(state==='playing'&&target&&!target.dead){target._lastDamageOwner=pl;target.takeDmg(tick);spawnParts(target.x,target.y,'#b32b35',2,18);}},i*500);
+  }
+  if(crit&&e.odinCritImpact){
+    for(const other of allTargets(enemies))if(other&&other!==target&&!other.dead&&Math.hypot(other.x-target.x,other.y-target.y)<42){other._lastDamageOwner=pl;other.takeDmg(dmg*.10);}
+    spawnParts(target.x,target.y,'#e1a05b',11,70);
+  }else if(crit&&e.magicCritImpact)spawnParts(target.x,target.y,'#c67aff',10,68);
+  notifyCampaignShopTargetKilled(pl,target);
+}
+
+function updateCampaignShopEffects(pl,dt){
+  if(!pl)return;
+  const e=getCampaignShopEffect(pl),now=performance.now();
+  for(const [intervalKey,timerKey] of [['vikingRegenInterval','vikingRegenTimer'],['universalRegenInterval','universalRegenTimer']]){
+    if(!e[intervalKey])continue;e[timerKey]=(e[timerKey]||e[intervalKey])-dt*1000;
+    if(e[timerKey]<=0){e[timerKey]+=e[intervalKey];if(healCampaignPlayer(pl,1,pl.x,pl.y,false)>0)spawnParts(pl.x,pl.y,'#59d982',3,24);}
+  }
+  if(now<(e.critKillSpeedUntil||0)&&!e._critKillSpeedOn){pl.speed*=1+e.critKillSpeed;e._critKillSpeedOn=true;}
+  else if(now>=(e.critKillSpeedUntil||0)&&e._critKillSpeedOn){pl.speed/=1+e.critKillSpeed;e._critKillSpeedOn=false;}
+  if(e.slowAura&&now>=(e.slowAuraTickAt||0)){
+    e.slowAuraTickAt=now+250;
+    for(const target of allTargets(enemies)){
+      if(!target||target.dead)continue;target._vikingAuraSince=target._vikingAuraSince||{};const key=pl.idx||0;
+      if(Math.hypot(target.x-pl.x,target.y-pl.y)<=72){target._vikingAuraSince[key]=target._vikingAuraSince[key]||now;const pct=e.deepSlowAura&&now-target._vikingAuraSince[key]>=3000?.20:e.slowAura;applyWeaponSlow(target,pct,500,pl);}
+      else delete target._vikingAuraSince[key];
+    }
+  }
+}
+
+function getCampaignShopGoldMult(){return 1+campaignShopMaxEffect('goldBonus');}
+function getCampaignShopPickupRadius(pl){return getCampaignShopEffect(pl).pickupRadius||0;}
+function getCampaignShopLootBonus(){return campaignShopMaxEffect('dropBonus')+campaignShopMaxEffect('shopLuck')*.25;}
+function getCampaignShopKnockbackMultiplier(pl){return 1-Math.min(.85,getCampaignShopEffect(pl).knockbackResist||0);}
 
 let shopPool=[];
 let shopLocked=[];
@@ -13818,7 +14595,7 @@ const SHOP_OPTION_COUNT=3;
 
 function shopItemKey(item){
   if(!item)return '';
-  if(item.id)return item.id;
+  if(item.id)return item.isClassBuff?`${item.id}_p${item.pidx||0}`:item.id;
   return `item_${String(item.name||'sem_nome').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')}`;
 }
 function shopItemIsUnique(item){
@@ -13842,24 +14619,23 @@ function shopPrice(it){
 }
 
 let shopRerollCost=2;
+let shopRerollBaseCost=2;
+let shopRerollsThisVisit=0;
 
 function buildShopPool(){
-  const available=getClassShopItems().filter(item=>!shopItemAlreadyPurchased(item)).sort(()=>Math.random()-0.5);
   const result=Array(SHOP_OPTION_COUNT).fill(null);
   for(let i=0;i<SHOP_OPTION_COUNT;i++) if(shopLocked[i]) result[i]=shopPool[i];
-  if(gameMode===2){
-    for(const pidx of [0,1]){
-      if(result.some(r=>r&&r.pidx===pidx))continue;
-      const empty=result.findIndex(r=>!r);const offer=available.find(a=>a.pidx===pidx&&!result.some(r=>r&&r.name===a.name&&r.pidx===a.pidx));
-      if(empty>=0&&offer)result[empty]=offer;
-    }
-  }
-  let ai=0;
+  const categories=['weapon','classBuff','universal'];
+  const present=new Set(result.filter(Boolean).map(item=>item.category));
   for(let i=0;i<SHOP_OPTION_COUNT;i++){
     if(result[i]) continue;
-    while(ai<available.length && result.some(r=>r&&r.name===available[ai].name&&r.pidx===available[ai].pidx)) ai++;
-    if(ai<available.length) result[i]=available[ai++];
-    else result[i]=null;
+    const category=categories.find(cat=>!present.has(cat))||categories[i];
+    const pidx=gameMode===2&&category!=='universal'?(Math.max(1,wave)+shopRerollsThisVisit+i)%2:0;
+    const available=getClassShopItems(category,pidx)
+      .filter(item=>!shopItemAlreadyPurchased(item)&&!result.some(r=>r&&shopItemKey(r)===shopItemKey(item)))
+      .sort(()=>Math.random()-0.5);
+    result[i]=available[0]||null;
+    if(result[i])present.add(category);
   }
   shopPool=result;
 }
@@ -13889,7 +14665,9 @@ function renderShopGrid(){
     card.dataset.idx=i;
     const rarCol={common:'#9a9487',uncommon:'#43cf70',rare:'#4b9eff',epic:'#be55ee',legendary:'#e1b936'}[itemRarity];
     card.style.setProperty('--shop-rarity',rarCol);
-    const classBadge=offerClass?`<span class="shop-item-badge" style="color:${offerClass.color||'#f0d080'};border-color:${offerClass.color||'#f0d080'};">${gameMode===2?`P${item.pidx+1} · `:''}${offerClass.name.toUpperCase()}</span>`:'';
+    const classBadge=item.isUniversal
+      ?`<span class="shop-item-badge" style="color:#e7c85b;border-color:#e7c85b;">UNIVERSAL</span>`
+      :(offerClass?`<span class="shop-item-badge" style="color:${offerClass.color||'#f0d080'};border-color:${offerClass.color||'#f0d080'};">${gameMode===2?`P${item.pidx+1} · `:''}${offerClass.name.toUpperCase()}</span>`:'');
     // Weapon stats block (only for weapons)
     let weaponStatsHtml = '';
     if(item.wtype && WEAPON_DEFS[item.wtype]){
@@ -13900,7 +14678,7 @@ function renderShopGrid(){
       const type= wd.type==='melee'?'Corpo a corpo':wd.type==='ranged'?'Longo alcance':'Magia';
       weaponStatsHtml = `<div class="s-weapon-summary"><b>${dmg}</b> dano · ${cd}s · ${rng} alcance<br><span>${type}</span></div>`;
     }
-    const itemIcon=offerDef?.pixelIcon||'orb';
+    const itemIcon=item.pixelIcon||offerDef?.pixelIcon||'orb';
     card.innerHTML=`
       <div class="s-card-top">
         <div class="s-card-icon">${gamePixelIconHtml(itemIcon,84)}</div>
@@ -13908,7 +14686,7 @@ function renderShopGrid(){
           <div class="s-card-info">
             <div class="s-card-name">${item.name}${classBadge}</div>
             <div class="s-card-rarity" style="color:${rarCol}">${rarityFlavour[itemRarity]||'COMUM'}</div>
-            ${item.wtype?`<div class="s-card-type">ARMA DE ${offerClass?.name.toUpperCase()||''}</div>`:''}
+            <div class="s-card-type">${item.wtype?`ARMA DE ${offerClass?.name.toUpperCase()||''}`:item.isClassBuff?'BUFF ÚNICO DE CLASSE':'ITEM UNIVERSAL ÚNICO'}</div>
           </div>
           ${weaponStatsHtml}
           <div class="s-card-effect">${item.desc}</div>
@@ -13952,6 +14730,11 @@ function shopBuy(i, e){
   document.getElementById('coin-display').textContent='🪙 '+totalCoins;
   if(item.wtype){
     addWeapon(item.wtype,item.rarity,item.pidx||0);
+  } else if(item.isClassBuff){
+    const target=item.pidx===1?player2:player;
+    if(target&&!target.dead)item.apply(target);
+  } else if(item.isUniversal){
+    [player,...(gameMode===2&&player2?[player2]:[])].filter(pl=>pl&&!pl.dead).forEach(pl=>item.apply(pl));
   } else if(item.isStructure){
     item.apply(); // structures use no player arg — placed near player
   } else {
@@ -13985,7 +14768,8 @@ function shopToggleLock(i, e){
 function shopReroll(){
   if(totalCoins<shopRerollCost) return;
   totalCoins-=shopRerollCost;
-  shopRerollCost*=2;
+  shopRerollsThisVisit++;
+  shopRerollCost=Math.max(1,Math.round(shopRerollBaseCost*Math.pow(2,shopRerollsThisVisit)));
   document.getElementById('shop-coins-val').textContent=totalCoins;
   document.getElementById('coin-display').textContent='🪙 '+totalCoins;
   buildShopPool();
@@ -13996,7 +14780,9 @@ function openShop(){
   shopSelectedSlot=null;
   state='shop';
   const d=DIFF[difficulty]||DIFF.medium;
-  shopRerollCost=Math.max(2,Math.round(d.rerollBase+Math.max(1,wave)*d.rerollWave));
+  shopRerollsThisVisit=0;
+  shopRerollBaseCost=Math.max(2,Math.round(d.rerollBase+Math.max(1,wave)*d.rerollWave));
+  shopRerollCost=campaignShopMaxEffect('merchantRerollDiscount')>0?Math.max(1,Math.round(shopRerollBaseCost*.5)):shopRerollBaseCost;
   if(!Array.isArray(shopPool)||shopPool.length!==SHOP_OPTION_COUNT) shopPool=Array(SHOP_OPTION_COUNT).fill(null);
   if(!Array.isArray(shopLocked)||shopLocked.length!==SHOP_OPTION_COUNT) shopLocked=Array(SHOP_OPTION_COUNT).fill(false);
   shopLocked=shopLocked.map((locked,i)=>!!locked&&!!shopPool[i]&&!shopItemAlreadyPurchased(shopPool[i]));
@@ -14178,7 +14964,7 @@ function nearestWeaponTargets(player,enemies,range,limit=1,exclude=[]){
 }
 function weaponDamage(player,weapon,target,amount,color){
   if(!target||target.dead)return 0;
-  const dmg=typeof applyCardCrit==='function'?applyCardCrit(player,amount,target):amount;
+  const dmg=typeof applyCardCrit==='function'?applyCardCrit(player,amount,target,weapon):amount;
   target.takeDmg(dmg);weapon.damageDone=(weapon.damageDone||0)+dmg;
   if(typeof applyClassHitEffect==='function')applyClassHitEffect({owner:player,dmg,weapon},target);
   spawnParts(target.x,target.y,color||'#ffffff',5,38);
@@ -14190,6 +14976,7 @@ function weaponKnockback(player,target,force){
   if(typeof clampCampaignEntity==='function')clampCampaignEntity(target,target.radius||12);
 }
 function weaponCone(player,enemies,angle,range,arc,weapon,amount,color,onHit){
+  if(player&&(player.classId==='viking'||player.classId==='mage'))range*=1+(getCampaignShopEffect(player)[player.classId==='viking'?'meleeArea':'magicArea']||0);
   let count=0;
   for(const e of allTargets(enemies)){
     if(!e||e.dead||Math.hypot(e.x-player.x,e.y-player.y)>range+(e.radius||0))continue;
@@ -14200,6 +14987,7 @@ function weaponCone(player,enemies,angle,range,arc,weapon,amount,color,onHit){
   return count;
 }
 function weaponBurst(player,enemies,x,y,radius,weapon,amount,color,onHit){
+  if(player&&player.classId==='mage')radius*=1+(getCampaignShopEffect(player).magicArea||0);
   for(const e of allTargets(enemies))if(e&&!e.dead&&Math.hypot(e.x-x,e.y-y)<=radius+(e.radius||0)){weaponDamage(player,weapon,e,amount,color);if(onHit)onHit(e);}
   spawnParts(x,y,color,10,65);
 }
@@ -14212,7 +15000,7 @@ function weaponChain(player,enemies,start,count,damages,weapon,color){
   }
 }
 function applyWeaponSlow(target,pct,duration,owner){
-  if(!target||target.slowImmune)return;target.slowed=true;target.slowTimer=Math.max(target.slowTimer||0,duration);target.weaponSlow=Math.max(target.weaponSlow||0,pct);target.weaponSlowTimer=Math.max(target.weaponSlowTimer||0,duration);
+  if(!target||target.slowImmune)return;if(owner?.classId==='mage')duration*=1+(getCampaignShopEffect(owner).elementDuration||0);target.slowed=true;target.slowTimer=Math.max(target.slowTimer||0,duration);target.weaponSlow=Math.max(target.weaponSlow||0,pct);target.weaponSlowTimer=Math.max(target.weaponSlowTimer||0,duration);
   if(owner)target._lastWeaponOwner=owner;
 }
 function weaponShieldReduction(player){
@@ -14226,12 +15014,12 @@ function weaponShieldCounter(player){
   if(shield.rarity==='legendary')weaponBurst(player,enemies,player.x+Math.cos(angle)*80,player.y+Math.sin(angle)*80,55,shield,campaignWeaponDamage(def,shield.rarity)*.7,def.color);
 }
 function applyWeaponPoison(target,owner,weapon,dps,duration,maxStacks){
-  if(!target||target.dead)return;target.weaponPoisons=target.weaponPoisons||[];
+  if(!target||target.dead)return;if(owner?.classId==='mage'){const se=getCampaignShopEffect(owner);duration*=1+(se.elementDuration||0);dps*=1+(se.elementDamage||0);}target._lastDamageOwner=owner;target.weaponPoisons=target.weaponPoisons||[];
   const active=target.weaponPoisons.filter(p=>p.owner===owner&&p.type===weapon.type);
   if(active.length>=maxStacks)active[0].timer=duration;else target.weaponPoisons.push({owner,type:weapon.type,dps,timer:duration,weapon});
 }
 function applyWeaponBurn(target,owner,weapon,dps,duration){
-  if(!target||target.dead)return;target.weaponBurn={owner,dps,timer:duration,weapon};
+  if(!target||target.dead)return;if(owner?.classId==='mage'){const se=getCampaignShopEffect(owner);duration*=1+(se.elementDuration||0);dps*=1+(se.elementDamage||0);}target._lastDamageOwner=owner;target.weaponBurn={owner,dps,timer:duration,weapon};
 }
 
 function campaignClassWeaponAttack(player,enemies,rarity,manualTarget,weapon,type){
@@ -14465,7 +15253,7 @@ class WeaponProj {
 class CampaignWeaponProj{
   constructor(x,y,angle,dmg,owner,weapon,opts={}){
     this.x=x;this.y=y;this.angle=angle;this.dmg=dmg;this.owner=owner;this.weapon=weapon;this.opts=opts;
-    this.color=opts.color||'#ffffff';this.radius=opts.radius||7;this.dead=false;this.born=Date.now();this.life=2200*(opts.rangeMult||1);
+    this.color=opts.color||'#ffffff';this.radius=(opts.radius||7)*(1+(owner?.classId==='mage'?(getCampaignShopEffect(owner).magicArea||0):0));this.dead=false;this.born=Date.now();this.life=2200*(opts.rangeMult||1);
     this.speed=420*(opts.speed||1);this.vx=Math.cos(angle)*this.speed;this.vy=Math.sin(angle)*this.speed;
     this.target=opts.target||null;this.homing=!!opts.homing;this.pierce=opts.pierce||0;this.hitTargets=new Set();this.trail=[];this.isCampaignWeaponProj=true;
     this.originX=x;this.originY=y;this.returning=false;
@@ -14535,7 +15323,7 @@ class ArrowProj {
     this.dmg=dmg;
     this.radius=6; this.dead=false;
     this.born=Date.now(); this.life=2000;
-    this.speed=520*(1+(owner?.cardEffects?.projectileSpeed||0));
+    this.speed=520*(1+(owner?.cardEffects?.projectileSpeed||0))*(1+(getCampaignShopEffect(owner).critProjectileSpeed||0));
     // Initial angle toward target
     const dx=target.x-x, dy=target.y-y;
     this.angle=Math.atan2(dy,dx);
@@ -17312,6 +18100,7 @@ class Player {
     this.fireDur=800;
     this.plasmaChain=1;
     this.dmgReduce=0;
+    this.shopEffects={lastDamageAt:performance.now()};
     this.instantFreeze=false;
     this.frozen=false; this.frozenTimer=0; this.freezeFx=null;
     // Dash
@@ -17325,6 +18114,7 @@ class Player {
   update(dt, el){
     if(this.dead) return;
     if(typeof updateBlessingEffects==='function') updateBlessingEffects(this,dt);
+    updateCampaignShopEffects(this,dt);
     if(this.frozen){
       this.frozenTimer=Math.max(0,(this.frozenTimer||0)-dt*1000);
       this.isMoving=false; this.isCasting=false; this._dashActive=false;
@@ -17363,6 +18153,7 @@ class Player {
       if(keys['ArrowDown'])  dy+=1;
     }
     if(dx!==0&&dy!==0){dx*=.707;dy*=.707;}
+    this._moveDx=dx;this._moveDy=dy;
 
     // ── Dash cooldown tick ──
     if(this._dashCd>0) this._dashCd=Math.max(0,this._dashCd-dt*1000);
@@ -17432,7 +18223,7 @@ class Player {
     const attackAllowed=this.idx!==0||typeof GameSettings==='undefined'||GameSettings.autoAttack||manualAttack;
     if(this.atkTimer<=0&&attackAllowed){
       const tgt=manualTarget||this.findNearest(el);
-      if(tgt){this.fireAt(tgt);this.atkTimer=Math.max(150,this.atkCd);}
+      if(tgt){const proc=notifyCampaignShopAttack(this,tgt,this.dmg);this.fireAt(tgt);this.atkTimer=Math.max(120,this.atkCd/(1+getCampaignShopAttackSpeedBonus(this))*proc);}
     }
     this.updateArrowQueue(dt);
     const ws=this.idx===0?weaponSlots:weaponSlots2;
@@ -17443,7 +18234,10 @@ class Player {
       if(!def||def.classId!==this.classId)continue;
       if(w.berserkTimer>0)w.berserkTimer=Math.max(0,w.berserkTimer-dt*1000);
       const cd=campaignWeaponCooldown(def,w.rarity,this,w);
-      if(this.weapTimers[i]<=0&&attackAllowed){def.attack(this,el,w.rarity,manualTarget,w);this.weapTimers[i]=cd;}
+      if(this.weapTimers[i]<=0&&attackAllowed){
+        const weaponTarget=manualTarget||nearestWeaponTargets(this,el,def.range,1)[0];
+        if(weaponTarget){const proc=notifyCampaignShopAttack(this,weaponTarget,campaignWeaponDamage(def,w.rarity),w);def.attack(this,el,w.rarity,manualTarget,w);this.weapTimers[i]=cd*proc;}
+      }
     }
   }
 
@@ -17486,7 +18280,7 @@ class Player {
     } else if(this.classId==='warrior'||this.classId==='viking'){
       // ── Guerreiro: talho frontal de espada · Viking: giro de machado 360° ──
       const isViking=this.classId==='viking';
-      const meleeR=isViking?95:110;
+      const meleeR=(isViking?95:110)*(1+(isViking?(getCampaignShopEffect(this).meleeArea||0):0));
       const arc=Math.PI*0.95;
       const targets=[...enemies,
         ...(bossOrc&&!bossOrc.dead?[bossOrc]:[]),
@@ -17507,7 +18301,7 @@ class Player {
         }
         if(isViking&&hits===0) triggerVikingWarCry(this);
         const dmg=(typeof applyCardCrit==='function')?applyCardCrit(this,this.dmg,e):this.dmg;
-        e.takeDmg(dmg); hits++;
+        e._lastDamageOwner=this;e.takeDmg(dmg); hits++;
         // efeito de classe: viking sempre (roubo de vida); guerreiro até 2 focos de fogo por golpe
         if(isViking||hits<=2) applyClassHitEffect({owner:this,dmg},e);
       }
@@ -17522,6 +18316,7 @@ class Player {
       for(let i=0;i<n;i++){
         const proj=new Proj(this.x,this.y,angle-(n-1)*sp/2+i*sp,this.dmg,c,skinAttack.secondary);
         proj.owner=this;
+        proj.radius*=1+(getCampaignShopEffect(this).magicArea||0);
         const projectileSpeed=1+(this.cardEffects?.projectileSpeed||0);
         proj.vx*=projectileSpeed; proj.vy*=projectileSpeed;
         projs.push(proj);
@@ -17551,18 +18346,21 @@ class Player {
   }
 
   takeDmg(a){
-    if(this.inv||this.dead) return;
+    if(this.inv||this.dead){if(this.inv&&this._dashActive&&typeof notifyBlessingDashAvoid==='function')notifyBlessingDashAvoid(this);return;}
     if(typeof shouldBlessingDodge==='function'&&shouldBlessingDodge(this)) return;
+    if(shouldCampaignShopBlock(this))return;
     const d=DIFF[difficulty]||DIFF.medium;
     const blessingMult=typeof getBlessingIncomingDamageMultiplier==='function'?getBlessingIncomingDamageMultiplier(this):1;
-    const reduced=a*blessingMult*(1-Math.min(d.playerArmorCap,(this.dmgReduce||0)+weaponShieldReduction(this)));
+    const reduced=a*blessingMult*campaignShopIncomingDamageMultiplier(this)*(1-Math.min(d.playerArmorCap,(this.dmgReduce||0)+weaponShieldReduction(this)));
     this.hp-=reduced; this.inv=true; this.invT=600;
     weaponShieldCounter(this);
     if(typeof notifyBlessingDamageTaken==='function') notifyBlessingDamageTaken(this,reduced);
+    notifyCampaignShopDamageTaken(this,reduced);
     spawnParts(this.x,this.y,'#ff4444',8,65);
     // Screen shake ao receber dano
     triggerScreenShake(6, 220);
     if(this.hp<=0){
+      if(typeof shouldBlessingPreventDeath==='function'&&shouldBlessingPreventDeath(this))return;
       if((this._revivesLeft||0)>0){
         this._revivesLeft--;
         this.hp=Math.max(1,Math.round(this.maxHp*0.35));
@@ -17580,7 +18378,8 @@ class Player {
   updateAbility(dt){
     if(this.abilityTimer>0){
       const cdBoost=this.cardEffects?.abilityCd||0;
-      this.abilityTimer-=dt*1000*(1+cdBoost);
+      const shopCd=getCampaignShopEffect(this).cooldownReduction||0;
+      this.abilityTimer-=dt*1000*(1+cdBoost+shopCd/(1-Math.min(.45,shopCd)));
     }
     if(this.berserkActive){
       this.berserkTimer-=dt*1000;
@@ -17969,7 +18768,7 @@ class Enemy {
       rollLootDrop(this.x, this.y);
       if(typeof trackEnemyKill==='function') trackEnemyKill(this.type);
       // Card effects on kill — find nearest player as attacker
-      const nearPl = [player,...(gameMode===2&&player2?[player2]:[])].filter(p=>p&&!p.dead)
+      const nearPl = this._lastDamageOwner||[player,...(gameMode===2&&player2?[player2]:[])].filter(p=>p&&!p.dead)
         .sort((a,b)=>Math.hypot(a.x-this.x,a.y-this.y)-Math.hypot(b.x-this.x,b.y-this.y))[0];
       if(nearPl){
         applyCardLifesteal(nearPl, this.x, this.y);
@@ -18370,7 +19169,7 @@ function spawnCoin(x,y,xpVal){
   const activePl = player;
   const diffCfg=(typeof DIFF!=='undefined'&&typeof difficulty!=='undefined') ? (DIFF[difficulty]||DIFF.medium) : null;
   const diffMult=diffCfg?.coinMult||1;
-  const mult = getCardGoldMult(activePl) * diffMult;
+  const mult = getCardGoldMult(activePl) * getCampaignShopGoldMult() * diffMult;
   // XP remains unchanged; currency uses its own, difficulty-aware economy curve.
   const coinFactor=diffCfg?.coinFactor||0.22;
   const coinVal=Math.max(1,Math.round((xpVal||1)*coinFactor*mult));
@@ -18573,6 +19372,8 @@ function applyClassHitEffect(proj, enemy){
   applyBlessingKnockback(owner,enemy);
   if(typeof notifyBlessingSpecial==='function') notifyBlessingSpecial(owner);
   const cid=owner.classId;
+  applyCampaignShopHitEffects(owner,enemy,proj.dmg||0);
+  if(typeof notifyBlessingHit==='function')notifyBlessingHit(owner,enemy,proj.dmg||0,proj.weapon||null);
   if(cid==='mage'){
     // Frost Prison: slow on hit; if already slow → freeze
     if(enemy.frozen){ /* already frozen */ return; }
@@ -18581,7 +19382,7 @@ function applyClassHitEffect(proj, enemy){
       enemy.slowed=false;
       spawnParts(enemy.x,enemy.y,'#aaeeff',8,50);
     } else {
-      enemy.slowed=true; enemy.slowTimer=owner.slowDur;
+      enemy.slowed=true; enemy.slowTimer=owner.slowDur*(1+(getCampaignShopEffect(owner).elementDuration||0));
       if(owner.instantFreeze){ enemy.frozen=true; enemy.frozenTimer=2000; }
     }
   } else if(cid==='warrior'){
@@ -20367,7 +21168,7 @@ class BossFrostBehemoth {
     if(this.blizzardActive){
       this.blizzardDur-=dt*1000;
       const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead);
-      for(const pl of allPl){ pl.x+=this.blizzardDir*60*dt; pl.x=Math.max(16,Math.min(W-16,pl.x)); }
+      for(const pl of allPl){ pl.x+=this.blizzardDir*60*dt*getCampaignShopKnockbackMultiplier(pl); pl.x=Math.max(16,Math.min(W-16,pl.x)); }
       if(this.blizzardDur<=0){
         this.blizzardActive=false;
         for(const pl of allPl){
@@ -20814,7 +21615,7 @@ class BossSandworm {
       const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead);
       for(const pl of allPl){
         const sd=Math.hypot(pl.x-this.sinkhole.x,pl.y-this.sinkhole.y);
-        if(sd<this.sinkholeRange){ const ang=Math.atan2(this.sinkhole.y-pl.y,this.sinkhole.x-pl.x); pl.x+=Math.cos(ang)*this.sinkhole.power*dt; pl.y+=Math.sin(ang)*this.sinkhole.power*dt; if(sd<40) pl.takeDmg(this.damage*0.08); }
+        if(sd<this.sinkholeRange){ const ang=Math.atan2(this.sinkhole.y-pl.y,this.sinkhole.x-pl.x),knock=getCampaignShopKnockbackMultiplier(pl); pl.x+=Math.cos(ang)*this.sinkhole.power*dt*knock; pl.y+=Math.sin(ang)*this.sinkhole.power*dt*knock; if(sd<40) pl.takeDmg(this.damage*0.08); }
       }
       if(this.sinkhole.timer<=0) this.sinkhole=null;
     }
@@ -21450,7 +22251,7 @@ function collide(){
         let projectileDamage=p.dmg*dmgMult;
         if(p.isCampaignWeaponProj&&p.opts.bossBonus&&e.type?.startsWith('boss'))projectileDamage*=1+p.opts.bossBonus;
         if(p.isCampaignWeaponProj&&p.opts.frozenCrit&&e.frozen)projectileDamage*=1+p.opts.frozenCrit;
-        const finalDmg = typeof applyCardCrit==='function' ? applyCardCrit(p.owner||player, projectileDamage, e) : projectileDamage;
+        const finalDmg = typeof applyCardCrit==='function' ? applyCardCrit(p.owner||player, projectileDamage, e, p.weapon||null) : projectileDamage;
         e.takeDmg(finalDmg);
         if(p.isCampaignWeaponProj){
           p.weapon.damageDone=(p.weapon.damageDone||0)+finalDmg;p.hitTargets.add(e);
@@ -21470,23 +22271,23 @@ function collide(){
     }
     // Player projectiles hit bosses
     if(!p.dead&&bossOrc&&!bossOrc.dead&&Math.hypot(p.x-bossOrc.x,p.y-bossOrc.y)<p.radius+bossOrc.radius){
-      const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossOrc):p.dmg;
+      const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossOrc,p.weapon||null):p.dmg;
       bossOrc.takeDmg(dmg); if(p.isCampaignWeaponProj){p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossOrc);}else applyClassHitEffect(p,bossOrc); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
     }
     if(!p.dead&&bossSkel&&!bossSkel.dead&&Math.hypot(p.x-bossSkel.x,p.y-bossSkel.y)<p.radius+bossSkel.radius){
-      const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossSkel):p.dmg;
+      const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossSkel,p.weapon||null):p.dmg;
       bossSkel.takeDmg(dmg); if(p.isCampaignWeaponProj){p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossSkel);}else applyClassHitEffect(p,bossSkel); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
     }
     if(!p.dead&&bossSpider&&!bossSpider.dead&&Math.hypot(p.x-bossSpider.x,p.y-bossSpider.y)<p.radius+bossSpider.radius){
-      const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossSpider):p.dmg;
+      const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossSpider,p.weapon||null):p.dmg;
       bossSpider.takeDmg(dmg); if(p.isCampaignWeaponProj){p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossSpider);}else applyClassHitEffect(p,bossSpider); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
     }
     if(!p.dead&&bossMajor&&!bossMajor.dead&&Math.hypot(p.x-bossMajor.x,p.y-bossMajor.y)<p.radius+(bossMajor.radius||36)){
-      const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossMajor):p.dmg;
+      const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossMajor,p.weapon||null):p.dmg;
       bossMajor.takeDmg(dmg); if(p.isCampaignWeaponProj){p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossMajor);}else applyClassHitEffect(p,bossMajor); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
     }
     if(!p.dead&&petBoss&&!petBoss.dead&&!petBoss.tamed&&Math.hypot(p.x-petBoss.x,p.y-petBoss.y)<p.radius+petBoss.radius){
-      const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,petBoss):p.dmg;
+      const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,petBoss,p.weapon||null):p.dmg;
       petBoss.takeDmg(dmg); p.dead=true;
     }
   }
@@ -21590,7 +22391,12 @@ function collide(){
   for(const c of coins){
     if(c.dead) continue;
     for(const pl of allPlayers){
-      if(Math.hypot(pl.x-c.x,pl.y-c.y)<pl.radius+c.radius+10){ c.collect(pl); break; }
+      const pickupBonus=getCampaignShopPickupRadius(pl);
+      const distance=Math.hypot(pl.x-c.x,pl.y-c.y);
+      if(getCampaignShopEffect(pl).magnetPull&&distance<pl.radius+c.radius+pickupBonus+90&&distance>12){
+        const pull=Math.min(10,(pickupBonus+30)*.08);c.x+=(pl.x-c.x)/Math.max(1,distance)*pull;c.y+=(pl.y-c.y)/Math.max(1,distance)*pull;
+      }
+      if(distance<pl.radius+c.radius+10+pickupBonus){ c.collect(pl); break; }
     }
   }
 }
