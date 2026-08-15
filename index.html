@@ -4291,10 +4291,210 @@ body.campaign-hud-active .wslot .wname { display:none; }
   }
 }
 
+/* ══════════════════════════════════════════════════════════════
+   ABERTURAS DOS CAPÍTULOS DA CAMPANHA
+   A tela ocupa o viewport inteiro e suspende toda a HUD por 6s.
+   ══════════════════════════════════════════════════════════════ */
+#campaign-chapter-screen {
+  --chapter-image:none;
+  position:fixed;
+  inset:0;
+  z-index:1200;
+  display:none;
+  overflow:hidden;
+  pointer-events:none;
+  background:#020305;
+  opacity:0;
+  isolation:isolate;
+}
+#campaign-chapter-screen.active {
+  display:block;
+  animation:campaignChapterScreen 6s linear both;
+}
+.campaign-chapter-art {
+  position:absolute;
+  inset:-2%;
+  background-image:
+    linear-gradient(180deg,rgba(0,0,0,.12),rgba(0,0,0,.04) 55%,rgba(0,0,0,.3)),
+    var(--chapter-image);
+  background-repeat:no-repeat;
+  background-position:center;
+  background-size:cover;
+  filter:saturate(.92) contrast(1.05);
+  transform:scale(1.035);
+  animation:campaignChapterArt 6s cubic-bezier(.2,.68,.25,1) both;
+}
+.campaign-chapter-vignette {
+  position:absolute;
+  inset:0;
+  z-index:5;
+  background:
+    radial-gradient(ellipse at center,transparent 38%,rgba(0,0,0,.2) 73%,rgba(0,0,0,.72) 112%),
+    linear-gradient(90deg,rgba(0,0,0,.24),transparent 16%,transparent 84%,rgba(0,0,0,.24));
+  box-shadow:inset 0 0 12vw rgba(0,0,0,.56);
+}
+.campaign-chapter-title-shroud {
+  position:absolute;
+  z-index:4;
+  left:0;
+  right:0;
+  top:44%;
+  bottom:0;
+  background:linear-gradient(180deg,transparent,rgba(0,0,0,.94) 17%,#000 100%);
+  animation:campaignChapterTitleReveal 6s linear both;
+}
+#campaign-chapter-screen[data-chapter="2"] .campaign-chapter-title-shroud { top:17%; }
+#campaign-chapter-screen[data-chapter="3"] .campaign-chapter-title-shroud { top:55%; }
+#campaign-chapter-screen[data-chapter="4"] .campaign-chapter-title-shroud { top:56%; }
+#campaign-chapter-screen[data-chapter="5"] .campaign-chapter-title-shroud { top:34%; }
+.campaign-chapter-particles,
+.campaign-chapter-atmosphere { position:absolute;inset:0;z-index:6;overflow:hidden; }
+.campaign-chapter-particle { position:absolute;display:block;will-change:transform,opacity; }
+.campaign-chapter-particle.ash,
+.campaign-chapter-particle.dark-dust {
+  width:3px;height:3px;background:#829087;opacity:.52;
+  animation:chapterFall var(--dur,4.6s) linear var(--delay,0s) infinite;
+}
+.campaign-chapter-particle.dark-dust { background:#1a1717;width:4px;height:5px;opacity:.62; }
+.campaign-chapter-particle.green-spark,
+.campaign-chapter-particle.red-dust,
+.campaign-chapter-particle.ember,
+.campaign-chapter-particle.orange-spark {
+  width:3px;height:7px;border-radius:50%;background:#65ff75;
+  box-shadow:0 0 9px #29ff55;opacity:.84;
+  animation:chapterRise var(--dur,3.2s) ease-out var(--delay,0s) infinite;
+}
+.campaign-chapter-particle.red-dust { width:3px;height:3px;background:#ad242e;box-shadow:0 0 7px #7d0613; }
+.campaign-chapter-particle.ember { background:#ff3d16;box-shadow:0 0 10px #ff2200; }
+.campaign-chapter-particle.orange-spark { width:2px;height:8px;background:#ffad32;box-shadow:0 0 8px #ff6018; }
+.campaign-chapter-particle.stone,
+.campaign-chapter-particle.ice-fragment {
+  width:7px;height:5px;background:#66706b;clip-path:polygon(20% 0,100% 22%,80% 100%,0 72%);
+  animation:chapterTumble var(--dur,4s) ease-in var(--delay,0s) infinite;
+}
+.campaign-chapter-particle.web-thread {
+  width:44px;height:1px;background:linear-gradient(90deg,transparent,#d9d0d9,transparent);opacity:.5;
+  transform:rotate(var(--rot,15deg));
+  animation:chapterThread var(--dur,4.6s) ease-in-out var(--delay,0s) infinite;
+}
+.campaign-chapter-particle.spore {
+  width:4px;height:4px;border-radius:50%;background:#bb5cff;box-shadow:0 0 10px #7c23cc;
+  animation:chapterSpore var(--dur,4s) ease-in-out var(--delay,0s) infinite;
+}
+.campaign-chapter-particle.eye {
+  width:14px;height:5px;border-radius:50%;background:#070000;
+  box-shadow:inset 0 0 0 2px #c41926,0 0 11px #ff1528;
+  animation:chapterEye var(--dur,3.8s) steps(1,end) var(--delay,0s) infinite;
+}
+.campaign-chapter-particle.snow {
+  width:3px;height:3px;background:#eaf8ff;box-shadow:0 0 5px #b8e9ff;opacity:.78;
+  animation:chapterSnow var(--dur,4.1s) linear var(--delay,0s) infinite;
+}
+.campaign-chapter-particle.crystal,
+.campaign-chapter-particle.ice-fragment {
+  width:5px;height:8px;background:#7ddcff;box-shadow:0 0 9px #3ebeff;
+  clip-path:polygon(50% 0,100% 45%,60% 100%,10% 72%);
+  animation:chapterCrystal var(--dur,3.8s) ease-in-out var(--delay,0s) infinite;
+}
+.campaign-chapter-particle.sand,
+.campaign-chapter-particle.gold-dust {
+  width:13px;height:2px;background:#e5b45b;opacity:.54;
+  animation:chapterSand var(--dur,3.2s) linear var(--delay,0s) infinite;
+}
+.campaign-chapter-particle.gold-dust { width:3px;height:3px;border-radius:50%;box-shadow:0 0 5px #e9a63b; }
+.campaign-chapter-particle.rolling-stone {
+  width:8px;height:6px;border-radius:45%;background:#6f5035;bottom:8%;
+  animation:chapterRoll var(--dur,4.8s) linear var(--delay,0s) infinite;
+}
+.campaign-chapter-particle.black-ash {
+  width:5px;height:4px;background:#171116;opacity:.78;
+  animation:chapterAshLift var(--dur,4.2s) ease-out var(--delay,0s) infinite;
+}
+.campaign-chapter-particle.smoke {
+  width:72px;height:72px;border-radius:50%;background:rgba(28,17,20,.46);filter:blur(12px);
+  animation:chapterSmoke var(--dur,5.2s) ease-out var(--delay,0s) infinite;
+}
+.campaign-chapter-fog {
+  position:absolute;left:-20%;width:140%;height:22%;bottom:-4%;opacity:.35;filter:blur(12px);
+  background:radial-gradient(ellipse at center,rgba(104,78,114,.42),transparent 68%);
+  animation:chapterFog 5.5s ease-in-out infinite alternate;
+}
+.campaign-chapter-cold-vapor {
+  position:absolute;left:-15%;width:130%;height:18%;bottom:-3%;opacity:.42;filter:blur(13px);
+  background:radial-gradient(ellipse at center,rgba(178,226,255,.38),transparent 70%);
+  animation:chapterFog 5s ease-in-out infinite alternate-reverse;
+}
+.campaign-chapter-heat {
+  position:absolute;inset:56% -5% 0;opacity:.16;
+  background:repeating-linear-gradient(90deg,transparent 0 34px,rgba(255,213,126,.22) 42px 44px,transparent 52px 86px);
+  filter:blur(5px);animation:chapterHeat 1.8s ease-in-out infinite alternate;
+}
+.campaign-chapter-lava-pulse {
+  position:absolute;left:-5%;right:-5%;bottom:-18%;height:44%;opacity:.42;filter:blur(18px);
+  background:radial-gradient(ellipse at center,#ff3a00 0,rgba(255,70,0,.32) 33%,transparent 70%);
+  animation:chapterLavaPulse 2.1s ease-in-out infinite alternate;
+}
+body.campaign-chapter-active #ui-top,
+body.campaign-chapter-active #hud-bottom,
+body.campaign-chapter-active #mobile-controls,
+body.campaign-chapter-active #blessings-hud,
+body.campaign-chapter-active #shadow-hud,
+body.campaign-chapter-active #armor-hud,
+body.campaign-chapter-active #shadow-bind-hud,
+body.campaign-chapter-active #pet-encounter-hud,
+body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!important; }
+
+@keyframes campaignChapterScreen {
+  0%{opacity:0} 13.333%{opacity:1} 86.667%{opacity:1} 100%{opacity:0}
+}
+@keyframes campaignChapterArt {
+  0%{transform:scale(1.05);filter:saturate(.72) brightness(.5) contrast(1.08)}
+  13.333%{filter:saturate(.9) brightness(.94) contrast(1.05)}
+  30%{filter:saturate(1) brightness(1) contrast(1.04)}
+  86.667%{transform:scale(1.018);filter:saturate(1.02) brightness(1.02) contrast(1.04)}
+  100%{transform:scale(1.01);filter:saturate(.8) brightness(.36) contrast(1.1)}
+}
+@keyframes campaignChapterTitleReveal {
+  0%,13.333%{opacity:1} 30%,100%{opacity:0}
+}
+@keyframes chapterFall { from{transform:translate3d(0,-12vh,0) rotate(0);opacity:0} 12%{opacity:.65} to{transform:translate3d(var(--drift,18px),112vh,0) rotate(220deg);opacity:0} }
+@keyframes chapterRise { from{transform:translate3d(0,12vh,0) scale(.7);opacity:0} 18%{opacity:.9} to{transform:translate3d(var(--drift,18px),-112vh,0) scale(1.25);opacity:0} }
+@keyframes chapterTumble { from{transform:translate3d(0,-12vh,0) rotate(0);opacity:0} 16%{opacity:.72} to{transform:translate3d(var(--drift,22px),112vh,0) rotate(520deg);opacity:0} }
+@keyframes chapterThread { 0%{transform:translate3d(-12vw,-8vh,0) rotate(var(--rot));opacity:0} 24%{opacity:.55} 72%{opacity:.4} 100%{transform:translate3d(108vw,68vh,0) rotate(calc(var(--rot) + 25deg));opacity:0} }
+@keyframes chapterSpore { 0%{transform:translateY(14vh) scale(.6);opacity:0} 30%{opacity:.8} 70%{transform:translate(var(--drift,12px),-32vh) scale(1.1);opacity:.55} 100%{transform:translate(calc(var(--drift,12px) * -1),-82vh) scale(.7);opacity:0} }
+@keyframes chapterEye { 0%,15%,25%,65%,74%,100%{opacity:0;transform:scaleY(.1)} 18%,22%,68%,71%{opacity:.92;transform:scaleY(1)} }
+@keyframes chapterSnow { from{transform:translate3d(0,-10vh,0);opacity:0} 12%{opacity:.88} to{transform:translate3d(var(--drift,28px),110vh,0);opacity:.25} }
+@keyframes chapterCrystal { 0%{transform:translateY(-8vh) rotate(0) scale(.5);opacity:0} 22%{opacity:.82} 65%{opacity:.42} 100%{transform:translate(var(--drift,18px),108vh) rotate(260deg) scale(1);opacity:0} }
+@keyframes chapterSand { from{transform:translate3d(-14vw,0,0);opacity:0} 14%{opacity:.68} to{transform:translate3d(118vw,var(--drift,16px),0);opacity:0} }
+@keyframes chapterRoll { from{transform:translateX(-12vw) rotate(0);opacity:0} 12%{opacity:.8} to{transform:translateX(118vw) rotate(920deg);opacity:0} }
+@keyframes chapterAshLift { from{transform:translateY(18vh) rotate(0);opacity:0} 22%{opacity:.8} to{transform:translate(var(--drift,20px),-108vh) rotate(300deg);opacity:0} }
+@keyframes chapterSmoke { from{transform:translateY(25vh) scale(.55);opacity:0} 26%{opacity:.48} to{transform:translate(var(--drift,30px),-100vh) scale(1.55);opacity:0} }
+@keyframes chapterFog { from{transform:translateX(-3%) scaleX(1.02)} to{transform:translateX(3%) scaleX(.95)} }
+@keyframes chapterHeat { from{transform:translateY(-2px) skewX(-1deg)} to{transform:translateY(5px) skewX(2deg)} }
+@keyframes chapterLavaPulse { from{transform:scale(.94);opacity:.28} to{transform:scale(1.08);opacity:.55} }
+
+@media (orientation:portrait) {
+  .campaign-chapter-art { inset:0;background-size:contain;background-color:#000; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .campaign-chapter-art { animation:campaignChapterReduced 6s linear both!important; }
+  .campaign-chapter-particle,.campaign-chapter-atmosphere>* { animation-duration:8s!important; }
+}
+@keyframes campaignChapterReduced { 0%{opacity:0} 13.333%,86.667%{opacity:1} 100%{opacity:0} }
+
 </style>
 
 </head>
 <body>
+
+<!-- Tela cinematográfica entre os cinco biomas da campanha. Sem HUD ou controles. -->
+<section id="campaign-chapter-screen" aria-hidden="true" data-chapter="1">
+  <div class="campaign-chapter-art" aria-hidden="true"></div>
+  <div class="campaign-chapter-title-shroud" aria-hidden="true"></div>
+  <div class="campaign-chapter-atmosphere" id="campaign-chapter-atmosphere" aria-hidden="true"></div>
+  <div class="campaign-chapter-particles" id="campaign-chapter-particles" aria-hidden="true"></div>
+  <div class="campaign-chapter-vignette" aria-hidden="true"></div>
+</section>
 
 <!-- ══ HUD (shown during gameplay) ══ -->
 <div id="ui-top">
@@ -23315,6 +23515,117 @@ function spawnWaveObstacles(){
   removeCampaignRandomObjects();
 }
 
+// ═══════════════════════════════════════════════════════
+// ABERTURAS CINEMATOGRÁFICAS DOS BIOMAS DA CAMPANHA
+// Ondas 1, 6, 11, 16 e 21: 6 segundos, jogo pausado e HUD oculta.
+// ═══════════════════════════════════════════════════════
+const CAMPAIGN_CHAPTER_DURATION=6000;
+const CAMPAIGN_CHAPTERS={
+  1:{number:1,arena:'crypt',image:'assets/chapters/chapter-1.jpg',atmosphere:[],particles:[
+    ['ash',20],['green-spark',10],['dark-dust',12],['stone',2]
+  ]},
+  6:{number:2,arena:'forest',image:'assets/chapters/chapter-2.jpg',atmosphere:['campaign-chapter-fog'],particles:[
+    ['web-thread',9],['spore',16],['red-dust',12],['eye',5]
+  ]},
+  11:{number:3,arena:'snow',image:'assets/chapters/chapter-3.jpg',atmosphere:['campaign-chapter-cold-vapor'],particles:[
+    ['snow',28],['crystal',11],['ice-fragment',6]
+  ]},
+  16:{number:4,arena:'desert',image:'assets/chapters/chapter-4.jpg',atmosphere:['campaign-chapter-heat'],particles:[
+    ['sand',18],['gold-dust',16],['rolling-stone',3]
+  ]},
+  21:{number:5,arena:'volcano',image:'assets/chapters/chapter-5.jpg',atmosphere:['campaign-chapter-lava-pulse'],particles:[
+    ['ember',18],['black-ash',16],['orange-spark',12],['smoke',5]
+  ]}
+};
+const campaignChapterImages=Object.values(CAMPAIGN_CHAPTERS).map(chapter=>{
+  const image=new Image(); image.decoding='async'; image.src=chapter.image; return image;
+});
+let campaignChaptersShown=new Set();
+let campaignChapterTimer=null;
+let campaignChapterToken=0;
+
+function campaignChapterParticle(kind,index,count){
+  const particle=document.createElement('i');
+  particle.className=`campaign-chapter-particle ${kind}`;
+  const seed=(index+1)/(count+1);
+  const jitter=()=>Math.random();
+  particle.style.left=`${Math.round((seed*.76+jitter()*.24)*100)}%`;
+  particle.style.top=`${Math.round(jitter()*92)}%`;
+  particle.style.setProperty('--delay',`${(-jitter()*4.8).toFixed(2)}s`);
+  particle.style.setProperty('--dur',`${(2.7+jitter()*3.4).toFixed(2)}s`);
+  particle.style.setProperty('--drift',`${Math.round(-34+jitter()*68)}px`);
+  particle.style.setProperty('--rot',`${Math.round(-28+jitter()*56)}deg`);
+  if(kind==='rolling-stone') particle.style.top='auto';
+  if(kind==='sand'||kind==='gold-dust') particle.style.top=`${Math.round(25+jitter()*70)}%`;
+  if(kind==='green-spark') particle.style.left=`${Math.round((index%2?58:8)+jitter()*28)}%`;
+  if(kind==='eye'){
+    particle.style.left=`${Math.round(52+jitter()*43)}%`;
+    particle.style.top=`${Math.round(18+jitter()*53)}%`;
+  }
+  if(kind==='smoke') particle.style.left=`${Math.round(jitter()*92)}%`;
+  return particle;
+}
+
+function buildCampaignChapterEffects(chapter){
+  const particles=document.getElementById('campaign-chapter-particles');
+  const atmosphere=document.getElementById('campaign-chapter-atmosphere');
+  if(!particles||!atmosphere) return;
+  particles.replaceChildren(); atmosphere.replaceChildren();
+  for(const className of chapter.atmosphere){
+    const layer=document.createElement('i'); layer.className=className; atmosphere.appendChild(layer);
+  }
+  for(const [kind,count] of chapter.particles){
+    for(let index=0;index<count;index++) particles.appendChild(campaignChapterParticle(kind,index,count));
+  }
+}
+
+function closeCampaignChapterOverlay(){
+  if(campaignChapterTimer){ clearTimeout(campaignChapterTimer); campaignChapterTimer=null; }
+  campaignChapterToken++;
+  const screen=document.getElementById('campaign-chapter-screen');
+  if(screen){ screen.classList.remove('active'); screen.setAttribute('aria-hidden','true'); }
+  document.body.classList.remove('campaign-chapter-active');
+}
+
+function resetCampaignChapters(){
+  closeCampaignChapterOverlay();
+  campaignChaptersShown=new Set();
+}
+
+function finishCampaignChapter(chapter,token){
+  if(token!==campaignChapterToken) return;
+  campaignChapterTimer=null;
+  const screen=document.getElementById('campaign-chapter-screen');
+  if(screen){ screen.classList.remove('active'); screen.setAttribute('aria-hidden','true'); }
+  document.body.classList.remove('campaign-chapter-active');
+  buildBG(chapter.arena);
+  if(typeof Audio!=='undefined') Audio.playCombatMusic(chapter.arena);
+  waveAnnounce=Math.max(waveAnnounce,900);
+  state='playing'; lastTs=null; campaignClock.reset();
+}
+
+function maybeStartCampaignChapter(currentWave){
+  if(bossRushMode||campaignChaptersShown.has(currentWave)) return false;
+  const chapter=CAMPAIGN_CHAPTERS[currentWave];
+  if(!chapter) return false;
+  campaignChaptersShown.add(currentWave);
+  const screen=document.getElementById('campaign-chapter-screen');
+  if(!screen) return false;
+  state='chapter'; lastTs=null; campaignClock.reset();
+  buildCampaignChapterEffects(chapter);
+  screen.dataset.chapter=String(chapter.number);
+  screen.style.setProperty('--chapter-image',`url("${chapter.image}")`);
+  screen.setAttribute('aria-hidden','false');
+  screen.classList.remove('active');
+  void screen.offsetWidth;
+  document.body.classList.add('campaign-chapter-active');
+  screen.classList.add('active');
+  if(typeof Audio!=='undefined') Audio.playChapterIntro(chapter.number);
+  const token=++campaignChapterToken;
+  campaignChapterTimer=setTimeout(()=>finishCampaignChapter(chapter,token),CAMPAIGN_CHAPTER_DURATION);
+  return true;
+}
+
 // Obstáculos do bioma — Castelo: pedras
 class CastleRock {
   constructor(x,y){
@@ -23556,7 +23867,9 @@ function drawAbilityHUD(t){
 function loop(ts){
   raf=requestAnimationFrame(loop); // always requeue first
 
-  if(state==='dead'||state==='shop'||state==='menu'||state==='endwave'||state==='paused'||state==='temple'||state==='hub'){
+  if(state==='playing'&&maybeStartCampaignChapter(wave)) return;
+
+  if(state==='dead'||state==='shop'||state==='menu'||state==='endwave'||state==='paused'||state==='temple'||state==='hub'||state==='chapter'){
     campaignClock.reset(ts);
     return;
   }
@@ -23846,6 +24159,7 @@ function drawForestAmbient(t){
 function beginGame(){
   gameMode=_selMode; difficulty=_selDiff;
   campaignCompletionPending=false;
+  resetCampaignChapters();
   hideAllScreens();
   // Modos como a Dungeon ocultam a HUD com estilos inline. Limpe-os antes de
   // iniciar uma partida para que campanha e Boss Rush recuperem seus layouts CSS.
@@ -23892,7 +24206,8 @@ function beginGame(){
   weaponSlots=[null,null,null]; weaponSlots2=[null,null,null];
   updateWeaponUI();
   state='playing';
-  if(typeof window.resumeCampaignMusic==='function') window.resumeCampaignMusic();
+  if(bossRushMode&&typeof window.resumeCampaignMusic==='function') window.resumeCampaignMusic();
+  else if(typeof Audio!=='undefined') Audio.init();
   if(raf) cancelAnimationFrame(raf);
   raf=null;
   lastTs=null;
@@ -25200,6 +25515,108 @@ const Audio = (function(){
     return true;
   }
 
+  // Assinatura cinematográfica comum às cinco telas de capítulo.
+  // O arco é sempre o mesmo (entrada, título, atmosfera, transição), enquanto
+  // o miolo muda de instrumentação para identificar cada bioma.
+  function playChapterIntro(chapterNumber=1){
+    if(!ctx) init();
+    if(!ctx||!enabled||!musicGain) return false;
+    if(ctx.state==='suspended') ctx.resume().catch(()=>{});
+    stopMusic(.12);
+    const myGen=++_gen;
+    markMusicTheme(`chapter:${chapterNumber}`);
+    setTimeout(()=>{if(_gen===myGen)musicGain.gain.setValueAtTime(musicVol,ctx.currentTime);},180);
+
+    const dry=ctx.createGain(); dry.gain.value=.58; dry.connect(musicGain);
+    const hall=ctx.createGain(); hall.gain.value=.31; hall.connect(musicGain);
+    const delay=ctx.createDelay(.8); delay.delayTime.value=.29;
+    const echoFilter=ctx.createBiquadFilter(); echoFilter.type='lowpass'; echoFilter.frequency.value=1450;
+    const echoGain=ctx.createGain(); echoGain.gain.value=.24;
+    hall.connect(delay); delay.connect(echoFilter); echoFilter.connect(echoGain); echoGain.connect(musicGain);
+    trackNodes.push({stop:()=>{try{dry.disconnect();hall.disconnect();delay.disconnect();echoFilter.disconnect();echoGain.disconnect();}catch(e){}}});
+
+    const t=ctx.currentTime+.035;
+    function chapterImpact(at,vol=.2,freq=112,dur=.42){
+      deitySweep(at,freq*1.2,freq*.68,dur,vol,dry,'sine',.003);
+      deityNoise(vol*.28,dry,at+.008,Math.min(.2,dur*.58),720,210,1.05,'lowpass');
+    }
+    function chapterChoir(at,freq=110,dur=1.5,vol=.05){
+      [1,1.5,2].forEach((ratio,index)=>osc(freq*ratio,index===0?'triangle':'sine',vol*(index===0?1:.48),hall,at,dur,.18,dur*.62));
+    }
+    function chapterBell(at,freq=440,vol=.065,dur=1.25){
+      [[1,1],[2.01,.42],[3.98,.18]].forEach(([ratio,mix])=>osc(freq*ratio,'sine',vol*mix,hall,at,dur,.002,dur*.94));
+    }
+
+    // 0.00–0.80: entrada compartilhada; o título recebe um impacto controlado.
+    deityNoise(.11,hall,t,.66,170,1180,.75,'bandpass');
+    deitySweep(t+.03,78,152,.64,.058,hall,'triangle',.22);
+    chapterImpact(t+.76,.21,108,.42);
+
+    // 0.80–4.20: identidade do capítulo.
+    switch(Number(chapterNumber)||1){
+      case 1:
+        // Dungeon medieval: tambores graves, sino distante, cordas e coral masculino.
+        osc(82.41,'triangle',.065,hall,t+.92,3.18,.28,.9);
+        [1.03,2.34,3.62].forEach((offset,index)=>chapterImpact(t+offset,index===0?.15:.11,index===0?104:96,.34));
+        chapterBell(t+1.28,220,.058,1.65);
+        chapterBell(t+3.12,164.81,.035,1.28);
+        [146.83,155.56].forEach((freq,index)=>osc(freq,'sawtooth',.019,hall,t+1.12+index*.08,2.7,.42,1.1));
+        chapterChoir(t+1.62,98,2.25,.044);
+        break;
+      case 2:
+        // Floresta observadora: cordas tensas, sino invertido, madeira e insetos remotos.
+        osc(110,'triangle',.052,hall,t+.92,3.22,.3,.82);
+        [196,207.65,233.08].forEach((freq,index)=>osc(freq,index===0?'triangle':'sawtooth',index===0?.035:.017,hall,t+1.02+index*.04,2.85,.32,.88));
+        deitySweep(t+.92,1180,330,.62,.052,hall,'sine',.34);
+        [1.42,2.61,3.54].forEach(offset=>{
+          deityNoise(.035,dry,t+offset,.09,760,2100,3.8,'bandpass');
+          osc(156,'triangle',.035,dry,t+offset,.12,.002,.1);
+        });
+        deityNoise(.024,hall,t+1.08,2.95,3900,2450,5.2,'bandpass');
+        break;
+      case 3:
+        // Reino congelado: piano espaçado, sinos, vento, cordas e coral etéreo.
+        deityNoise(.052,hall,t+.9,3.16,520,1350,.62,'bandpass');
+        osc(110,'triangle',.046,hall,t+1.02,3.06,.38,.9);
+        [[1.08,293.66],[2.04,261.63],[3.12,220]].forEach(([offset,freq])=>{
+          osc(freq,'triangle',.06,dry,t+offset,.56,.002,.5);
+          osc(freq*2,'sine',.025,hall,t+offset+.01,1.08,.002,1.02);
+        });
+        chapterBell(t+1.38,880,.045,1.48);
+        chapterBell(t+2.82,1046.5,.032,1.22);
+        chapterChoir(t+1.46,146.83,2.3,.026);
+        break;
+      case 4:
+        // Ruínas ancestrais: tambores secos, flauta distante, drone e vento do deserto.
+        deityNoise(.052,hall,t+.9,3.18,760,1620,.66,'bandpass');
+        osc(98,'triangle',.064,hall,t+.96,3.14,.32,.82);
+        [1.05,1.88,2.73,3.58].forEach((offset,index)=>chapterImpact(t+offset,index===0?.13:.09,118,.25));
+        [[1.3,392,.62],[2.12,349.23,.56],[3.02,466.16,.72]].forEach(([offset,freq,dur])=>{
+          osc(freq,'sine',.045,hall,t+offset,dur,.08,dur*.72);
+          deityNoise(.012,hall,t+offset,dur,1100,750,2.6,'bandpass');
+        });
+        break;
+      case 5:
+        // Coração vulcânico: percussão pesada, coral, pedra/metal e magma.
+        deityNoise(.068,hall,t+.88,3.28,230,720,.72,'bandpass');
+        osc(82.41,'triangle',.085,hall,t+.92,3.2,.24,.78);
+        [1.0,1.92,2.74,3.62].forEach((offset,index)=>chapterImpact(t+offset,index===0?.19:.14,index%2?92:106,.38));
+        chapterChoir(t+1.18,92.5,2.86,.058);
+        deityMetal(hall,t+1.48,410,.076,.72);
+        deityMetal(hall,t+3.18,330,.052,.66);
+        deityNoise(.033,dry,t+1.06,2.92,460,280,.82,'lowpass');
+        break;
+    }
+
+    // 5.20–6.00: passagem compartilhada para o combate.
+    osc(98,'sine',.025,hall,t+4.05,1.28,.28,.78);
+    deityNoise(.09,hall,t+5.12,.58,260,1680,.82,'bandpass');
+    deitySweep(t+5.14,116,284,.5,.052,hall,'triangle',.2);
+    chapterImpact(t+5.55,.16,124,.28);
+    chapterBell(t+5.63,880,.046,.42);
+    return true;
+  }
+
   function setMusicVol(v){ musicVol=v; if(musicGain){ musicGain.gain.cancelScheduledValues(ctx.currentTime); musicGain.gain.setValueAtTime(v,ctx.currentTime); } }
   function setSfxVol(v){ sfxVol=v; if(sfxGain) sfxGain.gain.value=v; }
   function setAttackVol(v){ attackVol=v; if(attackGain) attackGain.gain.value=attackEnabled?v:0; }
@@ -25209,7 +25626,7 @@ const Audio = (function(){
   return {
     init, stopMusic,
     playMenuMusic, playCryptMusic, playHauntedForestMusic, playFrozenMusic, playFossilDesertMusic, playAncientVolcanoMusic, playCombatMusic, playBossMusic, playCampMusic,
-    playDeathStinger, playBossDefeat, playBossSpawn, playDeityArrival,
+    playDeathStinger, playBossDefeat, playBossSpawn, playDeityArrival, playChapterIntro,
     sfxSword, sfxBow, sfxAxe, sfxHit, sfxPlayerHit, sfxCoin,
     sfxEnemyDeath, sfxLevelUp, sfxWaveClear, sfxMenuClick, sfxShopBuy, sfxPetCapture,
     setMusicVol, setSfxVol, setAttackVol, setAttackEnabled, toggle,
