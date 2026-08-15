@@ -31,9 +31,14 @@ for(const id of ids){
 
 const requiredSnippets=[
   'function campaignWeaponIconHtml(',
+  'campaign-weapon-medallion',
   "const icon={weaponType:def.id};",
   "collIconHtml({weaponType:w.id},54)",
-  "campaignWeaponIconHtml(def.id,52,'campaign-weapon-art-hud')",
+  "campaignWeaponIconHtml(def.id,52,'campaign-weapon-art-hud',RARITY_COLORS[w.rarity])",
+  "campaignWeaponIconHtml(w.type,46,'campaign-weapon-art-inventory',rc)",
+  "campaignWeaponIconHtml(item.wtype,104,'campaign-weapon-art-shop',rarCol)",
+  "campaignWeaponIconHtml(w.type,22,'campaign-weapon-art-shop-label',RARITY_COLORS[w.rarity])",
+  'shopPool[i]=null; shopLocked[i]=false;\n  renderShopInventory();',
   'function markEnemyWeaponStatus(',
   "markEnemyWeaponStatus(target,weapon);",
   "markEnemyWeaponStatus(target,'ice',duration);",
@@ -51,4 +56,4 @@ for(const element of ['fire','ice','electric','poison','shadow','arcane','solar'
   assert(html.includes(`active('${element}')`)||html.includes(`const ${element}=`),`Feedback visual ausente: ${element}`);
 }
 
-console.log(`OK: ${ids.length} ícones 320x320 e feedback elemental no HUD, Códex, inimigos e chefes.`);
+console.log(`OK: ${ids.length} ícones 320x320, círculos manuais no HUD/Códex/loja e feedback elemental em inimigos e chefes.`);
