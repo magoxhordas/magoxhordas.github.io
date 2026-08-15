@@ -1332,7 +1332,7 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
   width:100%;
   height:100%;
   display:block;
-  object-fit:cover;
+  object-fit:contain;
   object-position:50% 50%;
   border-radius:0;
   image-rendering:pixelated;
@@ -1348,6 +1348,28 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 }
 .coll-card.codex-art-card .codex-art-medallion { --codex-art-size:58px !important; }
 .coll-det-icon .codex-art-medallion { --codex-art-size:54px !important; }
+.coll-section-heading {
+  grid-column:1/-1;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-height:28px;
+  margin:8px 2px 0;
+  color:#86d69c;
+  font-size:11px;
+  font-weight:bold;
+  letter-spacing:2px;
+  text-transform:uppercase;
+}
+.coll-section-heading::before,.coll-section-heading::after {
+  content:'';
+  flex:1;
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(90,190,120,.5));
+}
+.coll-section-heading::after { transform:scaleX(-1); }
+#shop .s-card-icon .shop-relic-art { --codex-art-size:84px !important; }
+#dng-shop-grid .dng-shop-relic-art { --codex-art-size:46px !important; }
 .pixel-icon-slot {
   display:inline-flex;
   align-items:center;
@@ -3769,6 +3791,7 @@ canvas, img {
 
 /* ═════════════════ CONFIGURAÇÕES ═════════════════ */
 #settings-screen{
+  display:none;
   align-items:center;justify-content:center;padding:22px;
   background:
     radial-gradient(circle at 68% 24%,rgba(24,110,64,.18),transparent 36%),
@@ -12013,7 +12036,71 @@ function gameItemPixelKind(idOrName){
   return 'spark';
 }
 requestAnimationFrame(()=>hydrateGamePixelIcons(document));
+const CODEX_RELIC_ART=Object.freeze({
+  mage_arcane_core:'assets/codex/relics/mage_arcane_core.png',
+  mage_spellbook:'assets/codex/relics/mage_spellbook.png',
+  mage_elemental_orb:'assets/codex/relics/mage_elemental_orb.png',
+  mage_arcane_hourglass:'assets/codex/relics/mage_arcane_hourglass.png',
+  mage_astral_cloak:'assets/codex/relics/mage_astral_cloak.png',
+  mage_mana_fragment:'assets/codex/relics/mage_mana_fragment.png',
+  mage_arcane_eye:'assets/codex/relics/mage_arcane_eye.png',
+  mage_rune_circle:'assets/codex/relics/mage_rune_circle.png',
+  warrior_reinforced_plate:'assets/codex/relics/warrior_reinforced_plate.png',
+  warrior_whetstone:'assets/codex/relics/warrior_whetstone.png',
+  warrior_gauntlet:'assets/codex/relics/warrior_gauntlet.png',
+  warrior_guardian_medallion:'assets/codex/relics/warrior_guardian_medallion.png',
+  warrior_broken_shield:'assets/codex/relics/warrior_broken_shield.png',
+  warrior_heavy_boots:'assets/codex/relics/warrior_heavy_boots.png',
+  warrior_iron_emblem:'assets/codex/relics/warrior_iron_emblem.png',
+  warrior_titan_heart:'assets/codex/relics/warrior_titan_heart.png',
+  archer_shooter_glove:'assets/codex/relics/archer_shooter_glove.png',
+  archer_eagle_eye:'assets/codex/relics/archer_eagle_eye.png',
+  archer_reinforced_quiver:'assets/codex/relics/archer_reinforced_quiver.png',
+  archer_wind_feather:'assets/codex/relics/archer_wind_feather.png',
+  archer_hunter_sight:'assets/codex/relics/archer_hunter_sight.png',
+  archer_serrated_tip:'assets/codex/relics/archer_serrated_tip.png',
+  archer_precision_medallion:'assets/codex/relics/archer_precision_medallion.png',
+  archer_hunter_steps:'assets/codex/relics/archer_hunter_steps.png',
+  viking_war_horn:'assets/codex/relics/viking_war_horn.png',
+  viking_mead_mug:'assets/codex/relics/viking_mead_mug.png',
+  viking_blood_rune:'assets/codex/relics/viking_blood_rune.png',
+  viking_odin_eye:'assets/codex/relics/viking_odin_eye.png',
+  viking_berserker_fury:'assets/codex/relics/viking_berserker_fury.png',
+  viking_thor_totem:'assets/codex/relics/viking_thor_totem.png',
+  viking_frozen_beard:'assets/codex/relics/viking_frozen_beard.png',
+  viking_valhalla_heart:'assets/codex/relics/viking_valhalla_heart.png',
+  universal_light_boots:'assets/codex/relics/universal_light_boots.png',
+  universal_red_heart:'assets/codex/relics/universal_red_heart.png',
+  universal_combat_ration:'assets/codex/relics/universal_combat_ration.png',
+  universal_agile_gloves:'assets/codex/relics/universal_agile_gloves.png',
+  universal_luck_amulet:'assets/codex/relics/universal_luck_amulet.png',
+  universal_merchant_bag:'assets/codex/relics/universal_merchant_bag.png',
+  universal_runic_magnet:'assets/codex/relics/universal_runic_magnet.png',
+  universal_golden_clover:'assets/codex/relics/universal_golden_clover.png',
+  dng_relic_vamp:'assets/codex/relics/dng_relic_vamp.png',
+  dng_relic_crit:'assets/codex/relics/dng_relic_crit.png',
+  dng_relic_shield:'assets/codex/relics/dng_relic_shield.png',
+  dng_relic_speed:'assets/codex/relics/dng_relic_speed.png',
+  dng_relic_aoe:'assets/codex/relics/dng_relic_aoe.png',
+  dng_relic_gold:'assets/codex/relics/dng_relic_gold.png',
+  dng_relic_regen:'assets/codex/relics/dng_relic_regen.png',
+  dng_relic_maxhp:'assets/codex/relics/dng_relic_maxhp.png',
+  dng_ring_furia:'assets/codex/relics/dng_ring_furia.png',
+  dng_ring_vampirico:'assets/codex/relics/dng_ring_vampirico.png',
+  dng_ring_critico:'assets/codex/relics/dng_ring_critico.png',
+  dng_ring_ganancia:'assets/codex/relics/dng_ring_ganancia.png',
+  dng_ring_vitalidade:'assets/codex/relics/dng_ring_vitalidade.png',
+  dng_ring_pressa:'assets/codex/relics/dng_ring_pressa.png',
+  dng_ring_regen:'assets/codex/relics/dng_ring_regen.png'
+});
+window.CODEX_RELIC_ART=CODEX_RELIC_ART;
+function codexRelicIcon(id,color='#7bd99a'){
+  const path=CODEX_RELIC_ART[id];
+  return path?{artPath:path,color}:null;
+}
 function collItemIcon(it,classId){
+  const relicIcon=codexRelicIcon(it?.id);
+  if(relicIcon)return relicIcon;
   if(it?.pixelIcon)return collGameIcon(it.pixelIcon);
   const n=(it.name||'').toLowerCase();
   // Ícones específicos vêm primeiro para evitar que palavras amplas como
@@ -12155,15 +12242,49 @@ function showCollWeaponDetail(w){
 
 // ── ITENS ──
 function renderCollItems(grid){
-  const seen=new Set();
-  Object.values(CLASS_DEFS).forEach(cd=>(cd.shopItems||[]).forEach(it=>{
-    if(seen.has(it.name)) return; seen.add(it.name);
-    const itemIcon=collItemIcon(it,cd.id);
-    grid.appendChild(collCard(itemIcon,it.name,'ᛟ '+it.price,false,()=>{
-      const det=document.getElementById('coll-detail'); det.className='coll-detail visible';
-      det.innerHTML=`<div class="coll-det-header"><div class="coll-det-icon">${collIconHtml(itemIcon,54)}</div><div class="coll-det-info"><div class="coll-det-name">${it.name}</div><div class="coll-det-type">${it.flavour||'Item passivo'}</div></div></div><div style="font-size:14px;color:#a09050;line-height:1.7;margin-top:6px;">${it.desc}</div><div style="font-size:12px;color:#5a4020;margin-top:8px;padding-top:6px;border-top:1px solid rgba(150,110,30,0.2);">Custo: <b style="color:#f0d080">${it.price}</b> moedas${it.isStructure?'<br><span style="color:#8866cc">ᛏ Estrutura colocável</span>':''}</div>`;
-    }));
+  const section=title=>{
+    const heading=document.createElement('div');
+    heading.className='coll-section-heading';heading.textContent=title;grid.appendChild(heading);
+  };
+  const showBuffDetail=(spec,className,color)=>{
+    const icon=collItemIcon(spec,className);
+    const tiers=RARITIES.map(r=>`<div class="coll-boon-rarity" style="--rarity-color:${RARITY_COLORS[r]}"><div class="coll-boon-rarity-name">${RARITY_NAMES[r].toUpperCase()}</div><div class="coll-boon-rarity-value">${campaignShopBuffDescription(spec,r)}</div></div>`).join('');
+    const det=document.getElementById('coll-detail');det.className='coll-detail visible';
+    det.innerHTML=`<div class="coll-det-header"><div class="coll-det-icon">${collIconHtml(icon,54)}</div><div class="coll-det-info"><div class="coll-det-name">${spec.name}</div><div class="coll-det-type">${className}</div><div class="coll-det-kills">Compra única por campanha</div></div></div><div class="coll-det-divider"></div><div class="coll-boon-rarity-grid">${tiers}</div>`;
+  };
+  const classNames={mage:'Mago',warrior:'Guerreiro',archer:'Arqueiro',viking:'Viking'};
+  const classColors={mage:'#b35cff',warrior:'#f05a42',archer:'#48d878',viking:'#e7b44a'};
+  section('RELIQUIAS DE CLASSE');
+  Object.entries(CAMPAIGN_CLASS_BUFFS).forEach(([classId,specs])=>specs.forEach(spec=>{
+    const icon=collItemIcon(spec,classId);
+    const card=collCard(icon,spec.name,classNames[classId],false,()=>showBuffDetail(spec,classNames[classId],classColors[classId]),null,classColors[classId]);
+    const badge=document.createElement('div');badge.className='coll-weapon-class';badge.style.color=classColors[classId];badge.textContent=classNames[classId];card.appendChild(badge);grid.appendChild(card);
   }));
+  section('ITENS UNIVERSAIS DA LOJA');
+  CAMPAIGN_UNIVERSAL_ITEMS.forEach(spec=>{
+    const icon=collItemIcon(spec);
+    grid.appendChild(collCard(icon,spec.name,'Universal',false,()=>showBuffDetail(spec,'Item universal','#e4c65a'),null,'#e4c65a'));
+  });
+  if(Array.isArray(window.DNG_RELICS)){
+    section('RELIQUIAS DA DUNGEON');
+    window.DNG_RELICS.forEach(it=>{
+      const icon=codexRelicIcon(`dng_relic_${it.id}`,'#63d8d1')||collItemIcon(it);
+      grid.appendChild(collCard(icon,it.name,`${it.price} moedas`,false,()=>{
+        const det=document.getElementById('coll-detail');det.className='coll-detail visible';
+        det.innerHTML=`<div class="coll-det-header"><div class="coll-det-icon">${collIconHtml(icon,54)}</div><div class="coll-det-info"><div class="coll-det-name">${it.name}</div><div class="coll-det-type">Relíquia da Dungeon</div></div></div><div class="coll-det-divider"></div><div style="font-size:14px;color:#a9c8bd;line-height:1.7;">${it.desc}</div><div style="font-size:12px;color:#5f8c80;margin-top:8px;">Disponível no Ferreiro por ${it.price} moedas.</div>`;
+      },null,'#63d8d1'));
+    });
+  }
+  if(Array.isArray(window.DNG_RING_TYPES)){
+    section('ANEIS DA DUNGEON');
+    window.DNG_RING_TYPES.forEach(it=>{
+      const icon=codexRelicIcon(`dng_ring_${it.id}`,'#a875ef')||collGameIcon('ring');
+      grid.appendChild(collCard(icon,it.name,'Equipável',false,()=>{
+        const det=document.getElementById('coll-detail');det.className='coll-detail visible';
+        det.innerHTML=`<div class="coll-det-header"><div class="coll-det-icon">${collIconHtml(icon,54)}</div><div class="coll-det-info"><div class="coll-det-name">${it.name}</div><div class="coll-det-type">Anel da Dungeon</div></div></div><div class="coll-det-divider"></div><div style="font-size:14px;color:#bda7d8;line-height:1.7;">Anel equipável encontrado durante as expedições. Seus atributos escalam com a raridade e o piso.</div>`;
+      },null,'#a875ef'));
+    });
+  }
 }
 
 // ── BESTIÁRIO ──
@@ -14782,8 +14903,9 @@ function makeCampaignBuffOffer(spec,pidx=null,universal=false){
   const rarity=campaignShopRarityForWave();
   const priceMap=universal?{common:8,uncommon:12,rare:18,epic:27,legendary:39}:{common:9,uncommon:13,rare:19,epic:28,legendary:41};
   const classId=universal?null:(pidx===1?selectedClass.p2:selectedClass.p1);
+  const artPath=typeof CODEX_RELIC_ART!=='undefined'?CODEX_RELIC_ART[spec.id]:null;
   return {id:spec.id,name:spec.name,desc:campaignShopBuffDescription(spec,rarity),price:priceMap[rarity],rarity,pidx,classId,
-    category:universal?'universal':'classBuff',isClassBuff:!universal,isUniversal:universal,pixelIcon:spec.pixelIcon,unique:true,spec,
+    category:universal?'universal':'classBuff',isClassBuff:!universal,isUniversal:universal,pixelIcon:spec.pixelIcon,artPath,unique:true,spec,
     apply(target){applyCampaignShopItem(target,spec,rarity);}};
 }
 
@@ -15046,7 +15168,9 @@ function renderShopGrid(){
     const itemIcon=item.pixelIcon||offerDef?.pixelIcon||'orb';
     const offerIconHtml=item.wtype&&offerDef
       ?campaignWeaponIconHtml(item.wtype,104,'campaign-weapon-art-shop',rarCol)
-      :gamePixelIconHtml(itemIcon,84);
+      :item.artPath
+        ?codexArtIconHtml(item.artPath,84,'shop-relic-art',rarCol)
+        :gamePixelIconHtml(itemIcon,84);
     card.innerHTML=`
       <div class="s-card-top">
         <div class="s-card-icon${item.wtype?' weapon-offer-icon':''}">${offerIconHtml}</div>
@@ -26519,6 +26643,8 @@ const DNG_RELICS=[
   {id:'regen', icon:'💚',name:'Coração de Pedra', desc:'1HP/3s',        price:16,apply(d){d._regenT=3000;}},
   {id:'maxhp', icon:'❤️',name:'Frasco de Sangue', desc:'+40HP+cura',    price:14,apply(d){d.pMaxHp+=40;d.pHp=Math.min(d.pHp+40,d.pMaxHp);}},
 ];
+window.DNG_RELICS=DNG_RELICS;
+window.DNG_RING_TYPES=DNG_RING_TYPES;
 function dngStorePixelKind(item){
   if(item?.pixelKey)return item.pixelKey;
   if(item?.defId)return dngWeaponPixelKind(item);
@@ -28173,8 +28299,10 @@ const DNG={
       const grid=document.getElementById('dng-shop-grid');
       items.forEach(item=>{
         const card=document.createElement('div');const ca=self.pCoins>=item.price;
+        const relicArt=item.id?CODEX_RELIC_ART[`dng_relic_${item.id}`]:null;
+        const itemArt=relicArt?codexArtIconHtml(relicArt,46,'dng-shop-relic-art','#63d8d1'):gamePixelIconHtml(dngStorePixelKind(item),30);
         card.style.cssText=`background:rgba(8,5,18,0.97);border:1px solid rgba(${ca?'200,168,75':'60,44,16'},0.4);border-radius:5px;padding:clamp(8px,1.5vw,12px);cursor:${ca?'pointer':'not-allowed'};opacity:${ca?1:0.45};transition:all .15s;`;
-        card.innerHTML=`<div style="margin-bottom:3px;">${gamePixelIconHtml(dngStorePixelKind(item),30)}</div><div style="font-size:clamp(10px,1.5vw,12px);font-weight:bold;color:#f0d080;margin-bottom:2px;">${item.name}</div><div style="font-size:clamp(7px,1.2vw,9px);color:#7a6030;line-height:1.5;margin-bottom:5px;">${item.desc}</div><div class="pixel-inline" style="font-size:clamp(10px,1.6vw,12px);color:#c8a84b;font-weight:bold;">${gamePixelIconHtml('coin',13)} ${item.price}</div>`;
+        card.innerHTML=`<div style="margin-bottom:5px;min-height:46px;display:flex;align-items:center;justify-content:center;">${itemArt}</div><div style="font-size:clamp(10px,1.5vw,12px);font-weight:bold;color:#f0d080;margin-bottom:2px;">${item.name}</div><div style="font-size:clamp(7px,1.2vw,9px);color:#7a6030;line-height:1.5;margin-bottom:5px;">${item.desc}</div><div class="pixel-inline" style="font-size:clamp(10px,1.6vw,12px);color:#c8a84b;font-weight:bold;">${gamePixelIconHtml('coin',13)} ${item.price}</div>`;
         if(ca){
           card.onmouseenter=()=>card.style.borderColor='rgba(200,168,75,0.8)';
           card.onmouseleave=()=>card.style.borderColor='rgba(200,168,75,0.4)';
