@@ -1268,6 +1268,23 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
   image-rendering:crisp-edges;
   filter:drop-shadow(0 0 5px rgba(125,232,154,0.16));
 }
+.campaign-weapon-art {
+  display:block;
+  flex:0 0 auto;
+  border-radius:50%;
+  object-fit:cover;
+  image-rendering:pixelated;
+  image-rendering:crisp-edges;
+  filter:drop-shadow(0 0 7px color-mix(in srgb,var(--cc,#c8a84b) 48%,transparent));
+}
+.coll-card.weapon-art-card .coll-card-icon-wrap {
+  overflow:hidden;
+  border-color:transparent;
+  background:#020907 !important;
+  box-shadow:0 0 13px -3px var(--cc);
+}
+.coll-card.weapon-art-card .campaign-weapon-art { width:58px;height:58px; }
+.coll-det-icon .campaign-weapon-art { width:54px;height:54px; }
 .pixel-icon-slot {
   display:inline-flex;
   align-items:center;
@@ -4234,6 +4251,12 @@ body.campaign-hud-active .wslot.empty { border-style:solid;border-color:#514b27;
 body.campaign-hud-active .wslot .wicon {
   font-size:31px;
   filter:sepia(.45) saturate(.75) brightness(.82) drop-shadow(0 2px 1px #000);
+}
+body.campaign-hud-active .wslot .wicon:has(.campaign-weapon-art) { filter:none; }
+body.campaign-hud-active .wslot .campaign-weapon-art {
+  width:52px;
+  height:52px;
+  filter:none;
 }
 body.campaign-hud-active .wslot.empty .wicon { color:#6a6133;font-size:24px;opacity:.58; }
 body.campaign-hud-active .wslot .wname { display:none; }
@@ -11841,6 +11864,9 @@ function collSpriteDataUrl(spr,pal,size=64){
   return collSpriteCanvas(spr,pal,size).toDataURL('image/png');
 }
 function collIconHtml(icon,size=54){
+  if(icon&&typeof icon==='object'&&icon.weaponType&&typeof campaignWeaponIconHtml==='function'){
+    return campaignWeaponIconHtml(icon.weaponType,size,'coll-weapon-art');
+  }
   if(icon&&typeof icon==='object'&&icon.spr){
     const src=collSpriteDataUrl(icon.spr,icon.pal,size);
     return `<img class="coll-pixel-icon" src="${src}" width="${size}" height="${size}" alt="">`;
@@ -11969,6 +11995,7 @@ function collCard(icon,name,hint,locked,onclickFn,rarity,color){
   const d=document.createElement('div');
   const rarClass=rarity?'r-'+rarity:'';
   d.className='coll-card'+(locked?' locked':'')+(rarClass?' '+rarClass:'');
+  if(icon&&typeof icon==='object'&&icon.weaponType)d.classList.add('weapon-art-card');
   // Cor do anel do medalhão: explícita > raridade > dourado padrão
   const rarRing={common:'#8a8a8a',uncommon:'#22cc55',rare:'#2277ee',epic:'#9933cc',legendary:'#ddaa00'};
   const ring=color||rarRing[rarity]||'#c8a84b';
@@ -12003,7 +12030,7 @@ function renderCollWeapons(grid){
     for(const spec of CAMPAIGN_WEAPON_SPECS[classId]||[]){
       const def=WEAPON_DEFS[spec[0]];if(!def)continue;
       const element=campaignWeaponElement(def.id);
-      const icon=collGameIcon(def.pixelIcon);
+      const icon={weaponType:def.id};
       const card=collCard(icon,def.name,elementLabels[element]||'Físico',false,()=>showCollWeaponDetail(def),null,def.color);
       const badge=document.createElement('div');
       badge.className='coll-weapon-class';badge.style.color=CLASS_DEFS[classId]?.color||def.color;badge.textContent=classLabels[classId];
@@ -12026,7 +12053,7 @@ function showCollWeaponDetail(w){
   }).join('');
   det.innerHTML=`
     <div class="coll-det-header">
-      <div class="coll-det-icon">${collIconHtml(collGameIcon(w.pixelIcon),54)}</div>
+      <div class="coll-det-icon">${collIconHtml({weaponType:w.id},54)}</div>
       <div class="coll-det-info">
         <div class="coll-det-name">${w.name}</div>
         <div class="coll-det-type">${classNames[w.classId]} · ${elementNames[campaignWeaponElement(w.id)]}</div>
@@ -14245,6 +14272,28 @@ function campaignWeaponElement(type=''){
   return 'physical';
 }
 
+const CAMPAIGN_ELEMENT_FX_DURATION={
+  fire:1500,ice:1600,electric:900,poison:1700,shadow:1250,
+  arcane:1050,solar:950,wind:850,blood:1300,physical:280
+};
+function campaignWeaponIconHtml(type,size=46,extraClass=''){
+  const safe=WEAPON_DEFS[type]?type:'';
+  if(!safe)return gamePixelIconHtml('orb',size,null,extraClass);
+  return `<img class="campaign-weapon-art ${extraClass}" src="assets/weapons/${safe}.png" width="${size}" height="${size}" alt="" aria-hidden="true">`;
+}
+function campaignDamageElement(source=''){
+  const raw=typeof source==='string'?source:(source?.type||source?.id||'');
+  const direct=['fire','ice','electric','poison','shadow','arcane','solar','wind','blood','physical'];
+  return direct.includes(raw)?raw:campaignWeaponElement(raw);
+}
+function markEnemyWeaponStatus(target,source,duration){
+  if(!target||target.dead)return;
+  const element=campaignDamageElement(source);
+  target.elementFx=target.elementFx||{};
+  const until=performance.now()+(duration||CAMPAIGN_ELEMENT_FX_DURATION[element]||700);
+  target.elementFx[element]=Math.max(target.elementFx[element]||0,until);
+}
+
 // ═══════════════════════════════════════════════════════
 // PLAYER WEAPONS INVENTORY
 // ═══════════════════════════════════════════════════════
@@ -14298,7 +14347,7 @@ function updateWeaponUI(){
         if(!def){slot.className=`${base} empty`;slot.innerHTML='<span class="wicon">➕</span><span class="wname">Vazio</span>';continue;}
         const rc=`rarity-${w.rarity}`;
         slot.className=`${base} ${rc}`;
-        slot.innerHTML=`<span style="position:absolute;top:-7px;right:-4px;font-size:11px;padding:1px 4px;border-radius:3px;font-weight:bold;background:${RARITY_COLORS[w.rarity]}22;color:${RARITY_COLORS[w.rarity]};">${RARITY_NAMES[w.rarity].substring(0,3).toUpperCase()}</span><span class="wicon">${gamePixelIconHtml(def.pixelIcon||'orb',22)}</span><span class="wname">${def.name}</span>`;
+        slot.innerHTML=`<span style="position:absolute;top:-7px;right:-4px;font-size:11px;padding:1px 4px;border-radius:3px;font-weight:bold;background:${RARITY_COLORS[w.rarity]}22;color:${RARITY_COLORS[w.rarity]};">${RARITY_NAMES[w.rarity].substring(0,3).toUpperCase()}</span><span class="wicon">${campaignWeaponIconHtml(def.id,52,'campaign-weapon-art-hud')}</span><span class="wname">${def.name}</span>`;
       }
     }
   };
@@ -15174,6 +15223,7 @@ function weaponDamage(player,weapon,target,amount,color){
   if(!target||target.dead)return 0;
   const dmg=typeof applyCardCrit==='function'?applyCardCrit(player,amount,target,weapon):amount;
   target.takeDmg(dmg);weapon.damageDone=(weapon.damageDone||0)+dmg;
+  markEnemyWeaponStatus(target,weapon);
   if(typeof applyClassHitEffect==='function')applyClassHitEffect({owner:player,dmg,weapon},target);
   spawnParts(target.x,target.y,color||'#ffffff',5,38);
   return dmg;
@@ -15209,6 +15259,7 @@ function weaponChain(player,enemies,start,count,damages,weapon,color){
 }
 function applyWeaponSlow(target,pct,duration,owner){
   if(!target||target.slowImmune)return;if(owner?.classId==='mage')duration*=1+(getCampaignShopEffect(owner).elementDuration||0);target.slowed=true;target.slowTimer=Math.max(target.slowTimer||0,duration);target.weaponSlow=Math.max(target.weaponSlow||0,pct);target.weaponSlowTimer=Math.max(target.weaponSlowTimer||0,duration);
+  markEnemyWeaponStatus(target,'ice',duration);
   if(owner)target._lastWeaponOwner=owner;
 }
 function weaponShieldReduction(player){
@@ -15223,11 +15274,13 @@ function weaponShieldCounter(player){
 }
 function applyWeaponPoison(target,owner,weapon,dps,duration,maxStacks){
   if(!target||target.dead)return;if(owner?.classId==='mage'){const se=getCampaignShopEffect(owner);duration*=1+(se.elementDuration||0);dps*=1+(se.elementDamage||0);}target._lastDamageOwner=owner;target.weaponPoisons=target.weaponPoisons||[];
+  markEnemyWeaponStatus(target,'poison',duration);
   const active=target.weaponPoisons.filter(p=>p.owner===owner&&p.type===weapon.type);
   if(active.length>=maxStacks)active[0].timer=duration;else target.weaponPoisons.push({owner,type:weapon.type,dps,timer:duration,weapon});
 }
 function applyWeaponBurn(target,owner,weapon,dps,duration){
   if(!target||target.dead)return;if(owner?.classId==='mage'){const se=getCampaignShopEffect(owner);duration*=1+(se.elementDuration||0);dps*=1+(se.elementDamage||0);}target._lastDamageOwner=owner;target.weaponBurn={owner,dps,timer:duration,weapon};
+  markEnemyWeaponStatus(target,'fire',duration);
 }
 
 function campaignClassWeaponAttack(player,enemies,rarity,manualTarget,weapon,type){
@@ -19407,7 +19460,7 @@ function updateFirePatches(dt){
         if(fp.noStackKey){
           e._fireTrailTick=e._fireTrailTick||{};const now=Date.now();if(now-(e._fireTrailTick[fp.noStackKey]||0)<360)continue;e._fireTrailTick[fp.noStackKey]=now;
         }
-        const tickDamage=fp.noStackKey?damage*.4:damage;e.takeDmg(tickDamage);if(fp.owner&&fp.noStackKey){const w=getSlots(fp.owner.idx).find(x=>x&&x.type===fp.noStackKey);if(w)w.damageDone=(w.damageDone||0)+tickDamage;}
+        const tickDamage=fp.noStackKey?damage*.4:damage;e.takeDmg(tickDamage);markEnemyWeaponStatus(e,'fire',700);if(fp.owner&&fp.noStackKey){const w=getSlots(fp.owner.idx).find(x=>x&&x.type===fp.noStackKey);if(w)w.damageDone=(w.damageDone||0)+tickDamage;}
       }
     }
   }
@@ -19580,6 +19633,9 @@ function applyClassHitEffect(proj, enemy){
   applyBlessingKnockback(owner,enemy);
   if(typeof notifyBlessingSpecial==='function') notifyBlessingSpecial(owner);
   const cid=owner.classId;
+  const classElement={mage:'ice',warrior:'fire',archer:'electric',viking:'blood'}[cid]||'physical';
+  const weaponType=proj.weapon?.type;
+  markEnemyWeaponStatus(enemy,weaponType&&WEAPON_DEFS[weaponType]?weaponType:classElement);
   applyCampaignShopHitEffects(owner,enemy,proj.dmg||0);
   if(typeof notifyBlessingHit==='function')notifyBlessingHit(owner,enemy,proj.dmg||0,proj.weapon||null);
   if(cid==='mage'){
@@ -19601,6 +19657,7 @@ function applyClassHitEffect(proj, enemy){
     const linked=enemies.filter(e=>!e.dead&&e!==enemy&&Math.hypot(e.x-enemy.x,e.y-enemy.y)<80).slice(0,owner.plasmaChain||1);
     for(const le of linked){
       le.takeDmg(proj.dmg*0.6);
+      markEnemyWeaponStatus(le,'electric');
       spawnParts(le.x,le.y,'#22ff88',5,40);
       const steps=5;
       for(let si=0;si<steps;si++){
@@ -22461,6 +22518,7 @@ function collide(){
         if(p.isCampaignWeaponProj&&p.opts.frozenCrit&&e.frozen)projectileDamage*=1+p.opts.frozenCrit;
         const finalDmg = typeof applyCardCrit==='function' ? applyCardCrit(p.owner||player, projectileDamage, e, p.weapon||null) : projectileDamage;
         e.takeDmg(finalDmg);
+        if(p.isCampaignWeaponProj)markEnemyWeaponStatus(e,p.weapon);
         if(p.isCampaignWeaponProj){
           p.weapon.damageDone=(p.weapon.damageDone||0)+finalDmg;p.hitTargets.add(e);
           applyClassHitEffect({owner:p.owner,dmg:finalDmg,weapon:p.weapon},e);
@@ -22480,23 +22538,23 @@ function collide(){
     // Player projectiles hit bosses
     if(!p.dead&&bossOrc&&!bossOrc.dead&&Math.hypot(p.x-bossOrc.x,p.y-bossOrc.y)<p.radius+bossOrc.radius){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossOrc,p.weapon||null):p.dmg;
-      bossOrc.takeDmg(dmg); if(p.isCampaignWeaponProj){p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossOrc);}else applyClassHitEffect(p,bossOrc); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
+      bossOrc.takeDmg(dmg); if(p.isCampaignWeaponProj){markEnemyWeaponStatus(bossOrc,p.weapon);p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossOrc);}else applyClassHitEffect(p,bossOrc); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
     }
     if(!p.dead&&bossSkel&&!bossSkel.dead&&Math.hypot(p.x-bossSkel.x,p.y-bossSkel.y)<p.radius+bossSkel.radius){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossSkel,p.weapon||null):p.dmg;
-      bossSkel.takeDmg(dmg); if(p.isCampaignWeaponProj){p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossSkel);}else applyClassHitEffect(p,bossSkel); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
+      bossSkel.takeDmg(dmg); if(p.isCampaignWeaponProj){markEnemyWeaponStatus(bossSkel,p.weapon);p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossSkel);}else applyClassHitEffect(p,bossSkel); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
     }
     if(!p.dead&&bossSpider&&!bossSpider.dead&&Math.hypot(p.x-bossSpider.x,p.y-bossSpider.y)<p.radius+bossSpider.radius){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossSpider,p.weapon||null):p.dmg;
-      bossSpider.takeDmg(dmg); if(p.isCampaignWeaponProj){p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossSpider);}else applyClassHitEffect(p,bossSpider); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
+      bossSpider.takeDmg(dmg); if(p.isCampaignWeaponProj){markEnemyWeaponStatus(bossSpider,p.weapon);p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossSpider);}else applyClassHitEffect(p,bossSpider); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
     }
     if(!p.dead&&bossMajor&&!bossMajor.dead&&Math.hypot(p.x-bossMajor.x,p.y-bossMajor.y)<p.radius+(bossMajor.radius||36)){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossMajor,p.weapon||null):p.dmg;
-      bossMajor.takeDmg(dmg); if(p.isCampaignWeaponProj){p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossMajor);}else applyClassHitEffect(p,bossMajor); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
+      bossMajor.takeDmg(dmg); if(p.isCampaignWeaponProj){markEnemyWeaponStatus(bossMajor,p.weapon);p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossMajor);}else applyClassHitEffect(p,bossMajor); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
     }
     if(!p.dead&&petBoss&&!petBoss.dead&&!petBoss.tamed&&Math.hypot(p.x-petBoss.x,p.y-petBoss.y)<p.radius+petBoss.radius){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,petBoss,p.weapon||null):p.dmg;
-      petBoss.takeDmg(dmg); p.dead=true;
+      petBoss.takeDmg(dmg);markEnemyWeaponStatus(petBoss,p.weapon?.type&&WEAPON_DEFS[p.weapon.type]?p.weapon:{type:{mage:'ice',warrior:'fire',archer:'electric',viking:'blood'}[p.owner?.classId]||'physical'});p.dead=true;
     }
   }
   // Enemies vs players — with iceBarrier slow-on-contact
@@ -23813,25 +23871,72 @@ function drawBlizzard(t){
   <script>
 // GAME LOOP
 // ═══════════════════════════════════════════════════════
-// Frozen/slowed visual overlays on enemies
-function drawEnemyStatusFx(e, t){
-  if(e.frozen){
-    ctx.save();
-    ctx.globalAlpha=0.55+0.15*Math.sin(t*0.01);
-    ctx.fillStyle='#88eeff';
-    ctx.beginPath(); ctx.arc(e.x,e.y,e.radius+2,0,Math.PI*2); ctx.fill();
-    // ice crystal crosses
-    ctx.strokeStyle='#ccf8ff'; ctx.lineWidth=1.5; ctx.globalAlpha=0.9;
-    ctx.beginPath(); ctx.moveTo(e.x-5,e.y); ctx.lineTo(e.x+5,e.y); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(e.x,e.y-5); ctx.lineTo(e.x,e.y+5); ctx.stroke();
-    ctx.restore();
-  } else if(e.slowed){
-    ctx.save();
-    ctx.globalAlpha=0.3+0.1*Math.sin(t*0.008);
-    ctx.fillStyle='#4488cc';
-    ctx.beginPath(); ctx.arc(e.x,e.y,e.radius+1,0,Math.PI*2); ctx.fill();
-    ctx.restore();
+// Elemental damage feedback shared by normal enemies and every campaign boss.
+function drawEnemyStatusFx(e,t){
+  if(!e||e.dead)return;
+  const now=typeof performance!=='undefined'?performance.now():Date.now();
+  const fx=e.elementFx||{};
+  for(const key of Object.keys(fx))if(fx[key]<=now)delete fx[key];
+  const active=key=>(fx[key]||0)>now;
+  const fire=active('fire')||e.weaponBurn?.timer>0;
+  const ice=active('ice')||e.frozen||e.slowed;
+  const poison=active('poison')||Boolean(e.weaponPoisons?.length);
+  const r=Math.max(10,Math.min(58,e.radius||16));
+  const pulse=.5+.5*Math.sin(t*.014+e.x*.03);
+  if(!fire&&!ice&&!poison&&!active('electric')&&!active('shadow')&&!active('arcane')&&!active('solar')&&!active('wind')&&!active('blood')&&!active('physical'))return;
+  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+
+  if(active('shadow')){
+    ctx.globalAlpha=.25+.12*pulse;ctx.fillStyle='#5d20a8';ctx.shadowColor='#9a4cff';ctx.shadowBlur=12;
+    ctx.beginPath();ctx.ellipse(e.x,e.y+r*.18,r*1.22,r*.72,0,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+    for(let i=0;i<3;i++){const a=t*.001+i*2.1;ctx.fillRect(e.x+Math.cos(a)*r*1.05-2,e.y+Math.sin(a)*r*.55-2,4,4);}
   }
+  if(active('wind')){
+    ctx.globalAlpha=.7;ctx.strokeStyle='#8deeff';ctx.lineWidth=1.5;
+    for(let i=0;i<2;i++){ctx.beginPath();ctx.arc(e.x,e.y,r*(1.05+i*.24),t*.003+i*Math.PI,t*.003+i*Math.PI+Math.PI*.95);ctx.stroke();}
+  }
+  if(active('solar')){
+    ctx.globalAlpha=.7+.2*pulse;ctx.strokeStyle='#ffd65a';ctx.fillStyle='rgba(255,205,70,.16)';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(e.x,e.y,r+4,0,Math.PI*2);ctx.fill();ctx.stroke();
+    for(let i=0;i<8;i++){const a=i*Math.PI/4;ctx.beginPath();ctx.moveTo(e.x+Math.cos(a)*(r+6),e.y+Math.sin(a)*(r+6));ctx.lineTo(e.x+Math.cos(a)*(r+10+pulse*3),e.y+Math.sin(a)*(r+10+pulse*3));ctx.stroke();}
+  }
+  if(poison){
+    ctx.globalAlpha=.25+.12*pulse;ctx.fillStyle='#58e65b';ctx.beginPath();ctx.arc(e.x,e.y,r+2,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=.85;ctx.strokeStyle='#9dff74';ctx.lineWidth=1.5;
+    for(let i=0;i<3;i++){const bx=e.x-r*.65+i*r*.65,by=e.y-r-(i%2)*5-pulse*4,br=2+i;ctx.beginPath();ctx.arc(bx,by,br,0,Math.PI*2);ctx.stroke();}
+  }
+  if(fire){
+    ctx.globalAlpha=.72+.18*pulse;ctx.strokeStyle='#ff5b1f';ctx.shadowColor='#ff7a22';ctx.shadowBlur=8;ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(e.x,e.y,r+3,0,Math.PI*2);ctx.stroke();
+    ctx.fillStyle='#ff9b23';
+    for(let i=-1;i<=1;i++){const x=e.x+i*r*.55,y=e.y-r*.65;ctx.beginPath();ctx.moveTo(x-4,y+6);ctx.quadraticCurveTo(x-5,y-5-pulse*5,x+1,y-12-(i===0?5:0));ctx.quadraticCurveTo(x+7,y-2,x+4,y+6);ctx.closePath();ctx.fill();}
+    ctx.shadowBlur=0;
+  }
+  if(active('blood')){
+    ctx.globalAlpha=.78;ctx.strokeStyle='#e62f36';ctx.fillStyle='#ff4650';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(e.x,e.y,r+3,-.15,Math.PI+.2);ctx.stroke();
+    for(let i=-1;i<=1;i++){const x=e.x+i*r*.55,y=e.y+r*.7;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y+6+(i+1)*2);ctx.stroke();ctx.beginPath();ctx.arc(x,y+9+(i+1)*2,2,0,Math.PI*2);ctx.fill();}
+  }
+  if(active('arcane')){
+    ctx.globalAlpha=.85;ctx.strokeStyle='#c668ff';ctx.fillStyle='#e5a7ff';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.arc(e.x,e.y,r+7,t*.002,t*.002+Math.PI*1.6);ctx.stroke();
+    for(let i=0;i<4;i++){const a=t*.002+i*Math.PI/2;ctx.fillRect(e.x+Math.cos(a)*(r+7)-2,e.y+Math.sin(a)*(r+7)-2,4,4);}
+  }
+  if(active('electric')){
+    ctx.globalAlpha=.8+.2*pulse;ctx.strokeStyle='#ffe34d';ctx.shadowColor='#fff16b';ctx.shadowBlur=7;ctx.lineWidth=2;
+    for(let i=0;i<3;i++){const a=t*.006+i*Math.PI*2/3;ctx.beginPath();for(let j=0;j<5;j++){const rr=r+5+(j%2?5:0),aa=a+j*.27,x=e.x+Math.cos(aa)*rr,y=e.y+Math.sin(aa)*rr;(j?ctx.lineTo(x,y):ctx.moveTo(x,y));}ctx.stroke();}ctx.shadowBlur=0;
+  }
+  if(ice){
+    ctx.globalAlpha=(e.frozen ? .58 : .26);ctx.fillStyle=e.frozen?'#91edff':'#4f9ed9';ctx.beginPath();ctx.arc(e.x,e.y,r+2,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=.9;ctx.strokeStyle='#d8fbff';ctx.lineWidth=1.5;
+    for(let i=0;i<3;i++){const a=i*Math.PI/3;ctx.beginPath();ctx.moveTo(e.x-Math.cos(a)*r*.65,e.y-Math.sin(a)*r*.65);ctx.lineTo(e.x+Math.cos(a)*r*.65,e.y+Math.sin(a)*r*.65);ctx.stroke();}
+    for(let i=0;i<3;i++){const a=t*.001+i*2.1,cr=2+i*.45;ctx.beginPath();ctx.arc(e.x+Math.cos(a)*r*.9,e.y+Math.sin(a)*r*.75,cr,0,Math.PI*2);ctx.stroke();}
+  }
+  if(active('physical')){
+    ctx.globalAlpha=.9;ctx.strokeStyle='#fff4df';ctx.shadowColor='#ffffff';ctx.shadowBlur=5;ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.moveTo(e.x-r*.8,e.y-r*.65);ctx.lineTo(e.x+r*.7,e.y+r*.55);ctx.moveTo(e.x+r*.45,e.y-r*.78);ctx.lineTo(e.x-r*.35,e.y+r*.15);ctx.stroke();
+  }
+  ctx.restore();
 }
 
 // Bottom HUD: shows active class ability status
@@ -24020,10 +24125,10 @@ function loop(ts){
   const ents=[
     ...coins.map(c=>({y:c.y,fn:()=>c.draw(t)})),
     ...enemies.map(e=>({y:e.y,fn:()=>{ e.draw(t); drawEnemyStatusFx(e,t); }})),
-    ...(bossOrc&&!bossOrc.dead?[{y:bossOrc.y,fn:()=>bossOrc.draw(t)}]:[]),
-    ...(bossSkel&&!bossSkel.dead?[{y:bossSkel.y,fn:()=>bossSkel.draw(t)}]:[]),
-    ...(bossSpider&&!bossSpider.dead?[{y:bossSpider.y,fn:()=>bossSpider.draw(t)}]:[]),
-    ...(bossMajor&&!bossMajor.dead?[{y:bossMajor.y,fn:()=>bossMajor.draw(t)}]:[]),
+    ...(bossOrc&&!bossOrc.dead?[{y:bossOrc.y,fn:()=>{bossOrc.draw(t);drawEnemyStatusFx(bossOrc,t);}}]:[]),
+    ...(bossSkel&&!bossSkel.dead?[{y:bossSkel.y,fn:()=>{bossSkel.draw(t);drawEnemyStatusFx(bossSkel,t);}}]:[]),
+    ...(bossSpider&&!bossSpider.dead?[{y:bossSpider.y,fn:()=>{bossSpider.draw(t);drawEnemyStatusFx(bossSpider,t);}}]:[]),
+    ...(bossMajor&&!bossMajor.dead?[{y:bossMajor.y,fn:()=>{bossMajor.draw(t);drawEnemyStatusFx(bossMajor,t);}}]:[]),
     ...structures.map(s=>({y:s.y,fn:()=>s.draw(t)})),
     {y:player.y,fn:()=>player.draw(t)},
     ...(gameMode===2&&player2?[{y:player2.y,fn:()=>player2.draw(t)}]:[]),
@@ -24040,7 +24145,7 @@ function loop(ts){
   drawLevelNotices();
   // Draw pet companion and wild pet boss
   if(currentPet) currentPet.draw(t);
-  if(petBoss&&!petBoss.dead) petBoss.draw(t);
+  if(petBoss&&!petBoss.dead){petBoss.draw(t);drawEnemyStatusFx(petBoss,t);}
 
   // Web puddles (below HUD)
   for(const wp of webPuddles) wp.draw();
