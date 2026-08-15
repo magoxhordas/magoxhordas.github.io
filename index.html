@@ -258,7 +258,7 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 .shop-inv-slot:hover:not(.empty-slot) { border-color:rgba(200,168,75,0.55); background:rgba(20,14,5,0.98); }
 .shop-inv-slot.selected-slot { border-color:#f0d080 !important; box-shadow:0 0 10px rgba(200,168,75,0.2); background:rgba(25,18,6,0.98); }
 .shop-inv-slot.empty-slot { border-style:dashed; border-color:rgba(35,25,8,0.5); opacity:0.45; cursor:default; }
-.shop-inv-slot .slt-icon { font-size:18px; flex-shrink:0; }
+.shop-inv-slot .slt-icon { font-size:18px; flex-shrink:0; display:grid; place-items:center; line-height:0; }
 .shop-inv-slot .slt-info { flex:1; min-width:0; }
 .shop-inv-slot .slt-name { font-size:17px; color:#f0d080; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .shop-inv-slot .slt-rar  { font-size:11px; font-weight:bold; letter-spacing:1px; text-transform:uppercase; }
@@ -1268,23 +1268,86 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
   image-rendering:crisp-edges;
   filter:drop-shadow(0 0 5px rgba(125,232,154,0.16));
 }
-.campaign-weapon-art {
-  display:block;
+.campaign-weapon-medallion {
+  --weapon-size:46px;
+  --weapon-ring:#c8a84b;
+  width:var(--weapon-size);
+  height:var(--weapon-size);
+  box-sizing:border-box;
+  display:inline-grid;
+  place-items:center;
   flex:0 0 auto;
+  overflow:hidden;
+  border:2px solid var(--weapon-ring);
   border-radius:50%;
+  background:#020907;
+  box-shadow:
+    0 0 12px color-mix(in srgb,var(--weapon-ring) 34%,transparent),
+    inset 0 0 11px rgba(0,0,0,.72);
+  line-height:0;
+  vertical-align:middle;
+  transform:none !important;
+}
+.campaign-weapon-art {
+  width:100%;
+  height:100%;
+  display:block;
   object-fit:cover;
+  object-position:50% 50%;
+  border-radius:0;
   image-rendering:pixelated;
   image-rendering:crisp-edges;
-  filter:drop-shadow(0 0 7px color-mix(in srgb,var(--cc,#c8a84b) 48%,transparent));
+  filter:none;
+  transform:none !important;
 }
 .coll-card.weapon-art-card .coll-card-icon-wrap {
   overflow:hidden;
   border-color:transparent;
-  background:#020907 !important;
-  box-shadow:0 0 13px -3px var(--cc);
+  background:transparent !important;
+  box-shadow:none;
 }
-.coll-card.weapon-art-card .campaign-weapon-art { width:58px;height:58px; }
-.coll-det-icon .campaign-weapon-art { width:54px;height:54px; }
+.coll-card.weapon-art-card .campaign-weapon-medallion { --weapon-size:58px !important; }
+.coll-det-icon .campaign-weapon-medallion { --weapon-size:54px !important; }
+.codex-art-medallion {
+  --codex-art-size:46px;
+  --codex-art-ring:#c8a84b;
+  width:var(--codex-art-size);
+  height:var(--codex-art-size);
+  box-sizing:border-box;
+  display:inline-grid;
+  place-items:center;
+  flex:0 0 auto;
+  overflow:hidden;
+  border:2px solid var(--codex-art-ring);
+  border-radius:50%;
+  background:#020907;
+  box-shadow:
+    0 0 12px color-mix(in srgb,var(--codex-art-ring) 34%,transparent),
+    inset 0 0 11px rgba(0,0,0,.72);
+  line-height:0;
+  vertical-align:middle;
+  transform:none !important;
+}
+.codex-art-image {
+  width:100%;
+  height:100%;
+  display:block;
+  object-fit:cover;
+  object-position:50% 50%;
+  border-radius:0;
+  image-rendering:pixelated;
+  image-rendering:crisp-edges;
+  filter:none;
+  transform:none !important;
+}
+.coll-card.codex-art-card .coll-card-icon-wrap {
+  overflow:hidden;
+  border-color:transparent;
+  background:transparent !important;
+  box-shadow:none;
+}
+.coll-card.codex-art-card .codex-art-medallion { --codex-art-size:58px !important; }
+.coll-det-icon .codex-art-medallion { --codex-art-size:54px !important; }
 .pixel-icon-slot {
   display:inline-flex;
   align-items:center;
@@ -3477,6 +3540,21 @@ canvas, img {
   height:84px;
   image-rendering:pixelated;
 }
+#shop .s-card-icon.weapon-offer-icon {
+  border:0;
+  background:transparent;
+  box-shadow:none;
+}
+#shop .s-card-icon.weapon-offer-icon .campaign-weapon-medallion {
+  --weapon-size:104px !important;
+}
+#shop .shop-inv-slot .campaign-weapon-medallion {
+  --weapon-size:46px !important;
+}
+#shop-sel-label .campaign-weapon-medallion {
+  --weapon-size:22px !important;
+  border-width:1px;
+}
 #shop .s-card-content { min-width:0; }
 #shop .s-card-info { margin-bottom:16px; }
 #shop .s-card-name {
@@ -3534,6 +3612,7 @@ canvas, img {
   #shop .s-card-top { grid-template-columns:92px minmax(0,1fr); gap:12px; }
   #shop .s-card-icon { width:88px; height:88px; }
   #shop .s-card-icon .game-pixel-icon { width:66px; height:66px; }
+  #shop .s-card-icon.weapon-offer-icon .campaign-weapon-medallion { --weapon-size:82px !important; }
   #shop .reroll-btn,
   #shop .advance-btn { min-width:min(310px,100%); }
 }
@@ -3548,6 +3627,7 @@ canvas, img {
   #shop .s-card-top { grid-template-columns:80px minmax(0,1fr); }
   #shop .s-card-icon { width:76px; height:76px; }
   #shop .s-card-icon .game-pixel-icon { width:58px; height:58px; }
+  #shop .s-card-icon.weapon-offer-icon .campaign-weapon-medallion { --weapon-size:70px !important; }
   #shop .shop-footer { flex-direction:column; }
 }
 
@@ -4252,12 +4332,8 @@ body.campaign-hud-active .wslot .wicon {
   font-size:31px;
   filter:sepia(.45) saturate(.75) brightness(.82) drop-shadow(0 2px 1px #000);
 }
-body.campaign-hud-active .wslot .wicon:has(.campaign-weapon-art) { filter:none; }
-body.campaign-hud-active .wslot .campaign-weapon-art {
-  width:52px;
-  height:52px;
-  filter:none;
-}
+body.campaign-hud-active .wslot .wicon:has(.campaign-weapon-medallion) { filter:none; }
+body.campaign-hud-active .wslot .campaign-weapon-medallion { --weapon-size:52px !important; }
 body.campaign-hud-active .wslot.empty .wicon { color:#6a6133;font-size:24px;opacity:.58; }
 body.campaign-hud-active .wslot .wname { display:none; }
 
@@ -10792,7 +10868,7 @@ function renderShopInventory(){
         const dmg = Math.round(campaignWeaponDamage(wd,w.rarity));
         const dmgDone = w.damageDone||0;
         const dmgTxt = dmgDone>0?`<span class="pixel-inline" style="color:#ff8844;font-size:11px;">${gamePixelIconHtml('sword',12)} ${Math.round(dmgDone)} dano/onda</span>`:'';
-        div.innerHTML = `<span class="slt-icon">${gamePixelIconHtml(wd.pixelIcon||'orb',28)}</span><div class="slt-info"><div class="slt-name">${wd.name}</div><div class="slt-rar" style="color:${rc}">${RARITY_NAMES[w.rarity].toUpperCase()}</div><div class="slt-stats">Dano <span class="hi">${dmg}</span> · CD <span class="hi">${(campaignWeaponCooldown(wd,w.rarity,group.pidx===0?player:player2,w)/1000).toFixed(1)}s</span></div>${dmgTxt}</div>`;
+        div.innerHTML = `<span class="slt-icon">${campaignWeaponIconHtml(w.type,46,'campaign-weapon-art-inventory',rc)}</span><div class="slt-info"><div class="slt-name">${wd.name}</div><div class="slt-rar" style="color:${rc}">${RARITY_NAMES[w.rarity].toUpperCase()}</div><div class="slt-stats">Dano <span class="hi">${dmg}</span> · CD <span class="hi">${(campaignWeaponCooldown(wd,w.rarity,group.pidx===0?player:player2,w)/1000).toFixed(1)}s</span></div>${dmgTxt}</div>`;
         div.onclick = ()=>shopSelectSlot(i,group.pidx);
       }
       panel.appendChild(div);
@@ -10818,7 +10894,7 @@ function renderShopSlotActions(){
   actDiv.style.display='block';
   const def = WEAPON_DEFS[w.type];
   const rv={common:3,uncommon:6,rare:10,epic:16,legendary:25}[w.rarity]||3;
-  document.getElementById('shop-sel-label').innerHTML=`<span class="pixel-inline">${gamePixelIconHtml(def.pixelIcon||'orb',15)} ${def.name} · ${RARITY_NAMES[w.rarity]}</span>`;
+  document.getElementById('shop-sel-label').innerHTML=`<span class="pixel-inline">${campaignWeaponIconHtml(w.type,22,'campaign-weapon-art-shop-label',RARITY_COLORS[w.rarity])} ${def.name} · ${RARITY_NAMES[w.rarity]}</span>`;
   document.getElementById('recycle-val').innerHTML=`<span class="pixel-inline">${gamePixelIconHtml('coin',12)} +${rv}</span>`;
   const {idx} = shopSelectedSlot;
   const canUp = w.rarity!=='legendary' && slots.some((s,si)=>si!==idx&&s&&s.type===w.type&&s.rarity===w.rarity);
@@ -11867,11 +11943,18 @@ function collIconHtml(icon,size=54){
   if(icon&&typeof icon==='object'&&icon.weaponType&&typeof campaignWeaponIconHtml==='function'){
     return campaignWeaponIconHtml(icon.weaponType,size,'coll-weapon-art');
   }
+  if(icon&&typeof icon==='object'&&icon.artPath){
+    return codexArtIconHtml(icon.artPath,size,'coll-codex-art',icon.color);
+  }
   if(icon&&typeof icon==='object'&&icon.spr){
     const src=collSpriteDataUrl(icon.spr,icon.pal,size);
     return `<img class="coll-pixel-icon" src="${src}" width="${size}" height="${size}" alt="">`;
   }
   return '<span class="coll-title-rune">ᚱ</span>';
+}
+function codexArtIconHtml(path,size=46,extraClass='',ringColor='#c8a84b'){
+  const px=Math.max(20,Number(size)||46);
+  return `<span class="codex-art-medallion ${extraClass}" style="--codex-art-size:${px}px;--codex-art-ring:${ringColor||'#c8a84b'};" aria-hidden="true"><img class="codex-art-image" src="${path}" alt=""></span>`;
 }
 function gamePixelIconHtml(icon,size=26,pal,extraClass=''){
   const data=typeof icon==='string'?collGameIcon(icon,pal):icon;
@@ -11996,6 +12079,7 @@ function collCard(icon,name,hint,locked,onclickFn,rarity,color){
   const rarClass=rarity?'r-'+rarity:'';
   d.className='coll-card'+(locked?' locked':'')+(rarClass?' '+rarClass:'');
   if(icon&&typeof icon==='object'&&icon.weaponType)d.classList.add('weapon-art-card');
+  if(icon&&typeof icon==='object'&&icon.artPath)d.classList.add('codex-art-card');
   // Cor do anel do medalhão: explícita > raridade > dourado padrão
   const rarRing={common:'#8a8a8a',uncommon:'#22cc55',rare:'#2277ee',epic:'#9933cc',legendary:'#ddaa00'};
   const ring=color||rarRing[rarity]||'#c8a84b';
@@ -12247,6 +12331,27 @@ function renderCollPets(grid){
 }
 
 // ── BÊNÇÃOS ──
+const CODEX_DEITY_ART=Object.freeze({
+  zeus:{path:'assets/codex/blessings/zeus.png',color:'#ffd83d'},
+  ares:{path:'assets/codex/blessings/ares.png',color:'#ff4c3d'},
+  hecate:{path:'assets/codex/blessings/hecate.png',color:'#b866ff'},
+  selene:{path:'assets/codex/blessings/selene.png',color:'#ffd765'},
+  moros:{path:'assets/codex/blessings/moros.png',color:'#a866ff'},
+  atena:{path:'assets/codex/blessings/atena.png',color:'#70d36d'},
+  hermes:{path:'assets/codex/blessings/hermes.png',color:'#f0b34d'},
+  dionisio:{path:'assets/codex/blessings/dionisio.png',color:'#9b54e8'},
+  hefesto:{path:'assets/codex/blessings/hefesto.png',color:'#e0992a'},
+  artemis:{path:'assets/codex/blessings/artemis.png',color:'#6bd65c'},
+  poseidon:{path:'assets/codex/blessings/poseidon.png',color:'#45a9ff'},
+  hercules:{path:'assets/codex/blessings/hercules.png',color:'#c28a52'},
+  sauron:{path:'assets/codex/blessings/sauron.png',color:'#ff3b30'},
+  nazgul:{path:'assets/codex/blessings/nazgul.png',color:'#9b58e6'},
+  ents:{path:'assets/codex/blessings/ents.png',color:'#70c55b'}
+});
+function collDeityArtIcon(id){
+  const art=CODEX_DEITY_ART[id];
+  return art?{artPath:art.path,color:art.color}:collBlessingIcon({id:`${id}_codex`});
+}
 function renderCollBlessings(grid){
   const deities=Array.isArray(window.DEITY_BLESSINGS_V2)?window.DEITY_BLESSINGS_V2:[];
   const rarities=Array.isArray(window.DEITY_BLESSING_RARITIES)?window.DEITY_BLESSING_RARITIES:[
@@ -12261,7 +12366,7 @@ function renderCollBlessings(grid){
     :(boon,value)=>`+${Math.round(value*100)}%`;
   deities.forEach(deity=>{
     const boons=Array.isArray(deity.boons)?deity.boons:[];
-    const godIcon=collBlessingIcon({id:`${deity.id}_codex`});
+    const godIcon=collDeityArtIcon(deity.id);
     grid.appendChild(collCard(godIcon, deity.name, `${boons.length} bênçãos`, false, ()=>{
       const det=document.getElementById('coll-detail');det.className='coll-detail visible';
       const boonHtml=boons.map(boon=>{
@@ -12292,24 +12397,25 @@ function renderCollBlessings(grid){
           <div class="coll-det-kills">${boons.length} bênçãos · ${rarities.length} raridades</div>
         </div>
       </div><div class="coll-det-divider"></div>${boonHtml}`;
-    }, null, '#c8a84b'));
+    }, null, godIcon.color||'#c8a84b'));
   });
 }
 
 // ── DUNGEON ──
 function renderCollDungeon(grid){
+  const dungeonIcon=(id,color='#e0992a')=>({artPath:`assets/codex/dungeons/${id}.png`,color});
   const dngInfo=[
-    {icon:collGameIcon('map'),name:'Exploração',    hint:'4 biomas',  detail:{title:'Exploração de Dungeons',desc:'Salas procedurais com névoa de guerra em 4 biomas — Masmorra, Gelo, Pântano e Fogo. Visual, inimigos e bosses mudam conforme você desce. Pisos infinitos, dificuldade crescente.', extra:''}},
-    {icon:{spr:GOB_DOWN[0],pal:PAL_GOBLIN},name:'Inimigos',       hint:'23 tipos',  detail:{title:'Inimigos da Dungeon',desc:'Goblins, esqueletos, orcs, trolls, aranhas, lobos, cultistas, tigres da neve, espectros, ents corrompidos, escorpiões, diabretes, cavaleiros demônio, morcegos de lava e mais — cada bioma tem seu próprio elenco.',extra:collStatBar('Variedade',23,23,'#ff5555')}},
-    {icon:{spr:HYPER_SPR[0],pal:PAL_HYPER},name:'Bosses',          hint:'19 bosses', detail:{title:'Bosses da Dungeon',desc:'Rei Cadáver, Orc Sombrio, Troll Antigo, Ogro Pálido (Clavada que empurra e atordoa!), Troll das Cavernas (arremessa pedregulhos e varre com a clava!), Rainha Arainha, Lich Glacial, Lobo Alfa, Tigre Ancestral, Ent Ancião, Escorpião-Rei, Cavaleiro do Abismo e outros. Cada um nasce com raridade (comum → lendária) que multiplica força e recompensa. HIPER BOSS: do piso 3 em diante, o HORROR RÚNICO pode despertar (marcado em LARANJA no mapa) — 4 ataques rotativos, 3× mais vida, e derrotá-lo garante armadura LENDÁRIA + anel épico/lendário + cura vital!',extra:collStatBar('Força',5,5,'#cc44ff')}},
-    {icon:collGameIcon('armor'),name:'Equipamento',    hint:'Tecla C',   detail:{title:'Armaduras & Anéis',desc:'Elmos, peitorais e botas (Couro → Dragônico) + 7 tipos de anéis (Fúria, Vampírico, Crítico, Ganância, Vitalidade, Pressa, Regeneração) em 5 raridades. Caem de baús (45%) e bosses (60%). Abra o menu [I] → aba Personagem para equipar, vender e ver os bônus totais.',extra:''}},
-    {icon:collGameIcon('shadow'),name:'Sombras',        hint:'Tecla E',   detail:{title:'Exército de Sombras',desc:'Derrote um boss e pressione ESPAÇO para extraí-lo como Sombra aliada que luta ao seu lado. [E] abre o painel: upgrades de dano/vida/velocidade e FUSÃO — duas sombras iguais viram uma de raridade superior.',extra:''}},
-    {icon:collGameIcon('hammer'),name:'Crafting',        hint:'Tecla T',   detail:{title:'Crafting de Exploração',desc:'Materiais coletados na dungeon viram itens úteis na aba Crafting do menu unificado [I].',extra:''}},
-    {icon:collGameIcon('chest'),name:'Baús',           hint:'Recompensa',detail:{title:'Baús do Tesouro',desc:'Restauram 14% da vida máxima, concedem moedas (escalam com o piso) e têm 45% de chance de trazer um equipamento — armadura ou anel com raridade rolada.',extra:''}},
-    {icon:collGameIcon('stairs'),name:'Escadas',        hint:'Progresso', detail:{title:'Escadas para o Próximo Piso',desc:'Aparecem após derrotar o boss do piso. Descer cura 30% da vida e aumenta HP máximo — mas os inimigos escalam junto.',extra:''}},
-    {icon:collGameIcon('hammer',{S:'#d89b56',W:'#f0d080'}),name:'Mercador & Ferreiro',hint:'Lojas', detail:{title:'Mercador & Ferreiro',desc:'O Mercador vende armas por raridade; o Ferreiro vende poções, elixires e relíquias. Preços escalam com o piso e o botão ATUALIZAR rerola as ofertas por moedas.',extra:''}},
-    {icon:collGameIcon('ring'),name:'Relíquias',      hint:'Especial',  detail:{title:'Relíquias',desc:'Efeitos passivos permanentes para a run: vampirismo, escudo, crítico, ouro extra, regeneração e mais.',extra:''}},
-    {icon:collGameIcon('map',{G:'#62bce8',g:'#315f92'}),name:'Minimapa',       hint:'Navegação', detail:{title:'Minimapa',desc:'Revela salas exploradas em tempo real. Inimigos aparecem como pontos vermelhos, o boss como ponto roxo, escada e baús marcados.',extra:''}},
+    {icon:dungeonIcon('dungeon_exploration','#69cf5f'),name:'Exploração',    hint:'4 biomas',  detail:{title:'Exploração de Dungeons',desc:'Salas procedurais com névoa de guerra em 4 biomas — Masmorra, Gelo, Pântano e Fogo. Visual, inimigos e bosses mudam conforme você desce. Pisos infinitos, dificuldade crescente.', extra:''}},
+    {icon:dungeonIcon('dungeon_enemies','#73d65d'),name:'Inimigos',       hint:'23 tipos',  detail:{title:'Inimigos da Dungeon',desc:'Goblins, esqueletos, orcs, trolls, aranhas, lobos, cultistas, tigres da neve, espectros, ents corrompidos, escorpiões, diabretes, cavaleiros demônio, morcegos de lava e mais — cada bioma tem seu próprio elenco.',extra:collStatBar('Variedade',23,23,'#ff5555')}},
+    {icon:dungeonIcon('dungeon_bosses','#9b58e6'),name:'Bosses',          hint:'19 bosses', detail:{title:'Bosses da Dungeon',desc:'Rei Cadáver, Orc Sombrio, Troll Antigo, Ogro Pálido (Clavada que empurra e atordoa!), Troll das Cavernas (arremessa pedregulhos e varre com a clava!), Rainha Arainha, Lich Glacial, Lobo Alfa, Tigre Ancestral, Ent Ancião, Escorpião-Rei, Cavaleiro do Abismo e outros. Cada um nasce com raridade (comum → lendária) que multiplica força e recompensa. HIPER BOSS: do piso 3 em diante, o HORROR RÚNICO pode despertar (marcado em LARANJA no mapa) — 4 ataques rotativos, 3× mais vida, e derrotá-lo garante armadura LENDÁRIA + anel épico/lendário + cura vital!',extra:collStatBar('Força',5,5,'#cc44ff')}},
+    {icon:dungeonIcon('dungeon_equipment','#c9d5da'),name:'Equipamento',    hint:'Tecla C',   detail:{title:'Armaduras & Anéis',desc:'Elmos, peitorais e botas (Couro → Dragônico) + 7 tipos de anéis (Fúria, Vampírico, Crítico, Ganância, Vitalidade, Pressa, Regeneração) em 5 raridades. Caem de baús (45%) e bosses (60%). Abra o menu [I] → aba Personagem para equipar, vender e ver os bônus totais.',extra:''}},
+    {icon:dungeonIcon('dungeon_shadows','#9b58e6'),name:'Sombras',        hint:'Tecla E',   detail:{title:'Exército de Sombras',desc:'Derrote um boss e pressione ESPAÇO para extraí-lo como Sombra aliada que luta ao seu lado. [E] abre o painel: upgrades de dano/vida/velocidade e FUSÃO — duas sombras iguais viram uma de raridade superior.',extra:''}},
+    {icon:dungeonIcon('dungeon_crafting','#d29a56'),name:'Crafting',        hint:'Tecla T',   detail:{title:'Crafting de Exploração',desc:'Materiais coletados na dungeon viram itens úteis na aba Crafting do menu unificado [I].',extra:''}},
+    {icon:dungeonIcon('dungeon_chests','#d9a34b'),name:'Baús',           hint:'Recompensa',detail:{title:'Baús do Tesouro',desc:'Restauram 14% da vida máxima, concedem moedas (escalam com o piso) e têm 45% de chance de trazer um equipamento — armadura ou anel com raridade rolada.',extra:''}},
+    {icon:dungeonIcon('dungeon_stairs','#69c85b'),name:'Escadas',        hint:'Progresso', detail:{title:'Escadas para o Próximo Piso',desc:'Aparecem após derrotar o boss do piso. Descer cura 30% da vida e aumenta HP máximo — mas os inimigos escalam junto.',extra:''}},
+    {icon:dungeonIcon('dungeon_shops','#d69c5d'),name:'Mercador & Ferreiro',hint:'Lojas', detail:{title:'Mercador & Ferreiro',desc:'O Mercador vende armas por raridade; o Ferreiro vende poções, elixires e relíquias. Preços escalam com o piso e o botão ATUALIZAR rerola as ofertas por moedas.',extra:''}},
+    {icon:dungeonIcon('dungeon_relics','#59cf6f'),name:'Relíquias',      hint:'Especial',  detail:{title:'Relíquias',desc:'Efeitos passivos permanentes para a run: vampirismo, escudo, crítico, ouro extra, regeneração e mais.',extra:''}},
+    {icon:dungeonIcon('dungeon_minimap','#58bce8'),name:'Minimapa',       hint:'Navegação', detail:{title:'Minimapa',desc:'Revela salas exploradas em tempo real. Inimigos aparecem como pontos vermelhos, o boss como ponto roxo, escada e baús marcados.',extra:''}},
   ];
   dngInfo.forEach(d=>{
     grid.appendChild(collCard(d.icon,d.name,d.hint,false,()=>{
@@ -12320,7 +12426,7 @@ function renderCollDungeon(grid){
         <div style="font-size:12px;color:#a08050;line-height:1.7;margin-bottom:8px;">${d.detail.desc}</div>
         ${d.detail.extra||''}
       `;
-    }, null, "#e0992a"));
+    }, null, d.icon.color||'#e0992a'));
   });
 }
 
@@ -14276,10 +14382,12 @@ const CAMPAIGN_ELEMENT_FX_DURATION={
   fire:1500,ice:1600,electric:900,poison:1700,shadow:1250,
   arcane:1050,solar:950,wind:850,blood:1300,physical:280
 };
-function campaignWeaponIconHtml(type,size=46,extraClass=''){
+function campaignWeaponIconHtml(type,size=46,extraClass='',ringColor=''){
   const safe=WEAPON_DEFS[type]?type:'';
   if(!safe)return gamePixelIconHtml('orb',size,null,extraClass);
-  return `<img class="campaign-weapon-art ${extraClass}" src="assets/weapons/${safe}.png" width="${size}" height="${size}" alt="" aria-hidden="true">`;
+  const px=Math.max(20,Number(size)||46);
+  const ring=ringColor||WEAPON_DEFS[safe].color||'#c8a84b';
+  return `<span class="campaign-weapon-medallion ${extraClass}" style="--weapon-size:${px}px;--weapon-ring:${ring};" aria-hidden="true"><img class="campaign-weapon-art" src="assets/weapons/${safe}.png" alt=""></span>`;
 }
 function campaignDamageElement(source=''){
   const raw=typeof source==='string'?source:(source?.type||source?.id||'');
@@ -14347,7 +14455,7 @@ function updateWeaponUI(){
         if(!def){slot.className=`${base} empty`;slot.innerHTML='<span class="wicon">➕</span><span class="wname">Vazio</span>';continue;}
         const rc=`rarity-${w.rarity}`;
         slot.className=`${base} ${rc}`;
-        slot.innerHTML=`<span style="position:absolute;top:-7px;right:-4px;font-size:11px;padding:1px 4px;border-radius:3px;font-weight:bold;background:${RARITY_COLORS[w.rarity]}22;color:${RARITY_COLORS[w.rarity]};">${RARITY_NAMES[w.rarity].substring(0,3).toUpperCase()}</span><span class="wicon">${campaignWeaponIconHtml(def.id,52,'campaign-weapon-art-hud')}</span><span class="wname">${def.name}</span>`;
+        slot.innerHTML=`<span style="position:absolute;top:-7px;right:-4px;font-size:11px;padding:1px 4px;border-radius:3px;font-weight:bold;background:${RARITY_COLORS[w.rarity]}22;color:${RARITY_COLORS[w.rarity]};">${RARITY_NAMES[w.rarity].substring(0,3).toUpperCase()}</span><span class="wicon">${campaignWeaponIconHtml(def.id,52,'campaign-weapon-art-hud',RARITY_COLORS[w.rarity])}</span><span class="wname">${def.name}</span>`;
       }
     }
   };
@@ -14403,7 +14511,7 @@ function buildFuseUI(){
       <span class="fuse-badge" style="background:${curC}20;color:${curC};border:1px solid ${curC}55;">
         ${RARITY_NAMES[p.rarity].toUpperCase()} ×2${p.pidx===1?' · P2':''}
       </span>
-      <span class="fuse-icon">${gamePixelIconHtml(def.pixelIcon||'orb',24)}</span>
+      <span class="fuse-icon">${campaignWeaponIconHtml(def.id,32,'campaign-weapon-art-fuse',curC)}</span>
       <div>
         <div class="fuse-label" style="color:${curC}">${def.name}</div>
         <div class="fuse-sub" style="color:#5a4018">${RARITY_NAMES[p.rarity]}</div>
@@ -14936,9 +15044,12 @@ function renderShopGrid(){
       weaponStatsHtml = `<div class="s-weapon-summary"><b>${dmg}</b> dano · ${cd}s · ${rng} alcance<br><span>${type}</span></div>`;
     }
     const itemIcon=item.pixelIcon||offerDef?.pixelIcon||'orb';
+    const offerIconHtml=item.wtype&&offerDef
+      ?campaignWeaponIconHtml(item.wtype,104,'campaign-weapon-art-shop',rarCol)
+      :gamePixelIconHtml(itemIcon,84);
     card.innerHTML=`
       <div class="s-card-top">
-        <div class="s-card-icon">${gamePixelIconHtml(itemIcon,84)}</div>
+        <div class="s-card-icon${item.wtype?' weapon-offer-icon':''}">${offerIconHtml}</div>
         <div class="s-card-content">
           <div class="s-card-info">
             <div class="s-card-name">${item.name}${classBadge}</div>
@@ -15005,6 +15116,8 @@ function shopBuy(i, e){
     cards[i].innerHTML=`<div class="shop-purchased">${gamePixelIconHtml('spark',30)}<div>ADQUIRIDO</div></div>`;
   }
   shopPool[i]=null; shopLocked[i]=false;
+  renderShopInventory();
+  buildFuseUI();
   refreshAffordability();
 }
 
@@ -18187,6 +18300,11 @@ function drawAnimTorches(t){
 // ═══════════════════════════════════════════════════════
 // SISTEMA DE DASH — Shift para esquivar
 // ═══════════════════════════════════════════════════════
+function normalizeCampaignMovementVector(dx,dy){
+  const length=Math.hypot(dx,dy);
+  if(length>1){dx/=length;dy/=length;}
+  return {dx,dy};
+}
 function triggerDash(pl){
   if(!pl||pl.dead||pl._dashActive||pl._dashCd>0) return;
   // Direção do dash = direção atual de movimento, ou última dir do sprite
@@ -18223,7 +18341,7 @@ function triggerDash(pl){
     else if(pl.dir==='up')    dy=-1;
     else dy=1;
   }
-  if(dx!==0&&dy!==0){dx*=0.707;dy*=0.707;}
+  ({dx,dy}=normalizeCampaignMovementVector(dx,dy));
   const DASH_SPD=14; const DASH_DUR=140;
   pl._dashActive=true; pl._dashTimer=DASH_DUR;
   pl._dashVx=dx*DASH_SPD*(1000/16.67); pl._dashVy=dy*DASH_SPD*(1000/16.67);
@@ -18413,7 +18531,7 @@ class Player {
       if(keys['ArrowUp'])    dy-=1;
       if(keys['ArrowDown'])  dy+=1;
     }
-    if(dx!==0&&dy!==0){dx*=.707;dy*=.707;}
+    ({dx,dy}=normalizeCampaignMovementVector(dx,dy));
     this._moveDx=dx;this._moveDy=dy;
 
     // ── Dash cooldown tick ──
