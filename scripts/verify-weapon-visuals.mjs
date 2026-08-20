@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
+const html=fs.readFileSync(path.join(root,'index.html'),'utf8').replace(/\r\n/g,'\n');
 const weaponIds={
   mage:['mage_fire_staff','mage_lightning_staff','mage_ice_staff','mage_arcane_staff','mage_poison_staff','mage_shadow_staff','mage_solar_staff','mage_wind_staff'],
   warrior:['warrior_longsword','warrior_greatsword','warrior_spear','warrior_warhammer','warrior_warshield','warrior_twinblades','warrior_chainblade','warrior_spikedmace'],
