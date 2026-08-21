@@ -1,0 +1,43 @@
+===== PONTOS =====
+const PONTOS = [
+    {id:'fazenda', fx:.328, fy:.418, raio:74, rotulo:'Entrar na Fazenda',   cor:'#8fe07a', abrir:()=>openFarm()},
+    {id:'cozinha', fx:.186, fy:.522, raio:76, rotulo:'Cozinhar',            cor:'#ff9a5a', abrir:()=>openCookingPanel()},
+    {id:'merlin',  fx:.835, fy:.590, raio:82, rotulo:'Falar com Merlin',    cor:'#c08cff', abrir:()=>openMetaShop()},
+    {id:'oficina', fx:.218, fy:.900, raio:82, rotulo:'Melhorar na Oficina', cor:'#f0d080', abrir:()=>openWorkshopPanel()},
+    // O acesso fica na lateral noroeste: o corredor frontal e estreito e tem
+    // uma rocha real, portanto nao faz sentido exigir que o heroi a atravesse.
+    {id:'santuario',fx:.690,fy:.760, raio:86, rotulo:'Santuario dos Pets',  cor:'#7de89a', abrir:()=>openPetSanctuary()},
+    {id:'fogueira',fx:.525, fy:.548, raio:70, rotulo:'Descansar (Codex)',   cor:'#ffb347', abrir:()=>showCollection()},
+    {id:'portal',  fx:.497, fy:.825, raio:90, rotulo:'Iniciar Expedicao',   cor:'#6ad8f0', abrir:()=>openExpeditionMap()},
+    {id:'lago',    fx:.678, fy:.248, raio:62, rotulo:'Pescar',              cor:'#7ab8ff', abrir:()=>openFishing()},
+    {id:'arqueiro',fx:.452, fy:.560, raio:58, rotulo:'Falar com o Arqueiro', cor:'#9fe08a', abrir:()=>window.ArqueiroNPC.abrir()},
+  ];
+
+===== SEMENTES =====
+const SEMENTES = ['semente_trigo','semente_tomate','semente_erva',
+                    'semente_cogumelo_lua','semente_raiz_sangue'];
+
+===== NOME_SEM =====
+const NOME_SEM = {semente_trigo:'Trigo',semente_tomate:'Tomate',semente_erva:'Folhas',
+                    semente_cogumelo_lua:'Cogumelo',semente_raiz_sangue:'Beterraba'};
+
+===== ICONE_SEM =====
+const ICONE_SEM = {semente_trigo:'🌾',semente_tomate:'🍅',semente_erva:'🥬',
+                     semente_cogumelo_lua:'🍄',semente_raiz_sangue:'🫜'};
+
+===== LUZES_ACAMPAMENTO =====
+const LUZES_ACAMPAMENTO = [
+    [141,468,'#ffc04a',22,0],[181,470,'#ffb43a',34,.8],[304,467,'#ffc04a',22,1.7],
+    [122,830,'#ffad32',24,.4],[261,820,'#ff9b28',18,2.2],
+    [1050,457,'#b66cff',22,.2],[1097,463,'#a44cff',17,1.2],
+    [1164,525,'#c175ff',19,2.4],[1351,526,'#bd68ff',21,.7],
+    [1105,901,'#45ff9b',24,.3],[1354,901,'#45ff9b',24,1.4],
+    [650,943,'#58cfff',22,.9],[873,943,'#58cfff',22,2.1],
+  ];
+
+===== ARQ =====
+const ARQ = {fx:.452, fy:.560};
+
+===== ACAO =====
+const ACAO = {empty:'Arar', plowed:'Plantar', planted:'Regar',
+                watered:'Crescendo...', ready:'Colher'};
