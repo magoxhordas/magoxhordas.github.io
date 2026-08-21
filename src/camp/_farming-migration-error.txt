@@ -1,0 +1,12 @@
+\n===== node scripts/refactor-camp-farming-system.mjs =====
+OK: subsistema funcional de farming extraido preservando estado, inventario e desenho.
+\n===== node --check src/camp/collision-map.js =====
+\n===== node --check src/camp/layout-data.js =====
+\n===== node --check src/camp/farming-data.js =====
+\n===== node --check src/camp/farming-system.js =====
+\n===== node --check src/camp/interaction-data.js =====
+\n===== node scripts/verify-camp-modules.mjs =====
+OK: modulos do acampamento preservam colisao, layout, farming funcional e interacoes.
+\n===== node scripts/verify-inline-scripts.mjs =====
+SCRIPT 41: Unexpected token 'return'
+\nFAILED with exit code 1
