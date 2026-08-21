@@ -8,6 +8,7 @@ const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const collisionSource=fs.readFileSync(path.join(root,'src','camp','collision-map.js'),'utf8');
 const layoutSource=fs.readFileSync(path.join(root,'src','camp','layout-data.js'),'utf8');
 const farmingSource=fs.readFileSync(path.join(root,'src','camp','farming-data.js'),'utf8');
+const farmingSystemSource=fs.readFileSync(path.join(root,'src','camp','farming-system.js'),'utf8');
 const interactionSource=fs.readFileSync(path.join(root,'src','camp','interaction-data.js'),'utf8');
 assert(html.includes('<script src=\"src/camp/collision-map.js\"></script>'),'index nao carrega o modulo externo de colisao');
 assert(html.indexOf('<script src=\"src/camp/collision-map.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'modulo de colisao precisa carregar antes do CampV2');
@@ -15,6 +16,8 @@ assert(html.includes('<script src=\"src/camp/layout-data.js\"></script>'),'index
 assert(html.indexOf('<script src=\"src/camp/layout-data.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'layout do acampamento precisa carregar antes do CampV2');
 assert(html.includes('<script src=\"src/camp/farming-data.js\"></script>'),'index nao carrega os dados puros da horta');
 assert(html.indexOf('<script src=\"src/camp/farming-data.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'dados da horta precisam carregar antes do CampV2');
+assert(html.includes('<script src=\"src/camp/farming-system.js\"></script>'),'index nao carrega o comportamento externo da horta');
+assert(html.indexOf('<script src=\"src/camp/farming-system.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'farming-system precisa carregar antes do CampV2');
 assert(html.includes('<script src=\"src/camp/interaction-data.js\"></script>'),'index nao carrega os pontos de interacao externos');
 assert(html.indexOf('<script src=\"src/camp/interaction-data.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'pontos de interacao precisam carregar antes do CampV2');
 
@@ -64,6 +67,12 @@ assert(html.includes('function reposicionarSeBloqueado()')&&html.includes('dimen
 // capturas: tetos, tendas, tocos, santuario e portal precisam estar bloqueados.
 const camp=html.slice(html.indexOf('window.CampV2 = (function(){'),html.indexOf('// [/CAMP-V2]'));
 assert(!camp.includes('const BLOQUEIOS = ['),'dados de colisao voltaram a ficar presos no index');
+assert(!camp.includes('function usarCanteiro(k)')&&!camp.includes('function desenharHorta(c,t)')&&!camp.includes('function desenharPlantas(c,t)'),
+  'implementacao da horta voltou para o index');
+assert(farmingSystemSource.includes('function usarCanteiro(k)')&&farmingSystemSource.includes('function desenharHorta(c,t)')&&
+  farmingSystemSource.includes('function desenharPlantas(c,t)'),'farming-system nao contem o comportamento extraido');
+assert(html.includes('window.CampFarmingSystem.create({HORTA,SEMENTES,NOME_SEM,ACAO,S,px,dentro})'),
+  'CampV2 nao injeta as dependencias no farming-system');
 const rectSource=collisionSource.slice(collisionSource.indexOf('const BLOQUEIOS = ['),collisionSource.indexOf('const BLOQUEIOS_CIRCULARES'));
 const ellipseSource=collisionSource.slice(collisionSource.indexOf('const BLOQUEIOS_CIRCULARES = ['),collisionSource.indexOf('const PASSAGENS'));
 const passageSource=collisionSource.slice(collisionSource.indexOf('const PASSAGENS = ['),collisionSource.indexOf('return {BLOQUEIOS,BLOQUEIOS_CIRCULARES,PASSAGENS}'));

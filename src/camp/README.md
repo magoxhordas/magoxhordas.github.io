@@ -24,9 +24,15 @@ O footprint de colisao do jogador tambem passa a ser propriedade de `collision-m
 
 ## farming-data.js
 
-Catalogo de sementes, nomes, icones e rotulos da horta. O modulo nao executa plantio, inventario, desenho ou persistencia; essas regras continuam no CampV2.
+Catalogo de sementes, nomes, icones e rotulos da horta. O modulo continua sendo apenas dados puros; o comportamento foi separado em `farming-system.js`.
 
 Os pontos de luz e a posicao do arqueiro tambem foram movidos para `layout-data.js`. As coordenadas e valores permanecem identicos.
+
+## farming-system.js
+
+Contem a implementacao dos 15 canteiros, selecao e troca de sementes, acionamento de `farmAction` e desenho da terra/culturas. O modulo recebe `HORTA`, dados das sementes, estado `S` e os helpers `px`/`dentro` do CampV2, preservando os mesmos bindings globais de inventario e ferramentas usados antes da extracao.
+
+Save, `farmCells`, `globalInventory`, `selectedSeed`, `activeTool` e `farmAction` nao foram reescritos nem duplicados.
 
 ## interaction-data.js
 
