@@ -32112,7 +32112,9 @@ window.CampV2 = (function(){
     F(.958, 0,    .042, 1),      // leste
 
     // ── canto noroeste: cabana ──
-    F(.073, .394, .207, .118),   // base real da cabana e escada
+    // A colisao cobre a silhueta inteira. Uma caixa so na base permitia que o
+    // heroi entrasse pelo norte e parecesse estar andando sobre o telhado.
+    F(.040, .200, .252, .322),   // cabana completa, telhado, paredes e escada
     F(.065, .413, .025, .060),   // lanterna de poste
     F(.266, .376, .025, .080),   // caixas ao lado
     F(.250, .306, .026, .056),   // cerca de madeira
@@ -32130,32 +32132,30 @@ window.CampV2 = (function(){
     F(.612, .330, .034, .046),   // pedra na margem
 
     // ── leste: tenda do Merlin ──
-    F(.775, .365, .210, .196),   // base da tenda e bancada
+    F(.765, .248, .230, .326),   // tenda completa, teto, mesa e bancada
     F(.699, .378, .036, .056),   // braseiro a esquerda
     F(.948, .410, .020, .086),   // estandarte
     F(.900, .548, .056, .046),   // flores roxas
 
     // ── sudoeste: oficina ──
-    F(.084, .692, .225, .154),   // base da oficina e bancada
+    F(.058, .595, .255, .286),   // oficina completa, lona, postes e bancada
     F(.086, .690, .032, .072),   // lanterna de poste
     F(.272, .746, .030, .056),   // caixa ao lado
 
     // ── sudeste: santuario de pedra ──
-    F(.735, .718, .235, .196),   // corpo do santuario e escadaria
+    F(.705, .620, .285, .285),   // santuario completo; patamar frontal fica acessivel
 
     // ── sul: portal ──
-    F(.448, .845, .104, .132),   // portal
-    F(.386, .850, .066, .132),   // pilar esquerdo
-    F(.578, .850, .066, .132),   // pilar direito
+    F(.375, .775, .275, .202),   // conjunto completo: portal, arco e pilares
   ];
 
   // Objetos arredondados recebem elipses em vez de caixas grandes. Assim o
   // heroi contorna fogueira, pedras e tocos sem atravessar nem prender nas quinas.
   const BLOQUEIOS_CIRCULARES = [
     E(.528,.512,.050,.044),       // fogueira e aro de pedras
-    E(.321,.470,.020,.017),       // toco abaixo da cabana
-    E(.472,.190,.018,.014),       // toco ao norte da horta
-    E(.605,.386,.025,.020),       // toco na margem do lago
+    E(.321,.470,.031,.027),       // toco abaixo da cabana
+    E(.472,.190,.026,.022),       // toco ao norte da horta
+    E(.605,.386,.031,.025),       // toco na margem do lago
     E(.082,.580,.026,.020),       // rocha oeste
     E(.411,.683,.020,.016),       // rocha junto da oficina
     E(.652,.635,.022,.017),       // rocha no caminho leste
@@ -32187,11 +32187,13 @@ window.CampV2 = (function(){
   const PONTOS = [
     {id:'fazenda', fx:.328, fy:.418, raio:74, rotulo:'Entrar na Fazenda',   cor:'#8fe07a', abrir:()=>openFarm()},
     {id:'cozinha', fx:.186, fy:.522, raio:76, rotulo:'Cozinhar',            cor:'#ff9a5a', abrir:()=>openCookingPanel()},
-    {id:'merlin',  fx:.835, fy:.560, raio:80, rotulo:'Falar com Merlin',    cor:'#c08cff', abrir:()=>openMetaShop()},
-    {id:'oficina', fx:.218, fy:.860, raio:74, rotulo:'Melhorar na Oficina', cor:'#f0d080', abrir:()=>openWorkshopPanel()},
-    {id:'santuario',fx:.828,fy:.905, raio:76, rotulo:'Santuario dos Pets',  cor:'#7de89a', abrir:()=>openPetSanctuary()},
+    {id:'merlin',  fx:.835, fy:.590, raio:82, rotulo:'Falar com Merlin',    cor:'#c08cff', abrir:()=>openMetaShop()},
+    {id:'oficina', fx:.218, fy:.900, raio:82, rotulo:'Melhorar na Oficina', cor:'#f0d080', abrir:()=>openWorkshopPanel()},
+    // O acesso fica na lateral noroeste: o corredor frontal e estreito e tem
+    // uma rocha real, portanto nao faz sentido exigir que o heroi a atravesse.
+    {id:'santuario',fx:.690,fy:.760, raio:86, rotulo:'Santuario dos Pets',  cor:'#7de89a', abrir:()=>openPetSanctuary()},
     {id:'fogueira',fx:.525, fy:.548, raio:70, rotulo:'Descansar (Codex)',   cor:'#ffb347', abrir:()=>showCollection()},
-    {id:'portal',  fx:.497, fy:.900, raio:86, rotulo:'Iniciar Expedicao',   cor:'#6ad8f0', abrir:()=>openExpeditionMap()},
+    {id:'portal',  fx:.497, fy:.825, raio:90, rotulo:'Iniciar Expedicao',   cor:'#6ad8f0', abrir:()=>openExpeditionMap()},
     {id:'lago',    fx:.678, fy:.248, raio:62, rotulo:'Pescar',              cor:'#7ab8ff', abrir:()=>openFishing()},
     {id:'arqueiro',fx:.452, fy:.560, raio:58, rotulo:'Falar com o Arqueiro', cor:'#9fe08a', abrir:()=>window.ArqueiroNPC.abrir()},
   ];
@@ -32230,6 +32232,23 @@ window.CampV2 = (function(){
     for(const [ox,oy] of sola) if(pontoBloqueado(x+ox,pesY+oy)) return false;
     return true;
   };
+  // Se uma versao anterior deixou o heroi dentro de uma construcao, a colisao
+  // nova nao deve aprisiona-lo. Procura o ponto livre mais proximo e, em ultimo
+  // caso, devolve-o ao caminho central seguro.
+  function reposicionarSeBloqueado(){
+    if(livre(S.x,S.y)) return false;
+    const ox=S.x, oy=S.y;
+    for(let raio=16;raio<=300;raio+=16){
+      const passos=Math.max(16,Math.ceil(raio/8));
+      for(let i=0;i<passos;i++){
+        const a=(i/passos)*Math.PI*2;
+        const x=ox+Math.cos(a)*raio, y=oy+Math.sin(a)*raio;
+        if(livre(x,y)){ S.x=x; S.y=y; return true; }
+      }
+    }
+    S.x=.497*MW; S.y=.760*MH;
+    return true;
+  }
   function canteiroEm(x,y){ return CANTEIROS.find(k=>dentro(x,y+6,k))||null; }
   function celula(k){
     return (typeof farmCells!=='undefined'&&k.idx<farmCells.length)?farmCells[k.idx]:null;
@@ -32435,21 +32454,24 @@ window.CampV2 = (function(){
   }
 
   function desenharFogueira(c,t){
-    const pul=.5+.5*Math.sin(t*.009), vento=Math.sin(t*.004)*3;
-    brilho(c,765,552,'#ff7a18',52,.08+.08*pul);
+    // A chama principal ja faz parte da arte do mapa. Estes poucos pixels so
+    // movimentam a ponta e as brasas, sem desenhar outra fogueira por cima.
+    const quadro=Math.floor(t/140)%4;
+    const pixels=[
+      [[-5,-12,3,5,'#ff6b1b'],[ 1,-17,3,6,'#ffc43b'],[ 5,-10,2,4,'#ff7a18']],
+      [[-7,-10,3,4,'#ff7a18'],[-1,-19,3,7,'#ffd75a'],[ 4,-13,3,5,'#ff5a16']],
+      [[-4,-15,3,6,'#ff5a16'],[ 2,-16,3,6,'#ffe27a'],[ 6, -9,2,4,'#ff7a18']],
+      [[-6,-11,3,5,'#ff7a18'],[ 0,-20,3,7,'#ffc43b'],[ 5,-12,2,5,'#ff5a16']],
+    ][quadro];
+    const pul=.5+.5*Math.sin(t*.008);
+    brilho(c,765,552,'#ff7a18',38,.025+.035*pul);
     c.save();
-    c.fillStyle='#ff5a16'; c.beginPath();
-    c.moveTo(748,567); c.quadraticCurveTo(750+vento,548,759,533-pul*7);
-    c.quadraticCurveTo(763,546,767,526+pul*4);
-    c.quadraticCurveTo(779+vento,546,781,565); c.closePath(); c.fill();
-    c.fillStyle='#ffc43b'; c.beginPath();
-    c.moveTo(756,566); c.quadraticCurveTo(757+vento*.4,550,764,541-pul*4);
-    c.quadraticCurveTo(774,553,773,566); c.closePath(); c.fill();
-    c.fillStyle='#fff2a0'; c.fillRect(762+Math.round(vento*.25),552,5,11);
-    for(let i=0;i<6;i++){
-      const f=(t*.00038+i*.173)%1;
-      c.globalAlpha=(1-f)*.8; c.fillStyle=i%2?'#ffb42b':'#ff6b1b';
-      c.fillRect(Math.round(765+Math.sin(f*9+i)*12),Math.round(544-f*50),i%2?2:1,i%2?2:1);
+    c.imageSmoothingEnabled=false; c.globalAlpha=.58;
+    for(const [x,y,w,h,cor] of pixels){ c.fillStyle=cor; c.fillRect(765+x,552+y,w,h); }
+    for(let i=0;i<3;i++){
+      const f=(t*.00032+i*.31)%1;
+      c.globalAlpha=(1-f)*.55; c.fillStyle=i%2?'#ffb42b':'#ff6b1b';
+      c.fillRect(Math.round(765+Math.sin(f*7+i)*8),Math.round(535-f*28),1,1);
     }
     c.restore();
   }
@@ -32790,6 +32812,7 @@ window.CampV2 = (function(){
     if(typeof state!=='undefined') state='hub';
     const el=document.getElementById('camp2-screen'); if(el) el.style.display='flex';
     dimensionar();
+    reposicionarSeBloqueado();
     retomar();
   }
   function sair(){
