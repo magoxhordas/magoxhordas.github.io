@@ -32,18 +32,19 @@ jobs:
           rm -f "$LOG"
           touch "$LOG"
 
-          # The migration calculates character offsets from the original index.
-          # Insert the external script tag only after those offset-based splices.
+          # Preserve offsets: perform the CampV2 splices before inserting a new script tag,
+          # and remove the indentation that belonged to the old CANTEIROS declaration.
           node <<'NODE'
           const fs=require('node:fs');
           const file='scripts/refactor-camp-farming-system.mjs';
           let src=fs.readFileSync(file,'utf8');
           const loadBlock="// Carrega o comportamento depois dos dados puros e antes do CampV2.\nhtml=replaceOnce(html,DATA_TAG,`${DATA_TAG}\\n  ${SYSTEM_TAG}`,'carga do farming-system');\n\n";
-          const spliceBlock="html=html.slice(0,firstFarm.start)+bridge+html.slice(lastFarm.end);\nhtml=html.slice(0,canteiros.start)+html.slice(canteiros.end);";
+          const oldSplice="html=html.slice(0,firstFarm.start)+bridge+html.slice(lastFarm.end);\nhtml=html.slice(0,canteiros.start)+html.slice(canteiros.end);";
+          const newSplice="html=html.slice(0,firstFarm.start)+bridge+html.slice(lastFarm.end);\nconst canteirosLineStart=html.lastIndexOf('\\n',canteiros.start)+1;\nassert(/^[ \\t]*$/.test(html.slice(canteirosLineStart,canteiros.start)),'indentacao inesperada antes de CANTEIROS');\nhtml=html.slice(0,canteirosLineStart)+html.slice(canteiros.end);";
           if(!src.includes(loadBlock)) throw new Error('bloco de carga do farming-system nao encontrado');
-          if(!src.includes(spliceBlock)) throw new Error('bloco de splice do farming-system nao encontrado');
+          if(!src.includes(oldSplice)) throw new Error('bloco de splice do farming-system nao encontrado');
           src=src.replace(loadBlock,'');
-          src=src.replace(spliceBlock,spliceBlock+"\n\n// Carrega o comportamento somente depois dos splices baseados nos offsets originais.\nhtml=replaceOnce(html,DATA_TAG,`${DATA_TAG}\\n  ${SYSTEM_TAG}`,'carga do farming-system');");
+          src=src.replace(oldSplice,newSplice+"\n\n// Carrega o comportamento somente depois dos splices baseados nos offsets originais.\nhtml=replaceOnce(html,DATA_TAG,`${DATA_TAG}\\n  ${SYSTEM_TAG}`,'carga do farming-system');");
           fs.writeFileSync(file,src,'utf8');
           NODE
 
