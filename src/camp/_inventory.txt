@@ -1,0 +1,63 @@
+# CampV2 top-level inventory
+# source start line: 32162
+
+32165: const BG = new Image(); BG.src = 'assets/camp/camp_bg.png';
+32166: let MW = 1447, MH = 1087; // ajustado quando a arte carrega
+32169: const F = (fx,fy,fw,fh) => ({fx,fy,fw,fh}); // retangulo em fracao
+32170: const E = (fx,fy,frx,fry=frx) => ({fx,fy,frx,fry}); // elipse em fracao
+32174: const {BLOQUEIOS,BLOQUEIOS_CIRCULARES,PASSAGENS}=window.CampCollisionMap.create(F,E);
+32179: const HORTA=window.CampLayoutData.HORTA;
+32180: const CANTEIROS = (()=>{
+32189: const PONTOS = [
+32203: const SEMENTES = ['semente_trigo','semente_tomate','semente_erva',
+32205: const NOME_SEM = {semente_trigo:'Trigo',semente_tomate:'Tomate',semente_erva:'Folhas',
+32207: const ICONE_SEM = {semente_trigo:'🌾',semente_tomate:'🍅',semente_erva:'🥬',
+32210: const S = {
+32217: const px = r => ({x:r.fx*MW, y:r.fy*MH, w:r.fw*MW, h:r.fh*MH});
+32218: const dentro = (x,y,r) => { const b=px(r); return x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h; };
+32219: const dentroElipse = (x,y,e) => {
+32225: const pontoBloqueado = (x,y) => {
+32231: const livre = (x,y) => {
+32242: function reposicionarSeBloqueado(){
+32256: function canteiroEm(x,y){ return CANTEIROS.find(k=>dentro(x,y+6,k))||null; }
+32257: function celula(k){
+32260: const ACAO = {empty:'Arar', plowed:'Plantar', planted:'Regar',
+32262: function usarCanteiro(k){
+32277: function sementeAtual(){
+32282: function trocarSemente(){
+32290: function aviso(t){ S.aviso=t; S.avisoAte=performance.now()+1800; }
+32295: function plantaTrigo(c,cx,base,p,t,pronto){
+32312: function plantaTomate(c,cx,base,p,t,pronto){
+32329: function plantaErva(c,cx,base,p,t,pronto){
+32347: function plantaCogumelo(c,cx,base,p,t,pronto){
+32370: function plantaRaiz(c,cx,base,p,t,pronto){
+32392: const DESENHO_CULTIVO = {
+32396: function desenharHorta(c,t){
+32438: function desenharPlantas(c,t){
+32464: const LUZES_ACAMPAMENTO = [
+32472: const VAGALUMES = Array.from({length:18},(_,i)=>(
+32476: function brilho(c,x,y,cor,raio,alpha){
+32484: function desenharAgua(c,t){
+32508: function desenharFogueira(c,t){
+32531: function desenharAmbiente(c,t){
+32564: const TELA_W = 960, TELA_H = 720;
+32565: function dimensionar(){
+32588: const PET_SEGUE=76, PET_PARA=52, PET_LONGE=340;
+32589: function petAtivo(){
+32597: function atualizarPet(dt){
+32616: function desenharPet(c,t){
+32629: const ARQ = {fx:.452, fy:.560};
+32630: function desenharArqueiro(c,t){
+32653: function desenharHeroi(c,cls,dir,flip,x,pesY,andando,t){
+32678: function desenharHUD(c,t,W,H){
+32747: function atualizar(dt,t){
+32779: function desenhar(c,t){
+32838: function loop(ts){
+32846: function aoTeclar(e){
+32859: function aoSoltar(e){ S.teclas[e.key.toLowerCase()]=false; }
+32861: function pausar(){ S.ativo=false; if(S.raf){cancelAnimationFrame(S.raf);S.raf=null;} S.teclas={}; }
+32862: function retomar(){ if(S.ativo) return; S.ativo=true; S.ultimo=0; S.raf=requestAnimationFrame(loop); }
+32863: function abrir(){
+32871: function sair(){
+32877: function acampamentoNaFrente(){
+32892: function painelAberto(){
