@@ -1348,6 +1348,45 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 }
 .coll-card.codex-art-card .codex-art-medallion { --codex-art-size:58px !important; }
 .coll-det-icon .codex-art-medallion { --codex-art-size:54px !important; }
+/* Os cards com arte usam trilhos fixos. Assim um nome em duas linhas nao
+   empurra o icone para cima/baixo e armas, reliquias e masmorras ficam retas. */
+.coll-card.weapon-art-card,
+.coll-card.codex-art-card {
+  display:grid;
+  grid-template-rows:58px 40px 16px 20px;
+  align-content:start;
+  justify-items:center;
+  justify-content:stretch;
+  min-height:176px;
+  gap:6px;
+}
+.coll-card.weapon-art-card .coll-card-icon-wrap,
+.coll-card.codex-art-card .coll-card-icon-wrap {
+  grid-row:1;
+  width:58px;
+  height:58px;
+  margin:0;
+  align-self:start;
+}
+.coll-card.weapon-art-card .coll-card-name,
+.coll-card.codex-art-card .coll-card-name {
+  grid-row:2;
+  width:100%;
+  min-height:40px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.coll-card.weapon-art-card .coll-card-hint,
+.coll-card.codex-art-card .coll-card-hint {
+  grid-row:3;
+  min-height:16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.coll-card.weapon-art-card .coll-weapon-class { grid-row:4; margin-top:0; }
+.coll-card.codex-art-card:not(.weapon-art-card) { grid-template-rows:58px 40px 16px; }
 .coll-section-heading {
   grid-column:1/-1;
   display:flex;
@@ -3351,6 +3390,18 @@ canvas, img {
   .coll-card-icon-wrap { width:48px; height:48px; }
   .coll-card-icon { font-size:24px; }
   .coll-card-name { font-size:12px; }
+  .coll-card.weapon-art-card,
+  .coll-card.codex-art-card {
+    grid-template-rows:48px 34px 14px 18px;
+    min-height:148px;
+    gap:4px;
+  }
+  .coll-card.weapon-art-card .coll-card-icon-wrap,
+  .coll-card.codex-art-card .coll-card-icon-wrap { width:48px; height:48px; }
+  .coll-card.weapon-art-card .campaign-weapon-medallion { --weapon-size:48px !important; }
+  .coll-card.codex-art-card .codex-art-medallion { --codex-art-size:48px !important; }
+  .coll-card.weapon-art-card .coll-card-name,
+  .coll-card.codex-art-card .coll-card-name { min-height:34px; }
   .coll-det-header { flex-wrap:wrap; }
   .craft-tabs, .pet-sanc-tabs { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
   .craft-tab, .pet-sanc-tab { min-width:0; font-size:11px; letter-spacing:.5px; }
@@ -4121,6 +4172,10 @@ body.campaign-hud-active #ui-top {
     0 10px 28px rgba(0,0,0,.72);
   pointer-events:none;
 }
+/* O modo Chefao usa a mesma moldura moderna, apenas sem o campo de ouro. */
+body.campaign-hud-active.boss-rush-no-coins #ui-top {
+  grid-template-columns:minmax(220px,2.15fr) repeat(4,minmax(82px,.72fr));
+}
 body.campaign-hud-active #ui-top::before,
 body.campaign-hud-active #ui-top::after {
   content:'✦';
@@ -4381,6 +4436,9 @@ body.campaign-hud-active .wslot .wname { display:none; }
   body.campaign-hud-active #coin-display { font-size:18px; }
   body.campaign-hud-active #ui-top .campaign-health-stat { padding-right:14px; }
   body.campaign-hud-active #weapon-slots-wrap { transform:translateX(-50%) scale(.82);transform-origin:bottom center; }
+  body.campaign-hud-active.boss-rush-no-coins #ui-top {
+    grid-template-columns:minmax(175px,1.8fr) repeat(4,minmax(62px,.68fr));
+  }
 }
 @media(max-width:720px){
   body.campaign-hud-active #ui-top {
@@ -4415,6 +4473,9 @@ body.campaign-hud-active .wslot .wname { display:none; }
     bottom:4px;
     transform:translateX(-50%) scale(.58);
     transform-origin:bottom center;
+  }
+  body.campaign-hud-active.boss-rush-no-coins #ui-top {
+    grid-template-columns:minmax(126px,1.6fr) repeat(4,minmax(0,1fr));
   }
 }
 
@@ -25065,7 +25126,9 @@ function beginGame(){
   if(topHud) topHud.style.removeProperty('display');
   if(bottomHud) bottomHud.style.removeProperty('display');
   document.body.classList.toggle('boss-rush-no-coins',!!bossRushMode);
-  document.body.classList.toggle('campaign-hud-active',!bossRushMode);
+  // Campanha e Boss Rush compartilham a HUD moderna. O modo Chefao apenas
+  // remove o ouro por CSS, sem voltar para os cinco blocos antigos.
+  document.body.classList.add('campaign-hud-active');
   // Show/hide P2 UI
   const is2p=gameMode===2;
   document.body.classList.toggle('campaign-coop-active',is2p&&!bossRushMode);
@@ -32154,7 +32217,7 @@ window.CampV2 = (function(){
   const BLOQUEIOS_CIRCULARES = [
     E(.528,.512,.050,.044),       // fogueira e aro de pedras
     E(.321,.470,.031,.027),       // toco abaixo da cabana
-    E(.472,.190,.026,.022),       // toco ao norte da horta
+    // O antigo toco em .472/.190 foi absorvido pela nova area cultivavel.
     E(.605,.386,.031,.025),       // toco na margem do lago
     E(.082,.580,.026,.020),       // rocha oeste
     E(.411,.683,.020,.016),       // rocha junto da oficina
@@ -32168,17 +32231,14 @@ window.CampV2 = (function(){
     F(.6476, .2050, .0601, .1130),   // pier do lago (passa da margem, senao trava na borda)
   ];
 
-  // Canteiros: grade 4x4 da arte, ligados as parcelas reais de farmCells.
-  // Medido na propria arte (terra arada: x 292..631, y 148..410 de 1447x1087).
-  const HORTA = {fx:.2018, fy:.1362, fw:.2350, fh:.2420, cols:4, linhas:4};
-  // O telhado da cabana cobre estes dois: nao viram canteiro jogavel.
-  const HORTA_OCULTOS = [8, 12];
+  // Canteiros: 5x3, exatamente os 15 lotes persistentes. A grade foi movida
+  // para o gramado acima/direita da cabana, onde nenhuma parede corta o acesso.
+  // O solo e desenhado por cima do fundo, formando uma horta coesa e legivel.
+  const HORTA = {fx:.3020, fy:.1080, fw:.2500, fh:.2520, cols:5, linhas:3};
   const CANTEIROS = (()=>{
     const out=[], cw=HORTA.fw/HORTA.cols, ch=HORTA.fh/HORTA.linhas;
     let n=0;
     for(let r=0;r<HORTA.linhas;r++) for(let c=0;c<HORTA.cols;c++){
-      const pos=r*HORTA.cols+c;
-      if(HORTA_OCULTOS.includes(pos)) continue;      // atras do telhado
       out.push({fx:HORTA.fx+c*cw, fy:HORTA.fy+r*ch, fw:cw, fh:ch, idx:n++});
     }
     return out;
@@ -32200,8 +32260,10 @@ window.CampV2 = (function(){
 
   const SEMENTES = ['semente_trigo','semente_tomate','semente_erva',
                     'semente_cogumelo_lua','semente_raiz_sangue'];
-  const NOME_SEM = {semente_trigo:'Trigo',semente_tomate:'Tomate',semente_erva:'Erva',
-                    semente_cogumelo_lua:'Cogumelo',semente_raiz_sangue:'Raiz'};
+  const NOME_SEM = {semente_trigo:'Trigo',semente_tomate:'Tomate',semente_erva:'Folhas',
+                    semente_cogumelo_lua:'Cogumelo',semente_raiz_sangue:'Beterraba'};
+  const ICONE_SEM = {semente_trigo:'🌾',semente_tomate:'🍅',semente_erva:'🥬',
+                     semente_cogumelo_lua:'🍄',semente_raiz_sangue:'🫜'};
 
   const S = {
     x:.497*1447, y:.760*1087,        // comeca no caminho, abaixo da fogueira
@@ -32389,6 +32451,48 @@ window.CampV2 = (function(){
     semente_trigo:plantaTrigo, semente_tomate:plantaTomate, semente_erva:plantaErva,
     semente_cogumelo_lua:plantaCogumelo, semente_raiz_sangue:plantaRaiz,
   };
+  function desenharHorta(c,t){
+    const h=px(HORTA), x=Math.round(h.x-S.camX), y=Math.round(h.y-S.camY);
+    if(x>c.canvas.width+30||y>c.canvas.height+30||x+h.w<-30||y+h.h<-30) return;
+    c.save(); c.imageSmoothingEnabled=false;
+
+    // Moldura de madeira e terra escura unem os 15 lotes em uma plantacao.
+    c.fillStyle='rgba(24,16,8,.96)'; c.fillRect(x-7,y-7,h.w+14,h.h+14);
+    c.fillStyle='#77502c'; c.fillRect(x-9,y-9,h.w+18,5);
+    c.fillRect(x-9,y+h.h+4,h.w+18,5);
+    c.fillRect(x-9,y-4,5,h.h+8); c.fillRect(x+h.w+4,y-4,5,h.h+8);
+    c.strokeStyle='#b17a3d'; c.lineWidth=1; c.strokeRect(x-7.5,y-7.5,h.w+15,h.h+15);
+
+    for(const k of CANTEIROS){
+      const b=px(k), rx=Math.round(b.x-S.camX)+2, ry=Math.round(b.y-S.camY)+2;
+      const rw=Math.round(b.w)-4, rh=Math.round(b.h)-4;
+      const cell=celula(k), molhada=cell&&cell.state==='watered';
+      c.fillStyle=molhada?'rgba(35,25,18,.98)':'rgba(61,39,20,.97)';
+      c.fillRect(rx,ry,rw,rh);
+      c.strokeStyle='rgba(174,116,55,.62)'; c.strokeRect(rx+.5,ry+.5,rw-1,rh-1);
+      // Sulcos alternados criam profundidade sem competir com as plantas.
+      for(let f=0;f<3;f++){
+        const fy=ry+Math.round((f+1)*rh/4);
+        c.strokeStyle=molhada?'rgba(92,73,53,.45)':'rgba(118,75,34,.48)';
+        c.beginPath(); c.moveTo(rx+5,fy); c.lineTo(rx+rw-5,fy); c.stroke();
+        c.strokeStyle='rgba(12,8,5,.48)';
+        c.beginPath(); c.moveTo(rx+5,fy+2); c.lineTo(rx+rw-5,fy+2); c.stroke();
+      }
+      if(molhada){
+        const brilho=.22+.12*Math.sin(t*.002+k.idx*.8);
+        c.fillStyle='rgba(110,170,190,'+brilho+')';
+        c.fillRect(rx+7+(k.idx%3)*5,ry+rh-8,9,1);
+      }
+    }
+
+    // Espantalho pixelado, pequeno e fora das celulas interativas.
+    const sx=Math.round(x+h.w/2), sy=y-8;
+    c.fillStyle='#74502d'; c.fillRect(sx-2,sy-15,4,25); c.fillRect(sx-13,sy-8,26,3);
+    c.fillStyle='#c79a4c'; c.fillRect(sx-7,sy-17,14,4); c.fillRect(sx-5,sy-22,10,6);
+    c.fillStyle='#6d3421'; c.fillRect(sx-8,sy-5,16,10);
+    c.fillStyle='#d2b062'; c.fillRect(sx-3,sy-14,2,2); c.fillRect(sx+2,sy-14,2,2);
+    c.restore();
+  }
   function desenharPlantas(c,t){
     for(const k of CANTEIROS){
       const cell=celula(k); if(!cell||cell.state==='empty') continue;
@@ -32404,7 +32508,13 @@ window.CampV2 = (function(){
       }
       const prog=cell.state==='ready'?1:(cell.state==='watered'?.62:.32);
       const pronto=cell.state==='ready';
-      (DESENHO_CULTIVO[cell.seed]||plantaErva)(c,cx,base,prog,t,pronto);
+      const desenhar=DESENHO_CULTIVO[cell.seed]||plantaErva;
+      const quantidade=pronto?3:(cell.state==='watered'?2:1);
+      const espacamento=Math.min(17,b.w*.22);
+      for(let i=0;i<quantidade;i++){
+        const off=(i-(quantidade-1)/2)*espacamento;
+        desenhar(c,cx+off,base+(i%2)*2,prog,t+i*230+k.idx*17,pronto);
+      }
     }
   }
 
@@ -32633,7 +32743,7 @@ window.CampV2 = (function(){
       {ic:'🪙', tx:String(typeof totalCoins!=='undefined'?totalCoins:0), cor:'#f0c040'},
       {ic:'🌿', tx:prontas+' pronta(s)', cor:prontas?'#8fe07a':'#4a6a52'},
       {ic:'🍲', tx:buffs+' bonus',       cor:buffs?'#ffb347':'#4a6a52'},
-      {ic:'🌾', tx:(sem?NOME_SEM[sem]+' x'+(globalInventory[sem]||0)+' [Q]':'sem semente'),
+      {ic:(sem?(ICONE_SEM[sem]||'🌱'):'🌱'), tx:(sem?NOME_SEM[sem]+' x'+(globalInventory[sem]||0)+' [Q]':'sem semente'),
                 cor:sem?'#e8d070':'#4a6a52'},
       {ic:'',   tx:'ACAMPAMENTO', cor:'#7de89a'},
     ];
@@ -32734,6 +32844,7 @@ window.CampV2 = (function(){
       c.drawImage(BG, S.camX, S.camY, W, H, 0, 0, W, H);   // recorte do cenario
 
     desenharAmbiente(c,t);
+    desenharHorta(c,t);
     desenharPlantas(c,t);
 
     if(S.depurar){                                          // [F2] confere colisao

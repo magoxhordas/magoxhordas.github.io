@@ -50,6 +50,14 @@ assert(html.includes("return art?{artPath:art.path,color:art.color}"),
   'Os assets das divindades não são convertidos para o formato visual do Códex');
 assert(html.includes("d.classList.add('codex-art-card')"),
   'Cartões do Códex não reconhecem os novos ícones');
+assert(html.includes('grid-template-rows:58px 40px 16px 20px;'),
+  'Cards de armas e itens do Codex nao usam trilhos fixos');
+assert(html.includes('.coll-card.weapon-art-card .coll-card-name,')&&
+  html.includes('min-height:40px;'),
+  'Nomes do Codex ainda podem deslocar os icones quando quebram linha');
+assert(html.includes('.coll-card.codex-art-card .coll-card-icon-wrap {')&&
+  html.includes('align-self:start;'),
+  'Icones das masmorras nao estao ancorados na mesma altura');
 
 const movementFn=html.match(/function normalizeCampaignMovementVector\(dx,dy\)\{[\s\S]*?\n\}/)?.[0];
 assert(movementFn,'Normalizador do movimento da campanha ausente');
