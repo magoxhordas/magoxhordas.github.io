@@ -1,0 +1,61 @@
+name: Refactor CampV2 pure data
+
+on:
+  push:
+    branches:
+      - agent/refactor-collision-architecture
+    paths:
+      - .github/workflows/refactor-camp-pure-data.yml
+      - scripts/refactor-camp-pure-data.mjs
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/refactor-collision-architecture
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Extract pure CampV2 data
+        run: node scripts/refactor-camp-pure-data.mjs
+
+      - name: Check external camp modules
+        run: |
+          node --check src/camp/collision-map.js
+          node --check src/camp/layout-data.js
+          node --check src/camp/farming-data.js
+          node scripts/verify-camp-modules.mjs
+
+      - name: Validate inline JavaScript
+        run: node scripts/verify-inline-scripts.mjs
+
+      - name: Validate camp collision and reachability
+        run: node scripts/verify-campaign-boss-camp.mjs
+
+      - name: Validate campaign shop
+        run: node scripts/verify-campaign-shop.mjs
+
+      - name: Validate deity blessings
+        run: node scripts/verify-deity-blessings.mjs
+
+      - name: Check diff
+        run: git diff --check
+
+      - name: Commit refactor result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html src scripts/verify-campaign-boss-camp.mjs scripts/verify-camp-modules.mjs
+          git rm -f src/camp/_inventory.txt src/camp/_candidate-snippets.txt
+          git rm scripts/refactor-camp-pure-data.mjs
+          git rm .github/workflows/refactor-camp-pure-data.yml
+          git commit -m "refactor: extract pure camp layout and farming data"
+          git push origin HEAD:agent/refactor-collision-architecture
