@@ -63,3 +63,5 @@ jobs:
           git rm -f .github/workflows/refactor-camp-farming-system.yml
           git commit -m "refactor: extract camp farming subsystem"
           git push origin HEAD:agent/refactor-collision-architecture
+
+# Triggered after workflow registration.
