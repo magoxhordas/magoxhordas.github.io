@@ -4436,7 +4436,7 @@ body.campaign-hud-active .wslot .wname { display:none; }
 }
 #campaign-chapter-screen.active {
   display:block;
-  animation:campaignChapterScreen 6s linear both;
+  opacity:1;
 }
 .campaign-chapter-art {
   position:absolute;
@@ -4575,11 +4575,11 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
   0%{opacity:0} 13.333%{opacity:1} 86.667%{opacity:1} 100%{opacity:0}
 }
 @keyframes campaignChapterArt {
-  0%{transform:scale(1.05);filter:saturate(.72) brightness(.5) contrast(1.08)}
-  13.333%{filter:saturate(.9) brightness(.94) contrast(1.05)}
-  30%{filter:saturate(1) brightness(1) contrast(1.04)}
-  86.667%{transform:scale(1.018);filter:saturate(1.02) brightness(1.02) contrast(1.04)}
-  100%{transform:scale(1.01);filter:saturate(.8) brightness(.36) contrast(1.1)}
+  0%{opacity:0;transform:scale(1.05);filter:saturate(.72) brightness(.5) contrast(1.08)}
+  13.333%{opacity:1;filter:saturate(.9) brightness(.94) contrast(1.05)}
+  30%{opacity:1;filter:saturate(1) brightness(1) contrast(1.04)}
+  86.667%{opacity:1;transform:scale(1.018);filter:saturate(1.02) brightness(1.02) contrast(1.04)}
+  100%{opacity:0;transform:scale(1.01);filter:saturate(.8) brightness(.36) contrast(1.1)}
 }
 @keyframes campaignChapterTitleReveal {
   0%,13.333%{opacity:1} 30%,100%{opacity:0}
@@ -4792,8 +4792,8 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
       <div class="hd-logo-sub"><span class="hd-x">✕</span> HORDAS</div>
       <div class="hd-tag">ᚱᚢᚾᛖ · CRÔNICAS DA TERRA-MÉDIA</div>
       <nav class="hd-menu">
-        <a class="hd-item hd-primary" onclick="showScreen('play-menu')">Jogar</a>
-        <a class="hd-item" onclick="showScreen('bossrush-screen'); buildBossRushScreen()">Modo Chefão</a>
+        <a class="hd-item hd-primary" onclick="openCampaignSetup()">Jogar</a>
+        <a class="hd-item" onclick="openBossRushMenu()">Modo Chefão</a>
         <a class="hd-item" onclick="CampV2.abrir()">Acampamento</a>
         <a class="hd-item" onclick="openCollection()">Códex de Arda</a>
         <a class="hd-item" onclick="startDungeonMode()">Dungeon</a>
@@ -4968,7 +4968,7 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
 
   <div class="pm-actions" style="display:flex;gap:12px;justify-content:center;align-items:stretch;">
     <button class="menu-btn primary pm-go" id="start-btn" onclick="goCharSelect()"><span class="pixel-btn-content"><span class="pixel-icon-slot" data-pixel-icon="sword" data-pixel-size="22"></span> ESCOLHER HERÓI →</span></button>
-    <button class="menu-btn pm-back" onclick="showScreen('main-menu')">Voltar</button>
+    <button class="menu-btn pm-back" onclick="goMainMenu()">Voltar</button>
   </div>
 </div>
 
@@ -4981,7 +4981,7 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
   <div class="cs-cards" id="cs-cards-row"></div>
   <div style="display:flex;gap:10px;align-items:center;">
     <button class="menu-btn primary" id="cs-confirm-btn" onclick="confirmCharSelect()" style="min-width:180px;">⚔ CONFIRMAR</button>
-    <button class="menu-btn" onclick="showScreen('play-menu')" style="min-width:100px;font-size:17px;">Voltar</button>
+    <button class="menu-btn" onclick="cancelCharSelect()" style="min-width:100px;font-size:17px;">Voltar</button>
   </div>
 </div>
 
@@ -9610,9 +9610,7 @@ function goToHub(){
 function startNewRun(){
   document.getElementById('hub-screen').style.display = 'none';
   if(hubRaf){cancelAnimationFrame(hubRaf);hubRaf=null;}
-  state = 'menu';
-  showScreen('play-menu');
-  selectMode(1); selectDiff('medium');
+  openCampaignSetup();
 }
 
 function startHubLoop(){
@@ -12764,12 +12762,12 @@ function trackEnemyKill(type){
 // BOSS RUSH MODE
 // ═══════════════════════════════════════════════════════
 const BOSS_RUSH_LIST=[
-  {id:'skeleton_king',wave:5, icon:'💀',name:'Rei Cadáver',      cls:'BossSkeletonKing', unlockWave:5, arena:'castle'},
+  {id:'skeleton_king',wave:5, icon:'💀',name:'Rei Cadáver',      cls:'BossSkeletonKing', unlockWave:5, arena:'crypt'},
   {id:'aracne',        wave:10,icon:'🕷️',name:'Aracne Ancestral', cls:'BossAracne',       unlockWave:10,arena:'forest'},
   {id:'frost',         wave:15,icon:'❄️',name:'Gigante de Gelo',  cls:'BossFrostBehemoth',unlockWave:15,arena:'snow'},
   {id:'sandworm',      wave:20,icon:'🪱',name:'Verme Devorador',  cls:'BossSandworm',     unlockWave:20,arena:'desert'},
   {id:'balrog',        wave:25,icon:'🔥',name:'Balrog',           cls:'BossBalrog',       unlockWave:25,arena:'volcano'},
-  {id:'brute',         wave:12,icon:'🗿',name:'Brutamontes',      cls:'BossBrute',        unlockWave:8,arena:'castle'},
+  {id:'brute',         wave:12,icon:'🗿',name:'Brutamontes',      cls:'BossBrute',        unlockWave:8,arena:'snow'},
 ];
 
 // Pet bosses — aparecem apenas se o jogador já teve o encontro (capturado ou não)
@@ -12777,7 +12775,7 @@ const PET_BOSS_RUSH_LIST=[
   {id:'pet_ignis',  petId:'ignis',  icon:'🔥',name:'Ignis Selvagem',  wave:8, arena:'volcano'},
   {id:'pet_zefiro', petId:'zefiro', icon:'⚡',name:'Zéfiro Selvagem', wave:10,arena:'desert'},
   {id:'pet_aurora', petId:'aurora', icon:'❄️',name:'Aurora Selvagem', wave:12,arena:'snow'},
-  {id:'pet_umbra',  petId:'umbra',  icon:'🌑',name:'Umbra Selvagem',  wave:14,arena:'castle'},
+  {id:'pet_umbra',  petId:'umbra',  icon:'🌑',name:'Umbra Selvagem',  wave:14,arena:'crypt'},
   {id:'pet_aegis',  petId:'aegis',  icon:'🦁',name:'Aegis Selvagem',  wave:16,arena:'forest'},
 ];
 
@@ -12871,14 +12869,14 @@ function startBossRush(){
 }
 
 const BOSS_RUSH_ARENA_NAMES={
-  castle:'SALÃO DO TRONO',
+  crypt:'CASTELO DOS MORTOS',
   forest:'BOSQUE ANCESTRAL',
   snow:'FORTALEZA GLACIAL',
   desert:'DESERTO DEVORADOR',
   volcano:'FORJA INFERNAL'
 };
 function prepareBossRushArena(b){
-  const arena=b.arena||'castle';
+  const arena=b.arena||'crypt';
   // Cada combate começa limpo: nada do chefe anterior atravessa o portal.
   if(typeof resetCampaignMapObjects==='function')resetCampaignMapObjects();
   else {
@@ -13245,6 +13243,45 @@ function goCharSelect(){
   showScreen('char-select');
 }
 
+function resetBossRushState(clearSelection=false){
+  bossRushMode=false;
+  bossRushQueue=[];
+  bossRushCurrent=0;
+  if(clearSelection) bossRushSelected=[];
+  document.body.classList.remove('boss-rush-no-coins');
+  const hud=document.getElementById('br-hud');
+  if(hud){ hud.className='br-hud'; hud.textContent=''; }
+}
+
+function openCampaignSetup(){
+  if(raf){ cancelAnimationFrame(raf); raf=null; }
+  closeCampaignChapterOverlay();
+  resetBossRushState(false);
+  state='menu';
+  showScreen('play-menu');
+  selectMode(1);
+  selectDiff('medium');
+}
+
+function openBossRushMenu(){
+  if(raf){ cancelAnimationFrame(raf); raf=null; }
+  closeCampaignChapterOverlay();
+  resetBossRushState(false);
+  state='menu';
+  showScreen('bossrush-screen');
+  buildBossRushScreen();
+}
+
+function cancelCharSelect(){
+  if(bossRushMode){
+    resetBossRushState(false);
+    showScreen('bossrush-screen');
+    buildBossRushScreen();
+    return;
+  }
+  showScreen('play-menu');
+}
+
 function buildCharSelectUI(playerIdx){
   document.getElementById('cs-sub-label').textContent = gameMode===2
     ? `— Jogador ${playerIdx} · ${playerIdx===1?'WASD':'Setas'} —`
@@ -13357,6 +13394,9 @@ function selectDiff(d){
 }
 function goMainMenu(){
   if(raf){cancelAnimationFrame(raf);raf=null;}
+  closeCampaignChapterOverlay();
+  resetBossRushState(false);
+  document.body.classList.remove('campaign-hud-active','campaign-coop-active');
   state='menu';
   showScreen('main-menu');
 }
@@ -19342,7 +19382,7 @@ const CAMPAIGN_ARENA_BOUNDS=Object.freeze({
 });
 
 function clampCampaignEntity(entity,padding=0){
-  if(!entity||typeof bossRushMode!=='undefined'&&bossRushMode) return entity;
+  if(!entity) return entity;
   const bounds=CAMPAIGN_ARENA_BOUNDS[currentArena]||CAMPAIGN_ARENA_BOUNDS.castle;
   const radius=Math.max(0,Number(entity.radius)||0);
   // Os limites-base consideram o raio do mago (16 px). Entidades maiores
@@ -25059,12 +25099,16 @@ function beginGame(){
   if(typeof updateBlessingsHUD==='function') updateBlessingsHUD();
   if(typeof resetShopPurchases==='function') resetShopPurchases();
   webBlobs=[]; webPuddles=[];
-  buildBG(bossRushMode?'castle':'crypt');
+  const initialArena=bossRushMode?(bossRushQueue[0]?.arena||'crypt'):'crypt';
+  buildBG(initialArena);
   weaponSlots=[null,null,null]; weaponSlots2=[null,null,null];
   updateWeaponUI();
   state='playing';
   if(bossRushMode&&typeof window.resumeCampaignMusic==='function') window.resumeCampaignMusic();
   else if(typeof Audio!=='undefined') Audio.init();
+  // A tela do primeiro capitulo precisa existir antes do primeiro frame do
+  // combate. Abrir no loop deixava o canvas escuro aparecer por um instante.
+  if(!bossRushMode) maybeStartCampaignChapter(wave);
   if(raf) cancelAnimationFrame(raf);
   raf=null;
   lastTs=null;
@@ -25074,7 +25118,7 @@ function beginGame(){
   // Boss rush: spawn first boss after a short delay (so loop is running)
   if(bossRushMode){
     bossRushCurrent=0;
-    setTimeout(()=>{ if(bossRushMode&&state==='playing') spawnNextBossRush(); }, 800);
+    setTimeout(()=>{ if(bossRushMode&&state==='playing') spawnNextBossRush(); }, 450);
   }
 }
 
@@ -32058,6 +32102,7 @@ window.CampV2 = (function(){
   BG.addEventListener('load', ()=>{ MW = BG.naturalWidth; MH = BG.naturalHeight; });
 
   const F = (fx,fy,fw,fh) => ({fx,fy,fw,fh});    // retangulo em fracao
+  const E = (fx,fy,frx,fry=frx) => ({fx,fy,frx,fry}); // elipse em fracao
   // Onde o jogador NAO passa: bordas de mata, construcoes, lago, fogueira.
   const BLOQUEIOS = [
     // ── mata que fecha o mapa ──
@@ -32067,44 +32112,54 @@ window.CampV2 = (function(){
     F(.958, 0,    .042, 1),      // leste
 
     // ── canto noroeste: cabana ──
-    F(.093, .326, .146, .142),   // corpo da cabana (folga p/ o canteiro vizinho)
-    F(.086, .393, .024, .062),   // lanterna de poste
-    F(.248, .378, .028, .064),   // caixas ao lado
+    F(.073, .394, .207, .118),   // base real da cabana e escada
+    F(.065, .413, .025, .060),   // lanterna de poste
+    F(.266, .376, .025, .080),   // caixas ao lado
     F(.250, .306, .026, .056),   // cerca de madeira
 
     // ── horta ──
-    F(.452, .210, .026, .030),   // toco a direita da horta
-
     // ── centro ──
-    F(.489, .470, .076, .092),   // fogueira
-    F(.305, .424, .034, .034),   // toco abaixo da horta
-    F(.598, .458, .030, .028),   // pedra pequena
     // o Arqueiro. Alto o bastante p/ pegar o teste de pe do jogador,
     // que acontece 6px ABAIXO da posicao dele (ver livre()).
     F(.4430,.5511,.0180,.0258),
 
     // ── nordeste: lago e pier ──
-    F(.585, .058, .372, .252),   // lago
+    F(.612, .070, .312, .042),   // lago: faixa norte
+    F(.585, .105, .372, .142),   // lago: corpo central
+    F(.604, .240, .322, .072),   // lago: margem sul
     F(.612, .330, .034, .046),   // pedra na margem
 
     // ── leste: tenda do Merlin ──
-    F(.716, .330, .238, .196),   // corpo da tenda
+    F(.775, .365, .210, .196),   // base da tenda e bancada
     F(.699, .378, .036, .056),   // braseiro a esquerda
     F(.948, .410, .020, .086),   // estandarte
     F(.900, .548, .056, .046),   // flores roxas
 
     // ── sudoeste: oficina ──
-    F(.126, .672, .172, .162),   // corpo da tenda
+    F(.084, .692, .225, .154),   // base da oficina e bancada
     F(.086, .690, .032, .072),   // lanterna de poste
     F(.272, .746, .030, .056),   // caixa ao lado
 
     // ── sudeste: santuario de pedra ──
-    F(.727, .688, .208, .200),   // corpo do santuario
+    F(.735, .718, .235, .196),   // corpo do santuario e escadaria
 
     // ── sul: portal ──
-    F(.474, .845, .088, .118),   // portal
-    F(.396, .862, .050, .072),   // pilar esquerdo
-    F(.578, .862, .050, .072),   // pilar direito
+    F(.448, .845, .104, .132),   // portal
+    F(.386, .850, .066, .132),   // pilar esquerdo
+    F(.578, .850, .066, .132),   // pilar direito
+  ];
+
+  // Objetos arredondados recebem elipses em vez de caixas grandes. Assim o
+  // heroi contorna fogueira, pedras e tocos sem atravessar nem prender nas quinas.
+  const BLOQUEIOS_CIRCULARES = [
+    E(.528,.512,.050,.044),       // fogueira e aro de pedras
+    E(.321,.470,.020,.017),       // toco abaixo da cabana
+    E(.472,.190,.018,.014),       // toco ao norte da horta
+    E(.605,.386,.025,.020),       // toco na margem do lago
+    E(.082,.580,.026,.020),       // rocha oeste
+    E(.411,.683,.020,.016),       // rocha junto da oficina
+    E(.652,.635,.022,.017),       // rocha no caminho leste
+    E(.674,.845,.026,.020),       // rocha diante do santuario
   ];
 
   // Passarelas: vencem o bloqueio. Servem para andar sobre a agua no pier.
@@ -32155,10 +32210,24 @@ window.CampV2 = (function(){
 
   const px = r => ({x:r.fx*MW, y:r.fy*MH, w:r.fw*MW, h:r.fh*MH});
   const dentro = (x,y,r) => { const b=px(r); return x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h; };
+  const dentroElipse = (x,y,e) => {
+    const rx=e.frx*MW, ry=e.fry*MH;
+    if(rx<=0||ry<=0) return false;
+    const dx=(x-e.fx*MW)/rx, dy=(y-e.fy*MH)/ry;
+    return dx*dx+dy*dy<=1;
+  };
+  const pontoBloqueado = (x,y) => {
+    for(const p of PASSAGENS) if(dentro(x,y,p)) return false;
+    for(const b of BLOQUEIOS) if(dentro(x,y,b)) return true;
+    for(const e of BLOQUEIOS_CIRCULARES) if(dentroElipse(x,y,e)) return true;
+    return false;
+  };
   const livre = (x,y) => {
-    if(x<8||y<8||x>MW-8||y>MH-8) return false;
-    for(const p of PASSAGENS) if(dentro(x,y+6,p)) return true;    // passarela vence a agua
-    for(const b of BLOQUEIOS) if(dentro(x,y+6,b)) return false;   // pes do heroi
+    const pesY=y+8;
+    if(x<10||pesY<5||x>MW-10||pesY>MH-5) return false;
+    // Uma sola de 16x10 px substitui o antigo ponto unico de colisao.
+    const sola=[[-8,-3],[0,-3],[8,-3],[-8,4],[0,5],[8,4]];
+    for(const [ox,oy] of sola) if(pontoBloqueado(x+ox,pesY+oy)) return false;
     return true;
   };
   function canteiroEm(x,y){ return CANTEIROS.find(k=>dentro(x,y+6,k))||null; }
@@ -32318,6 +32387,100 @@ window.CampV2 = (function(){
       const pronto=cell.state==='ready';
       (DESENHO_CULTIVO[cell.seed]||plantaErva)(c,cx,base,prog,t,pronto);
     }
+  }
+
+  // ── Vida do acampamento: animacoes discretas desenhadas sobre a arte. ──
+  const LUZES_ACAMPAMENTO = [
+    [141,468,'#ffc04a',22,0],[181,470,'#ffb43a',34,.8],[304,467,'#ffc04a',22,1.7],
+    [122,830,'#ffad32',24,.4],[261,820,'#ff9b28',18,2.2],
+    [1050,457,'#b66cff',22,.2],[1097,463,'#a44cff',17,1.2],
+    [1164,525,'#c175ff',19,2.4],[1351,526,'#bd68ff',21,.7],
+    [1105,901,'#45ff9b',24,.3],[1354,901,'#45ff9b',24,1.4],
+    [650,943,'#58cfff',22,.9],[873,943,'#58cfff',22,2.1],
+  ];
+  const VAGALUMES = Array.from({length:18},(_,i)=>(
+    {x:82+(i*173)%1270,y:115+(i*97)%790,fase:i*.83,raio:1+(i%3)*.35}
+  ));
+
+  function brilho(c,x,y,cor,raio,alpha){
+    const g=c.createRadialGradient(x,y,1,x,y,raio);
+    g.addColorStop(0,cor); g.addColorStop(.22,cor);
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    c.save(); c.globalAlpha=alpha; c.fillStyle=g;
+    c.fillRect(x-raio,y-raio,raio*2,raio*2); c.restore();
+  }
+
+  function desenharAgua(c,t){
+    c.save();
+    c.beginPath();
+    c.moveTo(870,105); c.quadraticCurveTo(1110,55,1335,95);
+    c.quadraticCurveTo(1420,145,1390,260);
+    c.quadraticCurveTo(1310,340,1110,345);
+    c.quadraticCurveTo(900,330,842,248);
+    c.quadraticCurveTo(820,160,870,105); c.closePath(); c.clip();
+    for(let i=0;i<13;i++){
+      const y=104+i*18+Math.sin(t*.0012+i)*3;
+      const x=842+((t*.018+i*89)%520);
+      c.strokeStyle=i%3===0?'rgba(90,205,255,.32)':'rgba(38,135,210,.22)';
+      c.lineWidth=i%3===0?2:1;
+      c.beginPath(); c.moveTo(x,y); c.lineTo(x+18+(i%4)*5,y);
+      c.lineTo(x+24+(i%4)*5,y-2); c.stroke();
+    }
+    for(let i=0;i<4;i++){
+      const pul=(t*.00045+i*.24)%1;
+      c.strokeStyle='rgba(100,220,255,'+(.23*(1-pul))+')'; c.lineWidth=1.2;
+      c.beginPath(); c.ellipse(1120+i*42,250-i*18,10+pul*30,4+pul*12,0,0,Math.PI*2); c.stroke();
+    }
+    c.restore();
+  }
+
+  function desenharFogueira(c,t){
+    const pul=.5+.5*Math.sin(t*.009), vento=Math.sin(t*.004)*3;
+    brilho(c,765,552,'#ff7a18',52,.08+.08*pul);
+    c.save();
+    c.fillStyle='#ff5a16'; c.beginPath();
+    c.moveTo(748,567); c.quadraticCurveTo(750+vento,548,759,533-pul*7);
+    c.quadraticCurveTo(763,546,767,526+pul*4);
+    c.quadraticCurveTo(779+vento,546,781,565); c.closePath(); c.fill();
+    c.fillStyle='#ffc43b'; c.beginPath();
+    c.moveTo(756,566); c.quadraticCurveTo(757+vento*.4,550,764,541-pul*4);
+    c.quadraticCurveTo(774,553,773,566); c.closePath(); c.fill();
+    c.fillStyle='#fff2a0'; c.fillRect(762+Math.round(vento*.25),552,5,11);
+    for(let i=0;i<6;i++){
+      const f=(t*.00038+i*.173)%1;
+      c.globalAlpha=(1-f)*.8; c.fillStyle=i%2?'#ffb42b':'#ff6b1b';
+      c.fillRect(Math.round(765+Math.sin(f*9+i)*12),Math.round(544-f*50),i%2?2:1,i%2?2:1);
+    }
+    c.restore();
+  }
+
+  function desenharAmbiente(c,t){
+    c.save(); c.translate(-S.camX,-S.camY);
+    desenharAgua(c,t);
+    for(const [x,y,cor,raio,fase] of LUZES_ACAMPAMENTO){
+      const pul=.5+.5*Math.sin(t*.0027+fase);
+      brilho(c,x,y,cor,raio,.035+.07*pul);
+      c.globalAlpha=.65+.3*pul; c.fillStyle=cor; c.fillRect(Math.round(x-1),Math.round(y-2),3,4);
+    }
+    c.globalAlpha=1;
+    desenharFogueira(c,t);
+
+    // O portal respira devagar e os dois aneis nunca piscam no mesmo ritmo.
+    const pp=.5+.5*Math.sin(t*.0022);
+    brilho(c,748,978,'#22a8ff',72,.05+.07*pp);
+    c.strokeStyle='rgba(74,205,255,'+(.24+.22*pp)+')'; c.lineWidth=2;
+    c.beginPath(); c.ellipse(748,977,46+pp*3,67+pp*4,0,0,Math.PI*2); c.stroke();
+    c.strokeStyle='rgba(125,96,255,'+(.18+.18*(1-pp))+')'; c.lineWidth=1;
+    c.beginPath(); c.ellipse(748,977,53-pp*2,73-pp*3,0,0,Math.PI*2); c.stroke();
+
+    for(const v of VAGALUMES){
+      const pul=Math.max(0,Math.sin(t*.0018+v.fase));
+      if(pul<.35) continue;
+      const x=v.x+Math.sin(t*.00055+v.fase)*9, y=v.y+Math.cos(t*.00043+v.fase)*6;
+      c.globalAlpha=(pul-.35)*.7; c.fillStyle='#d8ff68';
+      c.fillRect(Math.round(x),Math.round(y),v.raio,v.raio);
+    }
+    c.restore(); c.globalAlpha=1;
   }
 
   // ── Tela: o canvas guarda pixels de MUNDO; o zoom e' so' ampliacao
@@ -32548,12 +32711,18 @@ window.CampV2 = (function(){
     if(BG.complete && BG.naturalWidth)
       c.drawImage(BG, S.camX, S.camY, W, H, 0, 0, W, H);   // recorte do cenario
 
+    desenharAmbiente(c,t);
     desenharPlantas(c,t);
 
     if(S.depurar){                                          // [F2] confere colisao
       c.globalAlpha=.35;
       c.fillStyle='#ff3b30';
       for(const b of BLOQUEIOS){ const r=px(b); c.fillRect(r.x-S.camX,r.y-S.camY,r.w,r.h); }
+      for(const e of BLOQUEIOS_CIRCULARES){
+        c.beginPath();
+        c.ellipse(e.fx*MW-S.camX,e.fy*MH-S.camY,e.frx*MW,e.fry*MH,0,0,Math.PI*2);
+        c.fill();
+      }
       c.fillStyle='#8fe07a';
       for(const k of CANTEIROS){ const r=px(k); c.fillRect(r.x-S.camX,r.y-S.camY,r.w,r.h); }
       c.fillStyle='#38bdf8';
@@ -32663,7 +32832,7 @@ window.CampV2 = (function(){
     else if(S.ativo && !acampamentoNaFrente()) pausar();
   }, 250);
 
-  return {abrir, sair, pausar, retomar, PONTOS, BLOQUEIOS, PASSAGENS, CANTEIROS, S,
+  return {abrir, sair, pausar, retomar, PONTOS, BLOQUEIOS, BLOQUEIOS_CIRCULARES, PASSAGENS, CANTEIROS, S,
           medidas:()=>({MW,MH})};
 })();
 // [/CAMP-V2]
