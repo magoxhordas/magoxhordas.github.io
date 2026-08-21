@@ -1,0 +1,34 @@
+name: Inventory CampV2
+
+on:
+  push:
+    branches:
+      - agent/refactor-collision-architecture
+    paths:
+      - .github/workflows/inventory-camp-v2.yml
+      - scripts/inventory-camp-v2.mjs
+
+permissions:
+  contents: write
+
+jobs:
+  inventory:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/refactor-collision-architecture
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/inventory-camp-v2.mjs
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/camp/_inventory.txt
+          git rm scripts/inventory-camp-v2.mjs
+          git rm .github/workflows/inventory-camp-v2.yml
+          git commit -m "chore: map CampV2 structure for safe extraction"
+          git push origin HEAD:agent/refactor-collision-architecture
