@@ -1332,7 +1332,7 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
   width:100%;
   height:100%;
   display:block;
-  object-fit:cover;
+  object-fit:contain;
   object-position:50% 50%;
   border-radius:0;
   image-rendering:pixelated;
@@ -1348,6 +1348,28 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 }
 .coll-card.codex-art-card .codex-art-medallion { --codex-art-size:58px !important; }
 .coll-det-icon .codex-art-medallion { --codex-art-size:54px !important; }
+.coll-section-heading {
+  grid-column:1/-1;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-height:28px;
+  margin:8px 2px 0;
+  color:#86d69c;
+  font-size:11px;
+  font-weight:bold;
+  letter-spacing:2px;
+  text-transform:uppercase;
+}
+.coll-section-heading::before,.coll-section-heading::after {
+  content:'';
+  flex:1;
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(90,190,120,.5));
+}
+.coll-section-heading::after { transform:scaleX(-1); }
+#shop .s-card-icon .shop-relic-art { --codex-art-size:84px !important; }
+#dng-shop-grid .dng-shop-relic-art { --codex-art-size:46px !important; }
 .pixel-icon-slot {
   display:inline-flex;
   align-items:center;
@@ -1418,13 +1440,16 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 .coll-boon-name { font-size:13px; font-weight:bold; color:#f0d080; line-height:1.25; }
 .coll-boon-role { margin-top:2px; font-size:9px; color:var(--boon-color); letter-spacing:1.2px; }
 .coll-boon-desc { margin:6px 0 7px; color:#9d865e; font-size:11px; line-height:1.45; }
-.coll-boon-rarity-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px; }
+/* 5 raridades: uma fila unica para nao sobrar item solto na ultima linha */
+.coll-boon-rarity-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:4px; align-items:stretch; }
+@media (max-width:720px){ .coll-boon-rarity-grid { gap:3px; } }
 .coll-boon-rarity {
-  min-width:0; padding:4px 5px; border:1px solid color-mix(in srgb,var(--rarity-color) 42%,transparent);
+  min-width:0; padding:4px 3px; border:1px solid color-mix(in srgb,var(--rarity-color) 42%,transparent);
   border-radius:4px; background:rgba(0,0,0,.34);
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-start; text-align:center;
 }
-.coll-boon-rarity-name { color:var(--rarity-color); font-size:8px; font-weight:bold; letter-spacing:.8px; }
-.coll-boon-rarity-value { margin-top:2px; color:#d8c59a; font-size:9px; line-height:1.25; }
+.coll-boon-rarity-name { color:var(--rarity-color); font-size:8px; font-weight:bold; letter-spacing:.4px; white-space:nowrap; }
+.coll-boon-rarity-value { margin-top:auto; padding-top:2px; color:#d8c59a; font-size:9px; line-height:1.25; }
 .coll-card-badge {
   position:absolute; top:6px; right:6px;
   font-size:9px; font-weight:bold; letter-spacing:1px; padding:2px 5px;
@@ -1603,7 +1628,9 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 .pet-card-role { font-size:11px; color:#6a3a8a; letter-spacing:2px; text-transform:uppercase; margin-bottom:5px; }
 .pet-card-desc { font-size:12px; color:#5a3a7a; line-height:1.5; }
 .pet-card-locked-msg { font-size:11px; color:#4a2a6a; margin-top:5px; font-style:italic; }
-.pet-card .pet-selected-badge { position:absolute; top:6px; right:6px; font-size:14px; color:#dd99ff; }
+/* fica no topo do card, sem cavalgar o rotulo FORMA DOMADA */
+.pet-card .pet-selected-badge { position:absolute; top:4px; right:6px; font-size:10px; font-weight:bold;
+  letter-spacing:1px; color:#dd99ff; background:rgba(4,12,8,.92); border-radius:4px; padding:1px 5px; }
 .pet-form-pair { display:flex;align-items:center;justify-content:center;gap:8px;margin:2px 0 8px; }
 .pet-form-preview { min-width:92px;border:1px solid rgba(120,210,150,.22);border-radius:6px;padding:6px;background:rgba(3,12,7,.72); }
 .pet-form-preview span { display:block;font-size:8px;letter-spacing:1.2px;margin-bottom:3px;color:#7fae8c; }
@@ -2147,7 +2174,7 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 .hd-exit:hover { color:#e8a098; text-shadow:0 0 18px rgba(220,80,60,0.45); }
 .hd-ver { font-size:clamp(10px,0.9vw,14px); color:#33523c; letter-spacing:3px; margin-top:clamp(18px,4vh,42px); }
 .hd-right { flex:1; display:flex; align-items:center; justify-content:center; position:relative; }
-#hd-hero { image-rendering:pixelated; width:clamp(160px,22vw,340px); height:auto; position:relative; z-index:2;
+#hd-hero { image-rendering:pixelated; width:clamp(190px,27vw,420px); height:auto; position:relative; z-index:2;
   filter:drop-shadow(0 0 34px rgba(120,80,220,0.45)) drop-shadow(0 14px 24px rgba(0,0,0,0.8));
   animation:hdFloat 4.5s ease-in-out infinite; }
 @keyframes hdFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
@@ -3769,6 +3796,7 @@ canvas, img {
 
 /* ═════════════════ CONFIGURAÇÕES ═════════════════ */
 #settings-screen{
+  display:none;
   align-items:center;justify-content:center;padding:22px;
   background:
     radial-gradient(circle at 68% 24%,rgba(24,110,64,.18),transparent 36%),
@@ -4686,6 +4714,51 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
 </div>
 <style>
 #extraction-overlay.open { display:block; animation:bindAppear .3s ease-out; }
+
+/* ══ [CAMP-V2] ══ */
+#camp2-canvas{
+  image-rendering:pixelated; border:2px solid #2f4a33; border-radius:8px;
+  background:#0a120c; display:block;   /* tamanho vem do JS: zoom inteiro */
+  box-shadow:0 0 0 3px #06100a, 0 0 46px rgba(60,180,110,.16), 0 18px 40px rgba(0,0,0,.7);
+}
+#camp2-hint{
+  margin-top:7px; font-family:'Courier New',monospace; font-size:12px;
+  letter-spacing:1.6px; color:#3f6a4c; white-space:nowrap;
+}
+#camp2-screen{ padding:4px !important; }
+#camp2-palco{ position:relative; line-height:0; }
+/* A HUD vive numa camada propria, na resolucao REAL da tela: desenhada junto
+   com o mundo ela herdaria os 480px do buffer e o texto sairia serrilhado. */
+#camp2-hud{ position:absolute; left:0; top:0; pointer-events:none;
+            image-rendering:auto; border-radius:8px; }
+/* [/CAMP-V2] */
+
+/* ══ [COOK-MINI] ══ */
+#cookmini{
+  position:fixed; inset:0; z-index:120; display:none;
+  align-items:center; justify-content:center;
+  background:rgba(3,8,5,.86); font-family:'Courier New',monospace;
+}
+#cookmini.open{display:flex}
+.cm-box{
+  background:linear-gradient(165deg,#12200f,#0a1608 60%,#060f06);
+  border:2px solid rgba(120,220,150,.5); border-radius:14px;
+  box-shadow:0 0 0 3px #04100a, 0 0 46px rgba(60,200,110,.20);
+  padding:22px 26px; width:min(480px,94vw); text-align:center;
+}
+.cm-title{font-size:20px;font-weight:900;color:#bff0cc;letter-spacing:1px;margin-bottom:2px}
+.cm-sub{font-size:12px;color:#6fae86;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px}
+.cm-bar{display:block;margin:0 auto 14px;image-rendering:pixelated;border-radius:6px}
+.cm-hint{font-size:13px;color:#9fd8b0;letter-spacing:1px;min-height:20px}
+.cm-res{font-size:26px;font-weight:900;letter-spacing:2px;margin:6px 0 4px}
+.cm-eff{font-size:13px;color:#cfe8d6;line-height:1.6;margin-bottom:12px}
+.cm-btn{
+  background:rgba(8,26,14,.95); border:2px solid rgba(120,220,150,.55);
+  border-radius:8px; padding:9px 22px; cursor:pointer;
+  font-family:'Courier New',monospace; font-size:14px; color:#c8ffd8; letter-spacing:2px;
+}
+.cm-btn:hover{filter:brightness(1.2)}
+/* [/COOK-MINI] */
 </style>
 
 <!-- ══ CRAFTING PANEL ══ -->
@@ -4721,7 +4794,7 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
       <nav class="hd-menu">
         <a class="hd-item hd-primary" onclick="showScreen('play-menu')">Jogar</a>
         <a class="hd-item" onclick="showScreen('bossrush-screen'); buildBossRushScreen()">Modo Chefão</a>
-        <a class="hd-item" onclick="goToHub()">Acampamento</a>
+        <a class="hd-item" onclick="CampV2.abrir()">Acampamento</a>
         <a class="hd-item" onclick="openCollection()">Códex de Arda</a>
         <a class="hd-item" onclick="startDungeonMode()">Dungeon</a>
         <a class="hd-item hd-settings" onclick="openSettings()">Configurações</a>
@@ -5023,7 +5096,7 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
   <div style="font-size:15px;color:#4a1a1a;letter-spacing:4px;margin-bottom:16px;text-transform:uppercase;">— A fortaleza caiu —</div>
   <div class="go-stats" id="go-stats"></div>
   <div class="go-actions" style="display:flex;gap:10px;">
-    <button class="menu-btn primary" onclick="goToHub()"><span class="pixel-btn-content"><span class="pixel-icon-slot" data-pixel-icon="castle" data-pixel-size="22"></span> Acampamento</span></button>
+    <button class="menu-btn primary" onclick="CampV2.abrir()"><span class="pixel-btn-content"><span class="pixel-icon-slot" data-pixel-icon="castle" data-pixel-size="22"></span> Acampamento</span></button>
     <button class="menu-btn" onclick="goMainMenu()">Menu Principal</button>
   </div>
   <div style="font-size:12px;color:#2a1410;letter-spacing:2px;margin-top:10px;">Os itens coletados foram salvos no inventário</div>
@@ -5046,6 +5119,32 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
   </div>
   <div class="vic-auto-return" id="vic-auto-return"></div>
 </div>
+
+
+
+<!-- ══ [COOK-MINI] MINIGAME DA COZINHA ══ -->
+<div id="cookmini"><div class="cm-box">
+  <div class="cm-title" id="cm-nome">Receita</div>
+  <div class="cm-sub" id="cm-sub">Pare no centro para o ponto perfeito</div>
+  <canvas class="cm-bar" id="cm-canvas" width="420" height="64"></canvas>
+  <div class="cm-hint" id="cm-hint">[ESPAÇO] para acertar</div>
+  <div id="cm-resultado" style="display:none">
+    <div class="cm-res" id="cm-qualidade">BOM</div>
+    <div class="cm-eff" id="cm-efeito"></div>
+    <button class="cm-btn" onclick="CookMinigame.fechar()">CONTINUAR</button>
+  </div>
+</div></div>
+<!-- [/COOK-MINI] -->
+
+<!-- ══ [CAMP-V2] ACAMPAMENTO JOGAVEL ══ -->
+<div class="screen" id="camp2-screen" style="display:none;flex-direction:column;align-items:center;justify-content:center;padding:6px;">
+  <div id="camp2-palco">
+    <canvas id="camp2-canvas" width="672" height="432"></canvas>
+    <canvas id="camp2-hud"></canvas>
+  </div>
+  <div id="camp2-hint">WASD · ANDAR &nbsp;|&nbsp; SHIFT · CORRER &nbsp;|&nbsp; E · INTERAGIR &nbsp;|&nbsp; Q · SEMENTE &nbsp;|&nbsp; I · MOCHILA &nbsp;|&nbsp; ESC · MENU</div>
+</div>
+<!-- [/CAMP-V2] -->
 
 <!-- ══ HUB / ACAMPAMENTO ══ -->
 <div class="screen" id="hub-screen" style="display:none; flex-direction:column; align-items:center; padding:8px 12px;">
@@ -6945,8 +7044,10 @@ class PetCompanion {
         this.contactTimer=(this.contactTimer||0)-dt*1000;
         if(this.contactTimer<=0){
           this.contactTimer=800; target.takeDmg(18);
-          this.attackAnim=250;
-          spawnParts(target.x,target.y,this.def.color,4,28);
+          this.attackAnim=250; this.attackAnimMax=250;
+          this._atkAng=Math.atan2(target.y-this.y,target.x-this.x);   // direcao do bote
+          this._atkDist=Math.hypot(target.x-this.x,target.y-this.y);
+          spawnParts(target.x,target.y,this.def.color,7,34);
         }
       }
     } else {
@@ -7104,13 +7205,46 @@ class PetCompanion {
     ctx.fillStyle='rgba(0,0,0,0.32)';
     ctx.beginPath(); ctx.ellipse(x, y+10, 10, 3, 0, 0, Math.PI*2); ctx.fill();
 
-    // Attack flash
+    // Ataque: bote na direcao do alvo + risco de garras + impacto
     if(this.attackAnim>0){
-      ctx.save(); ctx.globalAlpha=(this.attackAnim/500)*0.5;
-      ctx.fillStyle=this.def.color;
-      ctx.beginPath(); ctx.arc(x, finalY-8, 14, 0, Math.PI*2); ctx.fill();
+      const max=this.attackAnimMax||250;
+      const p=1-Math.max(0,Math.min(1,this.attackAnim/max));   // 0 = inicio, 1 = fim
+      const ang=(this._atkAng!==undefined)?this._atkAng:(this.lastDx<0?Math.PI:0);
+      const cor=this.def.color;
+      // avanco: sai rapido e volta devagar
+      const bote=Math.sin(Math.min(1,p*1.5)*Math.PI)*10;
+      this._lungeX=Math.cos(ang)*bote; this._lungeY=Math.sin(ang)*bote*.6;
+      const gx=x+Math.cos(ang)*(14+bote), gy=finalY-6+Math.sin(ang)*(9+bote*.6);
+      ctx.save();
+      // 3 riscos de garra abrindo em leque
+      if(p<.75){
+        const a=Math.max(0,1-p/.75);
+        ctx.globalAlpha=a*.95; ctx.strokeStyle=cor; ctx.lineWidth=2.2;
+        ctx.shadowColor=cor; ctx.shadowBlur=8; ctx.lineCap='round';
+        for(let i=-1;i<=1;i++){
+          const off=i*0.34, raio=11+p*9;
+          ctx.beginPath();
+          ctx.arc(gx,gy,raio,ang+off-0.42,ang+off+0.42);
+          ctx.stroke();
+        }
+        ctx.shadowBlur=0;
+      }
+      // clarao de impacto no fim do bote
+      if(p>.25&&p<.8){
+        const a=1-Math.abs(p-.5)/.3;
+        ctx.globalAlpha=a*.75;
+        const g=ctx.createRadialGradient(gx,gy,0,gx,gy,13);
+        g.addColorStop(0,'#ffffff'); g.addColorStop(.45,cor); g.addColorStop(1,cor+'00');
+        ctx.fillStyle=g; ctx.beginPath(); ctx.arc(gx,gy,13,0,Math.PI*2); ctx.fill();
+        // lascas saindo do impacto
+        ctx.globalAlpha=a*.9; ctx.fillStyle='#ffffff';
+        for(let i=0;i<4;i++){
+          const sa=ang+(i-1.5)*.5;
+          ctx.fillRect(gx+Math.cos(sa)*(9+p*10), gy+Math.sin(sa)*(9+p*10), 2,2);
+        }
+      }
       ctx.restore();
-    }
+    } else { this._lungeX=0; this._lungeY=0; }
 
     // Subtle glow
     ctx.globalAlpha=0.25+0.1*Math.sin(t*0.004+this.phase);
@@ -7119,7 +7253,7 @@ class PetCompanion {
     ctx.fillStyle=pg; ctx.fillRect(x-16,finalY-20,32,32);
     ctx.globalAlpha=1;
 
-    this._drawSprite(t, x, finalY);
+    this._drawSprite(t, x+(this._lungeX||0), finalY+(this._lungeY||0));
 
     // Zefiro: jump shadow grows on ground
     if(this.zefiroJump){
@@ -7132,6 +7266,23 @@ class PetCompanion {
   }
 
   _drawSprite(t, x, y){
+    // arte nova (PNG) quando existir — com a direcao tirada do proprio movimento
+    if(typeof drawPetImg==='function' && typeof PET_IMG_SETS!=='undefined' && PET_IMG_SETS[this.petId]){
+      const mvx=this.x-(this._lastPX!==undefined?this._lastPX:this.x);
+      const mvy=this.y-(this._lastPY!==undefined?this._lastPY:this.y);
+      this._lastPX=this.x; this._lastPY=this.y;
+      // suaviza para nao trocar de sprite a cada tremida
+      this._dirX=(this._dirX||0)*0.7+mvx*0.3;
+      this._dirY=(this._dirY||0)*0.7+mvy*0.3;
+      let dir='south', flip=this.lastDx<0;
+      if(Math.abs(this._dirY)>Math.abs(this._dirX)*1.3){
+        dir=this._dirY<0?'north':'south';
+      }else if(Math.abs(this._dirX)>0.05){
+        dir='side'; flip=this._dirX<0;   // a arte de lado olha p/ a direita
+      }
+      const chaoY = y + PET_GROUND_Y - (PET_FLIES[this.petId] ? PET_FLY_LIFT : 0);
+      if(drawPetImg(ctx, this.petId, x, chaoY, flip, this.isMoving, t, dir)) return;
+    }
     const sp=PET_SPRITES[this.petId];
     if(!sp) return;
     // Animação: alterna walk/idle a cada 140ms enquanto anda (gait de 2 tempos)
@@ -10205,7 +10356,8 @@ function drawHubPet(c, now){
   c.restore();
 
   // Draw sprite facing left (toward player)
-  drawPetSprite(c, id, x, y+bob, true, now);
+  drawPetSprite(c, id, x, y+bob+((typeof PET_IMG_SETS!=='undefined'&&PET_IMG_SETS[id])
+    ? (11-((typeof PET_FLIES!=='undefined'&&PET_FLIES[id])?PET_FLY_LIFT:0)) : 0), true, now);
 }
 
 // ════════════════════════════════════════════
@@ -10737,6 +10889,58 @@ const PET_AEGIS = {
   ],
 };
 
+
+// ═══════════════════════════════════════════════════════
+// PETS EM IMAGEM (PNG) — arte original. 'feet' = linha do chao no quadro.
+// Os pets sao desenhados de frente (o jogo so espelha ao andar p/ a esquerda).
+// PET_IMG_SCALE deixa o bicho menor que o heroi, como companheiro.
+// ═══════════════════════════════════════════════════════
+const PET_IMG_SCALE = 0.75, PET_IMG_WALK_MS = 130;
+// A sombra do pet fica 10px abaixo do seu y: terrestres precisam pisar NELA.
+// Quem voa (so o Zefiro) fica acima dela.
+const PET_GROUND_Y = 10, PET_FLY_LIFT = 11;
+const PET_FLIES = {zefiro:true};
+const PET_IMG_SETS = {
+  zefiro: {frame:68, feet:53, walk:9, crop:{x:5, y:10, w:58, h:45}},
+  ignis:  {frame:48, feet:45, walk:8, crop:{x:7, y:0,  w:34, h:47}},
+  aurora: {frame:48, feet:44, walk:8, crop:{x:10,y:4,  w:32, h:42}},
+  umbra:  {frame:48, feet:46, walk:8, crop:{x:10,y:1,  w:28, h:47}},
+  aegis:  {frame:48, feet:43, walk:8, crop:{x:7, y:2,  w:35, h:43}},
+};
+const _petImgCache = {};
+function petImg(petId, state, idx, dir){
+  const set = PET_IMG_SETS[petId]; if(!set) return null;
+  const d = (dir === 'north' || dir === 'side') ? dir : 'south';
+  const file = (state === 'walk')
+    ? 'walk_' + d + '_' + (Math.max(0, idx|0) % set.walk) + '.png'
+    : 'idle_' + d + '.png';
+  const key = petId + '/' + file;
+  let im = _petImgCache[key];
+  if(!im){ im = new Image(); im.src = 'assets/pets/' + petId + '/' + file; _petImgCache[key] = im; }
+  return (im.complete && im.naturalWidth) ? im : null;
+}
+(function preloadPetImgs(){
+  for(const id in PET_IMG_SETS)
+    for(const d of ['south','north','side']){
+      petImg(id, 'idle', 0, d);
+      for(let i = 0; i < PET_IMG_SETS[id].walk; i++) petImg(id, 'walk', i, d);
+    }
+})();
+// Desenha o pet pela arte nova; devolve false se ainda nao carregou.
+function drawPetImg(c, petId, x, y, flipX, moving, now, dir){
+  const set = PET_IMG_SETS[petId]; if(!set) return false;
+  const im = moving ? petImg(petId, 'walk', Math.floor(now / PET_IMG_WALK_MS), dir)
+                    : petImg(petId, 'idle', 0, dir);
+  if(!im) return false;
+  const S = PET_IMG_SCALE, w = Math.round(set.frame * S), h = w;
+  const dx = Math.round(x - w / 2), dy = Math.round(y - set.feet * S);
+  c.save(); c.imageSmoothingEnabled = false;
+  if(flipX){ c.translate(dx + w, dy); c.scale(-1, 1); c.drawImage(im, 0, 0, w, h); }
+  else { c.drawImage(im, dx, dy, w, h); }
+  c.restore();
+  return true;
+}
+
 const PET_SPRITES = {
   ignis: PET_IGNIS,
   zefiro: PET_ZEFIRO,
@@ -10747,6 +10951,7 @@ const PET_SPRITES = {
 
 // Generic sprite renderer for pets (tamanho derivado do grid, ancorado pelo pé)
 function drawPetSprite(c, petId, x, y, flipX, now){
+  if(typeof drawPetImg==='function' && drawPetImg(c, petId, x, y, flipX, true, now||0)) return;
   const sp = PET_SPRITES[petId];
   if(!sp) return;
   const fi = Math.floor(now/280)%2;
@@ -11981,6 +12186,13 @@ function drawGamePixelIconToCanvas(context,icon,cx,cy,size=26,pal){
   }
 }
 function gamePetIconHtml(id,size=38,extraClass=''){
+  // arte nova (PNG) quando existir — o sprite de grade ficava borrado ao ampliar
+  if(typeof PET_IMG_SETS!=='undefined'&&PET_IMG_SETS[id]){
+    const px=Math.max(12,Number(size)||38);
+    return `<img class="game-pixel-icon ${extraClass}" src="assets/pets/${id}/icon.png" `
+         + `width="${px}" height="${px}" alt="" aria-hidden="true" `
+         + `style="image-rendering:pixelated;object-fit:contain;">`;
+  }
   const pet=(typeof PET_SPRITES!=='undefined'&&PET_SPRITES[id])?PET_SPRITES[id]:null;
   return gamePixelIconHtml(pet?{spr:pet.idle,pal:pet.pal}:collGameIcon('paw'),size,null,extraClass);
 }
@@ -12013,7 +12225,71 @@ function gameItemPixelKind(idOrName){
   return 'spark';
 }
 requestAnimationFrame(()=>hydrateGamePixelIcons(document));
+const CODEX_RELIC_ART=Object.freeze({
+  mage_arcane_core:'assets/codex/relics/mage_arcane_core.png',
+  mage_spellbook:'assets/codex/relics/mage_spellbook.png',
+  mage_elemental_orb:'assets/codex/relics/mage_elemental_orb.png',
+  mage_arcane_hourglass:'assets/codex/relics/mage_arcane_hourglass.png',
+  mage_astral_cloak:'assets/codex/relics/mage_astral_cloak.png',
+  mage_mana_fragment:'assets/codex/relics/mage_mana_fragment.png',
+  mage_arcane_eye:'assets/codex/relics/mage_arcane_eye.png',
+  mage_rune_circle:'assets/codex/relics/mage_rune_circle.png',
+  warrior_reinforced_plate:'assets/codex/relics/warrior_reinforced_plate.png',
+  warrior_whetstone:'assets/codex/relics/warrior_whetstone.png',
+  warrior_gauntlet:'assets/codex/relics/warrior_gauntlet.png',
+  warrior_guardian_medallion:'assets/codex/relics/warrior_guardian_medallion.png',
+  warrior_broken_shield:'assets/codex/relics/warrior_broken_shield.png',
+  warrior_heavy_boots:'assets/codex/relics/warrior_heavy_boots.png',
+  warrior_iron_emblem:'assets/codex/relics/warrior_iron_emblem.png',
+  warrior_titan_heart:'assets/codex/relics/warrior_titan_heart.png',
+  archer_shooter_glove:'assets/codex/relics/archer_shooter_glove.png',
+  archer_eagle_eye:'assets/codex/relics/archer_eagle_eye.png',
+  archer_reinforced_quiver:'assets/codex/relics/archer_reinforced_quiver.png',
+  archer_wind_feather:'assets/codex/relics/archer_wind_feather.png',
+  archer_hunter_sight:'assets/codex/relics/archer_hunter_sight.png',
+  archer_serrated_tip:'assets/codex/relics/archer_serrated_tip.png',
+  archer_precision_medallion:'assets/codex/relics/archer_precision_medallion.png',
+  archer_hunter_steps:'assets/codex/relics/archer_hunter_steps.png',
+  viking_war_horn:'assets/codex/relics/viking_war_horn.png',
+  viking_mead_mug:'assets/codex/relics/viking_mead_mug.png',
+  viking_blood_rune:'assets/codex/relics/viking_blood_rune.png',
+  viking_odin_eye:'assets/codex/relics/viking_odin_eye.png',
+  viking_berserker_fury:'assets/codex/relics/viking_berserker_fury.png',
+  viking_thor_totem:'assets/codex/relics/viking_thor_totem.png',
+  viking_frozen_beard:'assets/codex/relics/viking_frozen_beard.png',
+  viking_valhalla_heart:'assets/codex/relics/viking_valhalla_heart.png',
+  universal_light_boots:'assets/codex/relics/universal_light_boots.png',
+  universal_red_heart:'assets/codex/relics/universal_red_heart.png',
+  universal_combat_ration:'assets/codex/relics/universal_combat_ration.png',
+  universal_agile_gloves:'assets/codex/relics/universal_agile_gloves.png',
+  universal_luck_amulet:'assets/codex/relics/universal_luck_amulet.png',
+  universal_merchant_bag:'assets/codex/relics/universal_merchant_bag.png',
+  universal_runic_magnet:'assets/codex/relics/universal_runic_magnet.png',
+  universal_golden_clover:'assets/codex/relics/universal_golden_clover.png',
+  dng_relic_vamp:'assets/codex/relics/dng_relic_vamp.png',
+  dng_relic_crit:'assets/codex/relics/dng_relic_crit.png',
+  dng_relic_shield:'assets/codex/relics/dng_relic_shield.png',
+  dng_relic_speed:'assets/codex/relics/dng_relic_speed.png',
+  dng_relic_aoe:'assets/codex/relics/dng_relic_aoe.png',
+  dng_relic_gold:'assets/codex/relics/dng_relic_gold.png',
+  dng_relic_regen:'assets/codex/relics/dng_relic_regen.png',
+  dng_relic_maxhp:'assets/codex/relics/dng_relic_maxhp.png',
+  dng_ring_furia:'assets/codex/relics/dng_ring_furia.png',
+  dng_ring_vampirico:'assets/codex/relics/dng_ring_vampirico.png',
+  dng_ring_critico:'assets/codex/relics/dng_ring_critico.png',
+  dng_ring_ganancia:'assets/codex/relics/dng_ring_ganancia.png',
+  dng_ring_vitalidade:'assets/codex/relics/dng_ring_vitalidade.png',
+  dng_ring_pressa:'assets/codex/relics/dng_ring_pressa.png',
+  dng_ring_regen:'assets/codex/relics/dng_ring_regen.png'
+});
+window.CODEX_RELIC_ART=CODEX_RELIC_ART;
+function codexRelicIcon(id,color='#7bd99a'){
+  const path=CODEX_RELIC_ART[id];
+  return path?{artPath:path,color}:null;
+}
 function collItemIcon(it,classId){
+  const relicIcon=codexRelicIcon(it?.id);
+  if(relicIcon)return relicIcon;
   if(it?.pixelIcon)return collGameIcon(it.pixelIcon);
   const n=(it.name||'').toLowerCase();
   // Ícones específicos vêm primeiro para evitar que palavras amplas como
@@ -12155,15 +12431,49 @@ function showCollWeaponDetail(w){
 
 // ── ITENS ──
 function renderCollItems(grid){
-  const seen=new Set();
-  Object.values(CLASS_DEFS).forEach(cd=>(cd.shopItems||[]).forEach(it=>{
-    if(seen.has(it.name)) return; seen.add(it.name);
-    const itemIcon=collItemIcon(it,cd.id);
-    grid.appendChild(collCard(itemIcon,it.name,'ᛟ '+it.price,false,()=>{
-      const det=document.getElementById('coll-detail'); det.className='coll-detail visible';
-      det.innerHTML=`<div class="coll-det-header"><div class="coll-det-icon">${collIconHtml(itemIcon,54)}</div><div class="coll-det-info"><div class="coll-det-name">${it.name}</div><div class="coll-det-type">${it.flavour||'Item passivo'}</div></div></div><div style="font-size:14px;color:#a09050;line-height:1.7;margin-top:6px;">${it.desc}</div><div style="font-size:12px;color:#5a4020;margin-top:8px;padding-top:6px;border-top:1px solid rgba(150,110,30,0.2);">Custo: <b style="color:#f0d080">${it.price}</b> moedas${it.isStructure?'<br><span style="color:#8866cc">ᛏ Estrutura colocável</span>':''}</div>`;
-    }));
+  const section=title=>{
+    const heading=document.createElement('div');
+    heading.className='coll-section-heading';heading.textContent=title;grid.appendChild(heading);
+  };
+  const showBuffDetail=(spec,className,color)=>{
+    const icon=collItemIcon(spec,className);
+    const tiers=RARITIES.map(r=>`<div class="coll-boon-rarity" style="--rarity-color:${RARITY_COLORS[r]}"><div class="coll-boon-rarity-name">${RARITY_NAMES[r].toUpperCase()}</div><div class="coll-boon-rarity-value">${campaignShopBuffDescription(spec,r)}</div></div>`).join('');
+    const det=document.getElementById('coll-detail');det.className='coll-detail visible';
+    det.innerHTML=`<div class="coll-det-header"><div class="coll-det-icon">${collIconHtml(icon,54)}</div><div class="coll-det-info"><div class="coll-det-name">${spec.name}</div><div class="coll-det-type">${className}</div><div class="coll-det-kills">Compra única por campanha</div></div></div><div class="coll-det-divider"></div><div class="coll-boon-rarity-grid">${tiers}</div>`;
+  };
+  const classNames={mage:'Mago',warrior:'Guerreiro',archer:'Arqueiro',viking:'Viking'};
+  const classColors={mage:'#b35cff',warrior:'#f05a42',archer:'#48d878',viking:'#e7b44a'};
+  section('RELIQUIAS DE CLASSE');
+  Object.entries(CAMPAIGN_CLASS_BUFFS).forEach(([classId,specs])=>specs.forEach(spec=>{
+    const icon=collItemIcon(spec,classId);
+    const card=collCard(icon,spec.name,classNames[classId],false,()=>showBuffDetail(spec,classNames[classId],classColors[classId]),null,classColors[classId]);
+    const badge=document.createElement('div');badge.className='coll-weapon-class';badge.style.color=classColors[classId];badge.textContent=classNames[classId];card.appendChild(badge);grid.appendChild(card);
   }));
+  section('ITENS UNIVERSAIS DA LOJA');
+  CAMPAIGN_UNIVERSAL_ITEMS.forEach(spec=>{
+    const icon=collItemIcon(spec);
+    grid.appendChild(collCard(icon,spec.name,'Universal',false,()=>showBuffDetail(spec,'Item universal','#e4c65a'),null,'#e4c65a'));
+  });
+  if(Array.isArray(window.DNG_RELICS)){
+    section('RELIQUIAS DA DUNGEON');
+    window.DNG_RELICS.forEach(it=>{
+      const icon=codexRelicIcon(`dng_relic_${it.id}`,'#63d8d1')||collItemIcon(it);
+      grid.appendChild(collCard(icon,it.name,`${it.price} moedas`,false,()=>{
+        const det=document.getElementById('coll-detail');det.className='coll-detail visible';
+        det.innerHTML=`<div class="coll-det-header"><div class="coll-det-icon">${collIconHtml(icon,54)}</div><div class="coll-det-info"><div class="coll-det-name">${it.name}</div><div class="coll-det-type">Relíquia da Dungeon</div></div></div><div class="coll-det-divider"></div><div style="font-size:14px;color:#a9c8bd;line-height:1.7;">${it.desc}</div><div style="font-size:12px;color:#5f8c80;margin-top:8px;">Disponível no Ferreiro por ${it.price} moedas.</div>`;
+      },null,'#63d8d1'));
+    });
+  }
+  if(Array.isArray(window.DNG_RING_TYPES)){
+    section('ANEIS DA DUNGEON');
+    window.DNG_RING_TYPES.forEach(it=>{
+      const icon=codexRelicIcon(`dng_ring_${it.id}`,'#a875ef')||collGameIcon('ring');
+      grid.appendChild(collCard(icon,it.name,'Equipável',false,()=>{
+        const det=document.getElementById('coll-detail');det.className='coll-detail visible';
+        det.innerHTML=`<div class="coll-det-header"><div class="coll-det-icon">${collIconHtml(icon,54)}</div><div class="coll-det-info"><div class="coll-det-name">${it.name}</div><div class="coll-det-type">Anel da Dungeon</div></div></div><div class="coll-det-divider"></div><div style="font-size:14px;color:#bda7d8;line-height:1.7;">Anel equipável encontrado durante as expedições. Seus atributos escalam com a raridade e o piso.</div>`;
+      },null,'#a875ef'));
+    });
+  }
 }
 
 // ── BESTIÁRIO ──
@@ -12211,9 +12521,12 @@ function showCollEnemyDetail(e){
 function renderCollClasses(grid){
   Object.values(CLASS_DEFS).forEach(cd=>{
     const clsPal={'mage':()=>PAL_WIZARD,'warrior':()=>PAL_WARRIOR_P,'archer':()=>PAL_ARCHER_P,'viking':()=>PAL_VIKING_P}[cd.id];
-    const clsIcon=(typeof WIZ!=='undefined'&&clsPal)
-      ?{spr:WIZ.down[0],pal:clsPal()}
-      :collGameIcon(({mage:'orb',warrior:'sword',archer:'bow',viking:'axe'})[cd.id]||'orb');
+    const clsSet=(typeof HERO_IMG_SETS!=='undefined')?HERO_IMG_SETS[cd.id]:null;
+    const clsIcon=clsSet
+      ?{artPath:clsSet.base+(clsSet.icon||'icon.png')}
+      :((typeof WIZ!=='undefined'&&clsPal)
+        ?{spr:WIZ.down[0],pal:clsPal()}
+        :collGameIcon(({mage:'orb',warrior:'sword',archer:'bow',viking:'axe'})[cd.id]||'orb'));
     grid.appendChild(collCard(
       clsIcon,
       cd.name, cd.badge, false,
@@ -12300,7 +12613,9 @@ function renderCollPets(grid){
   Object.values(PET_DEFS).forEach(def=>{
     const captured=!!capturedPets[def.id];
     const met=captured||SaveSystem.readText('mvh_pet_met_'+def.id,'')==='1';
-    const petIcon=(typeof PET_SPRITES!=='undefined'&&PET_SPRITES[def.id])?{spr:PET_SPRITES[def.id].idle,pal:PET_SPRITES[def.id].pal}:collGameIcon('shadow');
+    const petIcon=(typeof PET_IMG_SETS!=='undefined'&&PET_IMG_SETS[def.id])
+      ?{artPath:'assets/pets/'+def.id+'/icon.png'}
+      :((typeof PET_SPRITES!=='undefined'&&PET_SPRITES[def.id])?{spr:PET_SPRITES[def.id].idle,pal:PET_SPRITES[def.id].pal}:collGameIcon('shadow'));
     const bossIcon=(typeof PET_SPRITES!=='undefined'&&PET_SPRITES[def.id]?.boss)?{spr:PET_SPRITES[def.id].boss,pal:PET_SPRITES[def.id].pal}:petIcon;
     grid.appendChild(collCard(petIcon,def.name,captured?'✓ Capturado':met?'Encontrado':'???',!met,met?()=>{
       const det=document.getElementById('coll-detail');det.className='coll-detail visible';
@@ -12971,6 +13286,7 @@ function buildCharSelectUI(playerIdx){
     };
     row.appendChild(card);
     // Animate preview with real WIZ sprite + class palette
+    const CS_FILL=0.82;   // folga no medalhao do card (1 = preenche tudo)
     const palLookup = {PAL_WIZARD, PAL_WARRIOR_P, PAL_ARCHER_P, PAL_VIKING_P};
     requestAnimationFrame(function animate(){
       const cv=document.getElementById(previewId);
@@ -12980,6 +13296,16 @@ function buildCharSelectUI(playerIdx){
       const pal=palLookup[def.previewPalKey]||PAL_WIZARD;
       const t=Date.now();
       // Pick idle or gentle walk frame
+      const pvCls={PAL_WIZARD:'mage',PAL_WARRIOR_P:'warrior',PAL_ARCHER_P:'archer',PAL_VIKING_P:'viking'}[def.previewPalKey]||'mage';
+      // Arte nova (PNG): andando sempre; se o card estiver selecionado, ataca.
+      if(typeof drawHeroPortrait==='function'){
+        const sel=card.classList.contains('selected');
+        const nAtk=(HERO_IMG_SETS[pvCls]&&HERO_IMG_SETS[pvCls].down.atk.length)||6;
+        const ok=sel
+          ? drawHeroPortrait(cv,pvCls,'atkFrame',Math.floor(t/110)%nAtk,CS_FILL)
+          : drawHeroPortrait(cv,pvCls,'walkFrame',Math.floor(t/300)%6,CS_FILL);
+        if(ok){ requestAnimationFrame(animate); return; }   // segue animando!
+      }
       const fi=Math.floor(t/350)%3; // 0,1,2 walk cycle
       const sprite=WIZ.down[fi];
       // Draw scaled 2× into the 80×80 canvas centred
@@ -14674,6 +15000,29 @@ const CAMPAIGN_UNIVERSAL_ITEMS=[
   {id:'universal_golden_clover',name:'Trevo Dourado',pixelIcon:'leaf',effect:'dropBonus',values:[.04,.055,.07,.10,.14]},
 ];
 
+// ── POÇÕES DE CURA — consumiveis: curam na hora e podem ser compradas de novo
+// (os demais itens da loja sao buffs permanentes e unicos).
+const CAMPAIGN_POTIONS=[
+  {id:'potion_heal',      name:'Poção de Cura',    pixelIcon:'potion', heal:.35, price:7,
+   desc:'Restaura 35% da vida máxima na hora.'},
+  {id:'potion_heal_big',  name:'Poção Maior',      pixelIcon:'potion', heal:.70, price:13,
+   desc:'Restaura 70% da vida máxima na hora.'},
+  {id:'potion_full',      name:'Elixir Completo',  pixelIcon:'heart',  heal:1.0, price:22,
+   desc:'Restaura toda a vida.'},
+];
+function makePotionOffer(spec){
+  return {id:spec.id,name:spec.name,desc:spec.desc,price:spec.price,rarity:'common',
+    category:'universal',isUniversal:true,pixelIcon:spec.pixelIcon,
+    unique:false,consumable:true,          // pode ser comprada quantas vezes quiser
+    apply(target){
+      if(!target||target.dead)return;
+      const max=target.maxHp||target.hpMax||100;
+      target.hp=Math.min(max,(target.hp||0)+Math.round(max*spec.heal));
+      try{ if(typeof spawnParts==='function')spawnParts(target.x,target.y,'#44ff88',14,60); }catch(e){}
+      try{ if(typeof updateUI==='function')updateUI(); }catch(e){}
+    }};
+}
+
 function campaignShopPct(value,digits=0){return `${(value*100).toFixed(digits).replace('.',',').replace(/,0$/,'')}%`;}
 function campaignShopBuffDescription(spec,rarity){
   const v=spec.values[Math.max(0,RARITIES.indexOf(rarity))]??spec.values[0];
@@ -14782,8 +15131,9 @@ function makeCampaignBuffOffer(spec,pidx=null,universal=false){
   const rarity=campaignShopRarityForWave();
   const priceMap=universal?{common:8,uncommon:12,rare:18,epic:27,legendary:39}:{common:9,uncommon:13,rare:19,epic:28,legendary:41};
   const classId=universal?null:(pidx===1?selectedClass.p2:selectedClass.p1);
+  const artPath=typeof CODEX_RELIC_ART!=='undefined'?CODEX_RELIC_ART[spec.id]:null;
   return {id:spec.id,name:spec.name,desc:campaignShopBuffDescription(spec,rarity),price:priceMap[rarity],rarity,pidx,classId,
-    category:universal?'universal':'classBuff',isClassBuff:!universal,isUniversal:universal,pixelIcon:spec.pixelIcon,unique:true,spec,
+    category:universal?'universal':'classBuff',isClassBuff:!universal,isUniversal:universal,pixelIcon:spec.pixelIcon,artPath,unique:true,spec,
     apply(target){applyCampaignShopItem(target,spec,rarity);}};
 }
 
@@ -14800,12 +15150,16 @@ function getClassShopItems(category='weapon',forcedPidx=null){
       for(const spec of CAMPAIGN_CLASS_BUFFS[pd.classId]||[])items.push(makeCampaignBuffOffer(spec,pd.pidx,false));
     }
   }
-  if(category==='universal')for(const spec of CAMPAIGN_UNIVERSAL_ITEMS)items.push(makeCampaignBuffOffer(spec,null,true));
+  if(category==='universal'){
+    for(const spec of CAMPAIGN_UNIVERSAL_ITEMS)items.push(makeCampaignBuffOffer(spec,null,true));
+    for(const spec of CAMPAIGN_POTIONS)items.push(makePotionOffer(spec));
+  }
   return items;
 }
 
 window.CAMPAIGN_CLASS_BUFFS=CAMPAIGN_CLASS_BUFFS;
 window.CAMPAIGN_UNIVERSAL_ITEMS=CAMPAIGN_UNIVERSAL_ITEMS;
+window.CAMPAIGN_POTIONS=CAMPAIGN_POTIONS;
 
 function getCampaignShopDamageBonus(pl,target){
   if(!pl)return 0;
@@ -15046,7 +15400,9 @@ function renderShopGrid(){
     const itemIcon=item.pixelIcon||offerDef?.pixelIcon||'orb';
     const offerIconHtml=item.wtype&&offerDef
       ?campaignWeaponIconHtml(item.wtype,104,'campaign-weapon-art-shop',rarCol)
-      :gamePixelIconHtml(itemIcon,84);
+      :item.artPath
+        ?codexArtIconHtml(item.artPath,84,'shop-relic-art',rarCol)
+        :gamePixelIconHtml(itemIcon,84);
     card.innerHTML=`
       <div class="s-card-top">
         <div class="s-card-icon${item.wtype?' weapon-offer-icon':''}">${offerIconHtml}</div>
@@ -16861,6 +17217,118 @@ const HERO_SKINS=[
   }
 ];
 
+
+// ═══════════════════════════════════════════════════════
+// SPRITES EM IMAGEM (PNG) POR CLASSE — arte original, sem redesenho.
+// Quadro 48x48, pes na linha 46. Classes sem entrada aqui seguem no WIZ.
+// ═══════════════════════════════════════════════════════
+const HERO_IMG_FRAME = 48, HERO_IMG_FEET = 47;  // padrao (usado como reserva)
+const HERO_IMG_WALK_MS = 110;   // ritmo da caminhada
+// Cada classe traz seu proprio tamanho de quadro e linha dos pes, porque as
+// artes vem em telas diferentes (o golpe do guerreiro precisa de 68x68 para
+// caber a espada). 'feet' = linha onde o chao encosta, usada para ancorar.
+const HERO_IMG_SETS = (() => {
+  const dirs = {down:'south', up:'north', side:'side'};
+  const make = (base, frame, feet, nWalk, nAtk) => {
+    const o = {base, frame, feet};
+    for(const d in dirs){
+      const n = dirs[d];
+      o[d] = {
+        idle: 'idle_' + n + '.png',
+        walk: Array.from({length:nWalk}, (_, i) => 'walk_' + n + '_' + i + '.png'),
+        atk:  Array.from({length:nAtk},  (_, i) => 'atk_'  + n + '_' + i + '.png'),
+      };
+    }
+    return o;
+  };
+  const sets = {
+    // o 3o numero e' a linha do pe, medida no proprio PNG (ultima linha opaca):
+    // errado por 1-2px passava batido no acampamento, mas na pescaria a arte
+    // aparece ampliada 2,3x e o erro virava o personagem flutuando.
+    mage:    make('assets/heroes/mage/',    48, 44, 6, 6),
+    warrior: make('assets/heroes/warrior/', 68, 56, 6, 9),
+    archer:  make('assets/heroes/archer/',  60, 50, 6, 9),
+    viking:  make('assets/heroes/viking/',  68, 56, 6, 9),
+  };
+  // Recorte util (uniao de parado+andar): tira a moldura vazia do quadro para
+  // o personagem preencher medalhoes e o heroi do menu.
+  const crops = {
+    mage:    {x:7,  y:1, w:37, h:46},
+    warrior: {x:13, y:8, w:42, h:51},
+    archer:  {x:13, y:6, w:37, h:47},
+    viking:  {x:15, y:9, w:38, h:50},
+  };
+  for(const k in crops){ sets[k].crop = crops[k]; sets[k].icon = 'icon.png'; }
+  return sets;
+})();
+const _heroImgCache = {};
+function heroImg(cls, dir, idx, state){
+  const set = HERO_IMG_SETS[cls]; if(!set) return null;
+  const a = set[dir] || set.down;
+  let file;
+  if(state === 'atk'){          // progresso 0..1 percorre os 6 quadros do golpe
+    const p = Math.max(0, Math.min(0.999, +idx || 0));
+    file = a.atk[Math.floor(p * a.atk.length)];
+  } else if(state === 'walkFrame'){   // quadro escolhido por quem chama
+    file = a.walk[Math.max(0, idx|0) % a.walk.length];
+  } else if(state === 'atkFrame'){
+    file = a.atk[Math.max(0, idx|0) % a.atk.length];
+  } else if(state === 'walk'){  // relogio proprio: ciclo continuo de 6 quadros
+    file = a.walk[Math.floor(performance.now() / HERO_IMG_WALK_MS) % a.walk.length];
+  } else {
+    file = a.idle;
+  }
+  const key = cls + '/' + file;
+  let im = _heroImgCache[key];
+  if(!im){ im = new Image(); im.src = set.base + file; _heroImgCache[key] = im; }
+  return (im.complete && im.naturalWidth) ? im : null;
+}
+// pre-carrega tudo para nao piscar no primeiro quadro
+(function preloadHeroImgs(){
+  for(const cls in HERO_IMG_SETS){
+    const set = HERO_IMG_SETS[cls];
+    for(const d of ['down','up','side']){
+      const a = set[d]; if(!a) continue;
+      [a.idle].concat(a.walk, a.atk).forEach(f => {
+        const k = cls + '/' + f;
+        if(!_heroImgCache[k]){ const im = new Image(); im.src = set.base + f; _heroImgCache[k] = im; }
+      });
+    }
+  }
+})();
+// Retrato: desenha o heroi recortado, preenchendo o canvas em escala inteira
+// (pixels sempre nitidos). Usado nos cards de classe e no heroi do menu.
+function drawHeroPortrait(canvas, classId, state, idx, fill){
+  const set = (typeof HERO_IMG_SETS !== 'undefined') ? HERO_IMG_SETS[classId] : null;
+  const c = canvas && canvas.getContext('2d'); if(!c) return false;
+  if(!set || !set.crop) return false;
+  const im = heroImg(classId, 'down', idx || 0, state || 'idle'); if(!im) return false;
+  const cr = set.crop;
+  // escala inteira quando cabe (pixel perfeito); senao usa a fracionaria para
+  // o personagem preencher o medalhao — com suavizacao desligada continua duro.
+  const fit = Math.min(canvas.width / cr.w, canvas.height / cr.h) * (fill || 1);
+  const k = fit >= 2 ? Math.floor(fit) : fit;
+  const dw = Math.round(cr.w * k), dh = Math.round(cr.h * k);
+  c.imageSmoothingEnabled = false;
+  c.clearRect(0, 0, canvas.width, canvas.height);
+  c.drawImage(im, cr.x, cr.y, cr.w, cr.h,
+              Math.floor((canvas.width - dw) / 2), Math.floor((canvas.height - dh) / 2), dw, dh);
+  return true;
+}
+// Desenha o heroi: usa a imagem quando existir, senao cai no sprite de grade.
+function drawHeroVisual(visual, x, feetY, flipX){
+  if(visual && visual.img){
+    const im = visual.img, w = visual.imgFrame || HERO_IMG_FRAME, h = w;
+    const dx = Math.round(x - w/2), dy = Math.round(feetY - (visual.imgFeet || HERO_IMG_FEET));
+    ctx.save(); ctx.imageSmoothingEnabled = false;
+    if(flipX){ ctx.translate(dx + w, dy); ctx.scale(-1, 1); ctx.drawImage(im, 0, 0, w, h); }
+    else { ctx.drawImage(im, dx, dy, w, h); }
+    ctx.restore();
+    return true;
+  }
+  return false;
+}
+
 function getHeroClassPalette(classId){
   const palMap={mage:PAL_WIZARD,warrior:PAL_WARRIOR_P,archer:PAL_ARCHER_P,viking:PAL_VIKING_P};
   return palMap[classId]||PAL_WIZARD;
@@ -16868,7 +17336,7 @@ function getHeroClassPalette(classId){
 function getActiveHeroSkinId(){
   return (typeof GameSettings!=='undefined'&&GameSettings.skinId)||'classic';
 }
-function getHeroVisual(classId='mage',direction='down',frameIndex=0,paletteOverride=null,skinId=null){
+function getHeroVisual(classId='mage',direction='down',frameIndex=0,paletteOverride=null,skinId=null,state='idle',stateArg=0){
   const id=skinId||getActiveHeroSkinId();
   const skin=HERO_SKINS.find(item=>item.id===id)||HERO_SKINS[0];
   const dir=direction==='up'?'up':direction==='left'||direction==='right'||direction==='side'?'side':'down';
@@ -16879,7 +17347,11 @@ function getHeroVisual(classId='mage',direction='down',frameIndex=0,paletteOverr
   const pal=skin.id==='classic'
     ? (paletteOverride||getHeroClassPalette(classId))
     : Object.assign({},PAL_WIZARD,skin.palette||{});
-  return {skin,frames,sprite:frames[index],pal};
+  const img=(typeof heroImg==='function')?heroImg(classId,dir,stateArg,state):null;
+  const imgSet=(typeof HERO_IMG_SETS!=='undefined')?HERO_IMG_SETS[classId]:null;
+  return {skin,frames,sprite:frames[index],pal,img,
+          imgFrame:(imgSet&&imgSet.frame)||HERO_IMG_FRAME,
+          imgFeet:(imgSet&&imgSet.feet)||HERO_IMG_FEET};
 }
 function drawHeroOnCanvas(canvas,{classId='mage',direction='down',frameIndex=0,skinId=null,pixelSize=4,clear=true}={}){
   if(!canvas) return;
@@ -16888,6 +17360,13 @@ function drawHeroOnCanvas(canvas,{classId='mage',direction='down',frameIndex=0,s
   const sprite=visual.sprite, pal=visual.pal, pxSize=Math.max(1,Number(pixelSize)||4);
   if(clear) c.clearRect(0,0,canvas.width,canvas.height);
   c.imageSmoothingEnabled=false;
+  if(visual.img){ // arte em PNG: encaixa no canvas mantendo pixels nitidos
+    const fr=visual.imgFrame||HERO_IMG_FRAME;
+    const k=Math.max(1,Math.floor(Math.min(canvas.width,canvas.height)/fr));
+    const dw=fr*k;
+    c.drawImage(visual.img, Math.floor((canvas.width-dw)/2), Math.floor((canvas.height-dw)/2), dw, dw);
+    return;
+  }
   const width=sprite[0].length*pxSize, height=sprite.length*pxSize;
   const offX=Math.floor((canvas.width-width)/2), offY=Math.floor((canvas.height-height)/2);
   for(let row=0;row<sprite.length;row++){
@@ -18795,7 +19274,14 @@ class Player {
     if(this.dir==='up') direction='up';
     else if(this.dir==='left') direction='side';
     else if(this.dir==='right'){direction='side'; flipX=true;}
-    const heroVisual=getHeroVisual(this.classId,direction,this.frameIdx);
+    // Estado do heroi para a arte em PNG: conjurar tem prioridade sobre andar.
+    // castTimer decresce de castMaxTimer ate 0 -> progresso 0..1 percorre o golpe.
+    let heroState='idle', heroArg=0;
+    if(this.isCasting){
+      heroState='atk';
+      heroArg=1-Math.max(0,Math.min(1,this.castTimer/(this.castMaxTimer||1)));
+    } else if(this.isMoving) heroState='walk';
+    const heroVisual=getHeroVisual(this.classId,direction,this.frameIdx,null,null,heroState,heroArg);
     const sprites=heroVisual.frames;
     const fi=Math.min(this.frameIdx, sprites.length-1);
     // Animacao suave: bob ao andar, respiracao parado, pop ao conjurar.
@@ -18809,7 +19295,8 @@ class Player {
     } else { sclY=1+0.018*Math.sin(t*0.004+(this.idx||0)*2); }
     ctx.save();
     ctx.translate(this.x, feetY); ctx.scale(sclX, sclY); ctx.translate(-this.x, -feetY);
-    drawSpriteAt(sprites[fi], heroVisual.pal, this.x, feetY+bobY, flipX, 1);
+    if(!drawHeroVisual(heroVisual, this.x, feetY+bobY, flipX))
+      drawSpriteAt(sprites[fi], heroVisual.pal, this.x, feetY+bobY, flipX, 1);
     ctx.restore();
     if(this.isCasting&&typeof drawHeroSkinAttackEffect==='function'){
       const attackProgress=Math.max(0,Math.min(1,1-this.castTimer/(this.castMaxTimer||280)));
@@ -23999,61 +24486,197 @@ function drawEnemyStatusFx(e,t){
   const fire=active('fire')||e.weaponBurn?.timer>0;
   const ice=active('ice')||e.frozen||e.slowed;
   const poison=active('poison')||Boolean(e.weaponPoisons?.length);
+  if(!fire&&!ice&&!poison&&!active('electric')&&!active('shadow')&&!active('arcane')
+     &&!active('solar')&&!active('wind')&&!active('blood')&&!active('physical'))return;
+
   const r=Math.max(10,Math.min(58,e.radius||16));
   const pulse=.5+.5*Math.sin(t*.014+e.x*.03);
-  if(!fire&&!ice&&!poison&&!active('electric')&&!active('shadow')&&!active('arcane')&&!active('solar')&&!active('wind')&&!active('blood')&&!active('physical'))return;
-  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+  const seed=(e.x*0.7+e.y*1.3)%6.283;   // fase propria por inimigo
+  const cx=e.x, cy=e.y;
+  const hex=v=>Math.max(0,Math.min(255,Math.round(v*255))).toString(16).padStart(2,'0');
+  ctx.save(); ctx.lineCap='round'; ctx.lineJoin='round';
 
-  if(active('shadow')){
-    ctx.globalAlpha=.25+.12*pulse;ctx.fillStyle='#5d20a8';ctx.shadowColor='#9a4cff';ctx.shadowBlur=12;
-    ctx.beginPath();ctx.ellipse(e.x,e.y+r*.18,r*1.22,r*.72,0,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
-    for(let i=0;i<3;i++){const a=t*.001+i*2.1;ctx.fillRect(e.x+Math.cos(a)*r*1.05-2,e.y+Math.sin(a)*r*.55-2,4,4);}
-  }
-  if(active('wind')){
-    ctx.globalAlpha=.7;ctx.strokeStyle='#8deeff';ctx.lineWidth=1.5;
-    for(let i=0;i<2;i++){ctx.beginPath();ctx.arc(e.x,e.y,r*(1.05+i*.24),t*.003+i*Math.PI,t*.003+i*Math.PI+Math.PI*.95);ctx.stroke();}
-  }
-  if(active('solar')){
-    ctx.globalAlpha=.7+.2*pulse;ctx.strokeStyle='#ffd65a';ctx.fillStyle='rgba(255,205,70,.16)';ctx.lineWidth=2;
-    ctx.beginPath();ctx.arc(e.x,e.y,r+4,0,Math.PI*2);ctx.fill();ctx.stroke();
-    for(let i=0;i<8;i++){const a=i*Math.PI/4;ctx.beginPath();ctx.moveTo(e.x+Math.cos(a)*(r+6),e.y+Math.sin(a)*(r+6));ctx.lineTo(e.x+Math.cos(a)*(r+10+pulse*3),e.y+Math.sin(a)*(r+10+pulse*3));ctx.stroke();}
-  }
-  if(poison){
-    ctx.globalAlpha=.25+.12*pulse;ctx.fillStyle='#58e65b';ctx.beginPath();ctx.arc(e.x,e.y,r+2,0,Math.PI*2);ctx.fill();
-    ctx.globalAlpha=.85;ctx.strokeStyle='#9dff74';ctx.lineWidth=1.5;
-    for(let i=0;i<3;i++){const bx=e.x-r*.65+i*r*.65,by=e.y-r-(i%2)*5-pulse*4,br=2+i;ctx.beginPath();ctx.arc(bx,by,br,0,Math.PI*2);ctx.stroke();}
-  }
+  // Banha o CORPO com a cor do elemento (nao um anel em volta)
+  const banhar=(cor,forca)=>{
+    const g=ctx.createRadialGradient(cx,cy,0,cx,cy,r*1.15);
+    g.addColorStop(0,cor+hex(forca));
+    g.addColorStop(.62,cor+hex(forca*.55));
+    g.addColorStop(1,cor+'00');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(cx,cy,r*1.15,0,Math.PI*2); ctx.fill();
+  };
+
+  // FOGO: labaredas subindo do corpo + brasas
   if(fire){
-    ctx.globalAlpha=.72+.18*pulse;ctx.strokeStyle='#ff5b1f';ctx.shadowColor='#ff7a22';ctx.shadowBlur=8;ctx.lineWidth=2;
-    ctx.beginPath();ctx.arc(e.x,e.y,r+3,0,Math.PI*2);ctx.stroke();
-    ctx.fillStyle='#ff9b23';
-    for(let i=-1;i<=1;i++){const x=e.x+i*r*.55,y=e.y-r*.65;ctx.beginPath();ctx.moveTo(x-4,y+6);ctx.quadraticCurveTo(x-5,y-5-pulse*5,x+1,y-12-(i===0?5:0));ctx.quadraticCurveTo(x+7,y-2,x+4,y+6);ctx.closePath();ctx.fill();}
-    ctx.shadowBlur=0;
+    ctx.globalCompositeOperation='lighter';
+    ctx.globalAlpha=1; banhar('#ff5a10',.30+.12*pulse);
+    for(let i=0;i<5;i++){
+      const f=seed+i*1.7+t*.009;
+      const bx=cx+Math.sin(f*1.3+i)*r*.62;
+      const alt=r*(.75+.45*((Math.sin(f)+1)/2));
+      const by=cy-r*.35;
+      ctx.globalAlpha=.55+.3*((Math.sin(f*1.7)+1)/2);
+      ctx.fillStyle='#ff8a1e';
+      ctx.beginPath(); ctx.moveTo(bx-r*.19,by);
+      ctx.quadraticCurveTo(bx-r*.24,by-alt*.55,bx,by-alt);
+      ctx.quadraticCurveTo(bx+r*.24,by-alt*.55,bx+r*.19,by);
+      ctx.closePath(); ctx.fill();
+      ctx.globalAlpha=.75; ctx.fillStyle='#ffd94a';
+      ctx.beginPath(); ctx.moveTo(bx-r*.08,by);
+      ctx.quadraticCurveTo(bx-r*.10,by-alt*.42,bx,by-alt*.68);
+      ctx.quadraticCurveTo(bx+r*.10,by-alt*.42,bx+r*.08,by);
+      ctx.closePath(); ctx.fill();
+    }
+    for(let i=0;i<4;i++){
+      const p=((t*.0006+i*.27+seed)%1);
+      ctx.globalAlpha=(1-p)*.85; ctx.fillStyle=i%2?'#ffb43a':'#ff6a18';
+      ctx.fillRect(cx+Math.sin(seed+i*2.4+p*4)*r*.8, cy-r*.3-p*r*2.1, 2,2);
+    }
+    ctx.globalCompositeOperation='source-over';
   }
-  if(active('blood')){
-    ctx.globalAlpha=.78;ctx.strokeStyle='#e62f36';ctx.fillStyle='#ff4650';ctx.lineWidth=2;
-    ctx.beginPath();ctx.arc(e.x,e.y,r+3,-.15,Math.PI+.2);ctx.stroke();
-    for(let i=-1;i<=1;i++){const x=e.x+i*r*.55,y=e.y+r*.7;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y+6+(i+1)*2);ctx.stroke();ctx.beginPath();ctx.arc(x,y+9+(i+1)*2,2,0,Math.PI*2);ctx.fill();}
-  }
-  if(active('arcane')){
-    ctx.globalAlpha=.85;ctx.strokeStyle='#c668ff';ctx.fillStyle='#e5a7ff';ctx.lineWidth=1.5;
-    ctx.beginPath();ctx.arc(e.x,e.y,r+7,t*.002,t*.002+Math.PI*1.6);ctx.stroke();
-    for(let i=0;i<4;i++){const a=t*.002+i*Math.PI/2;ctx.fillRect(e.x+Math.cos(a)*(r+7)-2,e.y+Math.sin(a)*(r+7)-2,4,4);}
-  }
-  if(active('electric')){
-    ctx.globalAlpha=.8+.2*pulse;ctx.strokeStyle='#ffe34d';ctx.shadowColor='#fff16b';ctx.shadowBlur=7;ctx.lineWidth=2;
-    for(let i=0;i<3;i++){const a=t*.006+i*Math.PI*2/3;ctx.beginPath();for(let j=0;j<5;j++){const rr=r+5+(j%2?5:0),aa=a+j*.27,x=e.x+Math.cos(aa)*rr,y=e.y+Math.sin(aa)*rr;(j?ctx.lineTo(x,y):ctx.moveTo(x,y));}ctx.stroke();}ctx.shadowBlur=0;
-  }
+
+  // GELO: crosta cobrindo o corpo + cristais
   if(ice){
-    ctx.globalAlpha=(e.frozen ? .58 : .26);ctx.fillStyle=e.frozen?'#91edff':'#4f9ed9';ctx.beginPath();ctx.arc(e.x,e.y,r+2,0,Math.PI*2);ctx.fill();
-    ctx.globalAlpha=.9;ctx.strokeStyle='#d8fbff';ctx.lineWidth=1.5;
-    for(let i=0;i<3;i++){const a=i*Math.PI/3;ctx.beginPath();ctx.moveTo(e.x-Math.cos(a)*r*.65,e.y-Math.sin(a)*r*.65);ctx.lineTo(e.x+Math.cos(a)*r*.65,e.y+Math.sin(a)*r*.65);ctx.stroke();}
-    for(let i=0;i<3;i++){const a=t*.001+i*2.1,cr=2+i*.45;ctx.beginPath();ctx.arc(e.x+Math.cos(a)*r*.9,e.y+Math.sin(a)*r*.75,cr,0,Math.PI*2);ctx.stroke();}
+    const cong=!!e.frozen;
+    ctx.globalAlpha=cong?.62:.34;
+    ctx.fillStyle=cong?'#bdf0ff':'#7cc4ee';
+    ctx.beginPath(); ctx.arc(cx,cy,r*1.02,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=cong?.5:.3; banhar('#9fe4ff',.5);
+    ctx.globalAlpha=cong?.95:.7; ctx.fillStyle='#e8fbff'; ctx.strokeStyle='#9fdcf5'; ctx.lineWidth=1;
+    for(let i=0;i<5;i++){
+      const a=seed+i*(Math.PI*2/5), br=r*.85;
+      const px=cx+Math.cos(a)*br, py=cy+Math.sin(a)*br*.85;
+      const cmp=r*(.22+.12*((i*7%5)/5));
+      ctx.beginPath();
+      ctx.moveTo(px+Math.cos(a)*cmp,py+Math.sin(a)*cmp);
+      ctx.lineTo(px+Math.cos(a+2.4)*cmp*.45,py+Math.sin(a+2.4)*cmp*.45);
+      ctx.lineTo(px+Math.cos(a-2.4)*cmp*.45,py+Math.sin(a-2.4)*cmp*.45);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+    if(cong){
+      ctx.globalAlpha=.5; ctx.strokeStyle='#ffffff'; ctx.lineWidth=1;
+      for(let i=0;i<3;i++){ const a=seed*2+i*2.1;
+        ctx.beginPath(); ctx.moveTo(cx,cy);
+        ctx.lineTo(cx+Math.cos(a)*r*.7,cy+Math.sin(a)*r*.7); ctx.stroke(); }
+    }
+    ctx.globalAlpha=.85; ctx.fillStyle='#ffffff';
+    for(let i=0;i<3;i++){ const f=t*.004+seed+i*2.2;
+      ctx.fillRect(cx+Math.cos(f)*r*.75, cy+Math.sin(f*1.3)*r*.7, 2,2); }
   }
+
+  // RAIO: arcos ATRAVESSANDO o corpo + estalo branco
+  if(active('electric')){
+    ctx.globalCompositeOperation='lighter';
+    if((Math.floor(t/110)+Math.floor(seed*10))%4===0){ ctx.globalAlpha=.5; banhar('#fdfbc8',.6); }
+    ctx.globalAlpha=.95; ctx.strokeStyle='#fff9a8'; ctx.shadowColor='#ffe94d'; ctx.shadowBlur=8; ctx.lineWidth=1.6;
+    for(let i=0;i<3;i++){
+      const a=seed+i*2.09+Math.floor(t/90)*1.1;
+      ctx.beginPath();
+      ctx.moveTo(cx+Math.cos(a)*r*.95, cy+Math.sin(a)*r*.95);
+      for(let j=0;j<4;j++){
+        const tt=(j+1)/4;
+        ctx.lineTo(cx+Math.cos(a+Math.PI)*r*.95*tt + Math.cos(a+1.57)*((j%2?1:-1)*r*.26),
+                   cy+Math.sin(a+Math.PI)*r*.95*tt + Math.sin(a+1.57)*((j%2?1:-1)*r*.26));
+      }
+      ctx.stroke();
+    }
+    ctx.shadowBlur=0;
+    ctx.globalAlpha=.9; ctx.fillStyle='#ffffff';
+    for(let i=0;i<3;i++){ const f=t*.012+seed+i*2.4;
+      ctx.fillRect(cx+Math.cos(f)*r*1.05, cy+Math.sin(f)*r*.95, 2,2); }
+    ctx.globalCompositeOperation='source-over';
+  }
+
+  // VENENO: corpo esverdeado + bolhas subindo
+  if(poison){
+    ctx.globalAlpha=.30+.10*pulse; banhar('#3fbf46',.55);
+    ctx.strokeStyle='#b6ff86'; ctx.fillStyle='rgba(140,240,110,.45)'; ctx.lineWidth=1.2;
+    for(let i=0;i<4;i++){
+      const p=((t*.0005+i*.29+seed)%1);
+      ctx.globalAlpha=(1-p)*.9;
+      ctx.beginPath();
+      ctx.arc(cx+Math.sin(seed+i*1.9)*r*.6, cy+r*.2-p*r*1.9, 1.5+i*.6, 0, Math.PI*2);
+      ctx.fill(); ctx.stroke();
+    }
+  }
+
+  // SOMBRA: fumaca escura saindo do corpo
+  if(active('shadow')){
+    ctx.globalAlpha=.34+.12*pulse; banhar('#6a1fb8',.6);
+    ctx.fillStyle='#2a0d4a';
+    for(let i=0;i<4;i++){
+      const p=((t*.0004+i*.31+seed)%1);
+      ctx.globalAlpha=(1-p)*.55;
+      ctx.beginPath();
+      ctx.arc(cx+Math.sin(seed*2+i*1.6+p*3)*r*.7, cy-p*r*1.7, r*.20*(1+p), 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  // ARCANO: runas orbitando
+  if(active('arcane')){
+    ctx.globalAlpha=.26; banhar('#a34cff',.6);
+    ctx.globalAlpha=.9; ctx.fillStyle='#e8b6ff'; ctx.strokeStyle='#c77bff'; ctx.lineWidth=1;
+    for(let i=0;i<4;i++){
+      const a=t*.0022+i*Math.PI/2+seed, rr=r*1.1;
+      ctx.save();
+      ctx.translate(cx+Math.cos(a)*rr, cy+Math.sin(a)*rr*.72); ctx.rotate(a);
+      ctx.fillRect(-2.5,-2.5,5,5); ctx.strokeRect(-4,-4,8,8);
+      ctx.restore();
+    }
+  }
+
+  // SOLAR: corpo incandescente + raios curtos
+  if(active('solar')){
+    ctx.globalCompositeOperation='lighter';
+    ctx.globalAlpha=1; banhar('#ffd447',.34+.12*pulse);
+    ctx.globalAlpha=.8; ctx.strokeStyle='#fff0a8'; ctx.lineWidth=1.6;
+    for(let i=0;i<8;i++){ const a=i*Math.PI/4+t*.0012;
+      ctx.beginPath();
+      ctx.moveTo(cx+Math.cos(a)*r*1.02, cy+Math.sin(a)*r*1.02);
+      ctx.lineTo(cx+Math.cos(a)*(r*1.02+4+pulse*4), cy+Math.sin(a)*(r*1.02+4+pulse*4));
+      ctx.stroke(); }
+    ctx.globalCompositeOperation='source-over';
+  }
+
+  // VENTO: rajadas cortando o corpo
+  if(active('wind')){
+    ctx.globalAlpha=.22+.10*pulse; banhar('#7fe6ff',.5);
+    ctx.strokeStyle='#d6faff'; ctx.lineCap='round';
+    for(let i=0;i<6;i++){
+      const p=((t*.0016+i*.17+seed)%1), yy=cy-r*.85+p*r*1.7;
+      const w=r*(.45+.6*Math.sin(p*Math.PI));
+      ctx.globalAlpha=Math.max(.25,Math.sin(p*Math.PI))*.9;
+      ctx.lineWidth=1.2+Math.sin(p*Math.PI)*1.4;
+      ctx.beginPath(); ctx.moveTo(cx-w,yy);
+      ctx.quadraticCurveTo(cx,yy-r*.14,cx+w,yy); ctx.stroke();
+    }
+    // folhas/poeira girando em volta
+    ctx.fillStyle='#eafdff';
+    for(let i=0;i<4;i++){ const a=t*.005+seed+i*1.57;
+      ctx.globalAlpha=.65;
+      ctx.fillRect(cx+Math.cos(a)*r*1.1, cy+Math.sin(a)*r*.8, 2,2); }
+  }
+
+  // SANGRAMENTO: gotas escorrendo
+  if(active('blood')){
+    ctx.globalAlpha=.26; banhar('#c2202a',.6);
+    ctx.fillStyle='#ff3b46';
+    for(let i=0;i<3;i++){
+      const p=((t*.0007+i*.36+seed)%1);
+      ctx.globalAlpha=(1-p)*.95;
+      ctx.beginPath(); ctx.arc(cx-r*.5+i*r*.5, cy+r*.15+p*r*1.1, 1.8+(1-p), 0, Math.PI*2); ctx.fill();
+    }
+  }
+
+  // FISICO: clarao curto de impacto
   if(active('physical')){
-    ctx.globalAlpha=.9;ctx.strokeStyle='#fff4df';ctx.shadowColor='#ffffff';ctx.shadowBlur=5;ctx.lineWidth=2.5;
-    ctx.beginPath();ctx.moveTo(e.x-r*.8,e.y-r*.65);ctx.lineTo(e.x+r*.7,e.y+r*.55);ctx.moveTo(e.x+r*.45,e.y-r*.78);ctx.lineTo(e.x-r*.35,e.y+r*.15);ctx.stroke();
+    ctx.globalAlpha=.55; ctx.strokeStyle='#fff6e2'; ctx.shadowColor='#ffffff'; ctx.shadowBlur=6; ctx.lineWidth=2.5;
+    ctx.beginPath();
+    ctx.moveTo(cx-r*.75,cy-r*.6); ctx.lineTo(cx+r*.65,cy+r*.5);
+    ctx.stroke(); ctx.shadowBlur=0;
   }
+
+  ctx.globalAlpha=1;
   ctx.restore();
 }
 
@@ -24277,18 +24900,20 @@ function loop(ts){
 }
 
 // ─── Ash particles overlay (desert) ───
-const desertSandParticles=Array.from({length:24},(_,i)=>({
+const desertSandParticles=Array.from({length:70},(_,i)=>({
   x:Math.random()*W,
-  y:H*(.69+Math.random()*.28),
-  speed:5+Math.random()*10,
+  y:H*(.62+Math.random()*.35),      // concentrados perto do chao
+  speed:14+Math.random()*26,
   lift:1+Math.random()*3,
-  size:i%9===0?2:1,
+  size:i%5===0?2:1,
   phase:Math.random()*Math.PI*2,
 }));
 const desertDustGusts=[
-  {period:11200,start:.12,duration:.16,y:.55,side:'left',phase:.4},
-  {period:13900,start:.48,duration:.13,y:.71,side:'right',phase:2.1},
-  {period:17300,start:.76,duration:.11,y:.84,side:'left',phase:4.3}
+  {period:7200, start:.06,duration:.30,y:.52,side:'left', phase:.4},
+  {period:8600, start:.34,duration:.28,y:.68,side:'right',phase:2.1},
+  {period:10400,start:.62,duration:.26,y:.82,side:'left', phase:4.3},
+  {period:12700,start:.20,duration:.24,y:.61,side:'right',phase:1.2},
+  {period:15100,start:.70,duration:.22,y:.90,side:'left', phase:3.4}
 ];
 function drawDesertDust(t){
   ctx.save();
@@ -24310,9 +24935,9 @@ function drawDesertDust(t){
       const length=46+i*15;
       const grad=ctx.createLinearGradient(x,y,x+direction*length,y);
       grad.addColorStop(0,'rgba(255,221,154,0)');
-      grad.addColorStop(.45,`rgba(236,183,101,${.08*fade})`);
+      grad.addColorStop(.45,`rgba(244,196,118,${.30*fade})`);
       grad.addColorStop(1,'rgba(255,221,154,0)');
-      ctx.strokeStyle=grad;ctx.lineWidth=1+i*.35;
+      ctx.strokeStyle=grad;ctx.lineWidth=1.6+i*.7;
       ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo(x+direction*length*.5,y-2,x+direction*length,y+1);ctx.stroke();
     }
   }
@@ -24323,20 +24948,20 @@ function drawDesertDust(t){
     p.x+=p.speed*.016;
     p.y+=Math.sin(t*.0014+p.phase)*p.lift*.012;
     if(p.x>W+3){p.x=-3;p.y=H*(.69+Math.random()*.28);}
-    const floorFade=Math.max(0,Math.min(1,(p.y-H*.64)/(H*.33)));
-    ctx.globalAlpha=(.18+.16*Math.sin(t*.0011+p.phase)**2)*floorFade;
-    ctx.fillStyle=p.size===2?'#f5c46d':'#d99142';
+    const floorFade=Math.max(.35,Math.min(1,(p.y-H*.56)/(H*.4)));
+    ctx.globalAlpha=(.5+.34*Math.sin(t*.0011+p.phase)**2)*floorFade;
+    ctx.fillStyle=p.size===2?'#ffdc96':'#eaa856';
     ctx.fillRect(Math.round(p.x),Math.round(p.y),p.size,p.size);
   }
   ctx.restore();
 }
-const emberParticles = Array.from({length:30},(_,i)=>({
+const emberParticles = Array.from({length:80},(_,i)=>({
   x:Math.random()*W, y:Math.random()*H,
-  speed:7+Math.random()*22,
-  drift:(Math.random()-0.5)*10,
-  size:i%11===0?2:1,
+  speed:9+Math.random()*26,
+  drift:(Math.random()-0.5)*12,
+  size:i%4===0?2:1,
   phase:Math.random()*Math.PI*2,
-  ash:i%3===0,
+  ash:i%3===0,                       // 1/3 cinzas escuras, 2/3 brasas laranja
 }));
 function drawVolcanoEmbers(t){
   ctx.save();
@@ -24345,11 +24970,20 @@ function drawVolcanoEmbers(t){
     p.x+=(p.drift*0.016)+Math.sin(t*0.0017+p.phase)*0.22;
     if(p.y<-4){ p.y=H+4; p.x=Math.random()*W; }
     if(p.x>W+4) p.x=-4; if(p.x<-4) p.x=W+4;
-    const pulse=.24+.22*(.5+.5*Math.sin(t*.0025+p.phase));
-    ctx.fillStyle=p.ash
-      ?`rgba(35,22,22,${.20+pulse*.42})`
-      :`rgba(255,${74+Math.floor(48*Math.sin(t*.002+p.phase))},12,${pulse})`;
-    ctx.fillRect(Math.round(p.x),Math.round(p.y),p.size,p.size);
+    const pulse=.55+.42*(.5+.5*Math.sin(t*.0025+p.phase));
+    if(p.ash){
+      ctx.fillStyle=`rgba(28,18,18,${.45+pulse*.4})`;
+      ctx.fillRect(Math.round(p.x),Math.round(p.y),p.size,p.size);
+    }else{
+      // brasa com halo, para ler contra o fundo escuro
+      const gl=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.size*2.6);
+      gl.addColorStop(0,`rgba(255,${170+Math.floor(60*Math.sin(t*.002+p.phase))},90,${pulse})`);
+      gl.addColorStop(1,'rgba(255,90,10,0)');
+      ctx.fillStyle=gl;
+      ctx.fillRect(p.x-p.size*2.6,p.y-p.size*2.6,p.size*5.2,p.size*5.2);
+      ctx.fillStyle=`rgba(255,${190+Math.floor(50*Math.sin(t*.003+p.phase))},140,${Math.min(1,pulse*1.2)})`;
+      ctx.fillRect(Math.round(p.x),Math.round(p.y),p.size,p.size);
+    }
   }
   ctx.restore();
 }
@@ -26519,6 +27153,8 @@ const DNG_RELICS=[
   {id:'regen', icon:'💚',name:'Coração de Pedra', desc:'1HP/3s',        price:16,apply(d){d._regenT=3000;}},
   {id:'maxhp', icon:'❤️',name:'Frasco de Sangue', desc:'+40HP+cura',    price:14,apply(d){d.pMaxHp+=40;d.pHp=Math.min(d.pHp+40,d.pMaxHp);}},
 ];
+window.DNG_RELICS=DNG_RELICS;
+window.DNG_RING_TYPES=DNG_RING_TYPES;
 function dngStorePixelKind(item){
   if(item?.pixelKey)return item.pixelKey;
   if(item?.defId)return dngWeaponPixelKind(item);
@@ -28173,8 +28809,10 @@ const DNG={
       const grid=document.getElementById('dng-shop-grid');
       items.forEach(item=>{
         const card=document.createElement('div');const ca=self.pCoins>=item.price;
+        const relicArt=item.id?CODEX_RELIC_ART[`dng_relic_${item.id}`]:null;
+        const itemArt=relicArt?codexArtIconHtml(relicArt,46,'dng-shop-relic-art','#63d8d1'):gamePixelIconHtml(dngStorePixelKind(item),30);
         card.style.cssText=`background:rgba(8,5,18,0.97);border:1px solid rgba(${ca?'200,168,75':'60,44,16'},0.4);border-radius:5px;padding:clamp(8px,1.5vw,12px);cursor:${ca?'pointer':'not-allowed'};opacity:${ca?1:0.45};transition:all .15s;`;
-        card.innerHTML=`<div style="margin-bottom:3px;">${gamePixelIconHtml(dngStorePixelKind(item),30)}</div><div style="font-size:clamp(10px,1.5vw,12px);font-weight:bold;color:#f0d080;margin-bottom:2px;">${item.name}</div><div style="font-size:clamp(7px,1.2vw,9px);color:#7a6030;line-height:1.5;margin-bottom:5px;">${item.desc}</div><div class="pixel-inline" style="font-size:clamp(10px,1.6vw,12px);color:#c8a84b;font-weight:bold;">${gamePixelIconHtml('coin',13)} ${item.price}</div>`;
+        card.innerHTML=`<div style="margin-bottom:5px;min-height:46px;display:flex;align-items:center;justify-content:center;">${itemArt}</div><div style="font-size:clamp(10px,1.5vw,12px);font-weight:bold;color:#f0d080;margin-bottom:2px;">${item.name}</div><div style="font-size:clamp(7px,1.2vw,9px);color:#7a6030;line-height:1.5;margin-bottom:5px;">${item.desc}</div><div class="pixel-inline" style="font-size:clamp(10px,1.6vw,12px);color:#c8a84b;font-weight:bold;">${gamePixelIconHtml('coin',13)} ${item.price}</div>`;
         if(ca){
           card.onmouseenter=()=>card.style.borderColor='rgba(200,168,75,0.8)';
           card.onmouseleave=()=>card.style.borderColor='rgba(200,168,75,0.4)';
@@ -28246,6 +28884,7 @@ const DNG={
     if(dy<0)this.pDir='up';else if(dy>0)this.pDir='down';
     else if(dx<0)this.pDir='left';else if(dx>0)this.pDir='right';
     if(dx||dy)this.pFacing=Math.atan2(dy,dx);
+    this._pMoving=moving;
     if(moving){this.pFrameTick+=dt;if(this.pFrameTick>180){this.pFrameTick=0;this.pFrameIdx=(this.pFrameIdx+1)%3;}}
     else this.pFrameIdx=0;
     // Attack animation timer
@@ -29261,15 +29900,18 @@ const DNG={
       else if(this.pDir==='right'){direction='side';flipX=true;}
 
       // Determine frame: attack animation uses cast frames (3,4), walk uses 0-2
-      let frameIdx;
+      let frameIdx, heroState='idle', heroArg=0;
       if(this.pAttackAnim>0){
         const animProg=this.pAttackAnim/this.pAttackAnimMax;
         frameIdx=animProg>0.5?3:4; // cast1 then cast2
+        heroState='atk'; heroArg=1-animProg;   // 0..1 = inicio -> fim do golpe
       } else {
         frameIdx=Math.min(this.pFrameIdx,2);
+        if(this.pFrameIdx>0||this._pMoving) heroState='walk';
       }
-      const heroVisual=getHeroVisual(classId,direction,frameIdx,heroPal);
-      drawSpriteAt(heroVisual.sprite,heroVisual.pal,psx,psy+14,flipX,1);
+      const heroVisual=getHeroVisual(classId,direction,frameIdx,heroPal,null,heroState,heroArg);
+      if(!drawHeroVisual(heroVisual,psx,psy+14,flipX))
+        drawSpriteAt(heroVisual.sprite,heroVisual.pal,psx,psy+14,flipX,1);
       if(this.pAttackAnim>0&&typeof drawHeroSkinAttackEffect==='function'){
         const skinAttackProgress=1-this.pAttackAnim/this.pAttackAnimMax;
         drawHeroSkinAttackEffect(ctx,psx,psy,{progress:skinAttackProgress,direction:this.pDir,scale:1});
@@ -29611,6 +30253,40 @@ const DNG={
         ctx.restore();
       }
       ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+    }
+
+    // ══ BARRA DE VIDA DO BOSS — desenhada APÓS a fog para nunca ficar escurecida ══
+    {
+      const boss=this.entities.find(e=>e.type==='boss'&&!e.dead);
+      if(boss){
+        const hyB=!!boss._hyper;                    // hiper boss: LARANJA de perigo, barra maior
+        const bw=hyB?Math.min(460,W-60):360, bh=hyB?16:12, bx=(W-bw)/2, by=H-46;
+        const pct=Math.max(0,Math.min(1,boss.hp/boss.maxHp));
+        const enraged=boss.hp<boss.maxHp*0.5;
+        ctx.save();
+        ctx.fillStyle='rgba(5,2,12,0.92)';ctx.fillRect(bx-8,by-20,bw+16,bh+28);
+        ctx.strokeStyle=hyB?'rgba(255,150,30,0.75)':'rgba(180,50,255,0.5)';
+        ctx.lineWidth=hyB?2:1;ctx.strokeRect(bx-8,by-20,bw+16,bh+28);
+        if(hyB){ // moldura de perigo pulsante
+          ctx.globalAlpha=0.35+0.25*Math.sin(ts*0.006);
+          ctx.strokeStyle='rgba(255,190,80,0.9)';ctx.lineWidth=1;
+          ctx.strokeRect(bx-11,by-23,bw+22,bh+34);
+          ctx.globalAlpha=1;
+        }
+        ctx.font=hyB?'bold 10px Courier New':'9px Courier New';
+        ctx.fillStyle=hyB?'#ffa030':'#aa55dd';ctx.textAlign='center';
+        ctx.fillText(`${hyB?'🟠☠ HIPER BOSS · ':'☠ '}${boss.name.toUpperCase()}${enraged?' ⚡ENRAIVECIDO':''}`,W/2,by-7);
+        ctx.fillStyle='rgba(18,4,38,0.95)';ctx.fillRect(bx,by,bw,bh);
+        const grd=ctx.createLinearGradient(bx,by,bx+bw,by);
+        if(hyB){grd.addColorStop(0,'#7a3000');grd.addColorStop(0.5,'#ff8c00');grd.addColorStop(1,'#ffd870');}
+        else {grd.addColorStop(0,'#440077');grd.addColorStop(0.5,'#cc44ff');grd.addColorStop(1,'#ff88ff');}
+        ctx.fillStyle=grd;ctx.fillRect(bx,by,bw*pct,bh);
+        ctx.fillStyle='rgba(255,255,255,0.18)';ctx.fillRect(bx,by+1,bw*pct,Math.max(2,bh*0.28));
+        ctx.font='8px Courier New';ctx.fillStyle='rgba(255,255,255,0.9)';
+        ctx.fillText(`${Math.floor(boss.hp)} / ${boss.maxHp}`,W/2,by+bh-2);
+        ctx.textAlign='left';
+        ctx.restore();
+      }
     }
 
     ctx.restore(); // end screen shake transform
@@ -30122,37 +30798,66 @@ function _animFishScene(){
   const sk = fss.camShake>0 ? Math.sin(now*0.05)*(fss.camShake*6) : 0;
   c.save(); c.translate(sk,0);
 
-  // ── Player character (pixel-art wizard) ──
-  const px = W2*fss.playerX, py = bankY - 2;
-  // Walking animation when moving to spot
+  // ── Personagem: a MESMA arte do acampamento (nao mais a grade antiga) ──
+  const px = W2*fss.playerX, py = bankY + 1;      // pe assentado na margem
   const walkBob = fss.phase==='walking' ? Math.sin(now*0.01)*3 : 0;
-  // Shadow
-  c.fillStyle='rgba(0,0,0,0.4)'; c.beginPath(); c.ellipse(px,py+4,14,4,0,0,Math.PI*2); c.fill();
+  c.fillStyle='rgba(0,0,0,0.4)'; c.beginPath(); c.ellipse(px,py,14,4,0,0,Math.PI*2); c.fill();
 
-  // Personagem maior e fora do painel, para a animação da vara ficar sempre visível.
   const PX=W2>=1500?5:(W2>=900?4:3);
-  const fishingSide=(fss.phase==='casting'||fss.phase==='waiting'||fss.phase==='bite'||fss.phase==='minigame');
+  // anda de lado avancando ate a margem e pesca de lado, virado para a agua
+  const deLado=(fss.phase==='walking'||fss.phase==='casting'||fss.phase==='waiting'
+              ||fss.phase==='bite'||fss.phase==='minigame'||fss.phase==='success');
   const classId=(typeof selectedClass!=='undefined'&&selectedClass.p1)||'mage';
-  const fishingVisual=getHeroVisual(classId,fishingSide?'side':'down',fishingSide?1:0);
-  const wiz=fishingVisual.sprite, pal=fishingVisual.pal;
-  const wizW=wiz[0].length*PX;
-  // Flip for right-facing (toward water)
-  const shouldFlip = fishingSide;
-  c.save();
-  if(shouldFlip){ c.translate(Math.round(px*2), 0); c.scale(-1, 1); }
-  for(let row=0;row<wiz.length;row++){
-    for(let col=0;col<wiz[row].length;col++){
+  let alturaHeroi=0;
+
+  const cjt=(typeof HERO_IMG_SETS!=='undefined')?HERO_IMG_SETS[classId]:null;
+  if(cjt && typeof heroImg==='function'){
+    const esc=W2>=1500?2.3:(W2>=900?1.9:1.4), lw=Math.round(cjt.frame*esc);
+    const ms=(typeof HERO_IMG_WALK_MS!=='undefined')?HERO_IMG_WALK_MS:110;
+    let im=null, tremor=0, resp=0;
+    if(fss.phase==='walking')
+      im=heroImg(classId,'side',Math.floor(now/ms),'walkFrame');       // ciclo de caminhada
+    else if(fss.phase==='casting'){                                     // o lance segue a vara
+      const n=cjt.side.atk.length, pr=Math.max(0,Math.min(.999,(fss.rodAngle+1)/0.9));
+      im=heroImg(classId,'side',Math.floor(pr*n),'atkFrame');
+    }
+    else if(fss.phase==='bite'){                                        // fisgou: sacode
+      im=heroImg(classId,'side',1,'atkFrame'); tremor=Math.sin(now*0.05)*2.4;
+    }
+    else if(fss.phase==='minigame'){                                    // puxando a linha
+      im=heroImg(classId,'side',1,'atkFrame'); tremor=Math.sin(now*0.03)*1.3;
+    }
+    else if(deLado){                                                    // esperando: respira
+      im=heroImg(classId,'side',0,'idle'); resp=Math.sin(now*0.0016)*1.2;
+    }
+    else im=heroImg(classId,'down',0,'idle');
+    if(im){
+      const dx=Math.round(px-lw/2+tremor), dy=Math.round(py-cjt.feet*esc+walkBob+resp);
+      c.save(); c.imageSmoothingEnabled=false;
+      if(deLado){ c.translate(dx+lw,dy); c.scale(-1,1); c.drawImage(im,0,0,lw,lw); }
+      else c.drawImage(im,dx,dy,lw,lw);
+      c.restore();
+      alturaHeroi=cjt.feet*esc;
+    }
+  }
+  if(!alturaHeroi){                       // arte ainda nao carregou: grade antiga
+    const fv=getHeroVisual(classId,deLado?'side':'down',deLado?1:0);
+    const wiz=fv.sprite, pal=fv.pal, wizW=wiz[0].length*PX;
+    c.save();
+    if(deLado){ c.translate(Math.round(px*2),0); c.scale(-1,1); }
+    for(let row=0;row<wiz.length;row++) for(let col=0;col<wiz[row].length;col++){
       const ch=wiz[row][col]; if(ch===' ') continue;
       const clr=pal[ch]; if(!clr) continue;
       c.fillStyle=clr;
       c.fillRect(Math.round(px-wizW/2+col*PX), Math.round(py-wiz.length*PX+row*PX+walkBob), PX, PX);
     }
+    c.restore();
+    alturaHeroi=wiz.length*PX;
   }
-  c.restore();
 
   // ── Vara + linha + boia (visual novo) ──
   if(fss.phase==='casting'||fss.phase==='waiting'||fss.phase==='bite'||fss.phase==='minigame'||fss.phase==='success'){
-    const rodBase = {x:px+PX*3, y:py-Math.max(38,wiz.length*PX*0.62)};
+    const rodBase = {x:px+PX*3, y:py-Math.max(38,alturaHeroi*0.62)};
     const rodTip  = {x:rodBase.x+Math.cos(fss.rodAngle)*74, y:rodBase.y+Math.sin(fss.rodAngle)*74};
     // Vara com curva (verga sob tensão no minigame/bite)
     const tension = (fss.phase==='bite'||fss.phase==='minigame') ? Math.sin(now*0.02)*6 : 0;
@@ -31079,11 +31784,23 @@ window.showScreen=function(){
 scheduleResponsiveLayout();
 
 // ── Herói do menu: reflete a última classe escolhida pelo jogador ──
+// Ritmo da vitrine do menu: caminhada continua e lenta (sem pausa).
+const MENU_HERO_STEP=300;
 window.drawMenuHero=function(classId){
   try{
     const cv=document.getElementById('hd-hero');
     if(!cv||typeof getHeroVisual!=='function') return;
     const cid=classId||(typeof selectedClass!=='undefined'&&selectedClass.p1)||'mage';
+    const set=(typeof HERO_IMG_SETS!=='undefined')?HERO_IMG_SETS[cid]:null;
+    if(set&&set.crop&&typeof drawHeroPortrait==='function'){
+      // canvas dimensionado pelo recorte (sem moldura vazia) => personagem maior
+      const K=8;
+      if(cv.width!==set.crop.w*K||cv.height!==set.crop.h*K){
+        cv.width=set.crop.w*K; cv.height=set.crop.h*K;
+      }
+      drawHeroPortrait(cv,cid,'walkFrame',Math.floor(Date.now()/MENU_HERO_STEP)%6);
+      return;
+    }
     const visual=getHeroVisual(cid,'down',0);
     const spr=visual.sprite;
     const PXH=12;
@@ -31093,8 +31810,1013 @@ window.drawMenuHero=function(classId){
   }catch(e){}
 };
 window.drawMenuHero();
+// mantem a vitrine animada enquanto o menu estiver visivel
+setInterval(()=>{
+  const cv=document.getElementById('hd-hero');
+  if(cv&&cv.offsetParent!==null) window.drawMenuHero();
+}, 120);
 
 
+
+// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
+// [ARQUEIRO] NPC da fogueira — conversa por temas.
+// Mesmo desenho de caixa usado pelo NPC do Bosque na Dungeon.
+// Para editar as falas, mexa so' na tabela TEMAS abaixo.
+// ══════════════════════════════════════════════════════════════════
+window.ArqueiroNPC = (function(){
+  const COR = '#9fe08a', NOME = 'Arqueiro', PAPEL = 'Veterano da fogueira';
+  const OI_PRIMEIRA = 'Mais um que resolveu atravessar aquele portal. Senta um pouco — fogo bom é fogo que a gente aproveita <i>antes</i> de precisar dele. Pergunte o que quiser.';
+  const OI = '"Veio descansar ou quer saber alguma coisa?"';
+
+  const TEMAS = [
+    ['Sobre o acampamento', [
+      ['O que eu deveria fazer aqui no acampamento?',
+       'Use o tempo aqui. Cultive recursos, cozinhe, melhore seus equipamentos, cuide dos seus companheiros e prepare a próxima expedição. Quem trata o acampamento como decoração costuma descobrir o erro tarde demais.'],
+      ['Para que serve a fazenda?',
+       'Recursos não aparecem sozinhos. Plante, colha e guarde o que conseguir. Algumas coisas que parecem simples aqui podem fazer bastante diferença lá fora.'],
+      ['Vale a pena cozinhar antes de sair?',
+       'Sempre que puder. Uma boa refeição pode lhe dar justamente aquela vantagem que faltaria no próximo combate. E tente acertar bem o preparo... comida excelente faz mais que encher o estômago.'],
+      ['E aquela oficina?',
+       'Equipamento bom pode virar equipamento melhor. Passe por lá quando tiver recursos. Às vezes melhorar o que você já possui é mais inteligente do que esperar encontrar algo perfeito.'],
+      ['Quem é Merlin?',
+       'Você pode perguntar isso a ele. Eu prefiro não tentar explicar magos. Toda vez que acho que entendi um deles, alguma coisa começa a brilhar.'],
+      ['O que tem no Santuário dos Pets?',
+       'Companheiros. E não subestime nenhum deles pelo tamanho. Já vi criaturas pequenas salvarem guerreiros bem maiores.'],
+      ['Vale a pena pescar?',
+       'Se tiver paciência. O lago parece tranquilo, mas nem tudo que vive na água é comum. Quanto mais raro o peixe, mais difícil fazê-lo chegar até você.'],
+      ['E o portal?',
+       'É onde a tranquilidade termina. Quando estiver preparado, é por ali que começa sua próxima expedição.'],
+    ]],
+    ['Preciso de dicas', [
+      ['Tem algum conselho antes de eu sair?',
+       'Não tente ser forte em tudo. Descubra o que sua classe faz melhor e construa sua estratégia ao redor disso. Uma boa build vale mais que uma mochila cheia de coisas sem propósito.'],
+      ['Por que escolher um Arqueiro?',
+       'Porque distância também é defesa. Nós somos rápidos, atacamos de longe e sabemos aproveitar um ponto fraco quando ele aparece.'],
+      ['Qual é o ponto fraco do Arqueiro?',
+       'Você não foi feito para trocar pancadas cara a cara. Se deixou alguma coisa enorme chegar perto o bastante para abraçá-lo, seu arco provavelmente já falhou em alguma etapa do plano.'],
+      ['O que é a Flecha de Plasma?',
+       'Uma flecha que conecta inimigos. O dano passa de um alvo para outro. Ótima quando eles cometem o erro de andar juntos.'],
+      ['O que eu deveria priorizar como Arqueiro?',
+       'Crítico, velocidade, alcance e mobilidade combinam muito bem conosco. Mas não siga números cegamente. Sua arma deve decidir parte da build.'],
+      ['Velocidade é realmente importante?',
+       'Para nós? Muito. Atacar sem ser alcançado é melhor que sobreviver a um golpe.'],
+      ['Crítico ou dano bruto?',
+       'Depende da arma. Mas há algo especialmente satisfatório em ver uma única flecha acertar exatamente onde deveria.'],
+      ['Devo guardar duas armas iguais?',
+       'Talvez. Duas armas iguais da mesma raridade podem valer mais juntas do que separadas. Pense antes de vender tudo que parece repetido.'],
+      ['Uma arma lendária muda muito?',
+       'Muito. Algumas deixam de ser apenas versões mais fortes e passam a mudar completamente a forma como você luta.'],
+      ['O que eu deveria procurar para um Arqueiro?',
+       'Uma boa luva melhora sua velocidade. Um Olho de Águia ajuda nos críticos. Uma aljava melhor pode favorecer disparos extras. E uma boa mira recompensa quem sabe manter distância.'],
+    ]],
+    ['Quero saber sobre as regiões', [
+      ['O que vou encontrar primeiro?',
+       'A Cripta. Mortos, corredores escuros e criaturas que já deveriam ter parado de se mover há muito tempo. Um começo acolhedor, não acha?'],
+      ['O que vem depois da Cripta?',
+       'A Floresta Assombrada. Ela começa depois das primeiras cinco ondas. Lá, enxergar o perigo nem sempre significa entendê-lo.'],
+      ['E depois da floresta?',
+       'A Fortaleza Congelada. O frio incomoda, mas as criaturas de lá incomodam muito mais.'],
+      ['Existe um deserto?',
+       'Existe. Ruínas, fósseis e areia até onde os olhos alcançam. Quando chegar lá, não confunda terreno aberto com terreno seguro.'],
+      ['Qual é a última região?',
+       'As Profundezas Vulcânicas. Se chegar até lá, provavelmente já não precisa mais dos meus conselhos. Provavelmente.'],
+    ]],
+    ['Fale sobre os chefes', [
+      ['Quem me espera na onda 5?',
+       'O Rei Cadáver. Primeiro grande teste da jornada. Não se empolgue demais quando chegar até ele. Sobreviver às primeiras ondas não significa estar pronto para um chefe.'],
+      ['E na onda 10?',
+       'Aracne Ancestral. Contra ela, ficar parado é uma ótima forma de descobrir como é ser comida de aranha.'],
+      ['Quem domina a região congelada?',
+       'O Gigante de Gelo. Grande, resistente e difícil de ignorar. Felizmente, também é difícil perder um alvo daquele tamanho.'],
+      ['O que existe no deserto?',
+       'O Verme Devorador. Quando o chão começar a parecer perigoso... confie no seu instinto.'],
+      ['E quem está no final?',
+       'Balrog. Onda vinte e cinco. Se você chegar até ele, esqueça tudo sobre economizar recursos. Não existe próxima batalha se você morrer naquela.'],
+      ['Qual chefe você acha mais perigoso?',
+       'O que você ainda não aprendeu a enfrentar. Depois que entende os movimentos de uma criatura, força deixa de ser tudo.'],
+    ]],
+    ['Quero saber sobre armas', [
+      ['Qual arco é melhor para começar?',
+       'O Arco Curto é rápido e simples. Não tenta impressionar ninguém. Apenas continua disparando. Para começar, isso é uma qualidade.'],
+      ['E o Arco Longo?',
+       'Para quem prefere precisão. É mais lento, mas alcança muito mais longe e suas evoluções favorecem perfuração e tiros devastadores.'],
+      ['O que acha da Besta Pesada?',
+       'Poderosa. Lenta. Brutal. Se quer disparar uma vez e fazer aquela flecha valer por três, ela vai lhe agradar.'],
+      ['Arco Venenoso é bom?',
+       'Veneno recompensa paciência. Acerte, mantenha distância e deixe a toxina trabalhar. Em níveis maiores, ela pode se espalhar de uma presa para outra.'],
+      ['E o Arco Explosivo?',
+       'Para quem acha que uma flecha atingindo um inimigo de cada vez é pouco. Excelente contra grupos.'],
+      ['Como funciona o Arco Ricochete?',
+       'A flecha encontra um alvo... depois outro... e depois começa a parecer que ela tem vontade própria. É ótimo quando os inimigos vêm em grupo.'],
+      ['O Arco Gélido vale a pena?',
+       'Controle é sobrevivência. Ele desacelera inimigos e, quando evolui, pode congelá-los. Um inimigo congelado tem grande dificuldade em matar você.'],
+      ['E o Arco Trovejante?',
+       'Meu favorito quando a batalha fica cheia. A descarga pode saltar entre alvos e, quando bem evoluído, transformar seus disparos em uma pequena tempestade.'],
+    ]],
+    ['Fale sobre os deuses', [
+      ['Artemis gosta de arqueiros?',
+       '"Gosta" talvez seja uma palavra forte. Artemis gosta de caçadores competentes. Acerte seus tiros e talvez consiga a atenção dela.'],
+      ['O que Artemis pode fazer por mim?',
+       'Ela entende precisão melhor que ninguém. Críticos, dano crítico, projéteis, caça a chefes... se você vive pelo arco, preste atenção quando ela aparecer.'],
+      ['E Hermes?',
+       'Hermes acredita que a melhor defesa é simplesmente não estar mais no lugar onde o golpe caiu. Difícil discutir com essa lógica.'],
+      ['Vale a pena pegar uma bênção de Hermes?',
+       'Se gosta de velocidade, sim. Movimento, ataques rápidos, dash e projéteis melhores combinam muito bem com nosso estilo.'],
+      ['Artemis ou Hermes?',
+       'Artemis ajuda você a matar antes. Hermes ajuda você a não estar lá quando tentarem revidar. Eu nunca disse que precisava escolher apenas um.'],
+      ['Zeus combina com Arqueiro?',
+       'Uma flecha já é perigosa. Agora imagine colocar um raio nela. Tire suas próprias conclusões.'],
+    ]],
+    ['O que sabe das Dungeons?', [
+      ['As Dungeons são iguais à campanha?',
+       'Não. Lá você explora salas, abre caminho aos poucos e nunca sabe exatamente o que encontrará na próxima.'],
+      ['Quantos tipos de Dungeon existem?',
+       'Masmorra, Gelo, Pântano e Fogo. Conforme você desce, o lugar muda... e as coisas tentando matar você também.'],
+      ['As Dungeons acabam?',
+       'Não conte com isso. Quanto mais fundo você vai, maior fica o perigo.'],
+      ['Existem chefes nas Dungeons?',
+       'Muitos. Alguns bastante desagradáveis. E existe algo ainda pior escondido nos pisos mais profundos. Se encontrar uma presença marcada de forma diferente no mapa... prepare-se.'],
+      ['O que são Sombras?',
+       'Derrote certos chefes e talvez você consiga transformar o que antes queria matá-lo em algo disposto a lutar ao seu lado. Estranho? Sim. Útil? Muito.'],
+      ['Posso melhorar minhas Sombras?',
+       'Pode. Dano, vida, velocidade, ataque... e duas semelhantes podem ser fundidas para criar algo mais poderoso.'],
+      ['O que são Relíquias?',
+       'Vantagens que ficam com você durante a exploração. Algumas ajudam a recuperar vida, outras melhoram crítico, defesa, ouro... escolha de acordo com aquilo que sua build precisa.'],
+    ]],
+    ['Só queria conversar', [
+      ['Quem é você?',
+       'Só alguém que aprendeu que ficar vivo é mais importante que parecer corajoso. Passei tempo demais lá fora. Agora fico por aqui... observando quem decide seguir o mesmo caminho.'],
+      ['Por que você fica aqui na fogueira?',
+       'Porque todo mundo acaba voltando para cá. Os vitoriosos, os feridos... e os que ainda estão tentando entender onde erraram. É um bom lugar para observar.'],
+      ['Você já esteve nas expedições?',
+       'Mais vezes do que deveria. Foi assim que aprendi uma regra simples: entrar é fácil. O problema é voltar.'],
+      ['Você nunca larga esse arco?',
+       'Uma vez larguei. Foi exatamente quando apareceu um goblin. Desde então decidimos permanecer juntos.'],
+      ['Você sabe usar espada?',
+       'Se eu precisar usar uma espada, alguma coisa já deu muito errado.'],
+      ['Mago ou Arqueiro?',
+       'Quer uma resposta imparcial ou perguntou justamente para o homem segurando um arco?'],
+      ['O Viking não para de gritar.',
+       'Você percebeu também? Ótimo. Comecei a achar que era algum efeito colateral das minhas flechas.'],
+      ['O Guerreiro diz que arco é coisa de covarde.',
+       'Engraçado. Ele costuma parar de dizer isso quando precisa atravessar uma sala cheia de inimigos para atingir alguma coisa.'],
+      ['Você tem medo do Balrog?',
+       'Claro. É por isso que continuo vivo. Coragem não é achar que nada pode matar você.'],
+      ['Qual é a regra mais importante de um Arqueiro?',
+       'Se o inimigo consegue tocar em você, ainda há espaço para melhorar sua distância.'],
+      ['Alguma última dica?',
+       'Continue andando. Continue mirando. E quando achar que está forte o bastante... provavelmente apareceu alguma coisa pior.'],
+    ]],
+  ];
+
+  let jaFalou = false;
+  try{ jaFalou = localStorage.getItem('mvh_arq_falou')==='1'; }catch(e){}
+
+  function abrir(){
+    document.getElementById('camp-arq-overlay')?.remove();
+    const el=document.createElement('div'); el.id='camp-arq-overlay';
+    el.style.cssText='position:fixed;left:0;right:0;bottom:0;top:0;z-index:64;font-family:Courier New,monospace;'+
+      'display:flex;align-items:flex-end;justify-content:center;'+
+      'background:linear-gradient(180deg,rgba(0,0,0,0) 40%,rgba(2,6,3,0.55) 100%);pointer-events:auto;';
+    document.body.appendChild(el);
+    const box=document.createElement('div'); el.appendChild(box);
+    box.style.cssText='width:min(1080px,97vw);margin:0 8px 22px;background:linear-gradient(165deg,#0a1c10,#05130a 55%,#020a06);'+
+      'border:2px solid '+COR+'aa;border-radius:16px;box-shadow:0 0 0 3px #021006,0 -6px 48px rgba(0,0,0,0.75),0 0 32px '+COR+'44;'+
+      'padding:clamp(20px,2.6vw,34px);box-sizing:border-box;transform:translateY(120%);opacity:0;'+
+      'transition:transform .30s cubic-bezier(.2,.9,.3,1),opacity .30s;';
+    requestAnimationFrame(()=>{ box.style.transform='translateY(0)'; box.style.opacity='1'; });
+
+    const fechar=()=>{
+      box.style.transform='translateY(120%)'; box.style.opacity='0';
+      document.removeEventListener('keydown',tecla,true);
+      setTimeout(()=>el.remove(),300);
+    };
+    const tecla=(e)=>{ if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); fechar(); } };
+    document.addEventListener('keydown',tecla,true);
+    el.addEventListener('mousedown',e=>{ if(e.target===el) fechar(); });
+
+    let tema=null;                                  // null = menu de temas
+    function pintar(msg){
+      const escolhas=[];
+      if(tema===null){
+        TEMAS.forEach((tm,i)=>escolhas.push({lbl:tm[0], on:()=>{ tema=i; pintar(OI); }}));
+        escolhas.push({lbl:'Sair', on:fechar, sair:true});
+      } else {
+        TEMAS[tema][1].forEach(par=>escolhas.push({lbl:par[0], on:()=>pintar(par[1])}));
+        escolhas.push({lbl:'← Voltar', on:()=>{ tema=null; pintar(OI); }, sair:true});
+      }
+      const botoes=escolhas.map((ch,i)=>{
+        const bd=ch.sair?'rgba(90,200,125,0.5)':'rgba(120,220,150,0.55)';
+        const cl=ch.sair?'#9fc0a8':'#dfe8dc';
+        return '<button class="arq-op" data-i="'+i+'" style="display:block;width:100%;text-align:left;margin-top:9px;'+
+          'background:rgba(8,24,14,0.85);border:2px solid '+bd+';border-radius:9px;padding:12px 18px;cursor:pointer;'+
+          'font-family:Courier New,monospace;font-size:clamp(14px,1.5vw,17px);color:'+cl+';letter-spacing:.4px;'+
+          'transition:all .12s;">▸ '+ch.lbl+'</button>';
+      }).join('');
+      box.innerHTML=
+        '<div style="display:flex;align-items:flex-start;gap:20px;">'+
+          '<div style="flex-shrink:0;width:clamp(96px,11vw,124px);height:clamp(96px,11vw,124px);border-radius:14px;'+
+            'background:radial-gradient(circle at 50% 40%,'+COR+'55,rgba(0,0,0,0.7));border:2px solid '+COR+';'+
+            'box-shadow:inset 0 0 18px rgba(0,0,0,0.6),0 0 20px '+COR+'44;display:flex;align-items:center;justify-content:center;overflow:hidden;">'+
+            '<img src="assets/heroes/archer/idle_south.png" alt="" style="width:86%;height:86%;object-fit:contain;image-rendering:pixelated;">'+
+          '</div>'+
+          '<div style="flex:1;min-width:0;">'+
+            '<div style="display:flex;align-items:baseline;flex-wrap:wrap;gap:9px;">'+
+              '<span style="font-size:clamp(23px,2.7vw,31px);font-weight:900;color:'+COR+';text-shadow:0 2px 0 rgba(0,0,0,0.5);">'+NOME+'</span>'+
+              '<span style="font-size:12px;color:#7fae8c;letter-spacing:2px;text-transform:uppercase;">'+PAPEL+'</span>'+
+            '</div>'+
+            '<div style="font-size:clamp(17px,1.9vw,22px);color:#eef4ea;line-height:1.8;margin:12px 0 6px;min-height:66px;">'+msg+'</div>'+
+          '</div>'+
+        '</div>'+
+        '<div style="margin-top:8px;max-height:46vh;overflow-y:auto;">'+botoes+'</div>'+
+        '<div style="text-align:right;font-size:11px;color:#5a8a6e;margin-top:8px;letter-spacing:1px;">ESC / clique fora para sair</div>';
+      box.querySelectorAll('.arq-op').forEach(b=>{
+        const ch=escolhas[+b.dataset.i];
+        b.onmouseenter=()=>{ b.style.transform='translateX(4px)'; b.style.filter='brightness(1.15)'; };
+        b.onmouseleave=()=>{ b.style.transform='none'; b.style.filter='none'; };
+        b.onclick=ch.on;
+      });
+    }
+    const primeira=!jaFalou;
+    if(primeira){ jaFalou=true; try{ localStorage.setItem('mvh_arq_falou','1'); }catch(e){} }
+    pintar(primeira?OI_PRIMEIRA:OI);
+  }
+  return {abrir, TEMAS};
+})();
+// [/ARQUEIRO]
+
+// [CAMP-V2] ACAMPAMENTO JOGAVEL — hub top-down, no lugar dos botoes.
+// Tudo vive em window.CampV2 (nada solto no escopo global).
+// O hub antigo continua inteiro em #hub-screen / goToHub().
+// ══════════════════════════════════════════════════════════════════
+window.CampV2 = (function(){
+  // ── Cenario: a arte E o mapa. Tudo abaixo em FRACAO da imagem (0..1),
+  //    entao trocar a arte por outra resolucao nao quebra nada. ──
+  const BG = new Image(); BG.src = 'assets/camp/camp_bg.png';
+  let MW = 1447, MH = 1087;                      // ajustado quando a arte carrega
+  BG.addEventListener('load', ()=>{ MW = BG.naturalWidth; MH = BG.naturalHeight; });
+
+  const F = (fx,fy,fw,fh) => ({fx,fy,fw,fh});    // retangulo em fracao
+  // Onde o jogador NAO passa: bordas de mata, construcoes, lago, fogueira.
+  const BLOQUEIOS = [
+    // ── mata que fecha o mapa ──
+    F(0,    0,    1,    .075),   // norte
+    F(0,    .945, 1,    .055),   // sul (cerca)
+    F(0,    0,    .070, 1),      // oeste
+    F(.958, 0,    .042, 1),      // leste
+
+    // ── canto noroeste: cabana ──
+    F(.093, .326, .146, .142),   // corpo da cabana (folga p/ o canteiro vizinho)
+    F(.086, .393, .024, .062),   // lanterna de poste
+    F(.248, .378, .028, .064),   // caixas ao lado
+    F(.250, .306, .026, .056),   // cerca de madeira
+
+    // ── horta ──
+    F(.452, .210, .026, .030),   // toco a direita da horta
+
+    // ── centro ──
+    F(.489, .470, .076, .092),   // fogueira
+    F(.305, .424, .034, .034),   // toco abaixo da horta
+    F(.598, .458, .030, .028),   // pedra pequena
+    // o Arqueiro. Alto o bastante p/ pegar o teste de pe do jogador,
+    // que acontece 6px ABAIXO da posicao dele (ver livre()).
+    F(.4430,.5511,.0180,.0258),
+
+    // ── nordeste: lago e pier ──
+    F(.585, .058, .372, .252),   // lago
+    F(.612, .330, .034, .046),   // pedra na margem
+
+    // ── leste: tenda do Merlin ──
+    F(.716, .330, .238, .196),   // corpo da tenda
+    F(.699, .378, .036, .056),   // braseiro a esquerda
+    F(.948, .410, .020, .086),   // estandarte
+    F(.900, .548, .056, .046),   // flores roxas
+
+    // ── sudoeste: oficina ──
+    F(.126, .672, .172, .162),   // corpo da tenda
+    F(.086, .690, .032, .072),   // lanterna de poste
+    F(.272, .746, .030, .056),   // caixa ao lado
+
+    // ── sudeste: santuario de pedra ──
+    F(.727, .688, .208, .200),   // corpo do santuario
+
+    // ── sul: portal ──
+    F(.474, .845, .088, .118),   // portal
+    F(.396, .862, .050, .072),   // pilar esquerdo
+    F(.578, .862, .050, .072),   // pilar direito
+  ];
+
+  // Passarelas: vencem o bloqueio. Servem para andar sobre a agua no pier.
+  // Medido na arte: madeira em x 937..1024, y 225..325 de 1447x1087.
+  const PASSAGENS = [
+    F(.6476, .2050, .0601, .1130),   // pier do lago (passa da margem, senao trava na borda)
+  ];
+
+  // Canteiros: grade 4x4 da arte, ligados as parcelas reais de farmCells.
+  // Medido na propria arte (terra arada: x 292..631, y 148..410 de 1447x1087).
+  const HORTA = {fx:.2018, fy:.1362, fw:.2350, fh:.2420, cols:4, linhas:4};
+  // O telhado da cabana cobre estes dois: nao viram canteiro jogavel.
+  const HORTA_OCULTOS = [8, 12];
+  const CANTEIROS = (()=>{
+    const out=[], cw=HORTA.fw/HORTA.cols, ch=HORTA.fh/HORTA.linhas;
+    let n=0;
+    for(let r=0;r<HORTA.linhas;r++) for(let c=0;c<HORTA.cols;c++){
+      const pos=r*HORTA.cols+c;
+      if(HORTA_OCULTOS.includes(pos)) continue;      // atras do telhado
+      out.push({fx:HORTA.fx+c*cw, fy:HORTA.fy+r*ch, fw:cw, fh:ch, idx:n++});
+    }
+    return out;
+  })();
+
+  const PONTOS = [
+    {id:'fazenda', fx:.328, fy:.418, raio:74, rotulo:'Entrar na Fazenda',   cor:'#8fe07a', abrir:()=>openFarm()},
+    {id:'cozinha', fx:.186, fy:.522, raio:76, rotulo:'Cozinhar',            cor:'#ff9a5a', abrir:()=>openCookingPanel()},
+    {id:'merlin',  fx:.835, fy:.560, raio:80, rotulo:'Falar com Merlin',    cor:'#c08cff', abrir:()=>openMetaShop()},
+    {id:'oficina', fx:.218, fy:.860, raio:74, rotulo:'Melhorar na Oficina', cor:'#f0d080', abrir:()=>openWorkshopPanel()},
+    {id:'santuario',fx:.828,fy:.905, raio:76, rotulo:'Santuario dos Pets',  cor:'#7de89a', abrir:()=>openPetSanctuary()},
+    {id:'fogueira',fx:.525, fy:.548, raio:70, rotulo:'Descansar (Codex)',   cor:'#ffb347', abrir:()=>showCollection()},
+    {id:'portal',  fx:.497, fy:.900, raio:86, rotulo:'Iniciar Expedicao',   cor:'#6ad8f0', abrir:()=>openExpeditionMap()},
+    {id:'lago',    fx:.678, fy:.248, raio:62, rotulo:'Pescar',              cor:'#7ab8ff', abrir:()=>openFishing()},
+    {id:'arqueiro',fx:.452, fy:.560, raio:58, rotulo:'Falar com o Arqueiro', cor:'#9fe08a', abrir:()=>window.ArqueiroNPC.abrir()},
+  ];
+
+  const SEMENTES = ['semente_trigo','semente_tomate','semente_erva',
+                    'semente_cogumelo_lua','semente_raiz_sangue'];
+  const NOME_SEM = {semente_trigo:'Trigo',semente_tomate:'Tomate',semente_erva:'Erva',
+                    semente_cogumelo_lua:'Cogumelo',semente_raiz_sangue:'Raiz'};
+
+  const S = {
+    x:.497*1447, y:.760*1087,        // comeca no caminho, abaixo da fogueira
+    dir:'down', andando:false, correndo:false,
+    camX:0, camY:0, raf:null, ultimo:0, alvo:null, teclas:{}, ativo:false,
+    semente:null, aviso:'', avisoAte:0, canteiro:null, depurar:false,
+  };
+
+  const px = r => ({x:r.fx*MW, y:r.fy*MH, w:r.fw*MW, h:r.fh*MH});
+  const dentro = (x,y,r) => { const b=px(r); return x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h; };
+  const livre = (x,y) => {
+    if(x<8||y<8||x>MW-8||y>MH-8) return false;
+    for(const p of PASSAGENS) if(dentro(x,y+6,p)) return true;    // passarela vence a agua
+    for(const b of BLOQUEIOS) if(dentro(x,y+6,b)) return false;   // pes do heroi
+    return true;
+  };
+  function canteiroEm(x,y){ return CANTEIROS.find(k=>dentro(x,y+6,k))||null; }
+  function celula(k){
+    return (typeof farmCells!=='undefined'&&k.idx<farmCells.length)?farmCells[k.idx]:null;
+  }
+  const ACAO = {empty:'Arar', plowed:'Plantar', planted:'Regar',
+                watered:'Crescendo...', ready:'Colher'};
+  function usarCanteiro(k){
+    const cell=celula(k); if(!cell) return;
+    if(cell.state==='watered'){ aviso('Ja regado. Volte da expedicao.'); return; }
+    if(cell.state==='plowed'){
+      const sem=sementeAtual();
+      if(!sem){ aviso('Sem sementes. Ache-as nas expedicoes.'); return; }
+      if(typeof selectedSeed!=='undefined') selectedSeed=sem;
+      if(typeof activeTool!=='undefined') activeTool='plant';
+    } else if(typeof activeTool!=='undefined'){
+      activeTool = cell.state==='empty' ? 'plow' : (cell.state==='ready'?'harvest':'water');
+    }
+    const antes=cell.state;
+    if(typeof farmAction==='function') farmAction(k.idx);
+    if(cell.state!==antes) aviso(ACAO[antes]+' ok');
+  }
+  function sementeAtual(){
+    if(typeof globalInventory==='undefined') return null;
+    if(S.semente && (globalInventory[S.semente]||0)>0) return S.semente;
+    return SEMENTES.find(x=>(globalInventory[x]||0)>0)||null;
+  }
+  function trocarSemente(){
+    if(typeof globalInventory==='undefined') return;
+    const tem=SEMENTES.filter(x=>(globalInventory[x]||0)>0);
+    if(!tem.length){ aviso('Voce nao tem sementes.'); return; }
+    const i=tem.indexOf(sementeAtual());
+    S.semente=tem[(i+1)%tem.length];
+    aviso('Semente: '+NOME_SEM[S.semente]+' ('+globalInventory[S.semente]+')');
+  }
+  function aviso(t){ S.aviso=t; S.avisoAte=performance.now()+1800; }
+
+  // ── Plantacao: cada semente tem desenho e movimento proprios ──
+  // Trigo balanca ao vento, tomate pesa e oscila, erva treme miudo,
+  // cogumelo pulsa e solta esporos, raiz-sangue lateja e escorre.
+  function plantaTrigo(c,cx,base,p,t,pronto){
+    const alt=8+p*20, bal=Math.sin(t*.0024+cx*.06)*(1.6+p*2.4);
+    for(let i=-1;i<=1;i++){
+      const bx=cx+i*4.5, h=alt*(i?.82:1), b=bal*(i?.8:1);
+      c.strokeStyle=pronto?'#c8a13c':'#6fa348'; c.lineWidth=1.8;
+      c.beginPath(); c.moveTo(bx,base);
+      c.quadraticCurveTo(bx+b*.5,base-h*.6,bx+b,base-h); c.stroke();
+      if(pronto){
+        c.fillStyle='#efc75a';
+        c.beginPath(); c.ellipse(bx+b,base-h-2,2.4,5,0,0,Math.PI*2); c.fill();
+        c.strokeStyle='#f7e08a'; c.lineWidth=.9;
+        for(let k=0;k<3;k++){ const y=base-h-5+k*3.2;
+          c.beginPath(); c.moveTo(bx+b,y); c.lineTo(bx+b-3,y-2.4); c.stroke();
+          c.beginPath(); c.moveTo(bx+b,y); c.lineTo(bx+b+3,y-2.4); c.stroke(); }
+      }
+    }
+  }
+  function plantaTomate(c,cx,base,p,t,pronto){
+    const alt=7+p*15, bal=Math.sin(t*.0018+cx*.05)*1.4;
+    c.strokeStyle='#4d8a3a'; c.lineWidth=2.2;
+    c.beginPath(); c.moveTo(cx,base); c.lineTo(cx+bal*.5,base-alt); c.stroke();
+    c.fillStyle='#57a84c';
+    for(const f of [[-6,.55,5],[6,.42,5],[0,.8,5.5]]){
+      c.beginPath(); c.ellipse(cx+f[0]+bal*.6,base-alt*f[1],f[2],3.4,f[0]*.06,0,Math.PI*2); c.fill();
+    }
+    if(pronto){
+      const bob=Math.sin(t*.004+cx)*1.1;
+      for(const f of [[-5,.42],[5,.58],[0,.24]]){
+        const x=cx+f[0]+bal*.5, y=base-alt*f[1]+bob;
+        c.fillStyle='#d1372e'; c.beginPath(); c.arc(x,y,3.6,0,Math.PI*2); c.fill();
+        c.fillStyle='#ff6a55'; c.beginPath(); c.arc(x-1.1,y-1.1,1.3,0,Math.PI*2); c.fill();
+      }
+    }
+  }
+  function plantaErva(c,cx,base,p,t,pronto){
+    const alt=6+p*13;
+    for(let i=-2;i<=2;i++){
+      const bal=Math.sin(t*.0034+i*.9+cx*.04)*2.2, h=alt*(1-Math.abs(i)*.16);
+      c.strokeStyle=pronto?'#7fd06a':'#4f9a44'; c.lineWidth=2;
+      c.beginPath(); c.moveTo(cx+i*2.4,base);
+      c.quadraticCurveTo(cx+i*5+bal*.5,base-h*.6,cx+i*7+bal,base-h); c.stroke();
+    }
+    if(pronto){
+      const pul=.5+.5*Math.sin(t*.005+cx);
+      c.fillStyle='rgba(150,240,140,'+(.10+.10*pul)+')';
+      c.beginPath(); c.arc(cx,base-alt*.6,13,0,Math.PI*2); c.fill();
+      c.fillStyle='#eaf7c0';
+      for(let i=-1;i<=1;i++){
+        c.beginPath(); c.arc(cx+i*6,base-alt*(1-Math.abs(i)*.16)-1,1.8+pul*.5,0,Math.PI*2); c.fill();
+      }
+    }
+  }
+  function plantaCogumelo(c,cx,base,p,t,pronto){
+    const alt=5+p*11, pul=.5+.5*Math.sin(t*.0032+cx*.07);
+    if(pronto){
+      c.fillStyle='rgba(150,200,255,'+(.10+.12*pul)+')';
+      c.beginPath(); c.arc(cx,base-alt,15+pul*3,0,Math.PI*2); c.fill();
+    }
+    for(const f of [[0,1],[-6,.62],[5,.5]]){
+      const h=alt*f[1], x=cx+f[0];
+      c.fillStyle='#d8dcf0'; c.fillRect(x-1.4,base-h,2.8,h);
+      c.fillStyle=pronto?'#9fc4ff':'#6b7ba8';
+      c.beginPath(); c.ellipse(x,base-h,5.2*f[1]+2,3.4*f[1]+1.6,0,Math.PI,0); c.fill();
+      if(pronto){
+        c.fillStyle='#eaf2ff';
+        c.beginPath(); c.arc(x-1.6,base-h-1.4,.9,0,Math.PI*2); c.fill();
+        c.beginPath(); c.arc(x+2,base-h-.6,.7,0,Math.PI*2); c.fill();
+      }
+    }
+    if(pronto) for(let i=0;i<3;i++){          // esporos subindo
+      const f=(t*.00035+i*.33+cx*.01)%1;
+      c.fillStyle='rgba(200,225,255,'+(.55*(1-f))+')';
+      c.beginPath(); c.arc(cx+Math.sin(f*7+i)*5,base-alt-2-f*16,1.1,0,Math.PI*2); c.fill();
+    }
+  }
+  function plantaRaiz(c,cx,base,p,t,pronto){
+    const alt=6+p*14, pul=.5+.5*Math.sin(t*.0042+cx*.05);
+    if(pronto){
+      c.fillStyle='rgba(200,40,50,'+(.10+.14*pul)+')';
+      c.beginPath(); c.arc(cx,base-alt*.6,14+pul*3,0,Math.PI*2); c.fill();
+    }
+    c.strokeStyle=pronto?'#a4202c':'#6d3038'; c.lineWidth=2.6; c.lineCap='round';
+    for(let i=-1;i<=1;i++){
+      const tor=Math.sin(t*.0016+i*1.4)*2;
+      c.beginPath(); c.moveTo(cx+i*3,base);
+      c.bezierCurveTo(cx+i*7+tor,base-alt*.45,cx+i*2-tor,base-alt*.7,cx+i*5+tor*.6,base-alt);
+      c.stroke();
+    }
+    c.lineCap='butt';
+    if(pronto){
+      c.fillStyle='#e0303c';
+      for(let i=-1;i<=1;i++){ c.beginPath(); c.arc(cx+i*5,base-alt-1,2.2+pul*.6,0,Math.PI*2); c.fill(); }
+      const g=(t*.0006+cx*.01)%1;                       // gota escorrendo
+      c.fillStyle='rgba(190,30,40,'+(.8*(1-g))+')';
+      c.beginPath(); c.ellipse(cx,base-alt+g*alt,1.2,2,0,0,Math.PI*2); c.fill();
+    }
+  }
+  const DESENHO_CULTIVO = {
+    semente_trigo:plantaTrigo, semente_tomate:plantaTomate, semente_erva:plantaErva,
+    semente_cogumelo_lua:plantaCogumelo, semente_raiz_sangue:plantaRaiz,
+  };
+  function desenharPlantas(c,t){
+    for(const k of CANTEIROS){
+      const cell=celula(k); if(!cell||cell.state==='empty') continue;
+      const b=px(k), cx=b.x+b.w/2-S.camX, base=b.y+b.h*.78-S.camY;
+      if(cx<-40||cx>c.canvas.width+40) continue;
+      if(cell.state==='plowed'){                       // so a terra revirada
+        c.fillStyle='rgba(90,62,32,.45)';
+        c.fillRect(b.x+3-S.camX,b.y+3-S.camY,b.w-6,b.h-6); continue;
+      }
+      if(cell.state==='watered'){                      // terra molhada
+        c.fillStyle='rgba(30,20,10,.42)';
+        c.fillRect(b.x+3-S.camX,b.y+3-S.camY,b.w-6,b.h-6);
+      }
+      const prog=cell.state==='ready'?1:(cell.state==='watered'?.62:.32);
+      const pronto=cell.state==='ready';
+      (DESENHO_CULTIVO[cell.seed]||plantaErva)(c,cx,base,prog,t,pronto);
+    }
+  }
+
+  // ── Tela: o canvas guarda pixels de MUNDO; o zoom e' so' ampliacao
+  //    inteira via CSS, entao o pixel-art sai nitido em qualquer monitor. ──
+  // Mesma medida da tela de combate: 960x720 (4:3), encolhendo junto se a
+  // janela for menor. O zoom continua inteiro para o pixel nao borrar.
+  const TELA_W = 960, TELA_H = 720;
+  function dimensionar(){
+    const cv=document.getElementById('camp2-canvas'); if(!cv) return;
+    let dw=Math.min(TELA_W, window.innerWidth-14);
+    let dh=Math.round(dw*TELA_H/TELA_W);
+    const maxH=Math.min(TELA_H, window.innerHeight-46);
+    if(dh>maxH){ dh=maxH; dw=Math.round(dh*TELA_W/TELA_H); }
+    const Z=Math.max(1, Math.min(4, Math.round(dh/380)));
+    const w=Math.min(Math.floor(dw/Z), MW), h=Math.min(Math.floor(dh/Z), MH);
+    if(cv.width!==w||cv.height!==h){ cv.width=w; cv.height=h; }
+    cv.style.width=(w*Z)+'px'; cv.style.height=(h*Z)+'px';
+    S.zoom=Z; S.dpr=Math.min(2, window.devicePixelRatio||1);
+    const hud=document.getElementById('camp2-hud');
+    if(hud){
+      const hw=Math.round(w*Z*S.dpr), hh=Math.round(h*Z*S.dpr);
+      if(hud.width!==hw||hud.height!==hh){ hud.width=hw; hud.height=hh; }
+      hud.style.width=(w*Z)+'px'; hud.style.height=(h*Z)+'px';
+    }
+  }
+  window.addEventListener('resize', ()=>{ if(S.ativo) dimensionar(); });
+
+  // ── Pet companheiro: anda atras do heroi pelo acampamento ──
+  // Duas distancias, nao uma: com um limite so' o pet fica oscilando em cima
+  // dele e a animacao pisca. Comeca a seguir aos 34px, so' para aos 18px.
+  const PET_SEGUE=76, PET_PARA=52, PET_LONGE=340;
+  function petAtivo(){
+    if(typeof PET_IMG_SETS==='undefined') return null;
+    const tem=(typeof capturedPets!=='undefined')?capturedPets:null;
+    if(typeof activePetId!=='undefined' && activePetId && PET_IMG_SETS[activePetId]
+       && (!tem || tem[activePetId])) return activePetId;
+    if(tem) for(const id in tem) if(PET_IMG_SETS[id]) return id;   // 1o do santuario
+    return null;
+  }
+  function atualizarPet(dt){
+    const id=petAtivo();
+    if(!id){ S.pet=null; return; }
+    if(!S.pet || S.pet.id!==id)
+      S.pet={id, x:S.x-58, y:S.y+10, dir:'south', flip:false, andando:false};
+    const p=S.pet;
+    const dx=S.x-p.x, dy=(S.y+6)-p.y, d=Math.hypot(dx,dy);
+    if(d>PET_LONGE){ p.x=S.x-58; p.y=S.y+10; p.seguindo=false; p.andando=false; return; }
+    if(d>PET_SEGUE) p.seguindo=true;                 // ficou p/ tras: vem
+    else if(d<PET_PARA) p.seguindo=false;            // chegou perto: descansa
+    if(!p.seguindo){ p.andando=false; return; }
+    const vel=Math.min(d-PET_PARA*.5, (S.correndo?205:140)*dt);
+    const ax=p.x, ay=p.y;
+    if(livre(p.x+dx/d*vel, p.y)) p.x+=dx/d*vel;
+    if(livre(p.x, p.y+dy/d*vel)) p.y+=dy/d*vel;
+    p.andando = (p.x!==ax || p.y!==ay);
+    if(Math.abs(dx)>Math.abs(dy)*1.2){ p.dir='side'; p.flip=dx<0; }
+    else p.dir = dy<0?'north':'south';
+  }
+  function desenharPet(c,t){
+    const p=S.pet; if(!p) return;
+    const voa=(typeof PET_FLIES!=='undefined'&&PET_FLIES[p.id]);
+    const sobe=voa?((typeof PET_FLY_LIFT!=='undefined')?PET_FLY_LIFT:11):0;
+    const x=Math.round(p.x-S.camX), y=Math.round(p.y-S.camY);
+    const bal=voa?Math.sin(t*.004)*2:0;
+    c.fillStyle=voa?'rgba(0,0,0,.20)':'rgba(0,0,0,.30)';
+    c.beginPath(); c.ellipse(x,y,9,3.5,0,0,Math.PI*2); c.fill();
+    if(typeof drawPetImg==='function')
+      drawPetImg(c,p.id,x,y-sobe+bal,p.flip,p.andando,t,p.dir);
+  }
+
+  // ── O Arqueiro da fogueira: fica parado, mas vira para quem chega ──
+  const ARQ = {fx:.452, fy:.560};
+  function desenharArqueiro(c,t){
+    const ax=ARQ.fx*MW, ay=ARQ.fy*MH;
+    const x=Math.round(ax-S.camX), y=Math.round(ay-S.camY);
+    if(x<-70||x>c.canvas.width+70||y<-70||y>c.canvas.height+70) return;
+    c.fillStyle='rgba(0,0,0,.34)';
+    c.beginPath(); c.ellipse(x,y,11,4,0,0,Math.PI*2); c.fill();
+    const set=(typeof HERO_IMG_SETS!=='undefined')?HERO_IMG_SETS.archer:null;
+    if(!set||typeof heroImg!=='function') return;
+    const dx=S.x-ax, dy=S.y-ay;
+    let dir='down', flip=false;
+    if(Math.hypot(dx,dy)<150){                     // olha para o jogador de perto
+      if(Math.abs(dx)>Math.abs(dy)*1.2){ dir='side'; flip=dx>0; }
+      else dir = dy<0?'up':'down';
+    }
+    const im=heroImg('archer',dir,0,'idle'); if(!im) return;
+    const w=set.frame, bob=Math.sin(t*.0016)*1.1;   // respiracao
+    const px2=Math.round(x-w/2), py2=Math.round(y-set.feet+bob);
+    c.save(); c.imageSmoothingEnabled=false;
+    if(flip){ c.translate(px2+w,py2); c.scale(-1,1); c.drawImage(im,0,0,w,w); }
+    else c.drawImage(im,px2,py2,w,w);
+    c.restore();
+  }
+
+  function desenharHeroi(c,cls,dir,flip,x,pesY,andando,t){
+    const set=(typeof HERO_IMG_SETS!=='undefined')?HERO_IMG_SETS[cls]:null;
+    if(set && typeof heroImg==='function'){
+      const idx=Math.floor(t/((typeof HERO_IMG_WALK_MS!=='undefined')?HERO_IMG_WALK_MS:110));
+      const im=heroImg(cls,dir,idx,andando?'walkFrame':'idle');
+      if(im){
+        const w=set.frame, dx=Math.round(x-w/2), dy=Math.round(pesY-set.feet);
+        c.save(); c.imageSmoothingEnabled=false;
+        if(flip){ c.translate(dx+w,dy); c.scale(-1,1); c.drawImage(im,0,0,w,w); }
+        else c.drawImage(im,dx,dy,w,w);
+        c.restore(); return;
+      }
+    }
+    if(typeof getHeroVisual!=='function') return;
+    const vis=getHeroVisual(cls,dir,andando?(Math.floor(t/160)%3):0);
+    const spr=vis&&vis.sprite; if(!spr) return;
+    const PX2=2, W=spr[0].length, Hh=spr.length;
+    const ox=Math.round(x-W*PX2/2), oy=Math.round(pesY-Hh*PX2);
+    for(let r=0;r<Hh;r++)for(let k2=0;k2<spr[r].length;k2++){
+      const ch=spr[r][flip?spr[r].length-1-k2:k2]; if(!ch||ch===' ')continue;
+      const col=vis.pal[ch]; if(!col)continue;
+      c.fillStyle=col; c.fillRect(ox+k2*PX2,oy+r*PX2,PX2,PX2);
+    }
+  }
+
+  function desenharHUD(c,t,W,H){
+    c.save();
+    // ── barra emoldurada, no estilo dos paineis do jogo ──
+    const prontas=(typeof farmCells!=='undefined')?farmCells.filter(x=>x.state==='ready').length:0;
+    const buffs=(typeof activeCookingBuffs!=='undefined')?activeCookingBuffs.length:0;
+    const sem=sementeAtual();
+    const seg=[
+      {ic:'🪙', tx:String(typeof totalCoins!=='undefined'?totalCoins:0), cor:'#f0c040'},
+      {ic:'🌿', tx:prontas+' pronta(s)', cor:prontas?'#8fe07a':'#4a6a52'},
+      {ic:'🍲', tx:buffs+' bonus',       cor:buffs?'#ffb347':'#4a6a52'},
+      {ic:'🌾', tx:(sem?NOME_SEM[sem]+' x'+(globalInventory[sem]||0)+' [Q]':'sem semente'),
+                cor:sem?'#e8d070':'#4a6a52'},
+      {ic:'',   tx:'ACAMPAMENTO', cor:'#7de89a'},
+    ];
+    let fs=11, larg=[];                       // escolhe a fonte que couber na largura
+    for(;;){
+      c.font='bold '+fs+'px Courier New';
+      larg=seg.map(x=>(x.ic?14:0)+c.measureText(x.tx).width);
+      if(larg.reduce((a,b)=>a+b,0)+seg.length*14 <= W-22 || fs<=7) break;
+      fs--;
+    }
+    const bx=7, bw=W-14, by=5, bh=fs+13;
+    c.fillStyle='rgba(8,16,11,.93)';
+    c.beginPath(); if(c.roundRect) c.roundRect(bx,by,bw,bh,5); else c.rect(bx,by,bw,bh); c.fill();
+    c.strokeStyle='#8a6c22'; c.lineWidth=1.4; c.stroke();
+    c.strokeStyle='rgba(210,170,70,.26)'; c.lineWidth=1;
+    c.beginPath();
+    if(c.roundRect) c.roundRect(bx+2.5,by+2.5,bw-5,bh-5,3.5); else c.rect(bx+2.5,by+2.5,bw-5,bh-5);
+    c.stroke();
+    c.textBaseline='middle'; c.textAlign='left';
+    const cy=by+bh/2, folga=(bw-22-larg.reduce((a,b)=>a+b,0))/(seg.length-1);
+    let sx=bx+11;
+    for(let i=0;i<seg.length;i++){
+      if(seg[i].ic){ c.font=(fs-1)+'px Courier New'; c.fillText(seg[i].ic,sx,cy); sx+=14; }
+      c.font='bold '+fs+'px Courier New'; c.fillStyle=seg[i].cor;
+      c.fillText(seg[i].tx,sx,cy); sx+=c.measureText(seg[i].tx).width;
+      if(i<seg.length-1){                       // divisoria entre os campos
+        const dx=Math.round(sx+folga/2);
+        c.strokeStyle='rgba(190,150,60,.34)'; c.lineWidth=1;
+        c.beginPath(); c.moveTo(dx,by+4); c.lineTo(dx,by+bh-4); c.stroke();
+        sx+=folga;
+      }
+    }
+
+    if(S.alvo){
+      const hx=Math.round(S.x-S.camX), hy=Math.round(S.y-S.camY)-46;
+      const txt='[E] '+S.alvo.rotulo;
+      c.font='bold 12px Courier New';
+      const w=c.measureText(txt).width+18;
+      c.fillStyle='rgba(6,14,9,.93)';
+      c.beginPath();
+      if(c.roundRect) c.roundRect(hx-w/2,hy-13,w,22,6); else c.rect(hx-w/2,hy-13,w,22);
+      c.fill(); c.strokeStyle=S.alvo.cor; c.lineWidth=1.5; c.stroke();
+      c.fillStyle=S.alvo.cor; c.textAlign='center'; c.fillText(txt,hx,hy-1); c.textAlign='left';
+    }
+    if(S.aviso && performance.now()<S.avisoAte){
+      const a=Math.min(1,(S.avisoAte-performance.now())/400);
+      c.globalAlpha=a; c.font='bold 12px Courier New'; c.textAlign='center';
+      const w=c.measureText(S.aviso).width+20;
+      c.fillStyle='rgba(6,14,9,.92)';
+      c.beginPath();
+      if(c.roundRect) c.roundRect(W/2-w/2,H-46,w,24,6); else c.rect(W/2-w/2,H-46,w,24);
+      c.fill(); c.strokeStyle='#7de89a'; c.lineWidth=1.4; c.stroke();
+      c.fillStyle='#bff0cc'; c.fillText(S.aviso,W/2,H-30);
+      c.textAlign='left'; c.globalAlpha=1;
+    }
+    c.restore();
+  }
+
+  function atualizar(dt,t){
+    let dx=0,dy=0; const k=S.teclas;
+    if(k['w']||k['arrowup'])dy=-1; if(k['s']||k['arrowdown'])dy=1;
+    if(k['a']||k['arrowleft'])dx=-1; if(k['d']||k['arrowright'])dx=1;
+    S.andando=!!(dx||dy); S.correndo=!!(k['shift']&&S.andando);
+    if(dx&&dy){dx*=.707;dy*=.707;}
+    if(dy<0)S.dir='up'; else if(dy>0)S.dir='down';
+    else if(dx<0)S.dir='left'; else if(dx>0)S.dir='right';
+    const vel=(S.correndo?188:118)*dt;
+    if(dx&&livre(S.x+dx*vel,S.y)) S.x+=dx*vel;
+    if(dy&&livre(S.x,S.y+dy*vel)) S.y+=dy*vel;
+    atualizarPet(dt);
+
+    const cant=canteiroEm(S.x,S.y);
+    if(cant){
+      const cel=celula(cant);
+      if(cel){
+        S.canteiro=cant;
+        S.alvo={id:'canteiro', rotulo:ACAO[cel.state]||'Cuidar',
+                cor: cel.state==='ready'?'#8fe07a':'#e0c070', abrir:()=>usarCanteiro(cant)};
+        return;
+      }
+    }
+    S.canteiro=null;
+    let alvo=null, menor=Infinity;
+    for(const p of PONTOS){
+      const d=Math.hypot(S.x-p.fx*MW, S.y-p.fy*MH);
+      if(d<p.raio && d<menor){ menor=d; alvo=p; }
+    }
+    S.alvo=alvo;
+  }
+
+  function desenhar(c,t){
+    const W=c.canvas.width, H=c.canvas.height;
+    S.camX=Math.max(0,Math.min(MW-W, S.x-W/2));
+    S.camY=Math.max(0,Math.min(MH-H, S.y-H/2));
+    c.imageSmoothingEnabled=false;
+    c.fillStyle='#070d08'; c.fillRect(0,0,W,H);
+    if(BG.complete && BG.naturalWidth)
+      c.drawImage(BG, S.camX, S.camY, W, H, 0, 0, W, H);   // recorte do cenario
+
+    desenharPlantas(c,t);
+
+    if(S.depurar){                                          // [F2] confere colisao
+      c.globalAlpha=.35;
+      c.fillStyle='#ff3b30';
+      for(const b of BLOQUEIOS){ const r=px(b); c.fillRect(r.x-S.camX,r.y-S.camY,r.w,r.h); }
+      c.fillStyle='#8fe07a';
+      for(const k of CANTEIROS){ const r=px(k); c.fillRect(r.x-S.camX,r.y-S.camY,r.w,r.h); }
+      c.fillStyle='#38bdf8';
+      for(const p of PASSAGENS){ const r=px(p); c.fillRect(r.x-S.camX,r.y-S.camY,r.w,r.h); }
+      c.globalAlpha=1; c.fillStyle='#6ad8f0';
+      for(const p of PONTOS) c.fillRect(p.fx*MW-S.camX-3,p.fy*MH-S.camY-3,6,6);
+    }
+
+    if(S.alvo && S.alvo.fx!==undefined){
+      const x=S.alvo.fx*MW-S.camX, y=S.alvo.fy*MH-S.camY, p=.5+.5*Math.sin(t*.006);
+      c.strokeStyle=S.alvo.cor; c.globalAlpha=.32+.30*p; c.lineWidth=2;
+      c.beginPath(); c.ellipse(x,y+8,30+p*5,13+p*2,0,0,Math.PI*2); c.stroke();
+      c.globalAlpha=1;
+    }
+
+    const hx=Math.round(S.x-S.camX), hy=Math.round(S.y-S.camY);
+    const cls=(typeof selectedClass!=='undefined'&&selectedClass.p1)||'mage';
+    const dir=S.dir==='up'?'up':(S.dir==='down'?'down':'side');
+    if(ARQ.fy*MH <= S.y) desenharArqueiro(c,t);   // profundidade: quem esta atras sai antes
+    const petAtras = S.pet && S.pet.y <= S.y;      // quem esta mais ao norte sai antes
+    if(petAtras) desenharPet(c,t);
+    c.fillStyle='rgba(0,0,0,.34)'; c.beginPath(); c.ellipse(hx,hy+7,11,4,0,0,Math.PI*2); c.fill();
+    desenharHeroi(c,cls,dir,S.dir==='right',hx,hy+8,S.andando,t);
+    if(!petAtras) desenharPet(c,t);
+    if(ARQ.fy*MH > S.y) desenharArqueiro(c,t);
+
+    // HUD por cima, na camada de alta resolucao (texto nitido)
+    const hud=document.getElementById('camp2-hud');
+    if(hud && hud.width){
+      const hc=hud.getContext('2d'), k=(S.zoom||1)*(S.dpr||1);
+      hc.setTransform(1,0,0,1,0,0);
+      hc.clearRect(0,0,hud.width,hud.height);
+      hc.setTransform(k,0,0,k,0,0);          // segue falando em px de mundo
+      desenharHUD(hc,t,W,H);
+    } else desenharHUD(c,t,W,H);
+  }
+
+  function loop(ts){
+    if(!S.ativo) return;
+    S.raf=requestAnimationFrame(loop);
+    const cv=document.getElementById('camp2-canvas'); if(!cv) return;
+    const dt=Math.min(.05,(ts-(S.ultimo||ts))/1000); S.ultimo=ts;
+    atualizar(dt,ts); desenhar(cv.getContext('2d'),ts);
+  }
+
+  function aoTeclar(e){
+    if(!S.ativo) return;
+    const k=e.key.toLowerCase();
+    if(k==='shift'){ S.teclas['shift']=true; return; }
+    S.teclas[k]=true;
+    if(k==='e'&&S.alvo){ e.preventDefault(); const a=S.alvo;
+      if(a.id==='canteiro'){ a.abrir(); return; }
+      pausar(); S.voltarAoFechar=true; a.abrir(); }
+    else if(k==='q'){ e.preventDefault(); trocarSemente(); }
+    else if(k==='f2'){ e.preventDefault(); S.depurar=!S.depurar; }
+    else if(k==='i'){ e.preventDefault(); if(typeof toggleInventory==='function') toggleInventory(); }
+    else if(k==='escape'){ e.preventDefault(); sair(); }
+  }
+  function aoSoltar(e){ S.teclas[e.key.toLowerCase()]=false; }
+
+  function pausar(){ S.ativo=false; if(S.raf){cancelAnimationFrame(S.raf);S.raf=null;} S.teclas={}; }
+  function retomar(){ if(S.ativo) return; S.ativo=true; S.ultimo=0; S.raf=requestAnimationFrame(loop); }
+  function abrir(){
+    if(typeof hideAllScreens==='function') hideAllScreens();
+    if(typeof state!=='undefined') state='hub';
+    const el=document.getElementById('camp2-screen'); if(el) el.style.display='flex';
+    dimensionar();
+    retomar();
+  }
+  function sair(){
+    pausar(); S.voltarAoFechar=false;
+    const el=document.getElementById('camp2-screen'); if(el) el.style.display='none';
+    if(typeof goMainMenu==='function') goMainMenu(); else if(typeof showScreen==='function') showScreen('main-menu');
+  }
+
+  function acampamentoNaFrente(){
+    const el=document.getElementById('camp2-screen');
+    if(!el || getComputedStyle(el).display==='none') return false;
+    for(const o of document.querySelectorAll('.screen')){
+      if(o.id==='camp2-screen') continue;
+      if(getComputedStyle(o).display!=='none') return false;
+    }
+    for(const sel of ['#crafting-panel','#collection-screen','#pet-sanctuary',
+                      '#farm-panel','#cooking-panel','#workshop-panel','#meta-shop',
+                      '#expmap-screen','#fishing-screen','#cookmini','#camp-arq-overlay']){
+      const o=document.querySelector(sel);
+      if(o && getComputedStyle(o).display!=='none' && o.offsetHeight>0) return false;
+    }
+    return true;
+  }
+  function painelAberto(){
+    for(const sel of ['#crafting-panel','#collection-screen','#pet-sanctuary',
+                      '#farm-panel','#cooking-panel','#workshop-panel','#meta-shop',
+                      '#expmap-screen','#fishing-screen','#char-select','#play-menu','#cookmini','#camp-arq-overlay']){
+      const o=document.querySelector(sel);
+      if(o && getComputedStyle(o).display!=='none' && o.offsetHeight>0) return true;
+    }
+    return false;
+  }
+
+  document.addEventListener('keydown',aoTeclar);
+  document.addEventListener('keyup',aoSoltar);
+  setInterval(()=>{
+    if(S.voltarAoFechar && !painelAberto()){ S.voltarAoFechar=false; abrir(); return; }
+    if(S.voltarAoFechar) return;
+    if(!S.ativo && acampamentoNaFrente()) retomar();
+    else if(S.ativo && !acampamentoNaFrente()) pausar();
+  }, 250);
+
+  return {abrir, sair, pausar, retomar, PONTOS, BLOQUEIOS, PASSAGENS, CANTEIROS, S,
+          medidas:()=>({MW,MH})};
+})();
+// [/CAMP-V2]
+
+// ══════════════════════════════════════════════════════════════════
+// [COOK-MINI] Minigame da cozinha: barra de timing + qualidade.
+// As receitas, os custos e a aplicacao dos buffs continuam os mesmos;
+// a qualidade so multiplica o efeito declarado pela receita.
+// ══════════════════════════════════════════════════════════════════
+window.CookMinigame = (function(){
+  // Faixas medidas a partir do centro (0 = miolo exato, 1 = ponta da barra)
+  const FAIXAS = [
+    {q:'EXCELENTE', ate:.08, mult:1.60, cor:'#ffd23a', bonus:true },
+    {q:'BOM',       ate:.30, mult:1.25, cor:'#7de89a', bonus:false},
+    {q:'COMUM',     ate:1.00,mult:1.00, cor:'#9ab0a2', bonus:false},
+  ];
+  // Bonus do Excelente: nunca e so "numero maior", e um efeito NOVO.
+  const BONUS = {
+    ensopado_trigo:{regen_per_wave:.06},
+    sopa_tomate:   {regen_per_wave:.05},
+    pocao_erva:    {dodge_bonus:.05},
+    cha_cogumelo:  {dmg_mult:1.08},
+  };
+  const PADRAO_BONUS = {dmg_mult:1.06};
+
+  const T = {recipe:null, raf:null, pos:0, dir:1, rodando:false, vel:1.55};
+
+  // Escala o efeito conforme a qualidade. Multiplicador (_mult) escala o que
+  // passa de 1 — multiplicar direto faria 1.20 virar 1.92, um salto absurdo.
+  function escalar(chave, valor, mult){
+    if(typeof valor!=='number') return valor;
+    if(/_mult$/.test(chave)) return Math.round((1+(valor-1)*mult)*1000)/1000;
+    return (valor>=1) ? Math.round(valor*mult) : Math.round(valor*mult*1000)/1000;
+  }
+  function efeitoDaQualidade(r, faixa){
+    const ef={};
+    for(const [k,v] of Object.entries(r.effect||{})) ef[k]=escalar(k,v,faixa.mult);
+    if(faixa.bonus){
+      const extra=BONUS[r.id]||PADRAO_BONUS;
+      for(const [k,v] of Object.entries(extra)){
+        if(/_mult$/.test(k)) ef[k]=Math.round(((ef[k]||1)*v)*1000)/1000;
+        else ef[k]=Math.round(((ef[k]||0)+v)*1000)/1000;
+      }
+    }
+    return ef;
+  }
+  function textoEfeito(ef){
+    const L={hp_restore:v=>'+'+v+' de vida na largada',
+             dmg_mult:v=>'+'+Math.round((v-1)*100)+'% de dano',
+             speed_mult:v=>'+'+Math.round((v-1)*100)+'% de velocidade',
+             dodge_bonus:v=>'+'+Math.round(v*100)+'% de esquiva',
+             regen_per_wave:v=>'+'+Math.round(v*100)+'% de regeneracao por onda'};
+    return Object.entries(ef).map(([k,v])=>L[k]?L[k](v):k+': '+v).join(' · ');
+  }
+
+  function desenhar(){
+    const cv=document.getElementById('cm-canvas'); if(!cv) return;
+    const c=cv.getContext('2d'), W=cv.width, H=cv.height;
+    c.clearRect(0,0,W,H);
+    const bx=10, bw=W-20, by=18, bh=26, cx=bx+bw/2;
+    c.fillStyle='#08120a'; c.fillRect(bx,by,bw,bh);
+    // faixas, da mais larga para a mais estreita
+    for(let i=FAIXAS.length-1;i>=0;i--){
+      const f=FAIXAS[i], w=bw*f.ate;
+      c.fillStyle=f.cor+(i===0?'55':i===1?'33':'1c');
+      c.fillRect(cx-w/2,by,w,bh);
+      c.strokeStyle=f.cor+'88'; c.lineWidth=1;
+      c.strokeRect(cx-w/2+.5,by+.5,w-1,bh-1);
+    }
+    c.strokeStyle='#1e3a24'; c.lineWidth=2; c.strokeRect(bx,by,bw,bh);
+    // marcador
+    const mx=cx+T.pos*(bw/2);
+    c.fillStyle='#ffffff'; c.fillRect(mx-2,by-7,4,bh+14);
+    c.fillStyle='#ffd23a'; c.fillRect(mx-1,by-7,2,bh+14);
+    // rotulos
+    c.font='bold 9px Courier New'; c.textAlign='center';
+    c.fillStyle='#ffd23a'; c.fillText('PERFEITO',cx,by+bh+15);
+    c.fillStyle='#7de89a';
+    c.fillText('BOM',cx-bw*.20,by+bh+15); c.fillText('BOM',cx+bw*.20,by+bh+15);
+    c.textAlign='left';
+  }
+
+  function passo(){
+    if(!T.rodando) return;
+    T.raf=requestAnimationFrame(passo);
+    T.pos+=T.dir*T.vel*(1/60);
+    if(T.pos>=1){T.pos=1;T.dir=-1;} else if(T.pos<=-1){T.pos=-1;T.dir=1;}
+    desenhar();
+  }
+
+  function abrir(id){
+    const r=(typeof COOKING_RECIPES!=='undefined')?COOKING_RECIPES.find(x=>x.id===id):null;
+    if(!r) return;
+    if(!Object.entries(r.cost).every(([k,v])=>(globalInventory[k]||0)>=v)) return;
+    T.recipe=r; T.pos=-1; T.dir=1; T.rodando=true;
+    // receita mais rara, barra mais rapida
+    T.vel = r.rarity==='mistica'?2.15 : r.rarity==='rara'?1.85 : 1.55;
+    document.getElementById('cm-nome').textContent=r.name;
+    document.getElementById('cm-sub').textContent='Pare no centro para o ponto perfeito';
+    document.getElementById('cm-hint').style.display='';
+    document.getElementById('cm-hint').textContent='[ESPAÇO] para acertar';
+    document.getElementById('cm-resultado').style.display='none';
+    document.getElementById('cookmini').classList.add('open');
+    desenhar(); T.raf=requestAnimationFrame(passo);
+  }
+
+  function bater(){
+    if(!T.rodando) return;
+    T.rodando=false; if(T.raf){cancelAnimationFrame(T.raf);T.raf=null;}
+    const r=T.recipe, desvio=Math.abs(T.pos);
+    const faixa=FAIXAS.find(f=>desvio<=f.ate)||FAIXAS[FAIXAS.length-1];
+    const ef=efeitoDaQualidade(r,faixa);
+    // paga o custo e registra o buff — mesmo caminho do sistema antigo
+    for(const [k,v] of Object.entries(r.cost)) globalInventory[k]-=v;
+    activeCookingBuffs=activeCookingBuffs.filter(b=>b.id!==r.id);
+    activeCookingBuffs.push({id:r.id, name:r.name+' ('+faixa.q.toLowerCase()+')',
+                             icon:r.icon, effect:ef, qualidade:faixa.q});
+    if(typeof savePersistentData==='function') savePersistentData();
+    const qEl=document.getElementById('cm-qualidade');
+    qEl.textContent=faixa.q; qEl.style.color=faixa.cor;
+    document.getElementById('cm-efeito').innerHTML=
+      textoEfeito(ef)+(faixa.bonus?'<br><span style="color:#ffd23a">+ efeito extra do prato perfeito</span>':'');
+    document.getElementById('cm-hint').style.display='none';
+    document.getElementById('cm-resultado').style.display='';
+    desenhar();
+  }
+
+  function fechar(){
+    T.rodando=false; if(T.raf){cancelAnimationFrame(T.raf);T.raf=null;}
+    document.getElementById('cookmini').classList.remove('open');
+    if(typeof renderCookingPanel==='function') renderCookingPanel();
+  }
+
+  document.addEventListener('keydown',e=>{
+    const aberto=document.getElementById('cookmini');
+    if(!aberto||!aberto.classList.contains('open')) return;
+    if(e.code==='Space'||e.key===' '){ e.preventDefault(); e.stopPropagation();
+      if(T.rodando) bater(); else fechar(); }
+    else if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); if(!T.rodando) fechar(); }
+  },true);
+
+  return {abrir, fechar, bater, FAIXAS, escalar, efeitoDaQualidade};
+})();
+
+// A cozinha agora passa pelo minigame em vez de preparar na hora.
+(function(){
+  const antigo=window.cookRecipe;
+  window.cookRecipe=function(id){
+    if(window.CookMinigame) CookMinigame.abrir(id);
+    else if(typeof antigo==='function') antigo(id);
+  };
+})();
+// [/COOK-MINI]
 </script>
 </body>
 </html>
