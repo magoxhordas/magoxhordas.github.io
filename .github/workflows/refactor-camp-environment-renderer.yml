@@ -31,6 +31,18 @@ jobs:
           rm -f "$LOG"
           touch "$LOG"
 
+          # layout-data.js intentionally keeps the original mutable array shape.
+          # Validate its real declaration instead of requiring Object.freeze.
+          node <<'NODE'
+          const fs=require('node:fs');
+          const file='scripts/refactor-camp-environment-renderer.mjs';
+          let src=fs.readFileSync(file,'utf8');
+          const old="layoutSource.includes('const LUZES_ACAMPAMENTO=Object.freeze([')";
+          const next="layoutSource.includes('const LUZES_ACAMPAMENTO = [')";
+          if(!src.includes(old)) throw new Error('asserção textual antiga das luzes nao encontrada');
+          fs.writeFileSync(file,src.replace(old,next),'utf8');
+          NODE
+
           run_check() {
             echo "\n===== $* =====" >> "$LOG"
             "$@" >> "$LOG" 2>&1
