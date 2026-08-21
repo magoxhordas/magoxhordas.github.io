@@ -31533,6 +31533,7 @@ function applyFishBuff(buff){
   <script src="src/camp/collision-map.js"></script>
   <script src="src/camp/layout-data.js"></script>
   <script src="src/camp/farming-data.js"></script>
+  <script src="src/camp/interaction-data.js"></script>
 <script>
 // Start on first interaction (browser requires it)
 function _audioStart(){
@@ -32187,19 +32188,17 @@ window.CampV2 = (function(){
     return out;
   })();
 
-  const PONTOS = [
-    {id:'fazenda', fx:.328, fy:.418, raio:74, rotulo:'Entrar na Fazenda',   cor:'#8fe07a', abrir:()=>openFarm()},
-    {id:'cozinha', fx:.186, fy:.522, raio:76, rotulo:'Cozinhar',            cor:'#ff9a5a', abrir:()=>openCookingPanel()},
-    {id:'merlin',  fx:.835, fy:.590, raio:82, rotulo:'Falar com Merlin',    cor:'#c08cff', abrir:()=>openMetaShop()},
-    {id:'oficina', fx:.218, fy:.900, raio:82, rotulo:'Melhorar na Oficina', cor:'#f0d080', abrir:()=>openWorkshopPanel()},
-    // O acesso fica na lateral noroeste: o corredor frontal e estreito e tem
-    // uma rocha real, portanto nao faz sentido exigir que o heroi a atravesse.
-    {id:'santuario',fx:.690,fy:.760, raio:86, rotulo:'Santuario dos Pets',  cor:'#7de89a', abrir:()=>openPetSanctuary()},
-    {id:'fogueira',fx:.525, fy:.548, raio:70, rotulo:'Descansar (Codex)',   cor:'#ffb347', abrir:()=>showCollection()},
-    {id:'portal',  fx:.497, fy:.825, raio:90, rotulo:'Iniciar Expedicao',   cor:'#6ad8f0', abrir:()=>openExpeditionMap()},
-    {id:'lago',    fx:.678, fy:.248, raio:62, rotulo:'Pescar',              cor:'#7ab8ff', abrir:()=>openFishing()},
-    {id:'arqueiro',fx:.452, fy:.560, raio:58, rotulo:'Falar com o Arqueiro', cor:'#9fe08a', abrir:()=>window.ArqueiroNPC.abrir()},
-  ];
+  const PONTOS=window.CampInteractionData.create({
+    fazenda:()=>openFarm(),
+    cozinha:()=>openCookingPanel(),
+    merlin:()=>openMetaShop(),
+    oficina:()=>openWorkshopPanel(),
+    santuario:()=>openPetSanctuary(),
+    fogueira:()=>showCollection(),
+    portal:()=>openExpeditionMap(),
+    lago:()=>openFishing(),
+    arqueiro:()=>window.ArqueiroNPC.abrir(),
+  });
 
   const SEMENTES=window.CampFarmingData.SEMENTES;
   const NOME_SEM=window.CampFarmingData.NOME_SEM;

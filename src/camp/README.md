@@ -27,3 +27,7 @@ O footprint de colisao do jogador tambem passa a ser propriedade de `collision-m
 Catalogo de sementes, nomes, icones e rotulos da horta. O modulo nao executa plantio, inventario, desenho ou persistencia; essas regras continuam no CampV2.
 
 Os pontos de luz e a posicao do arqueiro tambem foram movidos para `layout-data.js`. As coordenadas e valores permanecem identicos.
+
+## interaction-data.js
+
+Centraliza somente os dados dos nove pontos de interacao (id, coordenadas, raio, rotulo e cor). As acoes reais continuam criadas dentro do CampV2 e sao injetadas no modulo, preservando exatamente os mesmos callbacks.

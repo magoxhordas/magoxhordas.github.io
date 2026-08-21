@@ -8,12 +8,15 @@ const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const collisionSource=fs.readFileSync(path.join(root,'src','camp','collision-map.js'),'utf8');
 const layoutSource=fs.readFileSync(path.join(root,'src','camp','layout-data.js'),'utf8');
 const farmingSource=fs.readFileSync(path.join(root,'src','camp','farming-data.js'),'utf8');
+const interactionSource=fs.readFileSync(path.join(root,'src','camp','interaction-data.js'),'utf8');
 assert(html.includes('<script src=\"src/camp/collision-map.js\"></script>'),'index nao carrega o modulo externo de colisao');
 assert(html.indexOf('<script src=\"src/camp/collision-map.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'modulo de colisao precisa carregar antes do CampV2');
 assert(html.includes('<script src=\"src/camp/layout-data.js\"></script>'),'index nao carrega os dados de layout do acampamento');
 assert(html.indexOf('<script src=\"src/camp/layout-data.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'layout do acampamento precisa carregar antes do CampV2');
 assert(html.includes('<script src=\"src/camp/farming-data.js\"></script>'),'index nao carrega os dados puros da horta');
 assert(html.indexOf('<script src=\"src/camp/farming-data.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'dados da horta precisam carregar antes do CampV2');
+assert(html.includes('<script src=\"src/camp/interaction-data.js\"></script>'),'index nao carrega os pontos de interacao externos');
+assert(html.indexOf('<script src=\"src/camp/interaction-data.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'pontos de interacao precisam carregar antes do CampV2');
 
 function assert(condition,message){
   if(!condition) throw new Error(message);
@@ -86,6 +89,12 @@ const MW=1447, MH=1087, dentroR=(x,y,[rx,ry,rw,rh])=>x>=rx&&x<=rx+rw&&y>=ry&&y<=
 const pontoBloqueado=(x,y)=>passages.some(r=>dentroR(x,y,r))?false:bloqueado(x,y);
 const livre=(x,y)=>[[-8,-3],[0,-3],[8,-3],[-8,4],[0,5],[8,4]].every(([ox,oy])=>
   !pontoBloqueado((x+ox)/MW,(y+8+oy)/MH));
+assert(interactionSource.includes("id:'fazenda', fx:.328, fy:.418, raio:74")&&
+  interactionSource.includes("id:'arqueiro',fx:.452, fy:.560, raio:58"),'dados dos pontos de interacao foram alterados');
+assert(html.includes('const PONTOS=window.CampInteractionData.create({')&&
+  html.includes('fazenda:()=>openFarm()')&&html.includes('lago:()=>openFishing()')&&
+  html.includes('arqueiro:()=>window.ArqueiroNPC.abrir()'),'callbacks de interacao nao permaneceram ligados no CampV2');
+
 const targets=[
   ['fazenda',.328,.418,74], ['cozinha',.186,.522,76], ['merlin',.835,.590,82],
   ['oficina',.218,.900,82], ['santuario',.690,.760,86], ['fogueira',.525,.548,70],
