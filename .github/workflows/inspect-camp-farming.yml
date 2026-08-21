@@ -1,0 +1,32 @@
+name: Inspect camp farming subsystem
+
+on:
+  push:
+    branches:
+      - agent/refactor-collision-architecture
+    paths:
+      - scripts/extract-camp-farming-snippet.mjs
+      - .github/workflows/inspect-camp-farming.yml
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/refactor-collision-architecture
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/extract-camp-farming-snippet.mjs
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/camp/_farming-system-snippet.txt
+          git commit -m "chore: snapshot camp farming subsystem" || exit 0
+          git push origin HEAD:agent/refactor-collision-architecture
