@@ -31531,6 +31531,7 @@ function applyFishBuff(buff){
 
 </script>
   <script src="src/camp/collision-map.js"></script>
+  <script src="src/camp/layout-data.js"></script>
 <script>
 // Start on first interaction (browser requires it)
 function _audioStart(){
@@ -32175,7 +32176,7 @@ window.CampV2 = (function(){
   // Canteiros: 5x3, exatamente os 15 lotes persistentes. A grade foi movida
   // para o gramado acima/direita da cabana, onde nenhuma parede corta o acesso.
   // O solo e desenhado por cima do fundo, formando uma horta coesa e legivel.
-  const HORTA = {fx:.3020, fy:.1080, fw:.2500, fh:.2520, cols:5, linhas:3};
+  const HORTA=window.CampLayoutData.HORTA;
   const CANTEIROS = (()=>{
     const out=[], cw=HORTA.fw/HORTA.cols, ch=HORTA.fh/HORTA.linhas;
     let n=0;
@@ -32231,7 +32232,7 @@ window.CampV2 = (function(){
     const pesY=y+8;
     if(x<10||pesY<5||x>MW-10||pesY>MH-5) return false;
     // Uma sola de 16x10 px substitui o antigo ponto unico de colisao.
-    const sola=[[-8,-3],[0,-3],[8,-3],[-8,4],[0,5],[8,4]];
+    const sola=window.CampCollisionMap.FOOTPRINT;
     for(const [ox,oy] of sola) if(pontoBloqueado(x+ox,pesY+oy)) return false;
     return true;
   };

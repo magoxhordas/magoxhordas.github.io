@@ -72,5 +72,10 @@
     return {BLOQUEIOS,BLOQUEIOS_CIRCULARES,PASSAGENS};
   }
 
-  global.CampCollisionMap=Object.freeze({create});
+  const FOOTPRINT=Object.freeze([
+    Object.freeze([-8,-3]), Object.freeze([0,-3]), Object.freeze([8,-3]),
+    Object.freeze([-8,4]), Object.freeze([0,5]), Object.freeze([8,4])
+  ]);
+
+  global.CampCollisionMap=Object.freeze({create,FOOTPRINT});
 })(window);

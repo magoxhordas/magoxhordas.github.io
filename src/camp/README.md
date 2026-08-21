@@ -15,3 +15,9 @@ Principios mantidos:
 - o sistema de resgate de save continua reposicionando o jogador se ele carregar dentro de um bloqueio.
 
 Este arquivo nao desenha nada e nao controla estado do jogo. Ele apenas fornece o mapa de colliders ao `CampV2`.
+
+## layout-data.js
+
+Dados estaticos de posicionamento do acampamento ficam separados da logica de desenho e gameplay. A primeira extracao e a grade 5x3 da horta, preservando exatamente as coordenadas existentes.
+
+O footprint de colisao do jogador tambem passa a ser propriedade de `collision-map.js`, mantendo os mesmos seis pontos usados anteriormente dentro de `livre()`.

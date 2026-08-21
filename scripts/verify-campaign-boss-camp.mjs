@@ -6,8 +6,11 @@ const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const collisionSource=fs.readFileSync(path.join(root,'src','camp','collision-map.js'),'utf8');
+const layoutSource=fs.readFileSync(path.join(root,'src','camp','layout-data.js'),'utf8');
 assert(html.includes('<script src=\"src/camp/collision-map.js\"></script>'),'index nao carrega o modulo externo de colisao');
 assert(html.indexOf('<script src=\"src/camp/collision-map.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'modulo de colisao precisa carregar antes do CampV2');
+assert(html.includes('<script src=\"src/camp/layout-data.js\"></script>'),'index nao carrega os dados de layout do acampamento');
+assert(html.indexOf('<script src=\"src/camp/layout-data.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'layout do acampamento precisa carregar antes do CampV2');
 
 function assert(condition,message){
   if(!condition) throw new Error(message);
@@ -40,7 +43,8 @@ assert(html.includes('#campaign-chapter-screen.active {\n  display:block;\n  opa
 assert(html.includes('0%{opacity:0;transform:scale(1.05)'),'o fade nao esta restrito a arte do capitulo');
 
 assert(collisionSource.includes('const BLOQUEIOS_CIRCULARES = ['),'objetos redondos do acampamento sem colisao propria');
-assert(html.includes('const sola=[[-8,-3],[0,-3],[8,-3],[-8,4],[0,5],[8,4]];'),'colisao do heroi nao usa a area dos pes');
+assert(collisionSource.includes('Object.freeze([-8,-3])')&&collisionSource.includes('Object.freeze([0,5])')&&
+  html.includes('const sola=window.CampCollisionMap.FOOTPRINT;'),'colisao do heroi nao usa a mesma area dos pes');
 for(const obstacle of [
   'F(.040, .200, .252, .322)',
   'F(.765, .248, .230, .326)',
@@ -85,8 +89,10 @@ const targets=[
   ['portal',.497,.825,90], ['lago',.678,.248,62], ['arqueiro',.452,.560,58],
 ];
 const horta={fx:.3020,fy:.1080,fw:.2500,fh:.2520,cols:5,linhas:3};
-assert(html.includes('const HORTA = {fx:.3020, fy:.1080, fw:.2500, fh:.2520, cols:5, linhas:3};'),
+assert(layoutSource.includes('fx:.3020, fy:.1080, fw:.2500, fh:.2520, cols:5, linhas:3')&&
+  html.includes('const HORTA=window.CampLayoutData.HORTA;'),
   'horta 5x3 acessivel nao esta configurada');
+assert(!camp.includes('const HORTA = {fx:.3020'),'configuracao da horta voltou para o index');
 assert(!camp.includes('const HORTA_OCULTOS'),'a horta ainda esconde parcelas atras da cabana');
 for(let r=0;r<horta.linhas;r++)for(let c=0;c<horta.cols;c++){
   targets.push([`canteiro ${r*horta.cols+c+1}`,
