@@ -14,6 +14,7 @@ for(const file of [
   'src/camp/layout-data.js',
   'src/camp/farming-data.js',
   'src/camp/farming-system.js',
+  'src/camp/environment-renderer.js',
   'src/camp/interaction-data.js',
 ]){
   vm.runInContext(read(file),sandbox,{filename:file});
@@ -27,6 +28,7 @@ assert(sandbox.CampCollisionMap,'CampCollisionMap nao foi exportado');
 assert(sandbox.CampLayoutData,'CampLayoutData nao foi exportado');
 assert(sandbox.CampFarmingData,'CampFarmingData nao foi exportado');
 assert(sandbox.CampFarmingSystem,'CampFarmingSystem nao foi exportado');
+assert(sandbox.CampEnvironmentRenderer,'CampEnvironmentRenderer nao foi exportado');
 assert(sandbox.CampInteractionData,'CampInteractionData nao foi exportado');
 
 const F=(fx,fy,fw,fh)=>({fx,fy,fw,fh});
@@ -43,6 +45,21 @@ assert(HORTA.fx===.3020&&HORTA.fy===.1080&&HORTA.fw===.2500&&HORTA.fh===.2520&&H
   'layout da horta foi alterado');
 assert(LUZES_ACAMPAMENTO.length===13,'quantidade de luzes do acampamento foi alterada');
 assert(ARQ.fx===.452&&ARQ.fy===.560,'posicao do arqueiro foi alterada');
+
+const envCalls=[];
+const envGradient={addColorStop(){envCalls.push('colorStop');}};
+const envCtx={
+  save(){envCalls.push('save');},restore(){envCalls.push('restore');},translate(){envCalls.push('translate');},
+  beginPath(){envCalls.push('beginPath');},moveTo(){envCalls.push('moveTo');},lineTo(){envCalls.push('lineTo');},
+  quadraticCurveTo(){envCalls.push('quadraticCurveTo');},closePath(){envCalls.push('closePath');},clip(){envCalls.push('clip');},
+  stroke(){envCalls.push('stroke');},ellipse(){envCalls.push('ellipse');},fillRect(){envCalls.push('fillRect');},
+  createRadialGradient(){envCalls.push('gradient');return envGradient;}
+};
+const environment=sandbox.CampEnvironmentRenderer.create({S:{camX:0,camY:0},LUZES_ACAMPAMENTO});
+assert(typeof environment.desenharAmbiente==='function','renderer ambiental nao exporta desenharAmbiente');
+environment.desenharAmbiente(envCtx,280);
+assert(envCalls.includes('quadraticCurveTo')&&envCalls.includes('gradient')&&envCalls.includes('ellipse')&&envCalls.includes('fillRect'),
+  'renderer ambiental deixou de desenhar agua, brilhos, portal ou pixels da fogueira');
 
 const farm=sandbox.CampFarmingData;
 assert(JSON.stringify(farm.SEMENTES)===JSON.stringify([
@@ -93,4 +110,4 @@ const arqueiro=pontos.find(item=>item.id==='arqueiro');
 assert(arqueiro.fx===.452&&arqueiro.fy===.560&&arqueiro.raio===58&&arqueiro.rotulo==='Falar com o Arqueiro',
   'dados de interacao do Arqueiro foram alterados');
 
-console.log('OK: modulos do acampamento preservam colisao, layout, farming funcional e interacoes.');
+console.log('OK: modulos do acampamento preservam colisao, layout, farming, ambiente visual e interacoes.');
