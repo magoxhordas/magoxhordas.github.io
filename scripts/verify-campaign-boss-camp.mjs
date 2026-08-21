@@ -7,10 +7,13 @@ const root=path.resolve(here,'..');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const collisionSource=fs.readFileSync(path.join(root,'src','camp','collision-map.js'),'utf8');
 const layoutSource=fs.readFileSync(path.join(root,'src','camp','layout-data.js'),'utf8');
+const farmingSource=fs.readFileSync(path.join(root,'src','camp','farming-data.js'),'utf8');
 assert(html.includes('<script src=\"src/camp/collision-map.js\"></script>'),'index nao carrega o modulo externo de colisao');
 assert(html.indexOf('<script src=\"src/camp/collision-map.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'modulo de colisao precisa carregar antes do CampV2');
 assert(html.includes('<script src=\"src/camp/layout-data.js\"></script>'),'index nao carrega os dados de layout do acampamento');
 assert(html.indexOf('<script src=\"src/camp/layout-data.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'layout do acampamento precisa carregar antes do CampV2');
+assert(html.includes('<script src=\"src/camp/farming-data.js\"></script>'),'index nao carrega os dados puros da horta');
+assert(html.indexOf('<script src=\"src/camp/farming-data.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'dados da horta precisam carregar antes do CampV2');
 
 function assert(condition,message){
   if(!condition) throw new Error(message);
@@ -94,6 +97,11 @@ assert(layoutSource.includes('fx:.3020, fy:.1080, fw:.2500, fh:.2520, cols:5, li
   'horta 5x3 acessivel nao esta configurada');
 assert(!camp.includes('const HORTA = {fx:.3020'),'configuracao da horta voltou para o index');
 assert(!camp.includes('const HORTA_OCULTOS'),'a horta ainda esconde parcelas atras da cabana');
+assert(html.includes('const SEMENTES=window.CampFarmingData.SEMENTES;')&&
+  html.includes('const NOME_SEM=window.CampFarmingData.NOME_SEM;')&&
+  html.includes('const ACAO=window.CampFarmingData.ACAO;'),'CampV2 nao esta consumindo o modulo de farming');
+assert(html.includes('const LUZES_ACAMPAMENTO=window.CampLayoutData.LUZES_ACAMPAMENTO;')&&
+  html.includes('const ARQ=window.CampLayoutData.ARQ;'),'CampV2 nao esta consumindo os dados de layout extraidos');
 for(let r=0;r<horta.linhas;r++)for(let c=0;c<horta.cols;c++){
   targets.push([`canteiro ${r*horta.cols+c+1}`,
     horta.fx+(c+.5)*horta.fw/horta.cols,
@@ -114,8 +122,9 @@ for(const [name] of targets) assert(reached.has(name),`colisao isolou o ponto de
 assert(html.includes('function desenharAmbiente(c,t)')&&
   html.includes('desenharAmbiente(c,t);\n    desenharHorta(c,t);\n    desenharPlantas(c,t);'),
   'animacoes e nova horta nao estao ligadas ao desenho');
-assert(html.includes("semente_tomate:'🍅'")&&html.includes("semente_erva:'🥬'")&&
-  html.includes("semente_cogumelo_lua:'🍄'")&&html.includes("semente_raiz_sangue:'🫜'"),
+assert(farmingSource.includes("semente_tomate:'🍅'")&&farmingSource.includes("semente_erva:'🥬'")&&
+  farmingSource.includes("semente_cogumelo_lua:'🍄'")&&farmingSource.includes("semente_raiz_sangue:'🫜'")&&
+  html.includes('const ICONE_SEM=window.CampFarmingData.ICONE_SEM;'),
   'HUD da horta ainda usa um unico icone de trigo para todos os vegetais');
 for(const effect of ['function desenharAgua(c,t)','function desenharFogueira(c,t)','LUZES_ACAMPAMENTO','VAGALUMES'])
   assert(html.includes(effect),`efeito ambiental ausente: ${effect}`);

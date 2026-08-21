@@ -31532,6 +31532,7 @@ function applyFishBuff(buff){
 </script>
   <script src="src/camp/collision-map.js"></script>
   <script src="src/camp/layout-data.js"></script>
+  <script src="src/camp/farming-data.js"></script>
 <script>
 // Start on first interaction (browser requires it)
 function _audioStart(){
@@ -32200,12 +32201,9 @@ window.CampV2 = (function(){
     {id:'arqueiro',fx:.452, fy:.560, raio:58, rotulo:'Falar com o Arqueiro', cor:'#9fe08a', abrir:()=>window.ArqueiroNPC.abrir()},
   ];
 
-  const SEMENTES = ['semente_trigo','semente_tomate','semente_erva',
-                    'semente_cogumelo_lua','semente_raiz_sangue'];
-  const NOME_SEM = {semente_trigo:'Trigo',semente_tomate:'Tomate',semente_erva:'Folhas',
-                    semente_cogumelo_lua:'Cogumelo',semente_raiz_sangue:'Beterraba'};
-  const ICONE_SEM = {semente_trigo:'🌾',semente_tomate:'🍅',semente_erva:'🥬',
-                     semente_cogumelo_lua:'🍄',semente_raiz_sangue:'🫜'};
+  const SEMENTES=window.CampFarmingData.SEMENTES;
+  const NOME_SEM=window.CampFarmingData.NOME_SEM;
+  const ICONE_SEM=window.CampFarmingData.ICONE_SEM;
 
   const S = {
     x:.497*1447, y:.760*1087,        // comeca no caminho, abaixo da fogueira
@@ -32257,8 +32255,7 @@ window.CampV2 = (function(){
   function celula(k){
     return (typeof farmCells!=='undefined'&&k.idx<farmCells.length)?farmCells[k.idx]:null;
   }
-  const ACAO = {empty:'Arar', plowed:'Plantar', planted:'Regar',
-                watered:'Crescendo...', ready:'Colher'};
+  const ACAO=window.CampFarmingData.ACAO;
   function usarCanteiro(k){
     const cell=celula(k); if(!cell) return;
     if(cell.state==='watered'){ aviso('Ja regado. Volte da expedicao.'); return; }
@@ -32461,14 +32458,7 @@ window.CampV2 = (function(){
   }
 
   // ── Vida do acampamento: animacoes discretas desenhadas sobre a arte. ──
-  const LUZES_ACAMPAMENTO = [
-    [141,468,'#ffc04a',22,0],[181,470,'#ffb43a',34,.8],[304,467,'#ffc04a',22,1.7],
-    [122,830,'#ffad32',24,.4],[261,820,'#ff9b28',18,2.2],
-    [1050,457,'#b66cff',22,.2],[1097,463,'#a44cff',17,1.2],
-    [1164,525,'#c175ff',19,2.4],[1351,526,'#bd68ff',21,.7],
-    [1105,901,'#45ff9b',24,.3],[1354,901,'#45ff9b',24,1.4],
-    [650,943,'#58cfff',22,.9],[873,943,'#58cfff',22,2.1],
-  ];
+  const LUZES_ACAMPAMENTO=window.CampLayoutData.LUZES_ACAMPAMENTO;
   const VAGALUMES = Array.from({length:18},(_,i)=>(
     {x:82+(i*173)%1270,y:115+(i*97)%790,fase:i*.83,raio:1+(i%3)*.35}
   ));
@@ -32626,7 +32616,7 @@ window.CampV2 = (function(){
   }
 
   // ── O Arqueiro da fogueira: fica parado, mas vira para quem chega ──
-  const ARQ = {fx:.452, fy:.560};
+  const ARQ=window.CampLayoutData.ARQ;
   function desenharArqueiro(c,t){
     const ax=ARQ.fx*MW, ay=ARQ.fy*MH;
     const x=Math.round(ax-S.camX), y=Math.round(ay-S.camY);
