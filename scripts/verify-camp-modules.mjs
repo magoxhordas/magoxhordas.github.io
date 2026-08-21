@@ -9,7 +9,12 @@ const sandbox={console};
 sandbox.window=sandbox;
 vm.createContext(sandbox);
 
-for(const file of ['src/camp/collision-map.js','src/camp/layout-data.js','src/camp/farming-data.js']){
+for(const file of [
+  'src/camp/collision-map.js',
+  'src/camp/layout-data.js',
+  'src/camp/farming-data.js',
+  'src/camp/interaction-data.js',
+]){
   vm.runInContext(read(file),sandbox,{filename:file});
 }
 
@@ -20,6 +25,7 @@ function assert(condition,message){
 assert(sandbox.CampCollisionMap,'CampCollisionMap nao foi exportado');
 assert(sandbox.CampLayoutData,'CampLayoutData nao foi exportado');
 assert(sandbox.CampFarmingData,'CampFarmingData nao foi exportado');
+assert(sandbox.CampInteractionData,'CampInteractionData nao foi exportado');
 
 const F=(fx,fy,fw,fh)=>({fx,fy,fw,fh});
 const E=(fx,fy,frx,fry=frx)=>({fx,fy,frx,fry});
@@ -44,4 +50,20 @@ assert(farm.NOME_SEM.semente_tomate==='Tomate'&&farm.ICONE_SEM.semente_tomate===
 assert(farm.NOME_SEM.semente_cogumelo_lua==='Cogumelo'&&farm.ICONE_SEM.semente_cogumelo_lua==='🍄','dados do cogumelo foram alterados');
 assert(farm.ACAO.empty==='Arar'&&farm.ACAO.ready==='Colher','rotulos de acao da horta foram alterados');
 
-console.log('OK: modulos do acampamento preservam colisao, layout e dados da horta.');
+const ids=['fazenda','cozinha','merlin','oficina','santuario','fogueira','portal','lago','arqueiro'];
+const actions=Object.fromEntries(ids.map(id=>[id,()=>id]));
+const pontos=sandbox.CampInteractionData.create(actions);
+assert(pontos.length===9,'quantidade de pontos de interacao foi alterada');
+for(const id of ids){
+  const ponto=pontos.find(item=>item.id===id);
+  assert(ponto,`ponto de interacao ausente: ${id}`);
+  assert(ponto.abrir===actions[id],`callback foi trocado no ponto: ${id}`);
+}
+const merlin=pontos.find(item=>item.id==='merlin');
+assert(merlin.fx===.835&&merlin.fy===.590&&merlin.raio===82&&merlin.rotulo==='Falar com Merlin'&&merlin.cor==='#c08cff',
+  'dados de interacao do Merlin foram alterados');
+const arqueiro=pontos.find(item=>item.id==='arqueiro');
+assert(arqueiro.fx===.452&&arqueiro.fy===.560&&arqueiro.raio===58&&arqueiro.rotulo==='Falar com o Arqueiro',
+  'dados de interacao do Arqueiro foram alterados');
+
+console.log('OK: modulos do acampamento preservam colisao, layout, farming e interacoes.');
