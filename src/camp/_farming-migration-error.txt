@@ -8,5 +8,14 @@ OK: subsistema funcional de farming extraido preservando estado, inventario e de
 \n===== node scripts/verify-camp-modules.mjs =====
 OK: modulos do acampamento preservam colisao, layout, farming funcional e interacoes.
 \n===== node scripts/verify-inline-scripts.mjs =====
-SCRIPT 41: Unexpected token 'return'
-\nFAILED with exit code 1
+OK: 41 scripts inline possuem sintaxe JavaScript válida.
+\n===== node scripts/verify-campaign-boss-camp.mjs =====
+OK: arenas, capitulos, silhuetas, resgate de colisao e animacoes discretas do acampamento validados.
+\n===== node scripts/verify-campaign-shop.mjs =====
+OK: 32 buffs de classe, 8 universais, 5 raridades, composição da loja e não repetição validados.
+\n===== node scripts/verify-deity-blessings.mjs =====
+OK: 15 divindades, 75 bênçãos, 5 raridades, efeitos-chave, exclusões e não repetição validados.
+\n===== git diff --check =====
+index.html:32183: trailing whitespace.
++  
+\nFAILED with exit code 2
