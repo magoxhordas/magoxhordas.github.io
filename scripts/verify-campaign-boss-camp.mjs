@@ -5,6 +5,9 @@ import { fileURLToPath } from 'node:url';
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
+const collisionSource=fs.readFileSync(path.join(root,'src','camp','collision-map.js'),'utf8');
+assert(html.includes('<script src=\"src/camp/collision-map.js\"></script>'),'index nao carrega o modulo externo de colisao');
+assert(html.indexOf('<script src=\"src/camp/collision-map.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'modulo de colisao precisa carregar antes do CampV2');
 
 function assert(condition,message){
   if(!condition) throw new Error(message);
@@ -36,7 +39,7 @@ assert(chapterAt>=0&&frameAt>chapterAt,'capitulo nao abre antes do primeiro fram
 assert(html.includes('#campaign-chapter-screen.active {\n  display:block;\n  opacity:1;\n}'),'a abertura ainda deixa o canvas do combate aparecer por transparencia');
 assert(html.includes('0%{opacity:0;transform:scale(1.05)'),'o fade nao esta restrito a arte do capitulo');
 
-assert(html.includes('const BLOQUEIOS_CIRCULARES = ['),'objetos redondos do acampamento sem colisao propria');
+assert(collisionSource.includes('const BLOQUEIOS_CIRCULARES = ['),'objetos redondos do acampamento sem colisao propria');
 assert(html.includes('const sola=[[-8,-3],[0,-3],[8,-3],[-8,4],[0,5],[8,4]];'),'colisao do heroi nao usa a area dos pes');
 for(const obstacle of [
   'F(.040, .200, .252, .322)',
@@ -44,15 +47,16 @@ for(const obstacle of [
   'F(.058, .595, .255, .286)',
   'F(.705, .620, .285, .285)',
   'F(.375, .775, .275, .202)',
-]) assert(html.includes(obstacle),`silhueta completa sem colisao: ${obstacle}`);
+]) assert(collisionSource.includes(obstacle),`silhueta completa sem colisao: ${obstacle}`);
 assert(html.includes('function reposicionarSeBloqueado()')&&html.includes('dimensionar();\n    reposicionarSeBloqueado();\n    retomar();'),'jogador salvo dentro de objeto nao e resgatado');
 
 // Reconstroi as formas diretamente do codigo e testa os pontos vistos nas
 // capturas: tetos, tendas, tocos, santuario e portal precisam estar bloqueados.
 const camp=html.slice(html.indexOf('window.CampV2 = (function(){'),html.indexOf('// [/CAMP-V2]'));
-const rectSource=camp.slice(camp.indexOf('const BLOQUEIOS = ['),camp.indexOf('const BLOQUEIOS_CIRCULARES'));
-const ellipseSource=camp.slice(camp.indexOf('const BLOQUEIOS_CIRCULARES = ['),camp.indexOf('const PASSAGENS'));
-const passageSource=camp.slice(camp.indexOf('const PASSAGENS = ['),camp.indexOf('const HORTA ='));
+assert(!camp.includes('const BLOQUEIOS = ['),'dados de colisao voltaram a ficar presos no index');
+const rectSource=collisionSource.slice(collisionSource.indexOf('const BLOQUEIOS = ['),collisionSource.indexOf('const BLOQUEIOS_CIRCULARES'));
+const ellipseSource=collisionSource.slice(collisionSource.indexOf('const BLOQUEIOS_CIRCULARES = ['),collisionSource.indexOf('const PASSAGENS'));
+const passageSource=collisionSource.slice(collisionSource.indexOf('const PASSAGENS = ['),collisionSource.indexOf('return {BLOQUEIOS,BLOQUEIOS_CIRCULARES,PASSAGENS}'));
 const parseShapes=(source,kind)=>[...source.matchAll(new RegExp(`${kind}\\(([^)]*)\\)`,'g'))]
   .map(m=>m[1].split(',').map(Number));
 const rects=parseShapes(rectSource,'F'), ellipses=parseShapes(ellipseSource,'E'), passages=parseShapes(passageSource,'F');
