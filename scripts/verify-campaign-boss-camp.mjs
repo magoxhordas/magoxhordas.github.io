@@ -24,8 +24,12 @@ assert(html.includes("const initialArena=bossRushMode?(bossRushQueue[0]?.arena||
 assert(html.includes("function resetBossRushState(clearSelection=false)"),'reset central do modo chefao ausente');
 assert(html.includes("function openCampaignSetup()")&&html.includes("resetBossRushState(false);\n  state='menu';\n  showScreen('play-menu');"),'campanha nao zera o modo chefao');
 assert(html.includes('function clampCampaignEntity(entity,padding=0){\n  if(!entity) return entity;'),'limites ainda ignoram entidades do Boss Rush');
+assert(html.includes('body.campaign-hud-active.boss-rush-no-coins #ui-top {'),
+  'HUD moderna do modo Chefao nao removeu a coluna vazia do ouro');
 
 const begin=html.slice(html.indexOf('function beginGame(){'),html.indexOf('\nfunction endGame(){'));
+assert(begin.includes("document.body.classList.add('campaign-hud-active');"),
+  'modo Chefao ainda reativa a HUD antiga');
 const chapterAt=begin.indexOf('if(!bossRushMode) maybeStartCampaignChapter(wave);');
 const frameAt=begin.indexOf('raf=requestAnimationFrame(loop);');
 assert(chapterAt>=0&&frameAt>chapterAt,'capitulo nao abre antes do primeiro frame do combate');
@@ -58,7 +62,7 @@ for(const [nome,x,y] of [
   ['telhado da cabana',.17,.27], ['tenda do Merlin',.85,.32],
   ['tenda da oficina',.18,.64], ['santuario',.83,.70],
   ['portal sul',.50,.80], ['toco da cabana',.321,.470],
-  ['toco da horta',.472,.190], ['toco do lago',.605,.386],
+  ['toco do lago',.605,.386],
 ]) assert(bloqueado(x,y),`captura ainda atravessavel: ${nome}`);
 for(const [nome,x,y] of [
   ['frente do Merlin',.835,.590], ['frente da oficina',.218,.900],
@@ -76,6 +80,15 @@ const targets=[
   ['oficina',.218,.900,82], ['santuario',.690,.760,86], ['fogueira',.525,.548,70],
   ['portal',.497,.825,90], ['lago',.678,.248,62], ['arqueiro',.452,.560,58],
 ];
+const horta={fx:.3020,fy:.1080,fw:.2500,fh:.2520,cols:5,linhas:3};
+assert(html.includes('const HORTA = {fx:.3020, fy:.1080, fw:.2500, fh:.2520, cols:5, linhas:3};'),
+  'horta 5x3 acessivel nao esta configurada');
+assert(!camp.includes('const HORTA_OCULTOS'),'a horta ainda esconde parcelas atras da cabana');
+for(let r=0;r<horta.linhas;r++)for(let c=0;c<horta.cols;c++){
+  targets.push([`canteiro ${r*horta.cols+c+1}`,
+    horta.fx+(c+.5)*horta.fw/horta.cols,
+    horta.fy+(r+.5)*horta.fh/horta.linhas,26]);
+}
 const reached=new Set(), queue=[[.497*MW,.760*MH]], seen=new Set(['0,0']), step=12;
 for(let head=0;head<queue.length&&head<24000;head++){
   const [x,y]=queue[head];
@@ -88,7 +101,12 @@ for(let head=0;head<queue.length&&head<24000;head++){
   }
 }
 for(const [name] of targets) assert(reached.has(name),`colisao isolou o ponto de interacao: ${name}`);
-assert(html.includes('function desenharAmbiente(c,t)')&&html.includes('desenharAmbiente(c,t);\n    desenharPlantas(c,t);'),'animacoes do acampamento nao estao ligadas ao desenho');
+assert(html.includes('function desenharAmbiente(c,t)')&&
+  html.includes('desenharAmbiente(c,t);\n    desenharHorta(c,t);\n    desenharPlantas(c,t);'),
+  'animacoes e nova horta nao estao ligadas ao desenho');
+assert(html.includes("semente_tomate:'🍅'")&&html.includes("semente_erva:'🥬'")&&
+  html.includes("semente_cogumelo_lua:'🍄'")&&html.includes("semente_raiz_sangue:'🫜'"),
+  'HUD da horta ainda usa um unico icone de trigo para todos os vegetais');
 for(const effect of ['function desenharAgua(c,t)','function desenharFogueira(c,t)','LUZES_ACAMPAMENTO','VAGALUMES'])
   assert(html.includes(effect),`efeito ambiental ausente: ${effect}`);
 const fogo=html.slice(html.indexOf('function desenharFogueira(c,t)'),html.indexOf('function desenharAmbiente(c,t)'));
