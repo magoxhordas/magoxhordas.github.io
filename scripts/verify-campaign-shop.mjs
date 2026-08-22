@@ -4,9 +4,10 @@ import vm from 'node:vm';
 
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 assert.match(html,/ITENS UNIVERSAIS DA LOJA/,'O Códex deve listar os itens universais da campanha.');
-const scripts=[...html.matchAll(/<script(?:[^>]*)>([\s\S]*?)<\/script>/gi)].map(match=>match[1]);
-const shopSource=scripts.find(source=>source.includes('// SHOP SYSTEM'));
-assert.ok(shopSource,'O script da loja da campanha não foi encontrado.');
+const shopDataSource=fs.readFileSync(new URL('../src/shop/shop-data.js',import.meta.url),'utf8');
+const shopSystemSource=fs.readFileSync(new URL('../src/shop/shop-system.js',import.meta.url),'utf8');
+assert.match(shopDataSource,/const CAMPAIGN_CLASS_BUFFS=/,'Os dados da loja da campanha não foram encontrados.');
+assert.match(shopSystemSource,/function buildShopPool\(/,'O sistema da loja da campanha não foi encontrado.');
 
 const rarities=['common','uncommon','rare','epic','legendary'];
 const weaponDefs={};
@@ -39,7 +40,9 @@ const context={
   document:{getElementById(){return null;},querySelectorAll(){return[];},querySelector(){return null;},createElement(){return {classList:{add(){},toggle(){}},style:{setProperty(){}},dataset:{}};}},
 };
 vm.createContext(context);
-vm.runInContext(shopSource,context,{filename:'campaign-shop-inline.js'});
+context.window=context;
+vm.runInContext(shopDataSource,context,{filename:'shop-data.js'});
+vm.runInContext(shopSystemSource,context,{filename:'shop-system.js'});
 
 const counts=vm.runInContext(`({classes:Object.fromEntries(Object.entries(CAMPAIGN_CLASS_BUFFS).map(([id,list])=>[id,list.length])),universals:CAMPAIGN_UNIVERSAL_ITEMS.length,allFive:Object.values(CAMPAIGN_CLASS_BUFFS).flat().concat(CAMPAIGN_UNIVERSAL_ITEMS).every(item=>item.values.length===5)})`,context);
 assert.deepEqual({...counts.classes},{mage:8,warrior:8,archer:8,viking:8});

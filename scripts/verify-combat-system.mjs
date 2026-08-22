@@ -8,7 +8,9 @@ const read=file=>fs.readFileSync(path.join(root,file),'utf8').replace(/\r\n/g,'\
 const html=read('index.html');
 const combatFiles=['src/combat/status-effects.js','src/combat/damage-system.js','src/combat/combat-system.js'];
 const moduleSources=combatFiles.filter(file=>fs.existsSync(path.join(root,file))).map(read);
-const combatSource=[html,...moduleSources].join('\n');
+const integrationFiles=['src/blessings/blessing-system.js','src/shop/shop-system.js'];
+const integrationSources=integrationFiles.filter(file=>fs.existsSync(path.join(root,file))).map(read);
+const combatSource=[html,...moduleSources,...integrationSources].join('\n');
 let checks=0;
 
 function assert(condition,message){
