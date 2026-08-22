@@ -11,6 +11,10 @@ Versão consolidada do jogo de ação em HTML, CSS e JavaScript.
 - acampamento, fazenda, pesca, crafting e lojas;
 - testes de integridade em `scripts/`.
 
+## Estrutura do codigo
+
+O jogo esta sendo modularizado de forma incremental, preservando o `index.html` como entrada oficial. Os limites dos sistemas ja extraidos estao documentados em [`src/README.md`](src/README.md), incluindo Core, Acampamento e o nucleo compartilhado de Combate.
+
 ## Executar localmente
 
 Abra `index.html` diretamente ou inicie um servidor HTTP nesta pasta:
