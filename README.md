@@ -13,7 +13,15 @@ Versão consolidada do jogo de ação em HTML, CSS e JavaScript.
 
 ## Estrutura do codigo
 
-O jogo está sendo modularizado de forma incremental, preservando o `index.html` como entrada oficial. Os limites dos sistemas já extraídos estão documentados em [`src/README.md`](src/README.md), incluindo Core, Acampamento, Combate, armas, bênçãos, loja, campanha, chefes, Masmorra e as principais fronteiras da interface.
+O jogo foi modularizado de forma incremental, preservando o `index.html` como entrada oficial. Os limites dos sistemas extraídos estão documentados em [`src/README.md`](src/README.md). O [relatório final](docs/refactor-final-report.md) registra a arquitetura, compatibilidade, dívida técnica e riscos conhecidos.
+
+## Verificação completa
+
+Execute todos os verificadores locais com:
+
+```powershell
+node scripts/verify-all.mjs
+```
 
 ## Executar localmente
 
