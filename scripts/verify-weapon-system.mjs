@@ -122,7 +122,8 @@ for(const [classId,items] of Object.entries(expected)){
   for(const [id] of items)assert(source.includes(`type==='${id}'`),`${id} perdeu seu ramo de ataque`);
 }
 for(const snippet of [
-  'new CampaignWeaponProj(player.x,player.y,a,dmg,player,weapon,shotOpts)',
+  'spawnProjectile(player.x,player.y,a,dmg,player,weapon,shotOpts)',
+  'new CampaignWeaponProj(x,y,angle,dmg,owner,weapon,opts)',
   'this.life=2200*(opts.rangeMult||1)',
   'this.speed=420*(opts.speed||1)',
   'this.homing=!!opts.homing',
@@ -140,5 +141,50 @@ for(const snippet of [
   'p.opts.explode','p.opts.burn','p.opts.poison','p.opts.slow','p.opts.iceHits','glacial:tier>=4',
   'this.opts.echo','p.opts.ricochet','p.opts.frozenCrit','p.opts.bossBonus','this.opts.boomerang','this.opts.returnSpin',
 ])assert(source.includes(snippet),`efeito de projetil deixou de existir: ${snippet}`);
+
+const weaponDataPath=path.join(root,'src/weapons/weapon-data.js');
+const weaponSystemPath=path.join(root,'src/weapons/weapon-system.js');
+if(fs.existsSync(weaponDataPath)&&fs.existsSync(weaponSystemPath)){
+  const sandbox={console,setTimeout:callback=>{callback();return 1;}};
+  sandbox.window=sandbox;
+  vm.createContext(sandbox);
+  vm.runInContext(read('src/weapons/weapon-data.js'),sandbox,{filename:'src/weapons/weapon-data.js'});
+  vm.runInContext(read('src/weapons/weapon-system.js'),sandbox,{filename:'src/weapons/weapon-system.js'});
+  const rarities=['common','uncommon','rare','epic','legendary'];
+  let delegated='';
+  const definitions=sandbox.CampaignWeaponData.createDefinitions(rarities,(...args)=>{delegated=args.at(-1);});
+  assert(Object.keys(definitions).length===32,'catalogo extraido deixou de criar 32 definicoes');
+  definitions.mage_fire_staff.attack({},[],'common',null,{});
+  assert(delegated==='mage_fire_staff','definicao extraida deixou de delegar o id correto ao ataque');
+
+  let actions=0;
+  const target={x:40,y:0,hp:100,maxHp:100,dead:false,type:'grunt'};
+  const system=sandbox.CampaignWeaponSystem.create({
+    getDefinition:type=>definitions[type],
+    getTier:rarity=>rarities.indexOf(rarity),
+    campaignWeaponDamage:(def,rarity)=>def.baseDmg*({common:1,uncommon:1.12,rare:1.25,epic:1.42,legendary:1.62}[rarity]||1),
+    nearestWeaponTargets:()=>[target],
+    spawnProjectile:()=>{actions++;return {};},
+    weaponChain:()=>{actions++;},
+    addMeleeAnim:()=>{actions++;},
+    weaponDamage:()=>{actions++;},
+    weaponCone:(...args)=>{actions++;const onHit=args.at(-1);if(typeof onHit==='function')onHit(target);},
+    weaponKnockback:()=>{actions++;},
+    weaponBurst:(...args)=>{actions++;const onHit=args.at(-1);if(typeof onHit==='function')onHit(target);},
+    applyWeaponBurn:()=>{actions++;},
+    applyWeaponSlow:()=>{actions++;},
+    isPlaying:()=>true,
+  });
+  for(const [classId,items] of Object.entries(expected)){
+    for(const [id] of items){
+      const before=actions;
+      const weapon={type:id,rarity:'common'};
+      const player={x:0,y:0,hp:100,maxHp:100,classId};
+      system.attack(player,[target],'common',null,weapon,id);
+      assert(weapon.attackCount===1,`${id} deixou de registrar a contagem de ataque`);
+      assert(actions>before,`${id} nao executou nenhuma acao no sistema extraido`);
+    }
+  }
+}
 
 console.log(`OK: 32 armas, raridades, dano, cooldowns, elementos, ataques e fisica de projeteis protegidos (${checks} verificacoes).`);
