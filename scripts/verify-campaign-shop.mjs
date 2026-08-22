@@ -3,7 +3,8 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
-assert.match(html,/ITENS UNIVERSAIS DA LOJA/,'O Códex deve listar os itens universais da campanha.');
+const uiSource=fs.readFileSync(new URL('../src/ui/menu-codex-system.js',import.meta.url),'utf8');
+assert.match(uiSource,/ITENS UNIVERSAIS DA LOJA/,'O Códex deve listar os itens universais da campanha.');
 const shopDataSource=fs.readFileSync(new URL('../src/shop/shop-data.js',import.meta.url),'utf8');
 const shopSystemSource=fs.readFileSync(new URL('../src/shop/shop-system.js',import.meta.url),'utf8');
 assert.match(shopDataSource,/const CAMPAIGN_CLASS_BUFFS=/,'Os dados da loja da campanha não foram encontrados.');

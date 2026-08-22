@@ -12,7 +12,8 @@ const campaignFiles=[
 ];
 const campaignSource=[html,...campaignFiles.map(read)].join('\n');
 const dungeonSource=read('src/dungeon/dungeon-system.js');
-const applicationSource=`${campaignSource}\n${dungeonSource}`;
+const uiFiles=['src/ui/menu-codex-system.js','src/ui/campaign-overlays.js','src/ui/settings-system.js'];
+const applicationSource=`${campaignSource}\n${dungeonSource}\n${uiFiles.map(read).join('\n')}`;
 
 function assert(condition,message){
   if(!condition) throw new Error(message);

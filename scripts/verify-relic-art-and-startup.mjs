@@ -6,7 +6,8 @@ const root=path.resolve(import.meta.dirname,'..');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const shopSource=fs.readFileSync(path.join(root,'src','shop','shop-system.js'),'utf8');
 const dungeonSource=fs.readFileSync(path.join(root,'src','dungeon','dungeon-system.js'),'utf8');
-const integrationSource=`${html}\n${shopSource}\n${dungeonSource}`;
+const uiSource=fs.readFileSync(path.join(root,'src','ui','menu-codex-system.js'),'utf8');
+const integrationSource=`${html}\n${shopSource}\n${dungeonSource}\n${uiSource}`;
 const relicDir=path.join(root,'assets','codex','relics');
 const relicFiles=fs.readdirSync(relicDir).filter(name=>name.endsWith('.png')).sort();
 
@@ -17,7 +18,7 @@ for(const name of relicFiles){
   assert.equal(data.readUInt32BE(16),192,`${name} não mede 192px de largura.`);
   assert.equal(data.readUInt32BE(20),192,`${name} não mede 192px de altura.`);
   const id=name.replace(/\.png$/,'');
-  assert.ok(html.includes(`${id}:'assets/codex/relics/${name}'`),`${name} não está ligado ao CODEX_RELIC_ART.`);
+  assert.ok(uiSource.includes(`${id}:'assets/codex/relics/${name}'`),`${name} não está ligado ao CODEX_RELIC_ART.`);
 }
 
 assert.match(html,/#settings-screen\{\s*display:none;/,'A tela de Configurações ainda pode aparecer no primeiro quadro.');
