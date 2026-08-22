@@ -14551,6 +14551,7 @@ function getArmorReduction(){
 const CAMPAIGN_WEAPON_POWER=CampaignWeaponData.POWER;
 const CAMPAIGN_WEAPON_SPEED=CampaignWeaponData.SPEED;
 const CAMPAIGN_WEAPON_SPECS=CampaignWeaponData.SPECS;
+function campaignClassWeaponAttack(player,enemies,rarity,manualTarget,weapon,type){return campaignWeaponSystem.attack(player,enemies,rarity,manualTarget,weapon,type);}
 const WEAPON_DEFS=CampaignWeaponData.createDefinitions(RARITIES,campaignClassWeaponAttack);
 
 function campaignWeaponDamage(def,rarity){return def.baseDmg*(CAMPAIGN_WEAPON_POWER[rarity]||1);}
@@ -15628,7 +15629,6 @@ const campaignWeaponSystem=CampaignWeaponSystem.create({
   applyWeaponSlow,
   isPlaying:()=>state==='playing',
 });
-function campaignClassWeaponAttack(player,enemies,rarity,manualTarget,weapon,type){return campaignWeaponSystem.attack(player,enemies,rarity,manualTarget,weapon,type);}
 
 function swordAttack(player, enemies, rarity, manualTarget=null){
   const def=WEAPON_DEFS.sword;
