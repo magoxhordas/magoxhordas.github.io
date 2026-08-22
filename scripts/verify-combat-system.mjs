@@ -74,11 +74,11 @@ includesAll(combatSource,[
 // O roubo de vida do Viking e os dois caminhos atuais (berserk e Machado de
 // Sangue) ficam protegidos porque dependem diretamente do dano aplicado.
 includesAll(combatSource,[
-  "} else if(cid==='viking')",
+  "}else if(cid==='viking')",
   'if(owner.berserkActive)',
   'proj.dmg*owner.lifeSteal',
   "proj.weapon?.type==='viking_bloodaxe'",
-  'healCampaignPlayer(owner,proj.dmg*steal',
+  'healPlayer(owner,proj.dmg*steal',
 ],'roubo de vida do Viking');
 
 for(const source of moduleSources) new vm.Script(source);
@@ -168,6 +168,63 @@ if(fs.existsSync(damagePath)){
   const specter={hp:40,x:0,y:0,isSpecter:true,phased:true};
   damage.damageEnemy(specter,20,()=>{deathHooks++;});
   assert(specter.hp===40&&!specter.dead&&kills===1,'imunidade do espectro em fase foi alterada');
+}
+
+const sharedCombatPath=path.join(root,'src/combat/combat-system.js');
+if(fs.existsSync(sharedCombatPath)){
+  const sharedCombatSource=read('src/combat/combat-system.js');
+  const sandbox={console};
+  sandbox.window=sandbox;
+  vm.createContext(sandbox);
+  vm.runInContext(sharedCombatSource,sandbox,{filename:'src/combat/combat-system.js'});
+  const particles=[],statuses=[],patches=[],links=[];
+  let nearbyEnemies=[],clamps=0,shopHits=0,blessingHits=0,specials=0;
+  const shared=sandbox.CampaignCombatSystem.create({
+    getShopEffect:()=>({elementDuration:.5}),
+    getEnemies:()=>nearbyEnemies,
+    hasWeaponType:type=>type==='mage_fire_staff',
+    spawnParts:(...args)=>particles.push(args),
+    markEnemyStatus:(enemy,type)=>statuses.push({enemy,type}),
+    applyShopHitEffects:()=>{shopHits++;},
+    notifyBlessingSpecial:()=>{specials++;},
+    notifyBlessingHit:()=>{blessingHits++;},
+    clampEntity:()=>{clamps++;},
+    addFirePatch:patch=>patches.push(patch),
+    addLinkPart:(...args)=>links.push(args),
+  });
+
+  const healingOwner={hp:80,maxHp:100,cardEffects:{healingMult:.5}};
+  assert(shared.healPlayer(healingOwner,10,4,5)===15&&healingOwner.hp===95&&particles.length===1,'cura/bonus/particulas mudaram comportamento');
+
+  const knockbackOwner={x:0,y:0,cardEffects:{extraKnockback:200}};
+  const knocked={x:100,y:0,radius:14};
+  shared.applyBlessingKnockback(knockbackOwner,knocked);
+  assert(knocked.x===185&&knocked.y===0&&clamps===1,'recuo de bencao mudou limite, direcao ou clamp');
+
+  const mage={classId:'mage',slowDur:1000};
+  const mageTarget={x:20,y:20};
+  shared.applyClassHitEffect({owner:mage,dmg:12},mageTarget);
+  assert(mageTarget.slowed&&mageTarget.slowTimer===1500&&statuses.at(-1).type==='ice','acerto do Mago mudou lentidao, duracao ou elemento');
+  shared.applyClassHitEffect({owner:mage,dmg:12},mageTarget);
+  assert(mageTarget.frozen&&mageTarget.frozenTimer===2000&&!mageTarget.slowed,'segundo acerto do Mago deixou de congelar');
+
+  const warrior={classId:'warrior',fireDur:3000,dmg:100};
+  shared.applyClassHitEffect({owner:warrior,dmg:30},{x:30,y:40});
+  assert(patches.at(-1).timer===3000&&patches.at(-1).r===28&&patches.at(-1).dmgPerSec===18,'rastro incendiario do Guerreiro mudou');
+
+  let chainedDamage=0;
+  const archerTarget={x:0,y:0};
+  const linkedEnemy={x:20,y:0,dead:false,takeDmg:amount=>{chainedDamage+=amount;}};
+  nearbyEnemies=[archerTarget,linkedEnemy];
+  const archer={classId:'archer',plasmaChain:1,igniteSelf:true,dmg:80};
+  shared.applyClassHitEffect({owner:archer,dmg:100},archerTarget);
+  assert(chainedDamage===60&&links.length===5&&statuses.some(entry=>entry.enemy===linkedEnemy&&entry.type==='electric'),'elo de plasma do Arqueiro mudou dano, alvo, elemento ou desenho');
+  assert(patches.at(-1).timer===900&&patches.at(-1).r===24&&patches.at(-1).dmgPerSec===12,'flecha incendiaria do Arqueiro mudou');
+
+  const viking={classId:'viking',hp:50,maxHp:100,berserkActive:true,lifeSteal:.2,x:5,y:6};
+  shared.applyClassHitEffect({owner:viking,dmg:100,weapon:{type:'viking_bloodaxe',rarity:'uncommon'}},{x:0,y:0});
+  assert(viking.hp===72.5,'roubo de vida do Viking ou Machado de Sangue mudou');
+  assert(shopHits===5&&blessingHits===5&&specials===5,'ganchos comuns de loja ou bencao deixaram de executar por acerto');
 }
 
 console.log(`OK: baseline de combate protege dano, critico, vida, morte, cooldown/status, P1/P2, chefes, Dungeon e Viking (${checks} verificacoes).`);
