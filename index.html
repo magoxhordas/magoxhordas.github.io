@@ -5576,6 +5576,9 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
 })(window);
 
 </script>
+  <script src="src/combat/status-effects.js"></script>
+  <script src="src/combat/damage-system.js"></script>
+  <script src="src/combat/combat-system.js"></script>
   <script>
 (function(global){
   'use strict';
@@ -14618,10 +14621,11 @@ function campaignWeaponElement(type=''){
   return 'physical';
 }
 
-const CAMPAIGN_ELEMENT_FX_DURATION={
-  fire:1500,ice:1600,electric:900,poison:1700,shadow:1250,
-  arcane:1050,solar:950,wind:850,blood:1300,physical:280
-};
+const campaignStatusEffects=CampaignStatusEffects.create({
+  now:()=>performance.now(),
+  resolveWeaponElement:source=>campaignWeaponElement(source),
+  getCampaignShopEffect:owner=>getCampaignShopEffect(owner)
+});
 function campaignWeaponIconHtml(type,size=46,extraClass='',ringColor=''){
   const safe=WEAPON_DEFS[type]?type:'';
   if(!safe)return gamePixelIconHtml('orb',size,null,extraClass);
@@ -14630,16 +14634,10 @@ function campaignWeaponIconHtml(type,size=46,extraClass='',ringColor=''){
   return `<span class="campaign-weapon-medallion ${extraClass}" style="--weapon-size:${px}px;--weapon-ring:${ring};" aria-hidden="true"><img class="campaign-weapon-art" src="assets/weapons/${safe}.png" alt=""></span>`;
 }
 function campaignDamageElement(source=''){
-  const raw=typeof source==='string'?source:(source?.type||source?.id||'');
-  const direct=['fire','ice','electric','poison','shadow','arcane','solar','wind','blood','physical'];
-  return direct.includes(raw)?raw:campaignWeaponElement(raw);
+  return campaignStatusEffects.damageElement(source);
 }
 function markEnemyWeaponStatus(target,source,duration){
-  if(!target||target.dead)return;
-  const element=campaignDamageElement(source);
-  target.elementFx=target.elementFx||{};
-  const until=performance.now()+(duration||CAMPAIGN_ELEMENT_FX_DURATION[element]||700);
-  target.elementFx[element]=Math.max(target.elementFx[element]||0,until);
+  return campaignStatusEffects.markEnemy(target,source,duration);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -15641,9 +15639,7 @@ function weaponChain(player,enemies,start,count,damages,weapon,color){
   }
 }
 function applyWeaponSlow(target,pct,duration,owner){
-  if(!target||target.slowImmune)return;if(owner?.classId==='mage')duration*=1+(getCampaignShopEffect(owner).elementDuration||0);target.slowed=true;target.slowTimer=Math.max(target.slowTimer||0,duration);target.weaponSlow=Math.max(target.weaponSlow||0,pct);target.weaponSlowTimer=Math.max(target.weaponSlowTimer||0,duration);
-  markEnemyWeaponStatus(target,'ice',duration);
-  if(owner)target._lastWeaponOwner=owner;
+  return campaignStatusEffects.applySlow(target,pct,duration,owner);
 }
 function weaponShieldReduction(player){
   if(!player)return 0;const shield=getSlots(player.idx).find(w=>w&&w.type==='warrior_warshield');
@@ -15656,14 +15652,10 @@ function weaponShieldCounter(player){
   if(shield.rarity==='legendary')weaponBurst(player,enemies,player.x+Math.cos(angle)*80,player.y+Math.sin(angle)*80,55,shield,campaignWeaponDamage(def,shield.rarity)*.7,def.color);
 }
 function applyWeaponPoison(target,owner,weapon,dps,duration,maxStacks){
-  if(!target||target.dead)return;if(owner?.classId==='mage'){const se=getCampaignShopEffect(owner);duration*=1+(se.elementDuration||0);dps*=1+(se.elementDamage||0);}target._lastDamageOwner=owner;target.weaponPoisons=target.weaponPoisons||[];
-  markEnemyWeaponStatus(target,'poison',duration);
-  const active=target.weaponPoisons.filter(p=>p.owner===owner&&p.type===weapon.type);
-  if(active.length>=maxStacks)active[0].timer=duration;else target.weaponPoisons.push({owner,type:weapon.type,dps,timer:duration,weapon});
+  return campaignStatusEffects.applyPoison(target,owner,weapon,dps,duration,maxStacks);
 }
 function applyWeaponBurn(target,owner,weapon,dps,duration){
-  if(!target||target.dead)return;if(owner?.classId==='mage'){const se=getCampaignShopEffect(owner);duration*=1+(se.elementDuration||0);dps*=1+(se.elementDamage||0);}target._lastDamageOwner=owner;target.weaponBurn={owner,dps,timer:duration,weapon};
-  markEnemyWeaponStatus(target,'fire',duration);
+  return campaignStatusEffects.applyBurn(target,owner,weapon,dps,duration);
 }
 
 function campaignClassWeaponAttack(player,enemies,rarity,manualTarget,weapon,type){
@@ -19118,33 +19110,7 @@ class Player {
   }
 
   takeDmg(a){
-    if(this.inv||this.dead){if(this.inv&&this._dashActive&&typeof notifyBlessingDashAvoid==='function')notifyBlessingDashAvoid(this);return;}
-    if(typeof shouldBlessingDodge==='function'&&shouldBlessingDodge(this)) return;
-    if(shouldCampaignShopBlock(this))return;
-    const d=DIFF[difficulty]||DIFF.medium;
-    const blessingMult=typeof getBlessingIncomingDamageMultiplier==='function'?getBlessingIncomingDamageMultiplier(this):1;
-    const reduced=a*blessingMult*campaignShopIncomingDamageMultiplier(this)*(1-Math.min(d.playerArmorCap,(this.dmgReduce||0)+weaponShieldReduction(this)));
-    this.hp-=reduced; this.inv=true; this.invT=600;
-    weaponShieldCounter(this);
-    if(typeof notifyBlessingDamageTaken==='function') notifyBlessingDamageTaken(this,reduced);
-    notifyCampaignShopDamageTaken(this,reduced);
-    spawnParts(this.x,this.y,'#ff4444',8,65);
-    // Screen shake ao receber dano
-    triggerScreenShake(6, 220);
-    if(this.hp<=0){
-      if(typeof shouldBlessingPreventDeath==='function'&&shouldBlessingPreventDeath(this))return;
-      if((this._revivesLeft||0)>0){
-        this._revivesLeft--;
-        this.hp=Math.max(1,Math.round(this.maxHp*0.35));
-        this.inv=true; this.invT=2500;
-        spawnParts(this.x,this.y,'#77ffbb',24,95);
-        spawnLevelUpNotice(this.x,this.y-36,`FIO DO DESTINO · ${this._revivesLeft} RESTANTE`,this.idx);
-        return;
-      }
-      this.hp=0; this.dead=true;
-      triggerScreenShake(14, 400);
-      if(gameMode===1||(player.dead&&(!player2||player2.dead))) endGame();
-    }
+    return campaignDamageSystem.damagePlayer(this,a);
   }
 
   updateAbility(dt){
@@ -19378,11 +19344,7 @@ class Enemy {
       }
     }
     // Frozen
-    if(this.frozen){
-      this.frozenTimer-=dt*1000;
-      if(this.frozenTimer<=0){ this.frozen=false; this.slowed=false; }
-      return;
-    }
+    if(campaignStatusEffects.updateFrozen(this,dt))return;
     // Wolf dash mechanics
     if(this.isWolf){
       if(this.wolfState==='idle'){
@@ -19496,23 +19458,7 @@ class Enemy {
       }
     }
 
-    if(this.weaponVulnerableTimer>0){this.weaponVulnerableTimer-=dt*1000;if(this.weaponVulnerableTimer<=0)this.weaponVulnerable=0;}
-    if(this.weaponSlowTimer>0){this.weaponSlowTimer-=dt*1000;if(this.weaponSlowTimer<=0)this.weaponSlow=0;}
-    if(this.weaponBurn?.timer>0){
-      this.weaponBurn.timer-=dt*1000;this._weaponBurnTick=(this._weaponBurnTick||0)+dt*1000;
-      if(this._weaponBurnTick>=500){this._weaponBurnTick-=500;const b=this.weaponBurn;b.weapon.damageDone=(b.weapon.damageDone||0)+b.dps*.5;this.takeDmg(b.dps*.5);}
-    }
-    if(this.weaponPoisons?.length){
-      this._weaponPoisonTick=(this._weaponPoisonTick||0)+dt*1000;
-      if(this._weaponPoisonTick>=500){this._weaponPoisonTick-=500;for(const p of this.weaponPoisons){p.weapon.damageDone=(p.weapon.damageDone||0)+p.dps*.5;this.takeDmg(p.dps*.5);}}
-      this.weaponPoisons.forEach(p=>p.timer-=dt*1000);this.weaponPoisons=this.weaponPoisons.filter(p=>p.timer>0);
-    }
-    let speedMult=1;
-    if(this.slowed && !this.slowImmune){
-      this.slowTimer-=dt*1000;
-      if(this.slowTimer<=0) this.slowed=false;
-      else speedMult=this.weaponSlow?Math.max(.3,1-this.weaponSlow):0.35;
-    }
+    const speedMult=campaignStatusEffects.updateEnemy(this,dt);
     // Burrower underground — no move
     if(this.isBurrower && this.burrowState==='burrowing') return;
 
@@ -19528,15 +19474,10 @@ class Enemy {
   }
 
   takeDmg(a){
-    // Specter invulnerable when phased
-    if(this.isSpecter && this.phased) return;
-    // Shield orc: 50% frontal reduction (simplified: 50% always)
-    if(this.hasShield) a*=0.5;
-    if(this.weaponVulnerable)a*=1+this.weaponVulnerable;
-    this.hp-=a;
-    spawnParts(this.x,this.y,'#88ff44',4,38);
-    if(this.hp<=0){
-      this.dead=true; kills++;
+    return campaignDamageSystem.damageEnemy(this,a,()=>this._handleDeath());
+  }
+
+  _handleDeath(){
       // Cogumelo: explosão de esporos venenosos ao morrer
       if(this.isShroom){
         spawnParts(this.x,this.y,'#8fce4a',18,70); spawnParts(this.x,this.y,'#cc2a24',8,45);
@@ -19598,7 +19539,6 @@ class Enemy {
         webPuddles.push(puddle);
         spawnParts(this.x,this.y,'#44aa22',14,60);
       }
-    }
   }
 
   draw(t){
@@ -19805,6 +19745,26 @@ class Enemy {
     ctx.restore();
   }
 } // end class Enemy
+
+const campaignDamageSystem=CampaignDamageSystem.create({
+  getDifficulty:()=>DIFF[difficulty]||DIFF.medium,
+  getBlessingIncomingDamageMultiplier:pl=>typeof getBlessingIncomingDamageMultiplier==='function'?getBlessingIncomingDamageMultiplier(pl):1,
+  getCampaignShopIncomingDamageMultiplier:pl=>campaignShopIncomingDamageMultiplier(pl),
+  getWeaponShieldReduction:pl=>weaponShieldReduction(pl),
+  shouldBlessingDodge:pl=>typeof shouldBlessingDodge==='function'&&shouldBlessingDodge(pl),
+  shouldCampaignShopBlock:pl=>shouldCampaignShopBlock(pl),
+  shouldBlessingPreventDeath:pl=>typeof shouldBlessingPreventDeath==='function'&&shouldBlessingPreventDeath(pl),
+  shouldEndGame:()=>gameMode===1||(player.dead&&(!player2||player2.dead)),
+  notifyBlessingDashAvoid:pl=>{if(typeof notifyBlessingDashAvoid==='function')notifyBlessingDashAvoid(pl);},
+  notifyBlessingDamageTaken:(pl,amount)=>{if(typeof notifyBlessingDamageTaken==='function')notifyBlessingDamageTaken(pl,amount);},
+  notifyCampaignShopDamageTaken:(pl,amount)=>notifyCampaignShopDamageTaken(pl,amount),
+  weaponShieldCounter:pl=>weaponShieldCounter(pl),
+  spawnParts:(...args)=>spawnParts(...args),
+  spawnLevelUpNotice:(...args)=>spawnLevelUpNotice(...args),
+  triggerScreenShake:(...args)=>triggerScreenShake(...args),
+  endGame:()=>endGame(),
+  incrementKills:()=>{kills++;}
+});
 
 
 // ═══════════════════════════════════════════════════════
@@ -20125,83 +20085,32 @@ function triggerVikingWarCry(owner){
 }
 window.triggerVikingWarCry=triggerVikingWarCry;
 
+const campaignCombatSystem=CampaignCombatSystem.create({
+  getShopEffect:owner=>getCampaignShopEffect(owner),
+  getEnemies:()=>enemies,
+  hasWeaponType:type=>Boolean(WEAPON_DEFS[type]),
+  spawnParts:(...args)=>spawnParts(...args),
+  markEnemyStatus:(enemy,type)=>markEnemyWeaponStatus(enemy,type),
+  applyShopHitEffects:(owner,enemy,damage)=>applyCampaignShopHitEffects(owner,enemy,damage),
+  notifyBlessingSpecial:owner=>{if(typeof notifyBlessingSpecial==='function')notifyBlessingSpecial(owner);},
+  notifyBlessingHit:(owner,enemy,damage,weapon)=>{if(typeof notifyBlessingHit==='function')notifyBlessingHit(owner,enemy,damage,weapon);},
+  clampEntity:(entity,radius)=>{if(typeof clampCampaignEntity==='function')clampCampaignEntity(entity,radius);},
+  addFirePatch:patch=>firePatches.push(patch),
+  addLinkPart:(x,y,color,life)=>parts.push(new Part(x,y,color,life))
+});
+
 function healCampaignPlayer(owner,amount,x,y,useBlessing=true){
-  if(!owner||amount<=0||owner.hp>=owner.maxHp)return 0;
-  const boosted=amount*(1+(useBlessing?(owner.cardEffects?.healingMult||0):0));
-  const healed=Math.min(boosted,owner.maxHp-owner.hp);
-  owner.hp+=healed;
-  if(healed>0&&x!=null&&y!=null)spawnParts(x,y,'#ff4466',4,30);
-  return healed;
+  return campaignCombatSystem.healPlayer(owner,amount,x,y,useBlessing);
 }
 window.healCampaignPlayer=healCampaignPlayer;
 
 function applyBlessingKnockback(owner,enemy){
-  const force=owner?.cardEffects?.extraKnockback||0;
-  if(!force||!enemy||enemy.dead)return;
-  const angle=Math.atan2(enemy.y-owner.y,enemy.x-owner.x);
-  const distance=Math.min(85,force*.45);
-  enemy.x+=Math.cos(angle)*distance;
-  enemy.y+=Math.sin(angle)*distance;
-  if(typeof clampCampaignEntity==='function')clampCampaignEntity(enemy,enemy.radius||12);
+  return campaignCombatSystem.applyBlessingKnockback(owner,enemy);
 }
 window.applyBlessingKnockback=applyBlessingKnockback;
 
 function applyClassHitEffect(proj, enemy){
-  const owner=proj.owner;
-  if(!owner) return;
-  applyBlessingKnockback(owner,enemy);
-  if(typeof notifyBlessingSpecial==='function') notifyBlessingSpecial(owner);
-  const cid=owner.classId;
-  const classElement={mage:'ice',warrior:'fire',archer:'electric',viking:'blood'}[cid]||'physical';
-  const weaponType=proj.weapon?.type;
-  markEnemyWeaponStatus(enemy,weaponType&&WEAPON_DEFS[weaponType]?weaponType:classElement);
-  applyCampaignShopHitEffects(owner,enemy,proj.dmg||0);
-  if(typeof notifyBlessingHit==='function')notifyBlessingHit(owner,enemy,proj.dmg||0,proj.weapon||null);
-  if(cid==='mage'){
-    // Frost Prison: slow on hit; if already slow → freeze
-    if(enemy.frozen){ /* already frozen */ return; }
-    if(enemy.slowed){
-      enemy.frozen=true; enemy.frozenTimer=2000;
-      enemy.slowed=false;
-      spawnParts(enemy.x,enemy.y,'#aaeeff',8,50);
-    } else {
-      enemy.slowed=true; enemy.slowTimer=owner.slowDur*(1+(getCampaignShopEffect(owner).elementDuration||0));
-      if(owner.instantFreeze){ enemy.frozen=true; enemy.frozenTimer=2000; }
-    }
-  } else if(cid==='warrior'){
-    // Incendiary Blade: leave fire patch on ground
-    firePatches.push({x:enemy.x,y:enemy.y,timer:owner.fireDur,r:28,dmgTick:0,dmgPerSec:owner.dmg*0.18,owner}); // FIX: r faltava (crash de gradiente + dano nunca acertava)
-  } else if(cid==='archer'){
-    // Plasma Link: chain damage to nearby enemies
-    const linked=enemies.filter(e=>!e.dead&&e!==enemy&&Math.hypot(e.x-enemy.x,e.y-enemy.y)<80).slice(0,owner.plasmaChain||1);
-    for(const le of linked){
-      le.takeDmg(proj.dmg*0.6);
-      markEnemyWeaponStatus(le,'electric');
-      spawnParts(le.x,le.y,'#22ff88',5,40);
-      const steps=5;
-      for(let si=0;si<steps;si++){
-        const fx=enemy.x+(le.x-enemy.x)*(si/steps);
-        const fy=enemy.y+(le.y-enemy.y)*(si/steps);
-        parts.push(new Part(fx,fy,'#22ff88',20));
-      }
-    }
-    // Ignite arrow — leave a fire patch where it hits
-    if(owner.igniteSelf){
-      firePatches.push({x:enemy.x,y:enemy.y,timer:900,r:24,dmgTick:0,dmgPerSec:owner.dmg*0.15,owner}); // FIX: r faltava
-      spawnParts(enemy.x,enemy.y,'#ff6600',4,30);
-    }
-  } else if(cid==='viking'){
-    // Vampirism via berserk
-    if(owner.berserkActive){
-      healCampaignPlayer(owner,proj.dmg*owner.lifeSteal,owner.x,owner.y);
-    }
-    const bloodWeapon=proj.weapon?.type==='viking_bloodaxe'?proj.weapon:null;
-    if(bloodWeapon){
-      const low=owner.hp/owner.maxHp<.35;
-      const steal=bloodWeapon.rarity==='legendary'?(low?.05:.03):bloodWeapon.rarity==='epic'?.03:bloodWeapon.rarity==='rare'?.03:bloodWeapon.rarity==='uncommon'?.025:.02;
-      healCampaignPlayer(owner,proj.dmg*steal,owner.x,owner.y,false);
-    }
-  }
+  return campaignCombatSystem.applyClassHitEffect(proj,enemy);
 }
 
 // ═══════════════════════════════════════════════════════
