@@ -1,10 +1,12 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
 
-const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
-const scripts=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(match=>match[1]);
-const source=scripts.find(script=>script.includes('const NEW_DEITY_BOONS='));
-if(!source)throw new Error('Motor v3 de bênçãos não encontrado.');
+const dataSource=fs.readFileSync(new URL('../src/blessings/blessing-data.js',import.meta.url),'utf8');
+const systemSource=fs.readFileSync(new URL('../src/blessings/blessing-system.js',import.meta.url),'utf8');
+const source=`${dataSource}\n${systemSource}`;
+if(!dataSource.includes('const NEW_DEITY_BOONS=')||!systemSource.includes('dynamicDamageBonusV3')){
+  throw new Error('Módulos de dados e execução das bênçãos não foram encontrados.');
+}
 
 let now=10000;
 const context={
@@ -21,7 +23,8 @@ const context={
 };
 context.window=context;
 vm.createContext(context);
-vm.runInContext(source,context,{filename:'deity-blessings-inline.js'});
+vm.runInContext(dataSource,context,{filename:'blessing-data.js'});
+vm.runInContext(systemSource,context,{filename:'blessing-system.js'});
 
 const assert=(condition,message)=>{if(!condition)throw new Error(message);};
 const deities=context.DEITY_BLESSINGS_V2;
