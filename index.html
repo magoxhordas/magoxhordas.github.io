@@ -14544,6 +14544,7 @@ function getArmorReduction(){
 </script>
   <script src="src/weapons/weapon-data.js"></script>
   <script src="src/weapons/weapon-system.js"></script>
+  <script src="src/weapons/projectile-system.js"></script>
   <script>
 // WEAPON DEFINITIONS
 // ═══════════════════════════════════════════════════════
@@ -15743,21 +15744,23 @@ function axeAttack(player, enemies, rarity, manualTarget=null){
 // ═══════════════════════════════════════════════════════
 // WEAPON PROJECTILE (arrow)
 // ═══════════════════════════════════════════════════════
+const campaignProjectileSystem=CampaignProjectileSystem.create({
+  getBounds:()=>({W,H}),
+  getShopEffect:getCampaignShopEffect,
+  isPlaying:()=>state==='playing',
+  createCampaignProjectile:(...args)=>new CampaignWeaponProj(...args),
+  addProjectile:projectile=>projs.push(projectile),
+  getEnemies:()=>enemies,
+  weaponBurst,
+  addFirePatch:patch=>firePatches.push(patch),
+  getHeroSkinAttackColors:()=>typeof getHeroSkinAttackColors==='function'?getHeroSkinAttackColors():null,
+});
 class WeaponProj {
   constructor(x,y,angle,dmg,wtype,color,secondaryColor=null,owner=null){
-    this.x=x; this.y=y; this.angle=angle; this.dmg=dmg; this.wtype=wtype; this.color=color;
-    this.secondaryColor=secondaryColor;
-    this.owner=owner;
-    const spd=wtype==='bow'?500:350;
-    this.vx=Math.cos(angle)*spd; this.vy=Math.sin(angle)*spd;
-    this.radius=6; this.dead=false; this.born=Date.now(); this.life=1600;
-    this.trail=[];
+    campaignProjectileSystem.initializeWeapon(this,x,y,angle,dmg,wtype,color,secondaryColor,owner);
   }
   update(dt){
-    this.trail.push({x:this.x,y:this.y});
-    if(this.trail.length>14) this.trail.shift();
-    this.x+=this.vx*dt; this.y+=this.vy*dt;
-    if(Date.now()-this.born>this.life||this.x<0||this.x>W||this.y<0||this.y>H) this.dead=true;
+    campaignProjectileSystem.updateWeapon(this,dt);
   }
   draw(){
     // Trail
@@ -15792,24 +15795,10 @@ class WeaponProj {
 
 class CampaignWeaponProj{
   constructor(x,y,angle,dmg,owner,weapon,opts={}){
-    this.x=x;this.y=y;this.angle=angle;this.dmg=dmg;this.owner=owner;this.weapon=weapon;this.opts=opts;
-    this.color=opts.color||'#ffffff';this.radius=(opts.radius||7)*(1+(owner?.classId==='mage'?(getCampaignShopEffect(owner).magicArea||0):0));this.dead=false;this.born=Date.now();this.life=2200*(opts.rangeMult||1);
-    this.speed=420*(opts.speed||1);this.vx=Math.cos(angle)*this.speed;this.vy=Math.sin(angle)*this.speed;
-    this.target=opts.target||null;this.homing=!!opts.homing;this.pierce=opts.pierce||0;this.hitTargets=new Set();this.trail=[];this.isCampaignWeaponProj=true;
-    this.originX=x;this.originY=y;this.returning=false;
+    campaignProjectileSystem.initializeCampaign(this,x,y,angle,dmg,owner,weapon,opts);
   }
   update(dt){
-    if(this.opts.echo&&!this._echoScheduled){
-      this._echoScheduled=true;const echo=this.opts.echo;
-      setTimeout(()=>{if(state!=='playing')return;const p=new CampaignWeaponProj(this.originX,this.originY,this.angle,this.dmg*echo.mult,this.owner,this.weapon,{...this.opts,echo:null,fireTrail:false});projs.push(p);if(echo.reverse)projs.push(new CampaignWeaponProj(this.originX,this.originY,this.angle+Math.PI,this.dmg*echo.mult,this.owner,this.weapon,{...this.opts,echo:null,fireTrail:false}));},echo.delay);
-    }
-    this.trail.push({x:this.x,y:this.y});if(this.trail.length>12)this.trail.shift();
-    if(this.homing&&this.target&&!this.target.dead){let desired=Math.atan2(this.target.y-this.y,this.target.x-this.x),diff=desired-this.angle;while(diff>Math.PI)diff-=Math.PI*2;while(diff<-Math.PI)diff+=Math.PI*2;this.angle+=diff*.16;this.vx=Math.cos(this.angle)*this.speed;this.vy=Math.sin(this.angle)*this.speed;}
-    if(this.opts.boomerang&&!this.returning&&Math.hypot(this.x-this.originX,this.y-this.originY)>160*(this.opts.rangeMult||1)){this.returning=true;this.hitTargets.clear();}
-    if(this.returning){const desired=Math.atan2(this.owner.y-this.y,this.owner.x-this.x);this.angle=desired;this.vx=Math.cos(desired)*this.speed;this.vy=Math.sin(desired)*this.speed;if(Math.hypot(this.x-this.owner.x,this.y-this.owner.y)<15){if(this.opts.returnSpin)weaponBurst(this.owner,enemies,this.owner.x,this.owner.y,85,this.weapon,this.dmg*.6,this.color);this.dead=true;return;}}
-    this.x+=this.vx*dt;this.y+=this.vy*dt;
-    if(this.opts.fireTrail&&Math.random()<.35)firePatches.push({x:this.x,y:this.y,timer:3000,r:22,dmgTick:0,dmgPerSec:this.dmg*.25,owner:this.owner,noStackKey:this.weapon.type});
-    if(Date.now()-this.born>this.life||this.x<-40||this.x>W+40||this.y<-40||this.y>H+40)this.dead=true;
+    campaignProjectileSystem.updateCampaign(this,dt);
   }
   draw(){
     const type=this.weapon?.type||'',element=campaignWeaponElement(type),def=WEAPON_DEFS[type];
@@ -15857,41 +15846,10 @@ class CampaignWeaponProj{
 // ═══════════════════════════════════════════════════════
 class ArrowProj {
   constructor(x, y, target, dmg, owner){
-    this.x=x; this.y=y;
-    this.target=target;       // live reference — steers toward it
-    this.owner=owner;
-    this.dmg=dmg;
-    this.radius=6; this.dead=false;
-    this.born=Date.now(); this.life=2000;
-    this.speed=520*(1+(owner?.cardEffects?.projectileSpeed||0))*(1+(getCampaignShopEffect(owner).critProjectileSpeed||0));
-    // Initial angle toward target
-    const dx=target.x-x, dy=target.y-y;
-    this.angle=Math.atan2(dy,dx);
-    this.vx=Math.cos(this.angle)*this.speed;
-    this.vy=Math.sin(this.angle)*this.speed;
-    this.trail=[];
-    const skinAttack=typeof getHeroSkinAttackColors==='function'?getHeroSkinAttackColors():null;
-    this.color=skinAttack?.primary||'#22ff88';
-    this.secondaryColor=skinAttack?.secondary||'#ffffff';
+    campaignProjectileSystem.initializeArrow(this,x,y,target,dmg,owner);
   }
   update(dt){
-    this.trail.push({x:this.x,y:this.y});
-    if(this.trail.length>12) this.trail.shift();
-    // Soft homing — steer 18% per frame toward live target position
-    if(this.target && !this.target.dead){
-      const tx=this.target.x, ty=this.target.y;
-      const desiredAngle=Math.atan2(ty-this.y, tx-this.x);
-      // Interpolate current angle toward desired
-      let diff=desiredAngle-this.angle;
-      // Wrap diff to [-PI, PI]
-      while(diff> Math.PI) diff-=Math.PI*2;
-      while(diff<-Math.PI) diff+=Math.PI*2;
-      this.angle+=diff*0.22; // steer strength — tweak for feel
-      this.vx=Math.cos(this.angle)*this.speed;
-      this.vy=Math.sin(this.angle)*this.speed;
-    }
-    this.x+=this.vx*dt; this.y+=this.vy*dt;
-    if(Date.now()-this.born>this.life||this.x<-20||this.x>W+20||this.y<-20||this.y>H+20) this.dead=true;
+    campaignProjectileSystem.updateArrow(this,dt);
   }
   draw(){
     const nx=Math.cos(this.angle), ny=Math.sin(this.angle);

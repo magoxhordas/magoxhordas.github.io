@@ -124,22 +124,22 @@ for(const [classId,items] of Object.entries(expected)){
 for(const snippet of [
   'spawnProjectile(player.x,player.y,a,dmg,player,weapon,shotOpts)',
   'new CampaignWeaponProj(x,y,angle,dmg,owner,weapon,opts)',
-  'this.life=2200*(opts.rangeMult||1)',
-  'this.speed=420*(opts.speed||1)',
-  'this.homing=!!opts.homing',
-  'this.pierce=opts.pierce||0',
-  'this.angle+=diff*.16',
-  '>160*(this.opts.rangeMult||1)',
-  'this.hitTargets.clear()',
-  'this.opts.fireTrail&&Math.random()<.35',
-  'this.speed=520*(1+(owner?.cardEffects?.projectileSpeed||0))',
-  'this.angle+=diff*0.22',
-  'this.life=2000',
+  'projectile.life=2200*(opts.rangeMult||1)',
+  'projectile.speed=420*(opts.speed||1)',
+  'projectile.homing=!!opts.homing',
+  'projectile.pierce=opts.pierce||0',
+  'projectile.angle+=diff*.16',
+  '>160*(projectile.opts.rangeMult||1)',
+  'projectile.hitTargets.clear()',
+  'projectile.opts.fireTrail&&Math.random()<.35',
+  'projectile.speed=520*(1+(owner?.cardEffects?.projectileSpeed||0))',
+  'projectile.angle+=diff*0.22',
+  'projectile.born=Date.now();projectile.life=2000',
 ])assert(source.includes(snippet),`fisica/comportamento de projetil ausente: ${snippet}`);
 
 for(const snippet of [
   'p.opts.explode','p.opts.burn','p.opts.poison','p.opts.slow','p.opts.iceHits','glacial:tier>=4',
-  'this.opts.echo','p.opts.ricochet','p.opts.frozenCrit','p.opts.bossBonus','this.opts.boomerang','this.opts.returnSpin',
+  'projectile.opts.echo','p.opts.ricochet','p.opts.frozenCrit','p.opts.bossBonus','projectile.opts.boomerang','projectile.opts.returnSpin',
 ])assert(source.includes(snippet),`efeito de projetil deixou de existir: ${snippet}`);
 
 const weaponDataPath=path.join(root,'src/weapons/weapon-data.js');
@@ -185,6 +185,46 @@ if(fs.existsSync(weaponDataPath)&&fs.existsSync(weaponSystemPath)){
       assert(actions>before,`${id} nao executou nenhuma acao no sistema extraido`);
     }
   }
+
+  vm.runInContext(read('src/weapons/projectile-system.js'),sandbox,{filename:'src/weapons/projectile-system.js'});
+  const spawned=[],patches=[];
+  const projectiles=sandbox.CampaignProjectileSystem.create({
+    getBounds:()=>({W:1000,H:800}),
+    getShopEffect:()=>({magicArea:.2,critProjectileSpeed:.2}),
+    isPlaying:()=>true,
+    createCampaignProjectile:(...args)=>({args}),
+    addProjectile:projectile=>spawned.push(projectile),
+    getEnemies:()=>[],
+    weaponBurst:()=>{actions++;},
+    addFirePatch:patch=>patches.push(patch),
+    getHeroSkinAttackColors:()=>({primary:'#123456',secondary:'#abcdef'}),
+  });
+  const legacyProjectile={};
+  projectiles.initializeWeapon(legacyProjectile,10,20,0,15,'bow','#00ff00',null,{});
+  assert(legacyProjectile.vx===500&&legacyProjectile.vy===0&&legacyProjectile.life===1600,'projetil legado mudou velocidade ou duracao');
+  projectiles.updateWeapon(legacyProjectile,.1);
+  assert(legacyProjectile.x===60&&legacyProjectile.trail.length===1,'projetil legado mudou deslocamento ou rastro');
+
+  const campaignProjectile={};
+  const campaignOwner={x:0,y:0,classId:'mage'};
+  const campaignTarget={x:100,y:100,dead:false};
+  projectiles.initializeCampaign(campaignProjectile,0,0,0,24,campaignOwner,{type:'mage_fire_staff'},{homing:true,target:campaignTarget,pierce:2,rangeMult:1.5,speed:.72});
+  assert(Math.abs(campaignProjectile.radius-8.4)<1e-9&&campaignProjectile.life===3300&&campaignProjectile.speed===302.4,'projetil de arma mudou area, duracao ou velocidade');
+  assert(campaignProjectile.homing&&campaignProjectile.pierce===2&&campaignProjectile.isCampaignWeaponProj,'flags do projetil de arma mudaram');
+  projectiles.updateCampaign(campaignProjectile,.1);
+  assert(campaignProjectile.angle>0&&campaignProjectile.trail.length===1,'homing ou rastro do projetil de arma mudou');
+
+  const echoProjectile={};
+  projectiles.initializeCampaign(echoProjectile,0,0,0,20,campaignOwner,{type:'mage_shadow_staff'},{echo:{delay:350,mult:.7,reverse:true}});
+  projectiles.updateCampaign(echoProjectile,0);
+  assert(spawned.length===2&&echoProjectile._echoScheduled,'eco reverso deixou de criar dois projeteis uma unica vez');
+
+  const arrow={};
+  const arrowOwner={cardEffects:{projectileSpeed:.1}};
+  projectiles.initializeArrow(arrow,0,0,{x:100,y:0,dead:false},10,arrowOwner);
+  assert(Math.abs(arrow.speed-686.4)<1e-9&&arrow.life===2000&&arrow.color==='#123456','flecha mudou velocidade, duracao ou cores');
+  projectiles.updateArrow(arrow,.1);
+  assert(Math.abs(arrow.x-68.64)<1e-9&&arrow.trail.length===1,'flecha mudou deslocamento ou rastro');
 }
 
 console.log(`OK: 32 armas, raridades, dano, cooldowns, elementos, ataques e fisica de projeteis protegidos (${checks} verificacoes).`);
