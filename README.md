@@ -13,7 +13,7 @@ Versão consolidada do jogo de ação em HTML, CSS e JavaScript.
 
 ## Estrutura do codigo
 
-O jogo está sendo modularizado de forma incremental, preservando o `index.html` como entrada oficial. Os limites dos sistemas já extraídos estão documentados em [`src/README.md`](src/README.md), incluindo Core, Acampamento, Combate, armas, bênçãos, loja, campanha, chefes e o modo Masmorra.
+O jogo está sendo modularizado de forma incremental, preservando o `index.html` como entrada oficial. Os limites dos sistemas já extraídos estão documentados em [`src/README.md`](src/README.md), incluindo Core, Acampamento, Combate, armas, bênçãos, loja, campanha, chefes, Masmorra e as principais fronteiras da interface.
 
 ## Executar localmente
 

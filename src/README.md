@@ -62,6 +62,14 @@ A campanha mantém os marcos 1/6/11/16/21, os chefes 5/10/15/20/25 e a conclusã
 
 O módulo preserva `window.DNG`, `window.startDungeonMode`, os catálogos consumidos pelo Códex e a persistência do Bosque da Fenda. Consulte [`dungeon/README.md`](dungeon/README.md).
 
+### Interface
+
+- `ui/menu-codex-system.js`: seleção, roteamento de telas, inventário da loja e Códex.
+- `ui/campaign-overlays.js`: anúncios de onda, avisos de chefes e overlay de nevasca.
+- `ui/settings-system.js`: áudio, controles, ataque, resolução e skins.
+
+A marcação e o CSS continuam no `index.html`; os módulos mantêm os mesmos nomes globais e os mesmos pontos de carregamento. Consulte [`ui/README.md`](ui/README.md).
+
 ### Acampamento
 
 - `camp/collision-map.js`: dados dos colliders e footprint do personagem no acampamento.
@@ -73,4 +81,4 @@ O módulo preserva `window.DNG`, `window.startDungeonMode`, os catálogos consum
 - `camp/pet-system.js`: movimento e desenho do companheiro no acampamento, usando o mesmo `S.pet` e os estados globais existentes.
 - `camp/archer-system.js`: renderer do arqueiro do acampamento; dialogos e interacao continuam no `ArqueiroNPC` original.
 
-UI, mapas compartilhados e o loop principal continuam no código legado. Esses sistemas só devem ser extraídos em fases futuras, sempre em mudanças pequenas e testáveis.
+Mapas compartilhados, renderers acoplados ao canvas e o loop principal continuam no código legado. Esses sistemas só devem ser extraídos em fases futuras, sempre em mudanças pequenas e testáveis.
