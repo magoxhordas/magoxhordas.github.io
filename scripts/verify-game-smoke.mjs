@@ -205,7 +205,7 @@ includesAll(html,[
 const inputSource=inlineScripts.find(source=>source.includes('global.InputManager={'))||read('src/core/input-system.js');
 includesAll(inputSource,['global.InputManager={','registerScope','pressVirtual','releaseAll','onPointerAttack'],'input central');
 
-// A proxima fase depende destes contratos permanecerem intactos ate a extracao.
-includesAll(html,['const Audio = (function(){','let musicVol = 0.48, sfxVol = 0.65, attackVol = 0.65;'],'audio ainda inline');
+const audioSource=inlineScripts.find(source=>source.includes('const Audio = (function(){'))||read('src/core/audio-system.js');
+includesAll(audioSource,['const Audio = (function(){','let musicVol = 0.48, sfxVol = 0.65, attackVol = 0.65;','playMenuMusic','playCombatMusic','playBossMusic','playChapterIntro'],'audio central');
 
 console.log(`OK: smoke do jogo validou ${inlineCount} scripts, menu, classes, campanha, combate, acampamento, farming, chefes, Dungeon e save.`);
