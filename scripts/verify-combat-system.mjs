@@ -10,7 +10,8 @@ const combatFiles=['src/combat/status-effects.js','src/combat/damage-system.js',
 const moduleSources=combatFiles.filter(file=>fs.existsSync(path.join(root,file))).map(read);
 const integrationFiles=[
   'src/blessings/blessing-system.js','src/shop/shop-system.js',
-  'src/campaign/boss-system.js','src/campaign/campaign-system.js'
+  'src/campaign/boss-system.js','src/campaign/campaign-system.js',
+  'src/dungeon/dungeon-system.js'
 ];
 const integrationSources=integrationFiles.filter(file=>fs.existsSync(path.join(root,file))).map(read);
 const combatSource=[html,...moduleSources,...integrationSources].join('\n');

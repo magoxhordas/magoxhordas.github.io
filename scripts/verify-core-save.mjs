@@ -7,7 +7,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=(file)=>fs.readFileSync(path.join(root,file),'utf8');
 const html=read('index.html').replace(/\r\n/g,'\n');
 const saveSource=read('src/core/save-system.js');
-const persistenceSource=[html,read('src/campaign/boss-rush-system.js')].join('\n');
+const persistenceSource=[html,read('src/campaign/boss-rush-system.js'),read('src/dungeon/dungeon-system.js')].join('\n');
 
 function assert(condition,message){
   if(!condition) throw new Error(message);
