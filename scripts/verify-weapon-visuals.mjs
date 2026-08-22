@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8').replace(/\r\n/g,'\n');
+const weaponData=fs.readFileSync(path.join(root,'src','weapons','weapon-data.js'),'utf8').replace(/\r\n/g,'\n');
+const weaponSource=`${html}\n${weaponData}`;
 const statusSource=fs.readFileSync(path.join(root,'src','combat','status-effects.js'),'utf8').replace(/\r\n/g,'\n');
 const combatSource=fs.readFileSync(path.join(root,'src','combat','combat-system.js'),'utf8').replace(/\r\n/g,'\n');
 const weaponIds={
@@ -23,7 +25,7 @@ function pngSize(file){
 const ids=Object.values(weaponIds).flat();
 assert(ids.length===32&&new Set(ids).size===32,'A lista deve conter 32 armas únicas.');
 for(const id of ids){
-  assert(html.includes(`['${id}'`)||html.includes(`"${id}"`),`Arma ausente das definições: ${id}`);
+  assert(weaponSource.includes(`['${id}'`)||weaponSource.includes(`"${id}"`),`Arma ausente das definições: ${id}`);
   const file=path.join(root,'assets','weapons',`${id}.png`);
   assert(fs.existsSync(file),`Ícone ausente: ${id}.png`);
   const [width,height,bytes]=pngSize(file);

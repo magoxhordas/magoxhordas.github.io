@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8').replace(/\r\n/g,'\n');
 const optionalFiles=['src/weapons/weapon-data.js','src/weapons/weapon-system.js','src/weapons/projectile-system.js'];
-const sources=[read('index.html'),...optionalFiles.filter(file=>fs.existsSync(path.join(root,file))).map(read)];
+const sources=[...optionalFiles.filter(file=>fs.existsSync(path.join(root,file))).map(read),read('index.html')];
 const source=sources.join('\n');
 let checks=0;
 
