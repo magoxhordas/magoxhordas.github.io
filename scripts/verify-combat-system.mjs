@@ -25,15 +25,20 @@ includesAll(combatSource,[
   'class Player',
   'class Enemy',
   'takeDmg(a)',
-  'this.hp-=reduced',
-  'this.inv=true; this.invT=600',
-  'Math.round(this.maxHp*0.35)',
+  'campaignDamageSystem.damagePlayer(this,a)',
+  'campaignDamageSystem.damageEnemy(this,a',
   "gameMode===1||(player.dead&&(!player2||player2.dead))",
-  'if(this.isSpecter && this.phased) return',
-  'if(this.hasShield) a*=0.5',
-  'if(this.weaponVulnerable)a*=1+this.weaponVulnerable',
-  'this.dead=true; kills++',
 ],'dano, vida e morte');
+includesAll(combatSource,[
+  'player.hp-=reduced',
+  'player.invT=600',
+  'Math.round(player.maxHp*0.35)',
+  'target.isSpecter&&target.phased',
+  'target.hasShield)amount*=0.5',
+  'target.weaponVulnerable)amount*=1+target.weaponVulnerable',
+  'target.dead=true',
+  'incrementKills()',
+],'pipeline de dano extraido');
 
 // Critico atual: a implementacao V3 sobrescreve o helper inicial e deve manter
 // chance, multiplicador base, estado do ultimo golpe e retorno do dano calculado.
@@ -116,6 +121,53 @@ if(moduleSources[0]){
 
   const frozen={frozen:true,frozenTimer:100};
   assert(statuses.updateFrozen(frozen,.1)===true&&!frozen.frozen&&frozen.slowed===false,'fim do congelamento mudou comportamento');
+}
+
+const damagePath=path.join(root,'src/combat/damage-system.js');
+if(fs.existsSync(damagePath)){
+  const damageSource=read('src/combat/damage-system.js');
+  const sandbox={console};
+  sandbox.window=sandbox;
+  vm.createContext(sandbox);
+  vm.runInContext(damageSource,sandbox,{filename:'src/combat/damage-system.js'});
+  let ended=0,kills=0,deathHooks=0,dashAvoids=0;
+  const damage=sandbox.CampaignDamageSystem.create({
+    getDifficulty:()=>({playerArmorCap:.75}),
+    getBlessingIncomingDamageMultiplier:()=>1.1,
+    getCampaignShopIncomingDamageMultiplier:()=>.8,
+    getWeaponShieldReduction:()=>.1,
+    shouldEndGame:()=>true,
+    notifyBlessingDashAvoid:()=>{dashAvoids++;},
+    endGame:()=>{ended++;},
+    incrementKills:()=>{kills++;},
+  });
+  const player={hp:100,maxHp:100,dmgReduce:.2,inv:false,dead:false,_revivesLeft:0,x:0,y:0,idx:0};
+  damage.damagePlayer(player,100);
+  assert(Math.abs(player.hp-38.4)<1e-9&&player.inv&&player.invT===600,'dano normal/armadura/multiplicadores do player mudaram');
+
+  const dashing={...player,hp:100,inv:true,_dashActive:true};
+  damage.damagePlayer(dashing,50);
+  assert(dashing.hp===100&&dashAvoids===1,'invulnerabilidade do dash deixou de bloquear dano/notificar esquiva');
+
+  const revived={hp:10,maxHp:100,dmgReduce:0,inv:false,dead:false,_revivesLeft:1,x:0,y:0,idx:0};
+  damage.damagePlayer(revived,100);
+  assert(revived.hp===35&&!revived.dead&&revived._revivesLeft===0&&revived.invT===2500,'revive de 35% foi alterado');
+
+  const defeated={hp:10,maxHp:100,dmgReduce:0,inv:false,dead:false,_revivesLeft:0,x:0,y:0,idx:0};
+  damage.damagePlayer(defeated,100);
+  assert(defeated.hp===0&&defeated.dead&&ended===1,'morte/fim de jogo do player foi alterado');
+
+  const shielded={hp:50,x:0,y:0,hasShield:true,weaponVulnerable:.2};
+  damage.damageEnemy(shielded,40,()=>{deathHooks++;});
+  assert(shielded.hp===26&&!shielded.dead&&kills===0&&deathHooks===0,'escudo/vulnerabilidade do inimigo mudaram formula');
+
+  const enemy={hp:10,x:0,y:0};
+  damage.damageEnemy(enemy,20,()=>{deathHooks++;});
+  assert(enemy.hp===-10&&enemy.dead&&kills===1&&deathHooks===1,'vida/morte/callback do inimigo foram alterados');
+
+  const specter={hp:40,x:0,y:0,isSpecter:true,phased:true};
+  damage.damageEnemy(specter,20,()=>{deathHooks++;});
+  assert(specter.hp===40&&!specter.dead&&kills===1,'imunidade do espectro em fase foi alterada');
 }
 
 console.log(`OK: baseline de combate protege dano, critico, vida, morte, cooldown/status, P1/P2, chefes, Dungeon e Viking (${checks} verificacoes).`);

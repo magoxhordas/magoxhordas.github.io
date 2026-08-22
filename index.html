@@ -5577,6 +5577,7 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
 
 </script>
   <script src="src/combat/status-effects.js"></script>
+  <script src="src/combat/damage-system.js"></script>
   <script>
 (function(global){
   'use strict';
@@ -19108,33 +19109,7 @@ class Player {
   }
 
   takeDmg(a){
-    if(this.inv||this.dead){if(this.inv&&this._dashActive&&typeof notifyBlessingDashAvoid==='function')notifyBlessingDashAvoid(this);return;}
-    if(typeof shouldBlessingDodge==='function'&&shouldBlessingDodge(this)) return;
-    if(shouldCampaignShopBlock(this))return;
-    const d=DIFF[difficulty]||DIFF.medium;
-    const blessingMult=typeof getBlessingIncomingDamageMultiplier==='function'?getBlessingIncomingDamageMultiplier(this):1;
-    const reduced=a*blessingMult*campaignShopIncomingDamageMultiplier(this)*(1-Math.min(d.playerArmorCap,(this.dmgReduce||0)+weaponShieldReduction(this)));
-    this.hp-=reduced; this.inv=true; this.invT=600;
-    weaponShieldCounter(this);
-    if(typeof notifyBlessingDamageTaken==='function') notifyBlessingDamageTaken(this,reduced);
-    notifyCampaignShopDamageTaken(this,reduced);
-    spawnParts(this.x,this.y,'#ff4444',8,65);
-    // Screen shake ao receber dano
-    triggerScreenShake(6, 220);
-    if(this.hp<=0){
-      if(typeof shouldBlessingPreventDeath==='function'&&shouldBlessingPreventDeath(this))return;
-      if((this._revivesLeft||0)>0){
-        this._revivesLeft--;
-        this.hp=Math.max(1,Math.round(this.maxHp*0.35));
-        this.inv=true; this.invT=2500;
-        spawnParts(this.x,this.y,'#77ffbb',24,95);
-        spawnLevelUpNotice(this.x,this.y-36,`FIO DO DESTINO · ${this._revivesLeft} RESTANTE`,this.idx);
-        return;
-      }
-      this.hp=0; this.dead=true;
-      triggerScreenShake(14, 400);
-      if(gameMode===1||(player.dead&&(!player2||player2.dead))) endGame();
-    }
+    return campaignDamageSystem.damagePlayer(this,a);
   }
 
   updateAbility(dt){
@@ -19498,15 +19473,10 @@ class Enemy {
   }
 
   takeDmg(a){
-    // Specter invulnerable when phased
-    if(this.isSpecter && this.phased) return;
-    // Shield orc: 50% frontal reduction (simplified: 50% always)
-    if(this.hasShield) a*=0.5;
-    if(this.weaponVulnerable)a*=1+this.weaponVulnerable;
-    this.hp-=a;
-    spawnParts(this.x,this.y,'#88ff44',4,38);
-    if(this.hp<=0){
-      this.dead=true; kills++;
+    return campaignDamageSystem.damageEnemy(this,a,()=>this._handleDeath());
+  }
+
+  _handleDeath(){
       // Cogumelo: explosão de esporos venenosos ao morrer
       if(this.isShroom){
         spawnParts(this.x,this.y,'#8fce4a',18,70); spawnParts(this.x,this.y,'#cc2a24',8,45);
@@ -19568,7 +19538,6 @@ class Enemy {
         webPuddles.push(puddle);
         spawnParts(this.x,this.y,'#44aa22',14,60);
       }
-    }
   }
 
   draw(t){
@@ -19775,6 +19744,26 @@ class Enemy {
     ctx.restore();
   }
 } // end class Enemy
+
+const campaignDamageSystem=CampaignDamageSystem.create({
+  getDifficulty:()=>DIFF[difficulty]||DIFF.medium,
+  getBlessingIncomingDamageMultiplier:pl=>typeof getBlessingIncomingDamageMultiplier==='function'?getBlessingIncomingDamageMultiplier(pl):1,
+  getCampaignShopIncomingDamageMultiplier:pl=>campaignShopIncomingDamageMultiplier(pl),
+  getWeaponShieldReduction:pl=>weaponShieldReduction(pl),
+  shouldBlessingDodge:pl=>typeof shouldBlessingDodge==='function'&&shouldBlessingDodge(pl),
+  shouldCampaignShopBlock:pl=>shouldCampaignShopBlock(pl),
+  shouldBlessingPreventDeath:pl=>typeof shouldBlessingPreventDeath==='function'&&shouldBlessingPreventDeath(pl),
+  shouldEndGame:()=>gameMode===1||(player.dead&&(!player2||player2.dead)),
+  notifyBlessingDashAvoid:pl=>{if(typeof notifyBlessingDashAvoid==='function')notifyBlessingDashAvoid(pl);},
+  notifyBlessingDamageTaken:(pl,amount)=>{if(typeof notifyBlessingDamageTaken==='function')notifyBlessingDamageTaken(pl,amount);},
+  notifyCampaignShopDamageTaken:(pl,amount)=>notifyCampaignShopDamageTaken(pl,amount),
+  weaponShieldCounter:pl=>weaponShieldCounter(pl),
+  spawnParts:(...args)=>spawnParts(...args),
+  spawnLevelUpNotice:(...args)=>spawnLevelUpNotice(...args),
+  triggerScreenShake:(...args)=>triggerScreenShake(...args),
+  endGame:()=>endGame(),
+  incrementKills:()=>{kills++;}
+});
 
 
 // ═══════════════════════════════════════════════════════
