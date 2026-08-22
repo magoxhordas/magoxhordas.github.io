@@ -1,0 +1,230 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import vm from 'node:vm';
+import {fileURLToPath} from 'node:url';
+
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const read=file=>fs.readFileSync(path.join(root,file),'utf8').replace(/\r\n/g,'\n');
+const optionalFiles=['src/weapons/weapon-data.js','src/weapons/weapon-system.js','src/weapons/projectile-system.js'];
+const sources=[...optionalFiles.filter(file=>fs.existsSync(path.join(root,file))).map(read),read('index.html')];
+const source=sources.join('\n');
+let checks=0;
+
+function assert(condition,message){
+  if(!condition)throw new Error(`FALHA: ${message}`);
+  checks++;
+}
+
+function extractObjectLiteral(name){
+  const marker=`const ${name}=`;
+  const start=source.indexOf(marker);
+  assert(start>=0,`${name} nao foi encontrado`);
+  const brace=source.indexOf('{',start+marker.length);
+  assert(brace>=0,`${name} nao possui objeto literal`);
+  let depth=0,string='',escaped=false;
+  for(let index=brace;index<source.length;index++){
+    const char=source[index];
+    if(string){
+      if(escaped)escaped=false;
+      else if(char==='\\')escaped=true;
+      else if(char===string)string='';
+      continue;
+    }
+    if(char==='\''||char==='"'||char==='`'){string=char;continue;}
+    if(char==='{')depth++;
+    if(char==='}'&&--depth===0)return source.slice(brace,index+1);
+  }
+  throw new Error(`FALHA: ${name} ficou sem fechamento`);
+}
+
+const expected={
+  mage:[
+    ['mage_fire_staff','Cajado de Fogo',24,310,980],
+    ['mage_lightning_staff','Cajado de Raio',22,320,920],
+    ['mage_ice_staff','Cajado de Gelo',21,305,900],
+    ['mage_arcane_staff','Cajado Arcano',23,330,840],
+    ['mage_poison_staff','Cajado Venenoso',20,300,940],
+    ['mage_shadow_staff','Cajado das Sombras',25,340,1050],
+    ['mage_solar_staff','Cajado Solar',27,350,1250],
+    ['mage_wind_staff','Cajado do Vento',19,250,820],
+  ],
+  warrior:[
+    ['warrior_longsword','Espada Longa',27,112,780],
+    ['warrior_greatsword','Espadao',38,128,1320],
+    ['warrior_spear','Lanca',29,180,900],
+    ['warrior_warhammer','Martelo de Guerra',34,95,1180],
+    ['warrior_warshield','Escudo de Guerra',20,88,760],
+    ['warrior_twinblades','Laminas Gemeas',18,92,520],
+    ['warrior_chainblade','Corrente com Lamina',25,145,930],
+    ['warrior_spikedmace','Maca Espinhosa',31,90,980],
+  ],
+  archer:[
+    ['archer_shortbow','Arco Curto',15,290,520],
+    ['archer_longbow','Arco Longo',28,390,1050],
+    ['archer_crossbow','Besta Pesada',36,370,1450],
+    ['archer_poisonbow','Arco Venenoso',17,320,760],
+    ['archer_explosivebow','Arco Explosivo',23,320,980],
+    ['archer_ricochetbow','Arco Ricochete',19,325,820],
+    ['archer_frostbow','Arco Gelido',18,325,800],
+    ['archer_thunderbow','Arco Trovejante',21,335,870],
+  ],
+  viking:[
+    ['viking_waraxe','Machado de Guerra',32,105,880],
+    ['viking_twinaxes','Machados Gemeos',22,92,590],
+    ['viking_throwingaxe','Machado de Arremesso',25,300,930],
+    ['viking_stormhammer','Martelo da Tempestade',31,105,1020],
+    ['viking_bloodaxe','Machado de Sangue',28,100,820],
+    ['viking_frostaxe','Machado Congelado',30,104,920],
+    ['viking_nordicspear','Lanca Nordica',29,185,900],
+    ['viking_colossalaxe','Machado Colossal',46,130,1650],
+  ],
+};
+
+const specs=vm.runInNewContext(`(${extractObjectLiteral('CAMPAIGN_WEAPON_SPECS')})`);
+const normalize=value=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+assert(Object.keys(specs).join(',')==='mage,warrior,archer,viking','ordem ou classes das armas mudou');
+for(const [classId,items] of Object.entries(expected)){
+  assert(specs[classId].length===8,`${classId} deixou de ter exatamente oito armas`);
+  items.forEach(([id,name,baseDmg,range,cd],index)=>{
+    const actual=specs[classId][index];
+    assert(actual[0]===id,`${classId}[${index}] mudou id (${actual[0]})`);
+    assert(normalize(actual[1])===name,`${id} mudou nome (${actual[1]})`);
+    assert(actual[2]===id,`${id} deixou de usar o proprio id como icone`);
+    assert(actual[4]===baseDmg&&actual[5]===range&&actual[6]===cd,`${id} mudou dano, alcance ou cooldown`);
+    assert(Array.isArray(actual[7])&&actual[7].length===5,`${id} deixou de ter cinco estagios de raridade`);
+  });
+}
+
+const power=vm.runInNewContext(`(${extractObjectLiteral('CAMPAIGN_WEAPON_POWER')})`);
+const speed=vm.runInNewContext(`(${extractObjectLiteral('CAMPAIGN_WEAPON_SPEED')})`);
+assert(JSON.stringify(power)===JSON.stringify({common:1,uncommon:1.12,rare:1.25,epic:1.42,legendary:1.62}),'multiplicadores de dano por raridade mudaram');
+assert(JSON.stringify(speed)===JSON.stringify({common:1,uncommon:1.04,rare:1.08,epic:1.12,legendary:1.16}),'multiplicadores de velocidade por raridade mudaram');
+
+for(const snippet of [
+  'def.baseDmg*(CAMPAIGN_WEAPON_POWER[rarity]||1)',
+  'def.cd/(CAMPAIGN_WEAPON_SPEED[rarity]||1)',
+  'cd/=1+getCampaignShopAttackSpeedBonus(player)',
+  'cd*=def.id===\'viking_twinaxes\'?.75:.80',
+  "def.id==='viking_bloodaxe'&&rarity==='legendary'",
+  'player.hp/player.maxHp<.35)cd*=.80',
+])assert(source.includes(snippet),`formula de dano/cooldown ausente: ${snippet}`);
+
+const elements={
+  fire:['fire','explosive'],ice:['ice','frost','frozen'],electric:['lightning','thunder','storm'],
+  poison:['poison'],shadow:['shadow'],arcane:['arcane'],solar:['solar'],wind:['wind'],blood:['blood'],
+};
+for(const [element,needles] of Object.entries(elements)){
+  for(const needle of needles)assert(source.includes(`type.includes('${needle}')`),`mapeamento ${needle} -> ${element} desapareceu`);
+}
+assert(source.includes("return 'physical'"),'fallback elemental fisico desapareceu');
+
+for(const [classId,items] of Object.entries(expected)){
+  for(const [id] of items)assert(source.includes(`type==='${id}'`),`${id} perdeu seu ramo de ataque`);
+}
+for(const snippet of [
+  'spawnProjectile(player.x,player.y,a,dmg,player,weapon,shotOpts)',
+  'new CampaignWeaponProj(x,y,angle,dmg,owner,weapon,opts)',
+  'projectile.life=2200*(opts.rangeMult||1)',
+  'projectile.speed=420*(opts.speed||1)',
+  'projectile.homing=!!opts.homing',
+  'projectile.pierce=opts.pierce||0',
+  'projectile.angle+=diff*.16',
+  '>160*(projectile.opts.rangeMult||1)',
+  'projectile.hitTargets.clear()',
+  'projectile.opts.fireTrail&&Math.random()<.35',
+  'projectile.speed=520*(1+(owner?.cardEffects?.projectileSpeed||0))',
+  'projectile.angle+=diff*0.22',
+  'projectile.born=Date.now();projectile.life=2000',
+])assert(source.includes(snippet),`fisica/comportamento de projetil ausente: ${snippet}`);
+
+for(const snippet of [
+  'p.opts.explode','p.opts.burn','p.opts.poison','p.opts.slow','p.opts.iceHits','glacial:tier>=4',
+  'projectile.opts.echo','p.opts.ricochet','p.opts.frozenCrit','p.opts.bossBonus','projectile.opts.boomerang','projectile.opts.returnSpin',
+])assert(source.includes(snippet),`efeito de projetil deixou de existir: ${snippet}`);
+
+const weaponDataPath=path.join(root,'src/weapons/weapon-data.js');
+const weaponSystemPath=path.join(root,'src/weapons/weapon-system.js');
+if(fs.existsSync(weaponDataPath)&&fs.existsSync(weaponSystemPath)){
+  const sandbox={console,setTimeout:callback=>{callback();return 1;}};
+  sandbox.window=sandbox;
+  vm.createContext(sandbox);
+  vm.runInContext(read('src/weapons/weapon-data.js'),sandbox,{filename:'src/weapons/weapon-data.js'});
+  vm.runInContext(read('src/weapons/weapon-system.js'),sandbox,{filename:'src/weapons/weapon-system.js'});
+  const rarities=['common','uncommon','rare','epic','legendary'];
+  let delegated='';
+  const definitions=sandbox.CampaignWeaponData.createDefinitions(rarities,(...args)=>{delegated=args.at(-1);});
+  assert(Object.keys(definitions).length===32,'catalogo extraido deixou de criar 32 definicoes');
+  definitions.mage_fire_staff.attack({},[],'common',null,{});
+  assert(delegated==='mage_fire_staff','definicao extraida deixou de delegar o id correto ao ataque');
+
+  let actions=0;
+  const target={x:40,y:0,hp:100,maxHp:100,dead:false,type:'grunt'};
+  const system=sandbox.CampaignWeaponSystem.create({
+    getDefinition:type=>definitions[type],
+    getTier:rarity=>rarities.indexOf(rarity),
+    campaignWeaponDamage:(def,rarity)=>def.baseDmg*({common:1,uncommon:1.12,rare:1.25,epic:1.42,legendary:1.62}[rarity]||1),
+    nearestWeaponTargets:()=>[target],
+    spawnProjectile:()=>{actions++;return {};},
+    weaponChain:()=>{actions++;},
+    addMeleeAnim:()=>{actions++;},
+    weaponDamage:()=>{actions++;},
+    weaponCone:(...args)=>{actions++;const onHit=args.at(-1);if(typeof onHit==='function')onHit(target);},
+    weaponKnockback:()=>{actions++;},
+    weaponBurst:(...args)=>{actions++;const onHit=args.at(-1);if(typeof onHit==='function')onHit(target);},
+    applyWeaponBurn:()=>{actions++;},
+    applyWeaponSlow:()=>{actions++;},
+    isPlaying:()=>true,
+  });
+  for(const [classId,items] of Object.entries(expected)){
+    for(const [id] of items){
+      const before=actions;
+      const weapon={type:id,rarity:'common'};
+      const player={x:0,y:0,hp:100,maxHp:100,classId};
+      system.attack(player,[target],'common',null,weapon,id);
+      assert(weapon.attackCount===1,`${id} deixou de registrar a contagem de ataque`);
+      assert(actions>before,`${id} nao executou nenhuma acao no sistema extraido`);
+    }
+  }
+
+  vm.runInContext(read('src/weapons/projectile-system.js'),sandbox,{filename:'src/weapons/projectile-system.js'});
+  const spawned=[],patches=[];
+  const projectiles=sandbox.CampaignProjectileSystem.create({
+    getBounds:()=>({W:1000,H:800}),
+    getShopEffect:()=>({magicArea:.2,critProjectileSpeed:.2}),
+    isPlaying:()=>true,
+    createCampaignProjectile:(...args)=>({args}),
+    addProjectile:projectile=>spawned.push(projectile),
+    getEnemies:()=>[],
+    weaponBurst:()=>{actions++;},
+    addFirePatch:patch=>patches.push(patch),
+    getHeroSkinAttackColors:()=>({primary:'#123456',secondary:'#abcdef'}),
+  });
+  const legacyProjectile={};
+  projectiles.initializeWeapon(legacyProjectile,10,20,0,15,'bow','#00ff00',null,{});
+  assert(legacyProjectile.vx===500&&legacyProjectile.vy===0&&legacyProjectile.life===1600,'projetil legado mudou velocidade ou duracao');
+  projectiles.updateWeapon(legacyProjectile,.1);
+  assert(legacyProjectile.x===60&&legacyProjectile.trail.length===1,'projetil legado mudou deslocamento ou rastro');
+
+  const campaignProjectile={};
+  const campaignOwner={x:0,y:0,classId:'mage'};
+  const campaignTarget={x:100,y:100,dead:false};
+  projectiles.initializeCampaign(campaignProjectile,0,0,0,24,campaignOwner,{type:'mage_fire_staff'},{homing:true,target:campaignTarget,pierce:2,rangeMult:1.5,speed:.72});
+  assert(Math.abs(campaignProjectile.radius-8.4)<1e-9&&campaignProjectile.life===3300&&campaignProjectile.speed===302.4,'projetil de arma mudou area, duracao ou velocidade');
+  assert(campaignProjectile.homing&&campaignProjectile.pierce===2&&campaignProjectile.isCampaignWeaponProj,'flags do projetil de arma mudaram');
+  projectiles.updateCampaign(campaignProjectile,.1);
+  assert(campaignProjectile.angle>0&&campaignProjectile.trail.length===1,'homing ou rastro do projetil de arma mudou');
+
+  const echoProjectile={};
+  projectiles.initializeCampaign(echoProjectile,0,0,0,20,campaignOwner,{type:'mage_shadow_staff'},{echo:{delay:350,mult:.7,reverse:true}});
+  projectiles.updateCampaign(echoProjectile,0);
+  assert(spawned.length===2&&echoProjectile._echoScheduled,'eco reverso deixou de criar dois projeteis uma unica vez');
+
+  const arrow={};
+  const arrowOwner={cardEffects:{projectileSpeed:.1}};
+  projectiles.initializeArrow(arrow,0,0,{x:100,y:0,dead:false},10,arrowOwner);
+  assert(Math.abs(arrow.speed-686.4)<1e-9&&arrow.life===2000&&arrow.color==='#123456','flecha mudou velocidade, duracao ou cores');
+  projectiles.updateArrow(arrow,.1);
+  assert(Math.abs(arrow.x-68.64)<1e-9&&arrow.trail.length===1,'flecha mudou deslocamento ou rastro');
+}
+
+console.log(`OK: 32 armas, raridades, dano, cooldowns, elementos, ataques e fisica de projeteis protegidos (${checks} verificacoes).`);

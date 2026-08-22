@@ -24,6 +24,14 @@ Os contratos e os limites intencionais destes modulos estao descritos em [`core/
 
 Esses modulos nao criam estado paralelo e mantem os wrappers globais usados pelo jogo atual. Os contratos e os limites desta fase estao descritos em [`combat/README.md`](combat/README.md).
 
+### Armas
+
+- `weapons/weapon-data.js`: catalogo canonico das 32 armas de classe e seus cinco estagios de raridade.
+- `weapons/weapon-system.js`: despacho e comportamento dos ataques, com dependencias de combate injetadas.
+- `weapons/projectile-system.js`: inicializacao e atualizacao dos projeteis de armas e flechas.
+
+Os valores, cooldowns, elementos, efeitos e wrappers globais foram preservados. O desenho e a colisao final continuam no loop legado nesta etapa. Os contratos estao descritos em [`weapons/README.md`](weapons/README.md).
+
 ### Acampamento
 
 - `camp/collision-map.js`: dados dos colliders e footprint do personagem no acampamento.
@@ -35,4 +43,4 @@ Esses modulos nao criam estado paralelo e mantem os wrappers globais usados pelo
 - `camp/pet-system.js`: movimento e desenho do companheiro no acampamento, usando o mesmo `S.pet` e os estados globais existentes.
 - `camp/archer-system.js`: renderer do arqueiro do acampamento; dialogos e interacao continuam no `ArqueiroNPC` original.
 
-Armas e projeteis, bencaos, progressao da campanha, chefes, Dungeon, loja, UI, mapas e o loop principal continuam no codigo legado. Esses sistemas so devem ser extraidos em fases futuras, sempre em mudancas pequenas e testaveis.
+Bencaos, progressao da campanha, chefes, Dungeon, loja, UI, mapas e o loop principal continuam no codigo legado. Esses sistemas so devem ser extraidos em fases futuras, sempre em mudancas pequenas e testaveis.
