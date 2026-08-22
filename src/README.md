@@ -32,6 +32,20 @@ Esses modulos nao criam estado paralelo e mantem os wrappers globais usados pelo
 
 Os valores, cooldowns, elementos, efeitos e wrappers globais foram preservados. O desenho e a colisao final continuam no loop legado nesta etapa. Os contratos estao descritos em [`weapons/README.md`](weapons/README.md).
 
+### Bênçãos
+
+- `blessings/blessing-data.js`: catálogo canônico de 15 divindades, 75 bênçãos e cinco raridades.
+- `blessings/blessing-system.js`: aplicação e ganchos de runtime das bênçãos, incluindo ofertas sem repetição.
+
+Dados e execução agora possuem fronteira explícita, mantendo os contratos globais existentes. O fluxo visual continua no orquestrador. Consulte [`blessings/README.md`](blessings/README.md).
+
+### Loja
+
+- `shop/shop-data.js`: 32 buffs de classe, oito itens universais e três poções.
+- `shop/shop-system.js`: efeitos, ofertas, preços, raridades, P1/P2, proteção contra repetição e compras.
+
+A marcação e o CSS permanecem intactos. Os contratos e limites estão descritos em [`shop/README.md`](shop/README.md).
+
 ### Acampamento
 
 - `camp/collision-map.js`: dados dos colliders e footprint do personagem no acampamento.
@@ -43,4 +57,4 @@ Os valores, cooldowns, elementos, efeitos e wrappers globais foram preservados. 
 - `camp/pet-system.js`: movimento e desenho do companheiro no acampamento, usando o mesmo `S.pet` e os estados globais existentes.
 - `camp/archer-system.js`: renderer do arqueiro do acampamento; dialogos e interacao continuam no `ArqueiroNPC` original.
 
-Bencaos, progressao da campanha, chefes, Dungeon, loja, UI, mapas e o loop principal continuam no codigo legado. Esses sistemas so devem ser extraidos em fases futuras, sempre em mudancas pequenas e testaveis.
+Progressão da campanha, chefes, Dungeon, UI, mapas e o loop principal continuam no código legado. Esses sistemas só devem ser extraídos em fases futuras, sempre em mudanças pequenas e testáveis.
