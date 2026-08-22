@@ -15,5 +15,6 @@ Cada extracao deve preservar comportamento, ser protegida pelos verificadores ex
 - `camp/interaction-data.js`: geometria, texto e cor dos pontos de interacao; callbacks continuam injetados pelo CampV2.
 - `camp/environment-renderer.js`: agua, fogueira, luzes, vagalumes e portal, preservando desenho e timings.
 - `camp/pet-system.js`: movimento e desenho do companheiro no acampamento, usando o mesmo `S.pet` e os estados globais existentes.
+- `camp/archer-system.js`: renderer do arqueiro do acampamento; dialogos e interacao continuam no `ArqueiroNPC` original.
 
 Os proximos sistemas podem ser extraidos gradualmente (camp, campanha, combate, UI, save), sempre em mudancas pequenas e testaveis.

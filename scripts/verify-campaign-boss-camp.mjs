@@ -12,6 +12,7 @@ const farmingSystemSource=fs.readFileSync(path.join(root,'src','camp','farming-s
 const interactionSource=fs.readFileSync(path.join(root,'src','camp','interaction-data.js'),'utf8');
 const environmentSource=fs.readFileSync(path.join(root,'src','camp','environment-renderer.js'),'utf8');
 const petSource=fs.readFileSync(path.join(root,'src','camp','pet-system.js'),'utf8');
+const archerSource=fs.readFileSync(path.join(root,'src','camp','archer-system.js'),'utf8');
 assert(html.includes('<script src=\"src/camp/collision-map.js\"></script>'),'index nao carrega o modulo externo de colisao');
 assert(html.indexOf('<script src=\"src/camp/collision-map.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'modulo de colisao precisa carregar antes do CampV2');
 assert(html.includes('<script src=\"src/camp/layout-data.js\"></script>'),'index nao carrega os dados de layout do acampamento');
@@ -26,6 +27,8 @@ assert(html.includes('<script src=\"src/camp/environment-renderer.js\"></script>
 assert(html.indexOf('<script src=\"src/camp/environment-renderer.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'renderer ambiental precisa carregar antes do CampV2');
 assert(html.includes('<script src=\"src/camp/pet-system.js\"></script>'),'index nao carrega o sistema externo do pet');
 assert(html.indexOf('<script src=\"src/camp/pet-system.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'pet-system precisa carregar antes do CampV2');
+assert(html.includes('<script src=\"src/camp/archer-system.js\"></script>'),'index nao carrega o renderer externo do arqueiro');
+assert(html.indexOf('<script src=\"src/camp/archer-system.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'archer-system precisa carregar antes do CampV2');
 
 function assert(condition,message){
   if(!condition) throw new Error(message);
@@ -166,6 +169,15 @@ assert(html.includes('const petAtras = S.pet && S.pet.y <= S.y;')&&
   html.indexOf('if(petAtras) desenharPet(c,t);')<html.indexOf('desenharHeroi(c,cls,dir,S.dir===\'right\'')&&
   html.indexOf('if(!petAtras) desenharPet(c,t);')>html.indexOf('desenharHeroi(c,cls,dir,S.dir===\'right\''),
   'profundidade entre pet e heroi foi alterada');
+assert(!camp.includes('function desenharArqueiro(c,t)'),'implementacao do arqueiro voltou para o index');
+assert(archerSource.includes('function desenharArqueiro(c,t)'),'archer-system nao contem o renderer extraido');
+assert(html.includes('window.CampArcherSystem.create({')&&html.includes('getWorldSize:()=>({width:MW,height:MH})')&&
+  html.includes('getHeroImage:()=>'),'CampV2 nao injeta as dependencias no archer-system');
+const heroDrawAt=html.indexOf('desenharHeroi(c,cls,dir,S.dir===\'right\'');
+assert(html.indexOf('if(ARQ.fy*MH <= S.y) desenharArqueiro(c,t);')<heroDrawAt&&
+  html.indexOf('if(ARQ.fy*MH > S.y) desenharArqueiro(c,t);')>heroDrawAt,
+  'profundidade entre arqueiro e heroi foi alterada');
+assert(html.includes('arqueiro:()=>window.ArqueiroNPC.abrir()'),'callback do ArqueiroNPC foi alterado');
 assert(farmingSource.includes("semente_tomate:'🍅'")&&farmingSource.includes("semente_erva:'🥬'")&&
   farmingSource.includes("semente_cogumelo_lua:'🍄'")&&farmingSource.includes("semente_raiz_sangue:'🫜'")&&
   html.includes('const ICONE_SEM=window.CampFarmingData.ICONE_SEM;'),

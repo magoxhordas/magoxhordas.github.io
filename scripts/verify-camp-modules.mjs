@@ -16,6 +16,7 @@ for(const file of [
   'src/camp/farming-system.js',
   'src/camp/environment-renderer.js',
   'src/camp/pet-system.js',
+  'src/camp/archer-system.js',
   'src/camp/interaction-data.js',
 ]){
   vm.runInContext(read(file),sandbox,{filename:file});
@@ -31,6 +32,7 @@ assert(sandbox.CampFarmingData,'CampFarmingData nao foi exportado');
 assert(sandbox.CampFarmingSystem,'CampFarmingSystem nao foi exportado');
 assert(sandbox.CampEnvironmentRenderer,'CampEnvironmentRenderer nao foi exportado');
 assert(sandbox.CampPetSystem,'CampPetSystem nao foi exportado');
+assert(sandbox.CampArcherSystem,'CampArcherSystem nao foi exportado');
 assert(sandbox.CampInteractionData,'CampInteractionData nao foi exportado');
 
 const F=(fx,fy,fw,fh)=>({fx,fy,fw,fh});
@@ -93,6 +95,27 @@ assert(imageCall&&imageCall[1]==='zefiro'&&imageCall[4]===false&&imageCall[5]===
 activePetId=null;
 petSystem.atualizarPet(.016);
 assert(petState.pet.id==='zefiro','fallback para o primeiro pet capturado foi alterado');
+
+const archerState={x:ARQ.fx*1447+50,y:ARQ.fy*1087,camX:0,camY:0};
+const archerCalls=[];
+const archerCtx={
+  canvas:{width:960,height:720},beginPath(){},ellipse(){archerCalls.push('shadow');},fill(){},
+  save(){archerCalls.push('save');},restore(){archerCalls.push('restore');},
+  translate(){archerCalls.push('translate');},scale(){archerCalls.push('scale');},
+  drawImage(...args){archerCalls.push(['drawImage',...args]);},
+};
+const archerSystem=sandbox.CampArcherSystem.create({
+  S:archerState,ARQ,getWorldSize:()=>({width:1447,height:1087}),
+  getHeroImageSets:()=>({archer:{frame:64,feet:52}}),
+  getHeroImage:()=> (...args)=>{archerCalls.push(['heroImg',...args]);return {sprite:true};},
+});
+archerSystem.desenharArqueiro(archerCtx,1000);
+assert(archerCalls.includes('shadow'),'sombra do arqueiro deixou de ser desenhada');
+const archerImageCall=archerCalls.find(call=>Array.isArray(call)&&call[0]==='heroImg');
+assert(archerImageCall&&archerImageCall[1]==='archer'&&archerImageCall[2]==='side'&&
+  archerImageCall[3]===0&&archerImageCall[4]==='idle','direcao ou animacao do arqueiro foram alteradas');
+assert(archerCalls.includes('translate')&&archerCalls.includes('scale')&&
+  archerCalls.some(call=>Array.isArray(call)&&call[0]==='drawImage'),'espelhamento/desenho do arqueiro foram alterados');
 
 const farm=sandbox.CampFarmingData;
 assert(JSON.stringify(farm.SEMENTES)===JSON.stringify([
