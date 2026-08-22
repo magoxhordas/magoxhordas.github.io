@@ -1,0 +1,140 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import vm from 'node:vm';
+
+const root=path.resolve(import.meta.dirname,'..');
+const read=relative=>fs.readFileSync(path.join(root,relative),'utf8');
+const html=read('index.html').replace(/\r\n/g,'\n');
+const source=read('src/core/input-system.js');
+let checks=0;
+
+function assert(condition,message){
+  if(!condition) throw new Error(`FALHA: ${message}`);
+  checks++;
+}
+
+function includesAll(haystack,needles,context){
+  needles.forEach(needle=>assert(haystack.includes(needle),`${context}: ausente ${needle}`));
+}
+
+new vm.Script(source,{filename:'src/core/input-system.js'});
+assert((source.match(/document\.addEventListener\('keydown'/g)||[]).length===1,'o modulo deve registrar um unico listener keydown');
+assert((source.match(/document\.addEventListener\('keyup'/g)||[]).length===1,'o modulo deve registrar um unico listener keyup');
+assert((source.match(/document\.addEventListener\('pointerdown'/g)||[]).length===1,'o modulo deve registrar um unico listener pointerdown');
+
+const listeners=new Map();
+const events=[];
+const document={
+  addEventListener(type,handler,options){
+    if(!listeners.has(type)) listeners.set(type,[]);
+    listeners.get(type).push({handler,options});
+  }
+};
+const sandbox={console,document,GameEvents:{emit(...args){events.push(args);}}};
+sandbox.window=sandbox;
+vm.createContext(sandbox);
+vm.runInContext(source,sandbox,{filename:'src/core/input-system.js'});
+
+const input=sandbox.InputManager;
+assert(!!input,'InputManager deve ser exposto em window');
+assert(Object.keys(input).join(',')==='registerScope,unregisterScope,pressVirtual,releaseVirtual,releaseSource,releaseAll,normalizeKey,onPointerAttack','API publica e ordem foram alteradas');
+assert(input.normalizeKey('W')==='w'&&input.normalizeKey(' ')===' '&&input.normalizeKey(null)==='','normalizacao de teclas foi alterada');
+assert(listeners.get('keydown')?.length===1&&listeners.get('keyup')?.length===1&&listeners.get('pointerdown')?.length===1,'listeners centrais devem ser registrados uma vez');
+assert(listeners.get('pointerdown')[0].options?.passive===false,'pointerdown deve continuar nao passivo');
+
+const campaignState={};
+const campaignCalls=[];
+let campaignActive=true;
+const unregisterCampaign=input.registerScope('campaign-test',{
+  state:campaignState,
+  priority:10,
+  isActive:()=>campaignActive,
+  onKeyDown:(event,key)=>campaignCalls.push(['down',event.code,key]),
+  onKeyUp:(event,key)=>campaignCalls.push(['up',event.code,key])
+});
+input.registerScope('extra-test',{state:{},priority:1});
+assert(listeners.get('keydown').length===1&&listeners.get('keyup').length===1,'registrar escopos nao pode duplicar listeners');
+
+listeners.get('keydown')[0].handler({key:'W',code:'KeyW'});
+assert(campaignState.w===true&&campaignState.W===true&&campaignState.KeyW===true&&campaignState.keyw===true,'aliases de keydown foram alterados');
+assert(JSON.stringify(campaignCalls[0])===JSON.stringify(['down','KeyW','w']),'callback de keydown recebeu contrato diferente');
+listeners.get('keyup')[0].handler({key:'W',code:'KeyW'});
+assert(campaignState.w===false&&campaignState.W===false&&campaignState.KeyW===false&&campaignState.keyw===false,'aliases de keyup foram alterados');
+assert(JSON.stringify(campaignCalls[1])===JSON.stringify(['up','KeyW','w']),'callback de keyup recebeu contrato diferente');
+
+const dungeonState={};
+const dungeonCalls=[];
+let dungeonActive=true;
+input.registerScope('dungeon-test',{
+  state:dungeonState,
+  priority:20,
+  exclusive:true,
+  isActive:()=>dungeonActive,
+  onKeyDown:(event,key)=>dungeonCalls.push([event.code,key])
+});
+campaignState.a=false;
+listeners.get('keydown')[0].handler({key:'a',code:'KeyA'});
+assert(dungeonState.a===true&&campaignState.a===false&&dungeonCalls.length===1,'escopo exclusivo prioritario nao bloqueou a campanha');
+dungeonActive=false;
+listeners.get('keydown')[0].handler({key:'d',code:'KeyD'});
+assert(campaignState.d===true,'campanha ativa nao recebeu input quando Dungeon ficou inativa');
+campaignActive=false;
+listeners.get('keydown')[0].handler({key:'s',code:'KeyS'});
+assert(campaignState.s!==true,'escopo inativo recebeu input');
+campaignActive=true;
+
+input.pressVirtual('touch-left','a');
+input.pressVirtual('touch-right','a');
+assert(campaignState.a===true&&campaignState.A===true,'input virtual nao espelhou tecla em minuscula e maiuscula');
+input.releaseVirtual('touch-left','a');
+assert(campaignState.a===true,'soltar uma fonte virtual limpou outra fonte ainda ativa');
+input.releaseSource('touch-right');
+assert(campaignState.a===false&&campaignState.A===false,'releaseSource nao limpou a ultima fonte virtual');
+
+campaignState.w=true;
+input.releaseAll('blur-test');
+assert(campaignState.w===false,'releaseAll nao limpou o estado dos escopos');
+assert(events.some(event=>event[0]==='input:released'&&event[1]?.reason==='blur-test'),'releaseAll nao emitiu input:released com motivo');
+
+let pointerCount=0;
+const stopPointer=input.onPointerAttack(()=>{ pointerCount++; });
+listeners.get('pointerdown')[0].handler({pointerId:1});
+stopPointer();
+listeners.get('pointerdown')[0].handler({pointerId:2});
+assert(pointerCount===1,'registro/descarte de ataque por ponteiro foi alterado');
+
+campaignState.d=true;
+unregisterCampaign();
+assert(campaignState.d===false,'unregisterScope nao limpou o estado do escopo');
+
+const scriptTag='<script src="src/core/input-system.js"></script>';
+const scriptIndex=html.indexOf(scriptTag);
+assert(scriptIndex>=0,'index.html nao carrega o modulo de input');
+assert(scriptIndex<html.indexOf("InputManager.registerScope('campaign'"),'modulo de input deve carregar antes da campanha');
+assert(scriptIndex<html.indexOf("InputManager.registerScope('dungeon'"),'modulo de input deve carregar antes da Dungeon');
+
+includesAll(html,[
+  "InputManager.registerScope('campaign'",
+  'state:keys,\n  priority:10,',
+  'onKeyDown:campaignKeyDown,\n  onKeyUp:campaignKeyUp',
+  "InputManager.registerScope('dungeon'",
+  'state:DNG.keys,\n  priority:20,\n  exclusive:true,',
+  'onKeyDown:DNG._onKey,\n  onKeyUp:DNG._offKey',
+  "moveUp:'KeyW', moveDown:'KeyS', moveLeft:'KeyA', moveRight:'KeyD'",
+  "dash:'ShiftLeft', inventory:'KeyI', map:'KeyM', crafting:'KeyT', pause:'Escape'",
+  "if(gameMode===1){\n      if(keys['ArrowLeft'])  dx-=1;",
+  "if(keys['ArrowLeft'])  dx=-1;\n    if(keys['ArrowRight']) dx+=1;",
+  '({dx,dy}=normalizeCampaignMovementVector(dx,dy));',
+  'data-mobile-key="w"',
+  'data-mobile-key="a"',
+  'data-mobile-key="d"',
+  'data-mobile-key="s"',
+  'data-mobile-action="dash"',
+  'data-mobile-action="context"',
+  'data-mobile-action="menu"',
+  'data-mobile-action="pause"',
+  'InputManager.pressVirtual(source,normalized)',
+  'InputManager.releaseVirtual(source,normalized)'
+],'contrato de controles');
+
+console.log(`OK: core input preservou API, listeners, prioridades, aliases, fontes virtuais e mapas (${checks} verificacoes).`);
