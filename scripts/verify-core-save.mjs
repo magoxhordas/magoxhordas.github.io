@@ -7,6 +7,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=(file)=>fs.readFileSync(path.join(root,file),'utf8');
 const html=read('index.html').replace(/\r\n/g,'\n');
 const saveSource=read('src/core/save-system.js');
+const persistenceSource=[html,read('src/campaign/boss-rush-system.js')].join('\n');
 
 function assert(condition,message){
   if(!condition) throw new Error(message);
@@ -134,7 +135,7 @@ for(const contract of [
   "'mvh_campaign_complete'","'mago_x_hordas_settings_v1'",
   "'mago_x_hordas_skin_progress_v1'","'magoVsHordas_MVP_Save'","'mvh_fish'",
   "'mvh_arq_falou'",
-]) assert(html.includes(contract),`chave de persistencia ausente ou renomeada: ${contract}`);
+]) assert(persistenceSource.includes(contract),`chave de persistencia ausente ou renomeada: ${contract}`);
 assert(saveSource.includes("'mago_x_hordas_save_manifest'")&&saveSource.includes("'mago_x_hordas_corrupt_backup'"),'chaves internas de seguranca foram alteradas');
 
 // A unica persistencia direta legada continua restrita ao dialogo do arqueiro.

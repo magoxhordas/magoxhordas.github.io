@@ -6,6 +6,11 @@ import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=(file)=>fs.readFileSync(path.join(root,file),'utf8');
 const html=read('index.html');
+const campaignFiles=[
+  'src/campaign/boss-data.js','src/campaign/boss-rush-system.js','src/campaign/boss-system.js',
+  'src/campaign/chapter-data.js','src/campaign/campaign-system.js'
+];
+const campaignSource=[html,...campaignFiles.map(read)].join('\n');
 
 function assert(condition,message){
   if(!condition) throw new Error(message);
@@ -74,11 +79,11 @@ const arenaBounds=between(html,'const CAMPAIGN_ARENA_BOUNDS=Object.freeze({','})
 for(const arena of ['crypt','forest','snow','desert','volcano']){
   assert(new RegExp(`\\b${arena}:\\s*\\{`).test(arenaBounds),`arena da campanha ausente: ${arena}`);
 }
-const chapters=between(html,'const CAMPAIGN_CHAPTERS={','};','capitulos da campanha');
+const chapters=between(campaignSource,'const CAMPAIGN_CHAPTERS={','};','capitulos da campanha');
 for(const [wave,arena] of [[1,'crypt'],[6,'forest'],[11,'snow'],[16,'desert'],[21,'volcano']]){
   assert(new RegExp(`${wave}:\\s*\\{[^}]*arena:['"]${arena}['"]`).test(chapters),`capitulo da onda ${wave} nao aponta para ${arena}`);
 }
-includesAll(html,['function beginGame()','class Player','class Enemy','function spawnEnemy()','function endWave()'],'fluxo de campanha/combate');
+includesAll(campaignSource,['function beginGame()','class Player','class Enemy','function spawnEnemy()','function endWave()'],'fluxo de campanha/combate');
 
 // Acampamento: CampV2 deve carregar e consumir os oito modulos extraidos.
 const campModules=[
@@ -149,9 +154,9 @@ includesAll(read('src/camp/farming-data.js'),["watered:'Crescendo...'","ready:'C
 
 // Chefes: protege os cinco chefes de capitulo e seus mapas.
 for(const bossClass of ['BossSkeletonKing','BossAracne','BossFrostBehemoth','BossSandworm','BossBalrog']){
-  assert(html.includes(`class ${bossClass}`),`classe de chefe ausente: ${bossClass}`);
+  assert(campaignSource.includes(`class ${bossClass}`),`classe de chefe ausente: ${bossClass}`);
 }
-const bossRush=between(html,'const BOSS_RUSH_LIST=[','];','registro de chefes');
+const bossRush=between(campaignSource,'const BOSS_RUSH_LIST=[','];','registro de chefes');
 for(const [id,wave,arena] of [
   ['skeleton_king',5,'crypt'],['aracne',10,'forest'],['frost',15,'snow'],
   ['sandworm',20,'desert'],['balrog',25,'volcano'],

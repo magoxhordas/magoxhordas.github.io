@@ -13,6 +13,11 @@ const interactionSource=fs.readFileSync(path.join(root,'src','camp','interaction
 const environmentSource=fs.readFileSync(path.join(root,'src','camp','environment-renderer.js'),'utf8');
 const petSource=fs.readFileSync(path.join(root,'src','camp','pet-system.js'),'utf8');
 const archerSource=fs.readFileSync(path.join(root,'src','camp','archer-system.js'),'utf8');
+const bossDataSource=fs.readFileSync(path.join(root,'src','campaign','boss-data.js'),'utf8');
+const bossRushSource=fs.readFileSync(path.join(root,'src','campaign','boss-rush-system.js'),'utf8');
+const bossSystemSource=fs.readFileSync(path.join(root,'src','campaign','boss-system.js'),'utf8');
+const campaignSystemSource=fs.readFileSync(path.join(root,'src','campaign','campaign-system.js'),'utf8');
+const campaignSource=[html,bossDataSource,bossRushSource,bossSystemSource,campaignSystemSource].join('\n');
 assert(html.includes('<script src=\"src/camp/collision-map.js\"></script>'),'index nao carrega o modulo externo de colisao');
 assert(html.indexOf('<script src=\"src/camp/collision-map.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'modulo de colisao precisa carregar antes do CampV2');
 assert(html.includes('<script src=\"src/camp/layout-data.js\"></script>'),'index nao carrega os dados de layout do acampamento');
@@ -40,14 +45,14 @@ for(const expected of [
   "id:'frost',         wave:15,icon:'❄️',name:'Gigante de Gelo',  cls:'BossFrostBehemoth',unlockWave:15,arena:'snow'",
   "id:'sandworm',      wave:20,icon:'🪱',name:'Verme Devorador',  cls:'BossSandworm',     unlockWave:20,arena:'desert'",
   "id:'balrog',        wave:25,icon:'🔥',name:'Balrog',           cls:'BossBalrog',       unlockWave:25,arena:'volcano'",
-]) assert(html.includes(expected),`arena incorreta para chefe: ${expected.slice(4,28)}`);
+]) assert(campaignSource.includes(expected),`arena incorreta para chefe: ${expected.slice(4,28)}`);
 
-const rushList=html.slice(html.indexOf('const BOSS_RUSH_LIST=['),html.indexOf('let bossRushMode=false'));
+const rushList=bossDataSource.slice(bossDataSource.indexOf('const BOSS_RUSH_LIST=['),bossDataSource.indexOf('const PET_BOSS_RUSH_LIST=['));
 assert(!rushList.includes("arena:'castle'"),'o mapa antigo ainda aparece nas listas do Boss Rush');
-assert(html.includes("const initialArena=bossRushMode?(bossRushQueue[0]?.arena||'crypt'):'crypt';"),'Boss Rush ainda inicia no mapa generico');
+assert(campaignSource.includes("const initialArena=bossRushMode?(bossRushQueue[0]?.arena||'crypt'):'crypt';"),'Boss Rush ainda inicia no mapa generico');
 assert(html.includes("function resetBossRushState(clearSelection=false)"),'reset central do modo chefao ausente');
 assert(html.includes("function openCampaignSetup()")&&html.includes("resetBossRushState(false);\n  state='menu';\n  showScreen('play-menu');"),'campanha nao zera o modo chefao');
-assert(html.includes('function clampCampaignEntity(entity,padding=0){\n  if(!entity) return entity;'),'limites ainda ignoram entidades do Boss Rush');
+assert(campaignSource.includes('function clampCampaignEntity(entity,padding=0){\n  if(!entity) return entity;'),'limites ainda ignoram entidades do Boss Rush');
 assert(html.includes('body.campaign-hud-active.boss-rush-no-coins #ui-top {'),
   'HUD moderna do modo Chefao nao removeu a coluna vazia do ouro');
 
