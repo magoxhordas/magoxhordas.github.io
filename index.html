@@ -31530,7 +31530,15 @@ function applyFishBuff(buff){
 }
 
 </script>
-  <script>
+  <script src="src/camp/collision-map.js"></script>
+  <script src="src/camp/layout-data.js"></script>
+  <script src="src/camp/farming-data.js"></script>
+  <script src="src/camp/farming-system.js"></script>
+  <script src="src/camp/interaction-data.js"></script>
+  <script src="src/camp/environment-renderer.js"></script>
+  <script src="src/camp/pet-system.js"></script>
+  <script src="src/camp/archer-system.js"></script>
+<script>
 // Start on first interaction (browser requires it)
 function _audioStart(){
   Audio.init();
@@ -32167,103 +32175,31 @@ window.CampV2 = (function(){
   const F = (fx,fy,fw,fh) => ({fx,fy,fw,fh});    // retangulo em fracao
   const E = (fx,fy,frx,fry=frx) => ({fx,fy,frx,fry}); // elipse em fracao
   // Onde o jogador NAO passa: bordas de mata, construcoes, lago, fogueira.
-  const BLOQUEIOS = [
-    // ── mata que fecha o mapa ──
-    F(0,    0,    1,    .075),   // norte
-    F(0,    .945, 1,    .055),   // sul (cerca)
-    F(0,    0,    .070, 1),      // oeste
-    F(.958, 0,    .042, 1),      // leste
-
-    // ── canto noroeste: cabana ──
-    // A colisao cobre a silhueta inteira. Uma caixa so na base permitia que o
-    // heroi entrasse pelo norte e parecesse estar andando sobre o telhado.
-    F(.040, .200, .252, .322),   // cabana completa, telhado, paredes e escada
-    F(.065, .413, .025, .060),   // lanterna de poste
-    F(.266, .376, .025, .080),   // caixas ao lado
-    F(.250, .306, .026, .056),   // cerca de madeira
-
-    // ── horta ──
-    // ── centro ──
-    // o Arqueiro. Alto o bastante p/ pegar o teste de pe do jogador,
-    // que acontece 6px ABAIXO da posicao dele (ver livre()).
-    F(.4430,.5511,.0180,.0258),
-
-    // ── nordeste: lago e pier ──
-    F(.612, .070, .312, .042),   // lago: faixa norte
-    F(.585, .105, .372, .142),   // lago: corpo central
-    F(.604, .240, .322, .072),   // lago: margem sul
-    F(.612, .330, .034, .046),   // pedra na margem
-
-    // ── leste: tenda do Merlin ──
-    F(.765, .248, .230, .326),   // tenda completa, teto, mesa e bancada
-    F(.699, .378, .036, .056),   // braseiro a esquerda
-    F(.948, .410, .020, .086),   // estandarte
-    F(.900, .548, .056, .046),   // flores roxas
-
-    // ── sudoeste: oficina ──
-    F(.058, .595, .255, .286),   // oficina completa, lona, postes e bancada
-    F(.086, .690, .032, .072),   // lanterna de poste
-    F(.272, .746, .030, .056),   // caixa ao lado
-
-    // ── sudeste: santuario de pedra ──
-    F(.705, .620, .285, .285),   // santuario completo; patamar frontal fica acessivel
-
-    // ── sul: portal ──
-    F(.375, .775, .275, .202),   // conjunto completo: portal, arco e pilares
-  ];
-
-  // Objetos arredondados recebem elipses em vez de caixas grandes. Assim o
-  // heroi contorna fogueira, pedras e tocos sem atravessar nem prender nas quinas.
-  const BLOQUEIOS_CIRCULARES = [
-    E(.528,.512,.050,.044),       // fogueira e aro de pedras
-    E(.321,.470,.031,.027),       // toco abaixo da cabana
-    // O antigo toco em .472/.190 foi absorvido pela nova area cultivavel.
-    E(.605,.386,.031,.025),       // toco na margem do lago
-    E(.082,.580,.026,.020),       // rocha oeste
-    E(.411,.683,.020,.016),       // rocha junto da oficina
-    E(.652,.635,.022,.017),       // rocha no caminho leste
-    E(.674,.845,.026,.020),       // rocha diante do santuario
-  ];
-
-  // Passarelas: vencem o bloqueio. Servem para andar sobre a agua no pier.
-  // Medido na arte: madeira em x 937..1024, y 225..325 de 1447x1087.
-  const PASSAGENS = [
-    F(.6476, .2050, .0601, .1130),   // pier do lago (passa da margem, senao trava na borda)
-  ];
+  // Dados de colisao vivem em src/camp/collision-map.js.
+  // As mesmas fabricas F/E continuam criando as formas, preservando o comportamento.
+  const {BLOQUEIOS,BLOQUEIOS_CIRCULARES,PASSAGENS}=window.CampCollisionMap.create(F,E);
 
   // Canteiros: 5x3, exatamente os 15 lotes persistentes. A grade foi movida
   // para o gramado acima/direita da cabana, onde nenhuma parede corta o acesso.
   // O solo e desenhado por cima do fundo, formando uma horta coesa e legivel.
-  const HORTA = {fx:.3020, fy:.1080, fw:.2500, fh:.2520, cols:5, linhas:3};
-  const CANTEIROS = (()=>{
-    const out=[], cw=HORTA.fw/HORTA.cols, ch=HORTA.fh/HORTA.linhas;
-    let n=0;
-    for(let r=0;r<HORTA.linhas;r++) for(let c=0;c<HORTA.cols;c++){
-      out.push({fx:HORTA.fx+c*cw, fy:HORTA.fy+r*ch, fw:cw, fh:ch, idx:n++});
-    }
-    return out;
-  })();
+  const HORTA=window.CampLayoutData.HORTA;
 
-  const PONTOS = [
-    {id:'fazenda', fx:.328, fy:.418, raio:74, rotulo:'Entrar na Fazenda',   cor:'#8fe07a', abrir:()=>openFarm()},
-    {id:'cozinha', fx:.186, fy:.522, raio:76, rotulo:'Cozinhar',            cor:'#ff9a5a', abrir:()=>openCookingPanel()},
-    {id:'merlin',  fx:.835, fy:.590, raio:82, rotulo:'Falar com Merlin',    cor:'#c08cff', abrir:()=>openMetaShop()},
-    {id:'oficina', fx:.218, fy:.900, raio:82, rotulo:'Melhorar na Oficina', cor:'#f0d080', abrir:()=>openWorkshopPanel()},
-    // O acesso fica na lateral noroeste: o corredor frontal e estreito e tem
-    // uma rocha real, portanto nao faz sentido exigir que o heroi a atravesse.
-    {id:'santuario',fx:.690,fy:.760, raio:86, rotulo:'Santuario dos Pets',  cor:'#7de89a', abrir:()=>openPetSanctuary()},
-    {id:'fogueira',fx:.525, fy:.548, raio:70, rotulo:'Descansar (Codex)',   cor:'#ffb347', abrir:()=>showCollection()},
-    {id:'portal',  fx:.497, fy:.825, raio:90, rotulo:'Iniciar Expedicao',   cor:'#6ad8f0', abrir:()=>openExpeditionMap()},
-    {id:'lago',    fx:.678, fy:.248, raio:62, rotulo:'Pescar',              cor:'#7ab8ff', abrir:()=>openFishing()},
-    {id:'arqueiro',fx:.452, fy:.560, raio:58, rotulo:'Falar com o Arqueiro', cor:'#9fe08a', abrir:()=>window.ArqueiroNPC.abrir()},
-  ];
 
-  const SEMENTES = ['semente_trigo','semente_tomate','semente_erva',
-                    'semente_cogumelo_lua','semente_raiz_sangue'];
-  const NOME_SEM = {semente_trigo:'Trigo',semente_tomate:'Tomate',semente_erva:'Folhas',
-                    semente_cogumelo_lua:'Cogumelo',semente_raiz_sangue:'Beterraba'};
-  const ICONE_SEM = {semente_trigo:'🌾',semente_tomate:'🍅',semente_erva:'🥬',
-                     semente_cogumelo_lua:'🍄',semente_raiz_sangue:'🫜'};
+  const PONTOS=window.CampInteractionData.create({
+    fazenda:()=>openFarm(),
+    cozinha:()=>openCookingPanel(),
+    merlin:()=>openMetaShop(),
+    oficina:()=>openWorkshopPanel(),
+    santuario:()=>openPetSanctuary(),
+    fogueira:()=>showCollection(),
+    portal:()=>openExpeditionMap(),
+    lago:()=>openFishing(),
+    arqueiro:()=>window.ArqueiroNPC.abrir(),
+  });
+
+  const SEMENTES=window.CampFarmingData.SEMENTES;
+  const NOME_SEM=window.CampFarmingData.NOME_SEM;
+  const ICONE_SEM=window.CampFarmingData.ICONE_SEM;
 
   const S = {
     x:.497*1447, y:.760*1087,        // comeca no caminho, abaixo da fogueira
@@ -32290,7 +32226,7 @@ window.CampV2 = (function(){
     const pesY=y+8;
     if(x<10||pesY<5||x>MW-10||pesY>MH-5) return false;
     // Uma sola de 16x10 px substitui o antigo ponto unico de colisao.
-    const sola=[[-8,-3],[0,-3],[8,-3],[-8,4],[0,5],[8,4]];
+    const sola=window.CampCollisionMap.FOOTPRINT;
     for(const [ox,oy] of sola) if(pontoBloqueado(x+ox,pesY+oy)) return false;
     return true;
   };
@@ -32311,309 +32247,16 @@ window.CampV2 = (function(){
     S.x=.497*MW; S.y=.760*MH;
     return true;
   }
-  function canteiroEm(x,y){ return CANTEIROS.find(k=>dentro(x,y+6,k))||null; }
-  function celula(k){
-    return (typeof farmCells!=='undefined'&&k.idx<farmCells.length)?farmCells[k.idx]:null;
-  }
-  const ACAO = {empty:'Arar', plowed:'Plantar', planted:'Regar',
-                watered:'Crescendo...', ready:'Colher'};
-  function usarCanteiro(k){
-    const cell=celula(k); if(!cell) return;
-    if(cell.state==='watered'){ aviso('Ja regado. Volte da expedicao.'); return; }
-    if(cell.state==='plowed'){
-      const sem=sementeAtual();
-      if(!sem){ aviso('Sem sementes. Ache-as nas expedicoes.'); return; }
-      if(typeof selectedSeed!=='undefined') selectedSeed=sem;
-      if(typeof activeTool!=='undefined') activeTool='plant';
-    } else if(typeof activeTool!=='undefined'){
-      activeTool = cell.state==='empty' ? 'plow' : (cell.state==='ready'?'harvest':'water');
-    }
-    const antes=cell.state;
-    if(typeof farmAction==='function') farmAction(k.idx);
-    if(cell.state!==antes) aviso(ACAO[antes]+' ok');
-  }
-  function sementeAtual(){
-    if(typeof globalInventory==='undefined') return null;
-    if(S.semente && (globalInventory[S.semente]||0)>0) return S.semente;
-    return SEMENTES.find(x=>(globalInventory[x]||0)>0)||null;
-  }
-  function trocarSemente(){
-    if(typeof globalInventory==='undefined') return;
-    const tem=SEMENTES.filter(x=>(globalInventory[x]||0)>0);
-    if(!tem.length){ aviso('Voce nao tem sementes.'); return; }
-    const i=tem.indexOf(sementeAtual());
-    S.semente=tem[(i+1)%tem.length];
-    aviso('Semente: '+NOME_SEM[S.semente]+' ('+globalInventory[S.semente]+')');
-  }
-  function aviso(t){ S.aviso=t; S.avisoAte=performance.now()+1800; }
-
-  // ── Plantacao: cada semente tem desenho e movimento proprios ──
-  // Trigo balanca ao vento, tomate pesa e oscila, erva treme miudo,
-  // cogumelo pulsa e solta esporos, raiz-sangue lateja e escorre.
-  function plantaTrigo(c,cx,base,p,t,pronto){
-    const alt=8+p*20, bal=Math.sin(t*.0024+cx*.06)*(1.6+p*2.4);
-    for(let i=-1;i<=1;i++){
-      const bx=cx+i*4.5, h=alt*(i?.82:1), b=bal*(i?.8:1);
-      c.strokeStyle=pronto?'#c8a13c':'#6fa348'; c.lineWidth=1.8;
-      c.beginPath(); c.moveTo(bx,base);
-      c.quadraticCurveTo(bx+b*.5,base-h*.6,bx+b,base-h); c.stroke();
-      if(pronto){
-        c.fillStyle='#efc75a';
-        c.beginPath(); c.ellipse(bx+b,base-h-2,2.4,5,0,0,Math.PI*2); c.fill();
-        c.strokeStyle='#f7e08a'; c.lineWidth=.9;
-        for(let k=0;k<3;k++){ const y=base-h-5+k*3.2;
-          c.beginPath(); c.moveTo(bx+b,y); c.lineTo(bx+b-3,y-2.4); c.stroke();
-          c.beginPath(); c.moveTo(bx+b,y); c.lineTo(bx+b+3,y-2.4); c.stroke(); }
-      }
-    }
-  }
-  function plantaTomate(c,cx,base,p,t,pronto){
-    const alt=7+p*15, bal=Math.sin(t*.0018+cx*.05)*1.4;
-    c.strokeStyle='#4d8a3a'; c.lineWidth=2.2;
-    c.beginPath(); c.moveTo(cx,base); c.lineTo(cx+bal*.5,base-alt); c.stroke();
-    c.fillStyle='#57a84c';
-    for(const f of [[-6,.55,5],[6,.42,5],[0,.8,5.5]]){
-      c.beginPath(); c.ellipse(cx+f[0]+bal*.6,base-alt*f[1],f[2],3.4,f[0]*.06,0,Math.PI*2); c.fill();
-    }
-    if(pronto){
-      const bob=Math.sin(t*.004+cx)*1.1;
-      for(const f of [[-5,.42],[5,.58],[0,.24]]){
-        const x=cx+f[0]+bal*.5, y=base-alt*f[1]+bob;
-        c.fillStyle='#d1372e'; c.beginPath(); c.arc(x,y,3.6,0,Math.PI*2); c.fill();
-        c.fillStyle='#ff6a55'; c.beginPath(); c.arc(x-1.1,y-1.1,1.3,0,Math.PI*2); c.fill();
-      }
-    }
-  }
-  function plantaErva(c,cx,base,p,t,pronto){
-    const alt=6+p*13;
-    for(let i=-2;i<=2;i++){
-      const bal=Math.sin(t*.0034+i*.9+cx*.04)*2.2, h=alt*(1-Math.abs(i)*.16);
-      c.strokeStyle=pronto?'#7fd06a':'#4f9a44'; c.lineWidth=2;
-      c.beginPath(); c.moveTo(cx+i*2.4,base);
-      c.quadraticCurveTo(cx+i*5+bal*.5,base-h*.6,cx+i*7+bal,base-h); c.stroke();
-    }
-    if(pronto){
-      const pul=.5+.5*Math.sin(t*.005+cx);
-      c.fillStyle='rgba(150,240,140,'+(.10+.10*pul)+')';
-      c.beginPath(); c.arc(cx,base-alt*.6,13,0,Math.PI*2); c.fill();
-      c.fillStyle='#eaf7c0';
-      for(let i=-1;i<=1;i++){
-        c.beginPath(); c.arc(cx+i*6,base-alt*(1-Math.abs(i)*.16)-1,1.8+pul*.5,0,Math.PI*2); c.fill();
-      }
-    }
-  }
-  function plantaCogumelo(c,cx,base,p,t,pronto){
-    const alt=5+p*11, pul=.5+.5*Math.sin(t*.0032+cx*.07);
-    if(pronto){
-      c.fillStyle='rgba(150,200,255,'+(.10+.12*pul)+')';
-      c.beginPath(); c.arc(cx,base-alt,15+pul*3,0,Math.PI*2); c.fill();
-    }
-    for(const f of [[0,1],[-6,.62],[5,.5]]){
-      const h=alt*f[1], x=cx+f[0];
-      c.fillStyle='#d8dcf0'; c.fillRect(x-1.4,base-h,2.8,h);
-      c.fillStyle=pronto?'#9fc4ff':'#6b7ba8';
-      c.beginPath(); c.ellipse(x,base-h,5.2*f[1]+2,3.4*f[1]+1.6,0,Math.PI,0); c.fill();
-      if(pronto){
-        c.fillStyle='#eaf2ff';
-        c.beginPath(); c.arc(x-1.6,base-h-1.4,.9,0,Math.PI*2); c.fill();
-        c.beginPath(); c.arc(x+2,base-h-.6,.7,0,Math.PI*2); c.fill();
-      }
-    }
-    if(pronto) for(let i=0;i<3;i++){          // esporos subindo
-      const f=(t*.00035+i*.33+cx*.01)%1;
-      c.fillStyle='rgba(200,225,255,'+(.55*(1-f))+')';
-      c.beginPath(); c.arc(cx+Math.sin(f*7+i)*5,base-alt-2-f*16,1.1,0,Math.PI*2); c.fill();
-    }
-  }
-  function plantaRaiz(c,cx,base,p,t,pronto){
-    const alt=6+p*14, pul=.5+.5*Math.sin(t*.0042+cx*.05);
-    if(pronto){
-      c.fillStyle='rgba(200,40,50,'+(.10+.14*pul)+')';
-      c.beginPath(); c.arc(cx,base-alt*.6,14+pul*3,0,Math.PI*2); c.fill();
-    }
-    c.strokeStyle=pronto?'#a4202c':'#6d3038'; c.lineWidth=2.6; c.lineCap='round';
-    for(let i=-1;i<=1;i++){
-      const tor=Math.sin(t*.0016+i*1.4)*2;
-      c.beginPath(); c.moveTo(cx+i*3,base);
-      c.bezierCurveTo(cx+i*7+tor,base-alt*.45,cx+i*2-tor,base-alt*.7,cx+i*5+tor*.6,base-alt);
-      c.stroke();
-    }
-    c.lineCap='butt';
-    if(pronto){
-      c.fillStyle='#e0303c';
-      for(let i=-1;i<=1;i++){ c.beginPath(); c.arc(cx+i*5,base-alt-1,2.2+pul*.6,0,Math.PI*2); c.fill(); }
-      const g=(t*.0006+cx*.01)%1;                       // gota escorrendo
-      c.fillStyle='rgba(190,30,40,'+(.8*(1-g))+')';
-      c.beginPath(); c.ellipse(cx,base-alt+g*alt,1.2,2,0,0,Math.PI*2); c.fill();
-    }
-  }
-  const DESENHO_CULTIVO = {
-    semente_trigo:plantaTrigo, semente_tomate:plantaTomate, semente_erva:plantaErva,
-    semente_cogumelo_lua:plantaCogumelo, semente_raiz_sangue:plantaRaiz,
-  };
-  function desenharHorta(c,t){
-    const h=px(HORTA), x=Math.round(h.x-S.camX), y=Math.round(h.y-S.camY);
-    if(x>c.canvas.width+30||y>c.canvas.height+30||x+h.w<-30||y+h.h<-30) return;
-    c.save(); c.imageSmoothingEnabled=false;
-
-    // Moldura de madeira e terra escura unem os 15 lotes em uma plantacao.
-    c.fillStyle='rgba(24,16,8,.96)'; c.fillRect(x-7,y-7,h.w+14,h.h+14);
-    c.fillStyle='#77502c'; c.fillRect(x-9,y-9,h.w+18,5);
-    c.fillRect(x-9,y+h.h+4,h.w+18,5);
-    c.fillRect(x-9,y-4,5,h.h+8); c.fillRect(x+h.w+4,y-4,5,h.h+8);
-    c.strokeStyle='#b17a3d'; c.lineWidth=1; c.strokeRect(x-7.5,y-7.5,h.w+15,h.h+15);
-
-    for(const k of CANTEIROS){
-      const b=px(k), rx=Math.round(b.x-S.camX)+2, ry=Math.round(b.y-S.camY)+2;
-      const rw=Math.round(b.w)-4, rh=Math.round(b.h)-4;
-      const cell=celula(k), molhada=cell&&cell.state==='watered';
-      c.fillStyle=molhada?'rgba(35,25,18,.98)':'rgba(61,39,20,.97)';
-      c.fillRect(rx,ry,rw,rh);
-      c.strokeStyle='rgba(174,116,55,.62)'; c.strokeRect(rx+.5,ry+.5,rw-1,rh-1);
-      // Sulcos alternados criam profundidade sem competir com as plantas.
-      for(let f=0;f<3;f++){
-        const fy=ry+Math.round((f+1)*rh/4);
-        c.strokeStyle=molhada?'rgba(92,73,53,.45)':'rgba(118,75,34,.48)';
-        c.beginPath(); c.moveTo(rx+5,fy); c.lineTo(rx+rw-5,fy); c.stroke();
-        c.strokeStyle='rgba(12,8,5,.48)';
-        c.beginPath(); c.moveTo(rx+5,fy+2); c.lineTo(rx+rw-5,fy+2); c.stroke();
-      }
-      if(molhada){
-        const brilho=.22+.12*Math.sin(t*.002+k.idx*.8);
-        c.fillStyle='rgba(110,170,190,'+brilho+')';
-        c.fillRect(rx+7+(k.idx%3)*5,ry+rh-8,9,1);
-      }
-    }
-
-    // Espantalho pixelado, pequeno e fora das celulas interativas.
-    const sx=Math.round(x+h.w/2), sy=y-8;
-    c.fillStyle='#74502d'; c.fillRect(sx-2,sy-15,4,25); c.fillRect(sx-13,sy-8,26,3);
-    c.fillStyle='#c79a4c'; c.fillRect(sx-7,sy-17,14,4); c.fillRect(sx-5,sy-22,10,6);
-    c.fillStyle='#6d3421'; c.fillRect(sx-8,sy-5,16,10);
-    c.fillStyle='#d2b062'; c.fillRect(sx-3,sy-14,2,2); c.fillRect(sx+2,sy-14,2,2);
-    c.restore();
-  }
-  function desenharPlantas(c,t){
-    for(const k of CANTEIROS){
-      const cell=celula(k); if(!cell||cell.state==='empty') continue;
-      const b=px(k), cx=b.x+b.w/2-S.camX, base=b.y+b.h*.78-S.camY;
-      if(cx<-40||cx>c.canvas.width+40) continue;
-      if(cell.state==='plowed'){                       // so a terra revirada
-        c.fillStyle='rgba(90,62,32,.45)';
-        c.fillRect(b.x+3-S.camX,b.y+3-S.camY,b.w-6,b.h-6); continue;
-      }
-      if(cell.state==='watered'){                      // terra molhada
-        c.fillStyle='rgba(30,20,10,.42)';
-        c.fillRect(b.x+3-S.camX,b.y+3-S.camY,b.w-6,b.h-6);
-      }
-      const prog=cell.state==='ready'?1:(cell.state==='watered'?.62:.32);
-      const pronto=cell.state==='ready';
-      const desenhar=DESENHO_CULTIVO[cell.seed]||plantaErva;
-      const quantidade=pronto?3:(cell.state==='watered'?2:1);
-      const espacamento=Math.min(17,b.w*.22);
-      for(let i=0;i<quantidade;i++){
-        const off=(i-(quantidade-1)/2)*espacamento;
-        desenhar(c,cx+off,base+(i%2)*2,prog,t+i*230+k.idx*17,pronto);
-      }
-    }
-  }
+  const ACAO=window.CampFarmingData.ACAO;
+  const {
+    CANTEIROS,canteiroEm,celula,usarCanteiro,sementeAtual,trocarSemente,aviso,
+    desenharHorta,desenharPlantas
+  }=window.CampFarmingSystem.create({HORTA,SEMENTES,NOME_SEM,ACAO,S,px,dentro});
 
   // ── Vida do acampamento: animacoes discretas desenhadas sobre a arte. ──
-  const LUZES_ACAMPAMENTO = [
-    [141,468,'#ffc04a',22,0],[181,470,'#ffb43a',34,.8],[304,467,'#ffc04a',22,1.7],
-    [122,830,'#ffad32',24,.4],[261,820,'#ff9b28',18,2.2],
-    [1050,457,'#b66cff',22,.2],[1097,463,'#a44cff',17,1.2],
-    [1164,525,'#c175ff',19,2.4],[1351,526,'#bd68ff',21,.7],
-    [1105,901,'#45ff9b',24,.3],[1354,901,'#45ff9b',24,1.4],
-    [650,943,'#58cfff',22,.9],[873,943,'#58cfff',22,2.1],
-  ];
-  const VAGALUMES = Array.from({length:18},(_,i)=>(
-    {x:82+(i*173)%1270,y:115+(i*97)%790,fase:i*.83,raio:1+(i%3)*.35}
-  ));
-
-  function brilho(c,x,y,cor,raio,alpha){
-    const g=c.createRadialGradient(x,y,1,x,y,raio);
-    g.addColorStop(0,cor); g.addColorStop(.22,cor);
-    g.addColorStop(1,'rgba(0,0,0,0)');
-    c.save(); c.globalAlpha=alpha; c.fillStyle=g;
-    c.fillRect(x-raio,y-raio,raio*2,raio*2); c.restore();
-  }
-
-  function desenharAgua(c,t){
-    c.save();
-    c.beginPath();
-    c.moveTo(870,105); c.quadraticCurveTo(1110,55,1335,95);
-    c.quadraticCurveTo(1420,145,1390,260);
-    c.quadraticCurveTo(1310,340,1110,345);
-    c.quadraticCurveTo(900,330,842,248);
-    c.quadraticCurveTo(820,160,870,105); c.closePath(); c.clip();
-    for(let i=0;i<13;i++){
-      const y=104+i*18+Math.sin(t*.0012+i)*3;
-      const x=842+((t*.018+i*89)%520);
-      c.strokeStyle=i%3===0?'rgba(90,205,255,.32)':'rgba(38,135,210,.22)';
-      c.lineWidth=i%3===0?2:1;
-      c.beginPath(); c.moveTo(x,y); c.lineTo(x+18+(i%4)*5,y);
-      c.lineTo(x+24+(i%4)*5,y-2); c.stroke();
-    }
-    for(let i=0;i<4;i++){
-      const pul=(t*.00045+i*.24)%1;
-      c.strokeStyle='rgba(100,220,255,'+(.23*(1-pul))+')'; c.lineWidth=1.2;
-      c.beginPath(); c.ellipse(1120+i*42,250-i*18,10+pul*30,4+pul*12,0,0,Math.PI*2); c.stroke();
-    }
-    c.restore();
-  }
-
-  function desenharFogueira(c,t){
-    // A chama principal ja faz parte da arte do mapa. Estes poucos pixels so
-    // movimentam a ponta e as brasas, sem desenhar outra fogueira por cima.
-    const quadro=Math.floor(t/140)%4;
-    const pixels=[
-      [[-5,-12,3,5,'#ff6b1b'],[ 1,-17,3,6,'#ffc43b'],[ 5,-10,2,4,'#ff7a18']],
-      [[-7,-10,3,4,'#ff7a18'],[-1,-19,3,7,'#ffd75a'],[ 4,-13,3,5,'#ff5a16']],
-      [[-4,-15,3,6,'#ff5a16'],[ 2,-16,3,6,'#ffe27a'],[ 6, -9,2,4,'#ff7a18']],
-      [[-6,-11,3,5,'#ff7a18'],[ 0,-20,3,7,'#ffc43b'],[ 5,-12,2,5,'#ff5a16']],
-    ][quadro];
-    const pul=.5+.5*Math.sin(t*.008);
-    brilho(c,765,552,'#ff7a18',38,.025+.035*pul);
-    c.save();
-    c.imageSmoothingEnabled=false; c.globalAlpha=.58;
-    for(const [x,y,w,h,cor] of pixels){ c.fillStyle=cor; c.fillRect(765+x,552+y,w,h); }
-    for(let i=0;i<3;i++){
-      const f=(t*.00032+i*.31)%1;
-      c.globalAlpha=(1-f)*.55; c.fillStyle=i%2?'#ffb42b':'#ff6b1b';
-      c.fillRect(Math.round(765+Math.sin(f*7+i)*8),Math.round(535-f*28),1,1);
-    }
-    c.restore();
-  }
-
-  function desenharAmbiente(c,t){
-    c.save(); c.translate(-S.camX,-S.camY);
-    desenharAgua(c,t);
-    for(const [x,y,cor,raio,fase] of LUZES_ACAMPAMENTO){
-      const pul=.5+.5*Math.sin(t*.0027+fase);
-      brilho(c,x,y,cor,raio,.035+.07*pul);
-      c.globalAlpha=.65+.3*pul; c.fillStyle=cor; c.fillRect(Math.round(x-1),Math.round(y-2),3,4);
-    }
-    c.globalAlpha=1;
-    desenharFogueira(c,t);
-
-    // O portal respira devagar e os dois aneis nunca piscam no mesmo ritmo.
-    const pp=.5+.5*Math.sin(t*.0022);
-    brilho(c,748,978,'#22a8ff',72,.05+.07*pp);
-    c.strokeStyle='rgba(74,205,255,'+(.24+.22*pp)+')'; c.lineWidth=2;
-    c.beginPath(); c.ellipse(748,977,46+pp*3,67+pp*4,0,0,Math.PI*2); c.stroke();
-    c.strokeStyle='rgba(125,96,255,'+(.18+.18*(1-pp))+')'; c.lineWidth=1;
-    c.beginPath(); c.ellipse(748,977,53-pp*2,73-pp*3,0,0,Math.PI*2); c.stroke();
-
-    for(const v of VAGALUMES){
-      const pul=Math.max(0,Math.sin(t*.0018+v.fase));
-      if(pul<.35) continue;
-      const x=v.x+Math.sin(t*.00055+v.fase)*9, y=v.y+Math.cos(t*.00043+v.fase)*6;
-      c.globalAlpha=(pul-.35)*.7; c.fillStyle='#d8ff68';
-      c.fillRect(Math.round(x),Math.round(y),v.raio,v.raio);
-    }
-    c.restore(); c.globalAlpha=1;
-  }
+  const {desenharAmbiente}=window.CampEnvironmentRenderer.create({
+    S,LUZES_ACAMPAMENTO:window.CampLayoutData.LUZES_ACAMPAMENTO
+  });
 
   // ── Tela: o canvas guarda pixels de MUNDO; o zoom e' so' ampliacao
   //    inteira via CSS, entao o pixel-art sai nitido em qualquer monitor. ──
@@ -32643,70 +32286,24 @@ window.CampV2 = (function(){
   // ── Pet companheiro: anda atras do heroi pelo acampamento ──
   // Duas distancias, nao uma: com um limite so' o pet fica oscilando em cima
   // dele e a animacao pisca. Comeca a seguir aos 34px, so' para aos 18px.
-  const PET_SEGUE=76, PET_PARA=52, PET_LONGE=340;
-  function petAtivo(){
-    if(typeof PET_IMG_SETS==='undefined') return null;
-    const tem=(typeof capturedPets!=='undefined')?capturedPets:null;
-    if(typeof activePetId!=='undefined' && activePetId && PET_IMG_SETS[activePetId]
-       && (!tem || tem[activePetId])) return activePetId;
-    if(tem) for(const id in tem) if(PET_IMG_SETS[id]) return id;   // 1o do santuario
-    return null;
-  }
-  function atualizarPet(dt){
-    const id=petAtivo();
-    if(!id){ S.pet=null; return; }
-    if(!S.pet || S.pet.id!==id)
-      S.pet={id, x:S.x-58, y:S.y+10, dir:'south', flip:false, andando:false};
-    const p=S.pet;
-    const dx=S.x-p.x, dy=(S.y+6)-p.y, d=Math.hypot(dx,dy);
-    if(d>PET_LONGE){ p.x=S.x-58; p.y=S.y+10; p.seguindo=false; p.andando=false; return; }
-    if(d>PET_SEGUE) p.seguindo=true;                 // ficou p/ tras: vem
-    else if(d<PET_PARA) p.seguindo=false;            // chegou perto: descansa
-    if(!p.seguindo){ p.andando=false; return; }
-    const vel=Math.min(d-PET_PARA*.5, (S.correndo?205:140)*dt);
-    const ax=p.x, ay=p.y;
-    if(livre(p.x+dx/d*vel, p.y)) p.x+=dx/d*vel;
-    if(livre(p.x, p.y+dy/d*vel)) p.y+=dy/d*vel;
-    p.andando = (p.x!==ax || p.y!==ay);
-    if(Math.abs(dx)>Math.abs(dy)*1.2){ p.dir='side'; p.flip=dx<0; }
-    else p.dir = dy<0?'north':'south';
-  }
-  function desenharPet(c,t){
-    const p=S.pet; if(!p) return;
-    const voa=(typeof PET_FLIES!=='undefined'&&PET_FLIES[p.id]);
-    const sobe=voa?((typeof PET_FLY_LIFT!=='undefined')?PET_FLY_LIFT:11):0;
-    const x=Math.round(p.x-S.camX), y=Math.round(p.y-S.camY);
-    const bal=voa?Math.sin(t*.004)*2:0;
-    c.fillStyle=voa?'rgba(0,0,0,.20)':'rgba(0,0,0,.30)';
-    c.beginPath(); c.ellipse(x,y,9,3.5,0,0,Math.PI*2); c.fill();
-    if(typeof drawPetImg==='function')
-      drawPetImg(c,p.id,x,y-sobe+bal,p.flip,p.andando,t,p.dir);
-  }
+  const {atualizarPet,desenharPet}=window.CampPetSystem.create({
+    S,livre,
+    getImageSets:()=>typeof PET_IMG_SETS==='undefined'?null:PET_IMG_SETS,
+    getCapturedPets:()=>typeof capturedPets==='undefined'?null:capturedPets,
+    getActivePetId:()=>typeof activePetId==='undefined'?null:activePetId,
+    getFlyingPets:()=>typeof PET_FLIES==='undefined'?null:PET_FLIES,
+    getFlyLift:()=>typeof PET_FLY_LIFT==='undefined'?11:PET_FLY_LIFT,
+    getDrawPetImage:()=>typeof drawPetImg==='function'?drawPetImg:null,
+  });
 
   // ── O Arqueiro da fogueira: fica parado, mas vira para quem chega ──
-  const ARQ = {fx:.452, fy:.560};
-  function desenharArqueiro(c,t){
-    const ax=ARQ.fx*MW, ay=ARQ.fy*MH;
-    const x=Math.round(ax-S.camX), y=Math.round(ay-S.camY);
-    if(x<-70||x>c.canvas.width+70||y<-70||y>c.canvas.height+70) return;
-    c.fillStyle='rgba(0,0,0,.34)';
-    c.beginPath(); c.ellipse(x,y,11,4,0,0,Math.PI*2); c.fill();
-    const set=(typeof HERO_IMG_SETS!=='undefined')?HERO_IMG_SETS.archer:null;
-    if(!set||typeof heroImg!=='function') return;
-    const dx=S.x-ax, dy=S.y-ay;
-    let dir='down', flip=false;
-    if(Math.hypot(dx,dy)<150){                     // olha para o jogador de perto
-      if(Math.abs(dx)>Math.abs(dy)*1.2){ dir='side'; flip=dx>0; }
-      else dir = dy<0?'up':'down';
-    }
-    const im=heroImg('archer',dir,0,'idle'); if(!im) return;
-    const w=set.frame, bob=Math.sin(t*.0016)*1.1;   // respiracao
-    const px2=Math.round(x-w/2), py2=Math.round(y-set.feet+bob);
-    c.save(); c.imageSmoothingEnabled=false;
-    if(flip){ c.translate(px2+w,py2); c.scale(-1,1); c.drawImage(im,0,0,w,w); }
-    else c.drawImage(im,px2,py2,w,w);
-    c.restore();
-  }
+  const ARQ=window.CampLayoutData.ARQ;
+  const {desenharArqueiro}=window.CampArcherSystem.create({
+    S,ARQ,
+    getWorldSize:()=>({width:MW,height:MH}),
+    getHeroImageSets:()=>typeof HERO_IMG_SETS==='undefined'?null:HERO_IMG_SETS,
+    getHeroImage:()=>typeof heroImg==='function'?heroImg:null,
+  });
 
   function desenharHeroi(c,cls,dir,flip,x,pesY,andando,t){
     const set=(typeof HERO_IMG_SETS!=='undefined')?HERO_IMG_SETS[cls]:null;
