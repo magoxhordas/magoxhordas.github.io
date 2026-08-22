@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8').replace(/\r\n/g,'\n');
+const statusSource=fs.readFileSync(path.join(root,'src','combat','status-effects.js'),'utf8').replace(/\r\n/g,'\n');
 const weaponIds={
   mage:['mage_fire_staff','mage_lightning_staff','mage_ice_staff','mage_arcane_staff','mage_poison_staff','mage_shadow_staff','mage_solar_staff','mage_wind_staff'],
   warrior:['warrior_longsword','warrior_greatsword','warrior_spear','warrior_warhammer','warrior_warshield','warrior_twinblades','warrior_chainblade','warrior_spikedmace'],
@@ -39,11 +40,10 @@ const requiredSnippets=[
   "campaignWeaponIconHtml(item.wtype,104,'campaign-weapon-art-shop',rarCol)",
   "campaignWeaponIconHtml(w.type,22,'campaign-weapon-art-shop-label',RARITY_COLORS[w.rarity])",
   'shopPool[i]=null; shopLocked[i]=false;\n  renderShopInventory();',
+  '<script src="src/combat/status-effects.js"></script>',
   'function markEnemyWeaponStatus(',
+  'return campaignStatusEffects.markEnemy(target,source,duration);',
   "markEnemyWeaponStatus(target,weapon);",
-  "markEnemyWeaponStatus(target,'ice',duration);",
-  "markEnemyWeaponStatus(target,'poison',duration);",
-  "markEnemyWeaponStatus(target,'fire',duration);",
   "markEnemyWeaponStatus(le,'electric');",
   'drawEnemyStatusFx(bossOrc,t)',
   'drawEnemyStatusFx(bossSkel,t)',
@@ -52,6 +52,12 @@ const requiredSnippets=[
   'drawEnemyStatusFx(petBoss,t)'
 ];
 for(const snippet of requiredSnippets)assert(html.includes(snippet),`Integração ausente: ${snippet}`);
+for(const snippet of [
+  "markEnemy(target,'ice',duration);",
+  "markEnemy(target,'poison',duration);",
+  "markEnemy(target,'fire',duration);",
+  'updateFrozen,updateEnemy',
+]) assert(statusSource.includes(snippet),`Contrato elemental ausente do módulo: ${snippet}`);
 for(const element of ['fire','ice','electric','poison','shadow','arcane','solar','wind','blood','physical']){
   assert(html.includes(`active('${element}')`)||html.includes(`const ${element}=`),`Feedback visual ausente: ${element}`);
 }

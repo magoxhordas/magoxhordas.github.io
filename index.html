@@ -5576,6 +5576,7 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
 })(window);
 
 </script>
+  <script src="src/combat/status-effects.js"></script>
   <script>
 (function(global){
   'use strict';
@@ -14618,10 +14619,11 @@ function campaignWeaponElement(type=''){
   return 'physical';
 }
 
-const CAMPAIGN_ELEMENT_FX_DURATION={
-  fire:1500,ice:1600,electric:900,poison:1700,shadow:1250,
-  arcane:1050,solar:950,wind:850,blood:1300,physical:280
-};
+const campaignStatusEffects=CampaignStatusEffects.create({
+  now:()=>performance.now(),
+  resolveWeaponElement:source=>campaignWeaponElement(source),
+  getCampaignShopEffect:owner=>getCampaignShopEffect(owner)
+});
 function campaignWeaponIconHtml(type,size=46,extraClass='',ringColor=''){
   const safe=WEAPON_DEFS[type]?type:'';
   if(!safe)return gamePixelIconHtml('orb',size,null,extraClass);
@@ -14630,16 +14632,10 @@ function campaignWeaponIconHtml(type,size=46,extraClass='',ringColor=''){
   return `<span class="campaign-weapon-medallion ${extraClass}" style="--weapon-size:${px}px;--weapon-ring:${ring};" aria-hidden="true"><img class="campaign-weapon-art" src="assets/weapons/${safe}.png" alt=""></span>`;
 }
 function campaignDamageElement(source=''){
-  const raw=typeof source==='string'?source:(source?.type||source?.id||'');
-  const direct=['fire','ice','electric','poison','shadow','arcane','solar','wind','blood','physical'];
-  return direct.includes(raw)?raw:campaignWeaponElement(raw);
+  return campaignStatusEffects.damageElement(source);
 }
 function markEnemyWeaponStatus(target,source,duration){
-  if(!target||target.dead)return;
-  const element=campaignDamageElement(source);
-  target.elementFx=target.elementFx||{};
-  const until=performance.now()+(duration||CAMPAIGN_ELEMENT_FX_DURATION[element]||700);
-  target.elementFx[element]=Math.max(target.elementFx[element]||0,until);
+  return campaignStatusEffects.markEnemy(target,source,duration);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -15641,9 +15637,7 @@ function weaponChain(player,enemies,start,count,damages,weapon,color){
   }
 }
 function applyWeaponSlow(target,pct,duration,owner){
-  if(!target||target.slowImmune)return;if(owner?.classId==='mage')duration*=1+(getCampaignShopEffect(owner).elementDuration||0);target.slowed=true;target.slowTimer=Math.max(target.slowTimer||0,duration);target.weaponSlow=Math.max(target.weaponSlow||0,pct);target.weaponSlowTimer=Math.max(target.weaponSlowTimer||0,duration);
-  markEnemyWeaponStatus(target,'ice',duration);
-  if(owner)target._lastWeaponOwner=owner;
+  return campaignStatusEffects.applySlow(target,pct,duration,owner);
 }
 function weaponShieldReduction(player){
   if(!player)return 0;const shield=getSlots(player.idx).find(w=>w&&w.type==='warrior_warshield');
@@ -15656,14 +15650,10 @@ function weaponShieldCounter(player){
   if(shield.rarity==='legendary')weaponBurst(player,enemies,player.x+Math.cos(angle)*80,player.y+Math.sin(angle)*80,55,shield,campaignWeaponDamage(def,shield.rarity)*.7,def.color);
 }
 function applyWeaponPoison(target,owner,weapon,dps,duration,maxStacks){
-  if(!target||target.dead)return;if(owner?.classId==='mage'){const se=getCampaignShopEffect(owner);duration*=1+(se.elementDuration||0);dps*=1+(se.elementDamage||0);}target._lastDamageOwner=owner;target.weaponPoisons=target.weaponPoisons||[];
-  markEnemyWeaponStatus(target,'poison',duration);
-  const active=target.weaponPoisons.filter(p=>p.owner===owner&&p.type===weapon.type);
-  if(active.length>=maxStacks)active[0].timer=duration;else target.weaponPoisons.push({owner,type:weapon.type,dps,timer:duration,weapon});
+  return campaignStatusEffects.applyPoison(target,owner,weapon,dps,duration,maxStacks);
 }
 function applyWeaponBurn(target,owner,weapon,dps,duration){
-  if(!target||target.dead)return;if(owner?.classId==='mage'){const se=getCampaignShopEffect(owner);duration*=1+(se.elementDuration||0);dps*=1+(se.elementDamage||0);}target._lastDamageOwner=owner;target.weaponBurn={owner,dps,timer:duration,weapon};
-  markEnemyWeaponStatus(target,'fire',duration);
+  return campaignStatusEffects.applyBurn(target,owner,weapon,dps,duration);
 }
 
 function campaignClassWeaponAttack(player,enemies,rarity,manualTarget,weapon,type){
@@ -19378,11 +19368,7 @@ class Enemy {
       }
     }
     // Frozen
-    if(this.frozen){
-      this.frozenTimer-=dt*1000;
-      if(this.frozenTimer<=0){ this.frozen=false; this.slowed=false; }
-      return;
-    }
+    if(campaignStatusEffects.updateFrozen(this,dt))return;
     // Wolf dash mechanics
     if(this.isWolf){
       if(this.wolfState==='idle'){
@@ -19496,23 +19482,7 @@ class Enemy {
       }
     }
 
-    if(this.weaponVulnerableTimer>0){this.weaponVulnerableTimer-=dt*1000;if(this.weaponVulnerableTimer<=0)this.weaponVulnerable=0;}
-    if(this.weaponSlowTimer>0){this.weaponSlowTimer-=dt*1000;if(this.weaponSlowTimer<=0)this.weaponSlow=0;}
-    if(this.weaponBurn?.timer>0){
-      this.weaponBurn.timer-=dt*1000;this._weaponBurnTick=(this._weaponBurnTick||0)+dt*1000;
-      if(this._weaponBurnTick>=500){this._weaponBurnTick-=500;const b=this.weaponBurn;b.weapon.damageDone=(b.weapon.damageDone||0)+b.dps*.5;this.takeDmg(b.dps*.5);}
-    }
-    if(this.weaponPoisons?.length){
-      this._weaponPoisonTick=(this._weaponPoisonTick||0)+dt*1000;
-      if(this._weaponPoisonTick>=500){this._weaponPoisonTick-=500;for(const p of this.weaponPoisons){p.weapon.damageDone=(p.weapon.damageDone||0)+p.dps*.5;this.takeDmg(p.dps*.5);}}
-      this.weaponPoisons.forEach(p=>p.timer-=dt*1000);this.weaponPoisons=this.weaponPoisons.filter(p=>p.timer>0);
-    }
-    let speedMult=1;
-    if(this.slowed && !this.slowImmune){
-      this.slowTimer-=dt*1000;
-      if(this.slowTimer<=0) this.slowed=false;
-      else speedMult=this.weaponSlow?Math.max(.3,1-this.weaponSlow):0.35;
-    }
+    const speedMult=campaignStatusEffects.updateEnemy(this,dt);
     // Burrower underground — no move
     if(this.isBurrower && this.burrowState==='burrowing') return;
 

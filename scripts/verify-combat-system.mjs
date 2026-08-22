@@ -49,11 +49,11 @@ includesAll(combatSource,[
 includesAll(combatSource,[
   'fire:1500,ice:1600,electric:900,poison:1700,shadow:1250',
   'arcane:1050,solar:950,wind:850,blood:1300,physical:280',
-  'this._weaponBurnTick>=500',
-  'this._weaponPoisonTick>=500',
-  'Math.max(.3,1-this.weaponSlow):0.35',
-  'this.frozenTimer-=dt*1000',
 ],'status existentes');
+assert(/(?:this|target)\._weaponBurnTick>=500/.test(combatSource),'status existentes: tick de fogo foi alterado');
+assert(/(?:this|target)\._weaponPoisonTick>=500/.test(combatSource),'status existentes: tick de veneno foi alterado');
+assert(/Math\.max\(\.3,1-(?:this|target)\.weaponSlow\):0\.35/.test(combatSource),'status existentes: lentidao foi alterada');
+assert(/(?:this|target)\.frozenTimer-=dt\*1000/.test(combatSource),'status existentes: congelamento foi alterado');
 
 // P1/P2, chefes e Dungeon continuam com seus pontos de entrada reais.
 includesAll(combatSource,[
@@ -77,5 +77,45 @@ includesAll(combatSource,[
 ],'roubo de vida do Viking');
 
 for(const source of moduleSources) new vm.Script(source);
+
+if(moduleSources[0]){
+  const sandbox={console,performance:{now:()=>1000}};
+  sandbox.window=sandbox;
+  vm.createContext(sandbox);
+  vm.runInContext(moduleSources[0],sandbox,{filename:combatFiles[0]});
+  const statuses=sandbox.CampaignStatusEffects.create({
+    now:()=>1000,
+    resolveWeaponElement:source=>source==='mage_fire_staff'?'fire':'physical',
+    getCampaignShopEffect:()=>({elementDuration:.5,elementDamage:.25}),
+  });
+  const marked={};
+  statuses.markEnemy(marked,'mage_fire_staff');
+  assert(marked.elementFx.fire===2500,'status de fogo nao preservou duracao visual');
+
+  const mage={classId:'mage'};
+  const slowed={slowTimer:0,weaponSlow:0,weaponSlowTimer:0};
+  statuses.applySlow(slowed,.2,1000,mage);
+  assert(slowed.slowed&&slowed.slowTimer===1500&&slowed.weaponSlow===.2,'slow do Mago nao preservou duracao/forca');
+
+  const poisonWeapon={type:'mage_poison_staff',damageDone:0};
+  const poisoned={};
+  statuses.applyPoison(poisoned,mage,poisonWeapon,8,4000,1);
+  statuses.applyPoison(poisoned,mage,poisonWeapon,8,4000,1);
+  assert(poisoned.weaponPoisons.length===1&&poisoned.weaponPoisons[0].dps===10&&poisoned.weaponPoisons[0].timer===6000,'veneno nao preservou bonus/limite de pilha');
+
+  const burnWeapon={damageDone:0};
+  const target={
+    weaponBurn:{owner:mage,dps:8,timer:1000,weapon:burnWeapon},
+    weaponPoisons:[{owner:mage,type:'mage_poison_staff',dps:10,timer:1000,weapon:poisonWeapon}],
+    slowed:true,slowTimer:1000,weaponSlow:.2,weaponSlowTimer:1000,
+    taken:0,takeDmg(amount){this.taken+=amount;},
+  };
+  const speed=statuses.updateEnemy(target,.5);
+  assert(target.taken===9&&burnWeapon.damageDone===4&&poisonWeapon.damageDone===5,'ticks de fogo/veneno mudaram dano ou credito');
+  assert(speed===.8&&target.slowTimer===500,'status de lentidao mudou velocidade ou timer');
+
+  const frozen={frozen:true,frozenTimer:100};
+  assert(statuses.updateFrozen(frozen,.1)===true&&!frozen.frozen&&frozen.slowed===false,'fim do congelamento mudou comportamento');
+}
 
 console.log(`OK: baseline de combate protege dano, critico, vida, morte, cooldown/status, P1/P2, chefes, Dungeon e Viking (${checks} verificacoes).`);
