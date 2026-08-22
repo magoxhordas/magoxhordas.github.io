@@ -31536,6 +31536,7 @@ function applyFishBuff(buff){
   <script src="src/camp/farming-system.js"></script>
   <script src="src/camp/interaction-data.js"></script>
   <script src="src/camp/environment-renderer.js"></script>
+  <script src="src/camp/pet-system.js"></script>
 <script>
 // Start on first interaction (browser requires it)
 function _audioStart(){
@@ -32284,45 +32285,15 @@ window.CampV2 = (function(){
   // ── Pet companheiro: anda atras do heroi pelo acampamento ──
   // Duas distancias, nao uma: com um limite so' o pet fica oscilando em cima
   // dele e a animacao pisca. Comeca a seguir aos 34px, so' para aos 18px.
-  const PET_SEGUE=76, PET_PARA=52, PET_LONGE=340;
-  function petAtivo(){
-    if(typeof PET_IMG_SETS==='undefined') return null;
-    const tem=(typeof capturedPets!=='undefined')?capturedPets:null;
-    if(typeof activePetId!=='undefined' && activePetId && PET_IMG_SETS[activePetId]
-       && (!tem || tem[activePetId])) return activePetId;
-    if(tem) for(const id in tem) if(PET_IMG_SETS[id]) return id;   // 1o do santuario
-    return null;
-  }
-  function atualizarPet(dt){
-    const id=petAtivo();
-    if(!id){ S.pet=null; return; }
-    if(!S.pet || S.pet.id!==id)
-      S.pet={id, x:S.x-58, y:S.y+10, dir:'south', flip:false, andando:false};
-    const p=S.pet;
-    const dx=S.x-p.x, dy=(S.y+6)-p.y, d=Math.hypot(dx,dy);
-    if(d>PET_LONGE){ p.x=S.x-58; p.y=S.y+10; p.seguindo=false; p.andando=false; return; }
-    if(d>PET_SEGUE) p.seguindo=true;                 // ficou p/ tras: vem
-    else if(d<PET_PARA) p.seguindo=false;            // chegou perto: descansa
-    if(!p.seguindo){ p.andando=false; return; }
-    const vel=Math.min(d-PET_PARA*.5, (S.correndo?205:140)*dt);
-    const ax=p.x, ay=p.y;
-    if(livre(p.x+dx/d*vel, p.y)) p.x+=dx/d*vel;
-    if(livre(p.x, p.y+dy/d*vel)) p.y+=dy/d*vel;
-    p.andando = (p.x!==ax || p.y!==ay);
-    if(Math.abs(dx)>Math.abs(dy)*1.2){ p.dir='side'; p.flip=dx<0; }
-    else p.dir = dy<0?'north':'south';
-  }
-  function desenharPet(c,t){
-    const p=S.pet; if(!p) return;
-    const voa=(typeof PET_FLIES!=='undefined'&&PET_FLIES[p.id]);
-    const sobe=voa?((typeof PET_FLY_LIFT!=='undefined')?PET_FLY_LIFT:11):0;
-    const x=Math.round(p.x-S.camX), y=Math.round(p.y-S.camY);
-    const bal=voa?Math.sin(t*.004)*2:0;
-    c.fillStyle=voa?'rgba(0,0,0,.20)':'rgba(0,0,0,.30)';
-    c.beginPath(); c.ellipse(x,y,9,3.5,0,0,Math.PI*2); c.fill();
-    if(typeof drawPetImg==='function')
-      drawPetImg(c,p.id,x,y-sobe+bal,p.flip,p.andando,t,p.dir);
-  }
+  const {atualizarPet,desenharPet}=window.CampPetSystem.create({
+    S,livre,
+    getImageSets:()=>typeof PET_IMG_SETS==='undefined'?null:PET_IMG_SETS,
+    getCapturedPets:()=>typeof capturedPets==='undefined'?null:capturedPets,
+    getActivePetId:()=>typeof activePetId==='undefined'?null:activePetId,
+    getFlyingPets:()=>typeof PET_FLIES==='undefined'?null:PET_FLIES,
+    getFlyLift:()=>typeof PET_FLY_LIFT==='undefined'?11:PET_FLY_LIFT,
+    getDrawPetImage:()=>typeof drawPetImg==='function'?drawPetImg:null,
+  });
 
   // ── O Arqueiro da fogueira: fica parado, mas vira para quem chega ──
   const ARQ=window.CampLayoutData.ARQ;

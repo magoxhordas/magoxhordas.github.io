@@ -37,3 +37,9 @@ Save, `farmCells`, `globalInventory`, `selectedSeed`, `activeTool` e `farmAction
 ## interaction-data.js
 
 Centraliza somente os dados dos nove pontos de interacao (id, coordenadas, raio, rotulo e cor). As acoes reais continuam criadas dentro do CampV2 e sao injetadas no modulo, preservando exatamente os mesmos callbacks.
+
+## pet-system.js
+
+Controla somente o companheiro que acompanha o heroi dentro do acampamento: selecao do pet ativo, estado em `S.pet`, distancia de seguimento, direcao, animacao e desenho. O estado global de captura/selecao, os sprites e a colisao continuam sendo os sistemas reais do jogo e chegam ao modulo por injecao de dependencias.
+
+A ordem de profundidade permanece no `desenhar()` do CampV2, que continua decidindo se o pet aparece antes ou depois do heroi pela coordenada `Y`.

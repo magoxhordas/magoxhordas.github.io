@@ -4,13 +4,14 @@ import { fileURLToPath } from 'node:url';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
-const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
+const html=fs.readFileSync(path.join(root,'index.html'),'utf8').replace(/\r\n/g,'\n');
 const collisionSource=fs.readFileSync(path.join(root,'src','camp','collision-map.js'),'utf8');
 const layoutSource=fs.readFileSync(path.join(root,'src','camp','layout-data.js'),'utf8');
 const farmingSource=fs.readFileSync(path.join(root,'src','camp','farming-data.js'),'utf8');
 const farmingSystemSource=fs.readFileSync(path.join(root,'src','camp','farming-system.js'),'utf8');
 const interactionSource=fs.readFileSync(path.join(root,'src','camp','interaction-data.js'),'utf8');
 const environmentSource=fs.readFileSync(path.join(root,'src','camp','environment-renderer.js'),'utf8');
+const petSource=fs.readFileSync(path.join(root,'src','camp','pet-system.js'),'utf8');
 assert(html.includes('<script src=\"src/camp/collision-map.js\"></script>'),'index nao carrega o modulo externo de colisao');
 assert(html.indexOf('<script src=\"src/camp/collision-map.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'modulo de colisao precisa carregar antes do CampV2');
 assert(html.includes('<script src=\"src/camp/layout-data.js\"></script>'),'index nao carrega os dados de layout do acampamento');
@@ -23,6 +24,8 @@ assert(html.includes('<script src=\"src/camp/interaction-data.js\"></script>'),'
 assert(html.indexOf('<script src=\"src/camp/interaction-data.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'pontos de interacao precisam carregar antes do CampV2');
 assert(html.includes('<script src=\"src/camp/environment-renderer.js\"></script>'),'index nao carrega o renderer ambiental externo');
 assert(html.indexOf('<script src=\"src/camp/environment-renderer.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'renderer ambiental precisa carregar antes do CampV2');
+assert(html.includes('<script src=\"src/camp/pet-system.js\"></script>'),'index nao carrega o sistema externo do pet');
+assert(html.indexOf('<script src=\"src/camp/pet-system.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'pet-system precisa carregar antes do CampV2');
 
 function assert(condition,message){
   if(!condition) throw new Error(message);
@@ -153,6 +156,16 @@ for(const [name] of targets) assert(reached.has(name),`colisao isolou o ponto de
 assert(environmentSource.includes('function desenharAmbiente(c,t)')&&
   html.includes('desenharAmbiente(c,t);\n    desenharHorta(c,t);\n    desenharPlantas(c,t);'),
   'renderer ambiental e horta nao preservaram a ordem das camadas');
+assert(!camp.includes('function petAtivo()')&&!camp.includes('function atualizarPet(dt)')&&!camp.includes('function desenharPet(c,t)'),
+  'implementacao do pet voltou para o index');
+assert(petSource.includes('function petAtivo()')&&petSource.includes('function atualizarPet(dt)')&&
+  petSource.includes('function desenharPet(c,t)'),'pet-system nao contem o comportamento extraido');
+assert(html.includes('window.CampPetSystem.create({')&&html.includes('getActivePetId:()=>')&&
+  html.includes('getDrawPetImage:()=>'),'CampV2 nao injeta as dependencias no pet-system');
+assert(html.includes('const petAtras = S.pet && S.pet.y <= S.y;')&&
+  html.indexOf('if(petAtras) desenharPet(c,t);')<html.indexOf('desenharHeroi(c,cls,dir,S.dir===\'right\'')&&
+  html.indexOf('if(!petAtras) desenharPet(c,t);')>html.indexOf('desenharHeroi(c,cls,dir,S.dir===\'right\''),
+  'profundidade entre pet e heroi foi alterada');
 assert(farmingSource.includes("semente_tomate:'🍅'")&&farmingSource.includes("semente_erva:'🥬'")&&
   farmingSource.includes("semente_cogumelo_lua:'🍄'")&&farmingSource.includes("semente_raiz_sangue:'🫜'")&&
   html.includes('const ICONE_SEM=window.CampFarmingData.ICONE_SEM;'),

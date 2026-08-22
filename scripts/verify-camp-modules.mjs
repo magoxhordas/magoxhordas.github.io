@@ -15,6 +15,7 @@ for(const file of [
   'src/camp/farming-data.js',
   'src/camp/farming-system.js',
   'src/camp/environment-renderer.js',
+  'src/camp/pet-system.js',
   'src/camp/interaction-data.js',
 ]){
   vm.runInContext(read(file),sandbox,{filename:file});
@@ -29,6 +30,7 @@ assert(sandbox.CampLayoutData,'CampLayoutData nao foi exportado');
 assert(sandbox.CampFarmingData,'CampFarmingData nao foi exportado');
 assert(sandbox.CampFarmingSystem,'CampFarmingSystem nao foi exportado');
 assert(sandbox.CampEnvironmentRenderer,'CampEnvironmentRenderer nao foi exportado');
+assert(sandbox.CampPetSystem,'CampPetSystem nao foi exportado');
 assert(sandbox.CampInteractionData,'CampInteractionData nao foi exportado');
 
 const F=(fx,fy,fw,fh)=>({fx,fy,fw,fh});
@@ -60,6 +62,37 @@ assert(typeof environment.desenharAmbiente==='function','renderer ambiental nao 
 environment.desenharAmbiente(envCtx,280);
 assert(envCalls.includes('quadraticCurveTo')&&envCalls.includes('gradient')&&envCalls.includes('ellipse')&&envCalls.includes('fillRect'),
   'renderer ambiental deixou de desenhar agua, brilhos, portal ou pixels da fogueira');
+
+const petState={x:500,y:500,camX:100,camY:150,correndo:false,pet:null};
+let activePetId='zefiro';
+const capturedPets={zefiro:true,ignis:true};
+const petDrawCalls=[];
+const petSystem=sandbox.CampPetSystem.create({
+  S:petState,livre:()=>true,
+  getImageSets:()=>({zefiro:{},ignis:{}}),
+  getCapturedPets:()=>capturedPets,
+  getActivePetId:()=>activePetId,
+  getFlyingPets:()=>({zefiro:true}),
+  getFlyLift:()=>11,
+  getDrawPetImage:()=> (...args)=>petDrawCalls.push(args),
+});
+petSystem.atualizarPet(.016);
+assert(petState.pet&&petState.pet.id==='zefiro','pet ativo nao foi criado a partir da selecao existente');
+assert(petState.pet.x===442&&petState.pet.y===510&&petState.pet.dir==='south'&&petState.pet.flip===false,
+  'estado inicial do pet foi alterado');
+petState.pet.x=350; petState.pet.y=500;
+petSystem.atualizarPet(.1);
+assert(petState.pet.x>350&&petState.pet.andando&&petState.pet.dir==='side'&&!petState.pet.flip,
+  'movimento/direcao do pet foram alterados');
+const petCtx={beginPath(){},ellipse(){petDrawCalls.push('shadow');},fill(){}};
+petSystem.desenharPet(petCtx,500);
+assert(petDrawCalls.includes('shadow'),'sombra do pet deixou de ser desenhada');
+const imageCall=petDrawCalls.find(call=>Array.isArray(call));
+assert(imageCall&&imageCall[1]==='zefiro'&&imageCall[4]===false&&imageCall[5]===true&&imageCall[7]==='side',
+  'renderer do pet alterou sprite, direcao ou animacao');
+activePetId=null;
+petSystem.atualizarPet(.016);
+assert(petState.pet.id==='zefiro','fallback para o primeiro pet capturado foi alterado');
 
 const farm=sandbox.CampFarmingData;
 assert(JSON.stringify(farm.SEMENTES)===JSON.stringify([
