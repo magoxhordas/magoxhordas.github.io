@@ -166,7 +166,8 @@ includesAll(html,['const DNG={','window.DNG = DNG;','window.startDungeonMode = f
 const inlineScripts=scriptTags
   .filter(([,attributes])=>!attributes.match(/\bsrc=/i))
   .map(([, ,source])=>source);
-const saveSource=inlineScripts.find(source=>source.includes("const MANIFEST_KEY='mago_x_hordas_save_manifest';"));
+const saveSource=inlineScripts.find(source=>source.includes("const MANIFEST_KEY='mago_x_hordas_save_manifest';")) ||
+  read('src/core/save-system.js');
 assert(saveSource,'SaveSystem atual nao foi localizado');
 const storage=new Map();
 const localStorage={
@@ -202,6 +203,6 @@ includesAll(html,[
 ],'persistencia atual');
 
 // As proximas fases dependem destes contratos permanecerem intactos ate a extracao.
-includesAll(html,['global.InputManager={','const Audio = (function(){','let musicVol = 0.48, sfxVol = 0.65, attackVol = 0.65;'],'core ainda inline');
+includesAll(html,['global.InputManager={','const Audio = (function(){','let musicVol = 0.48, sfxVol = 0.65, attackVol = 0.65;'],'input e audio ainda inline');
 
 console.log(`OK: smoke do jogo validou ${inlineCount} scripts, menu, classes, campanha, combate, acampamento, farming, chefes, Dungeon e save.`);
