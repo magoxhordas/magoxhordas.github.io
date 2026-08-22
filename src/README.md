@@ -46,6 +46,16 @@ Dados e execução agora possuem fronteira explícita, mantendo os contratos glo
 
 A marcação e o CSS permanecem intactos. Os contratos e limites estão descritos em [`shop/README.md`](shop/README.md).
 
+### Campanha, ondas e chefes
+
+- `campaign/chapter-data.js`: configuração canônica dos cinco capítulos e biomas.
+- `campaign/campaign-system.js`: progressão, transições, ondas e escalonamento dos chefes.
+- `campaign/boss-data.js`: catálogo do Modo Chefão e suas arenas.
+- `campaign/boss-rush-system.js`: execução isolada do Modo Chefão e telas de vitória.
+- `campaign/boss-system.js`: comportamento e desenho individual dos chefes.
+
+A campanha mantém os marcos 1/6/11/16/21, os chefes 5/10/15/20/25 e a conclusão após o Balrog. Consulte [`campaign/README.md`](campaign/README.md).
+
 ### Acampamento
 
 - `camp/collision-map.js`: dados dos colliders e footprint do personagem no acampamento.
@@ -57,4 +67,4 @@ A marcação e o CSS permanecem intactos. Os contratos e limites estão descrito
 - `camp/pet-system.js`: movimento e desenho do companheiro no acampamento, usando o mesmo `S.pet` e os estados globais existentes.
 - `camp/archer-system.js`: renderer do arqueiro do acampamento; dialogos e interacao continuam no `ArqueiroNPC` original.
 
-Progressão da campanha, chefes, Dungeon, UI, mapas e o loop principal continuam no código legado. Esses sistemas só devem ser extraídos em fases futuras, sempre em mudanças pequenas e testáveis.
+Dungeon, UI, mapas e o loop principal continuam no código legado. Esses sistemas só devem ser extraídos em fases futuras, sempre em mudanças pequenas e testáveis.
