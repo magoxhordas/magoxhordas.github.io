@@ -4,6 +4,8 @@ import vm from 'node:vm';
 
 const root=path.resolve(import.meta.dirname,'..');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
+const uiSource=fs.readFileSync(path.join(root,'src','ui','menu-codex-system.js'),'utf8');
+const pageSource=`${html}\n${uiSource}`;
 
 const deityIds=[
   'zeus','ares','hecate','selene','moros','atena','hermes','dionisio',
@@ -33,22 +35,22 @@ function verifyPng(relativePath){
 for(const id of deityIds){
   const relativePath=`assets/codex/blessings/${id}.png`;
   verifyPng(relativePath);
-  assert(html.includes(`path:'${relativePath}'`),`Divindade não ligada ao Códex: ${id}`);
+  assert(uiSource.includes(`path:'${relativePath}'`),`Divindade não ligada ao Códex: ${id}`);
 }
 for(const id of dungeonIds){
   const relativePath=`assets/codex/dungeons/${id}.png`;
   verifyPng(relativePath);
-  assert(html.includes(`dungeonIcon('${id}'`),`Masmorra não ligada ao Códex: ${id}`);
+  assert(uiSource.includes(`dungeonIcon('${id}'`),`Masmorra não ligada ao Códex: ${id}`);
 }
 
-assert(html.includes('function codexArtIconHtml('),'Helper dos ícones do Códex ausente');
+assert(uiSource.includes('function codexArtIconHtml('),'Helper dos ícones do Códex ausente');
 assert(html.includes('.codex-art-medallion {'),'Círculo manual do Códex ausente');
 assert(html.includes('border-radius:50%;'),'Círculo manual não está perfeitamente redondo');
-assert(html.includes('const godIcon=collDeityArtIcon(deity.id);'),
+assert(uiSource.includes('const godIcon=collDeityArtIcon(deity.id);'),
   'As divindades ainda não usam os novos ícones');
-assert(html.includes("return art?{artPath:art.path,color:art.color}"),
+assert(uiSource.includes("return art?{artPath:art.path,color:art.color}"),
   'Os assets das divindades não são convertidos para o formato visual do Códex');
-assert(html.includes("d.classList.add('codex-art-card')"),
+assert(uiSource.includes("d.classList.add('codex-art-card')"),
   'Cartões do Códex não reconhecem os novos ícones');
 assert(html.includes('grid-template-rows:58px 40px 16px 20px;'),
   'Cards de armas e itens do Codex nao usam trilhos fixos');

@@ -7,7 +7,8 @@ const read=relative=>fs.readFileSync(path.join(root,relative),'utf8');
 const html=read('index.html').replace(/\r\n/g,'\n');
 const source=read('src/core/input-system.js');
 const dungeonSource=read('src/dungeon/dungeon-system.js').replace(/\r\n/g,'\n');
-const integrationSource=`${html}\n${dungeonSource}`;
+const settingsSource=read('src/ui/settings-system.js').replace(/\r\n/g,'\n');
+const integrationSource=`${html}\n${dungeonSource}\n${settingsSource}`;
 let checks=0;
 
 function assert(condition,message){

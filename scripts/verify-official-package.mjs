@@ -4,6 +4,16 @@ import { fileURLToPath } from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
+const jsSources=[];
+function collectJs(dir){
+  for(const entry of fs.readdirSync(dir,{withFileTypes:true})){
+    const full=path.join(dir,entry.name);
+    if(entry.isDirectory()) collectJs(full);
+    else if(entry.name.endsWith('.js')) jsSources.push(fs.readFileSync(full,'utf8'));
+  }
+}
+collectJs(path.join(root,'src'));
+const packageSource=[html,...jsSources].join('\n');
 
 function assert(ok,message){
   if(!ok) throw new Error(message);
@@ -20,7 +30,7 @@ assert(!fs.existsSync(path.join(root,'_backups-mago')),'Backups históricos não
 assert(!/[A-Za-z]:\\Users\\|file:\/\/\//i.test(html),'index.html contém caminho local absoluto');
 
 const literalAssets=new Set(
-  [...html.matchAll(/['"`](assets\/[A-Za-z0-9_.\/-]+\.(?:png|jpe?g|gif|webp|mp3|ogg|wav))['"`]/gi)]
+  [...packageSource.matchAll(/['"`](assets\/[A-Za-z0-9_.\/-]+\.(?:png|jpe?g|gif|webp|mp3|ogg|wav))['"`]/gi)]
     .map(match=>match[1])
 );
 for(const asset of literalAssets) required(asset);
@@ -49,8 +59,8 @@ required('assets/camp/camp_bg.png');
 required('assets/pets/pet-bosses-sheet.png');
 
 assert(html.includes("BG.src = 'assets/camp/camp_bg.png'"),'Acampamento não usa sua arte oficial');
-assert(html.includes('const HERO_IMG_SETS ='),'Sistema de sprites dos heróis ausente');
-assert(html.includes('const PET_IMG_SETS ='),'Sistema de sprites dos pets ausente');
+assert(packageSource.includes('const HERO_IMG_SETS ='),'Sistema de sprites dos heróis ausente');
+assert(packageSource.includes('const PET_IMG_SETS ='),'Sistema de sprites dos pets ausente');
 assert(html.includes('window.CampV2 ='),'Acampamento jogável ausente');
 
 const allFiles=[];
