@@ -5,6 +5,7 @@ import path from 'node:path';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const html=readFileSync(path.join(root,'index.html'),'utf8');
+const audio=readFileSync(path.join(root,'src','core','audio-system.js'),'utf8');
 
 const chapters=[
   {wave:1,number:1,arena:'crypt',file:'chapter-1.jpg'},
@@ -22,8 +23,8 @@ assert.match(html,/state==='chapter'/,'O estado de capítulo deve pausar o loop 
 assert.match(html,/body\.campaign-chapter-active #ui-top/,'A HUD superior deve ser ocultada durante o capítulo.');
 assert.match(html,/body\.campaign-chapter-active #hud-bottom/,'A HUD inferior deve ser ocultada durante o capítulo.');
 assert.match(html,/body\.campaign-chapter-active #mobile-controls/,'Os controles móveis devem ser ocultados durante o capítulo.');
-assert.match(html,/function playChapterIntro\(chapterNumber=1\)/,'A assinatura sonora dos capítulos deve existir.');
-assert.match(html,/playDeityArrival, playChapterIntro/,'A assinatura sonora deve estar disponível no módulo de áudio.');
+assert.match(audio,/function playChapterIntro\(chapterNumber=1\)/,'A assinatura sonora dos capítulos deve existir.');
+assert.match(audio,/playDeityArrival, playChapterIntro/,'A assinatura sonora deve estar disponível no módulo de áudio.');
 assert.match(html,/finishCampaignChapter[\s\S]*Audio\.playCombatMusic\(chapter\.arena\)/,'A música do bioma deve começar após a abertura.');
 
 for(const chapter of chapters){
