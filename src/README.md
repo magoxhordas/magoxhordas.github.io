@@ -56,6 +56,12 @@ A marcação e o CSS permanecem intactos. Os contratos e limites estão descrito
 
 A campanha mantém os marcos 1/6/11/16/21, os chefes 5/10/15/20/25 e a conclusão após o Balrog. Consulte [`campaign/README.md`](campaign/README.md).
 
+### Masmorra
+
+- `dungeon/dungeon-system.js`: geração, salas, inimigos, chefes, equipamentos, relíquias, recompensas, progressão, controles e transições do modo Masmorra.
+
+O módulo preserva `window.DNG`, `window.startDungeonMode`, os catálogos consumidos pelo Códex e a persistência do Bosque da Fenda. Consulte [`dungeon/README.md`](dungeon/README.md).
+
 ### Acampamento
 
 - `camp/collision-map.js`: dados dos colliders e footprint do personagem no acampamento.
@@ -67,4 +73,4 @@ A campanha mantém os marcos 1/6/11/16/21, os chefes 5/10/15/20/25 e a conclusã
 - `camp/pet-system.js`: movimento e desenho do companheiro no acampamento, usando o mesmo `S.pet` e os estados globais existentes.
 - `camp/archer-system.js`: renderer do arqueiro do acampamento; dialogos e interacao continuam no `ArqueiroNPC` original.
 
-Dungeon, UI, mapas e o loop principal continuam no código legado. Esses sistemas só devem ser extraídos em fases futuras, sempre em mudanças pequenas e testáveis.
+UI, mapas compartilhados e o loop principal continuam no código legado. Esses sistemas só devem ser extraídos em fases futuras, sempre em mudanças pequenas e testáveis.

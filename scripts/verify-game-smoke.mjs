@@ -11,6 +11,8 @@ const campaignFiles=[
   'src/campaign/chapter-data.js','src/campaign/campaign-system.js'
 ];
 const campaignSource=[html,...campaignFiles.map(read)].join('\n');
+const dungeonSource=read('src/dungeon/dungeon-system.js');
+const applicationSource=`${campaignSource}\n${dungeonSource}`;
 
 function assert(condition,message){
   if(!condition) throw new Error(message);
@@ -58,7 +60,7 @@ includesAll(screens,[
   "'temple-screen'","'hub-screen'","'collection-screen'","'bossrush-screen'",
   "'dungeon-screen'","'settings-screen'"
 ],'telas do menu');
-includesAll(html,[
+includesAll(applicationSource,[
   'function showScreen(id)',
   'function hideAllScreens()',
   'function openBossRushMenu()',
@@ -165,7 +167,7 @@ for(const [id,wave,arena] of [
 }
 
 // Dungeon: somente os contratos principais e o ponto de entrada.
-includesAll(html,['const DNG={','window.DNG = DNG;','window.startDungeonMode = function()','DNG.start();'],'Dungeon');
+includesAll(dungeonSource,['const DNG={','window.DNG = DNG;','window.startDungeonMode = function()','DNG.start();'],'Dungeon');
 
 // Save atual: documenta chaves, payload, fallbacks e tolerancia a JSON invalido.
 const inlineScripts=scriptTags

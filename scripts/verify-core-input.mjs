@@ -6,6 +6,8 @@ const root=path.resolve(import.meta.dirname,'..');
 const read=relative=>fs.readFileSync(path.join(root,relative),'utf8');
 const html=read('index.html').replace(/\r\n/g,'\n');
 const source=read('src/core/input-system.js');
+const dungeonSource=read('src/dungeon/dungeon-system.js').replace(/\r\n/g,'\n');
+const integrationSource=`${html}\n${dungeonSource}`;
 let checks=0;
 
 function assert(condition,message){
@@ -111,9 +113,10 @@ const scriptTag='<script src="src/core/input-system.js"></script>';
 const scriptIndex=html.indexOf(scriptTag);
 assert(scriptIndex>=0,'index.html nao carrega o modulo de input');
 assert(scriptIndex<html.indexOf("InputManager.registerScope('campaign'"),'modulo de input deve carregar antes da campanha');
-assert(scriptIndex<html.indexOf("InputManager.registerScope('dungeon'"),'modulo de input deve carregar antes da Dungeon');
+const dungeonTag='<script src="src/dungeon/dungeon-system.js"></script>';
+assert(html.indexOf(dungeonTag)>scriptIndex,'modulo de input deve carregar antes da Dungeon');
 
-includesAll(html,[
+includesAll(integrationSource,[
   "InputManager.registerScope('campaign'",
   'state:keys,\n  priority:10,',
   'onKeyDown:campaignKeyDown,\n  onKeyUp:campaignKeyUp',
