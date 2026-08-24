@@ -13,7 +13,7 @@ Versão consolidada do jogo de ação em HTML, CSS e JavaScript.
 
 ## Estrutura do codigo
 
-O jogo esta sendo modularizado de forma incremental, preservando o `index.html` como entrada oficial. Os limites dos sistemas ja extraidos estao documentados em [`src/README.md`](src/README.md), incluindo Core, Acampamento e o nucleo compartilhado de Combate.
+O jogo esta sendo modularizado de forma incremental, preservando o `index.html` como entrada oficial. Os limites dos sistemas ja extraidos estao documentados em [`src/README.md`](src/README.md), incluindo Core, Acampamento, o nucleo compartilhado de Combate e as 32 armas de campanha com seus projeteis.
 
 ## Executar localmente
 
