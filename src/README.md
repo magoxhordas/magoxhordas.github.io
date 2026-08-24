@@ -16,6 +16,14 @@ Cada extracao deve preservar comportamento, ser protegida pelos verificadores ex
 
 Os contratos e os limites intencionais destes modulos estao descritos em [`core/README.md`](core/README.md).
 
+### Combate
+
+- `combat/status-effects.js`: elementos, duracoes, lentidao, congelamento e ticks de dano continuo.
+- `combat/damage-system.js`: pipeline compartilhado de dano, defesa, revive e morte.
+- `combat/combat-system.js`: cura, recuo e efeitos de acerto especificos das classes.
+
+Esses modulos nao criam estado paralelo e mantem os wrappers globais usados pelo jogo atual. Os contratos e os limites desta fase estao descritos em [`combat/README.md`](combat/README.md).
+
 ### Acampamento
 
 - `camp/collision-map.js`: dados dos colliders e footprint do personagem no acampamento.
@@ -27,4 +35,4 @@ Os contratos e os limites intencionais destes modulos estao descritos em [`core/
 - `camp/pet-system.js`: movimento e desenho do companheiro no acampamento, usando o mesmo `S.pet` e os estados globais existentes.
 - `camp/archer-system.js`: renderer do arqueiro do acampamento; dialogos e interacao continuam no `ArqueiroNPC` original.
 
-Campanha, combate, armas, bencaos, chefes, loja, UI, mapas e o loop principal continuam no codigo legado. Esses sistemas so devem ser extraidos em fases futuras, sempre em mudancas pequenas e testaveis.
+Armas e projeteis, bencaos, progressao da campanha, chefes, Dungeon, loja, UI, mapas e o loop principal continuam no codigo legado. Esses sistemas so devem ser extraidos em fases futuras, sempre em mudancas pequenas e testaveis.
