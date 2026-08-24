@@ -1,6 +1,6 @@
 # Estrutura de codigo (migracao segura)
 
-O jogo nasceu como um unico `index.html` e esta sendo modularizado de forma incremental para nao alterar gameplay nem visual.
+O jogo nasceu como um unico `index.html` e foi modularizado de forma incremental para nao alterar gameplay nem visual.
 
 ## Regra da refatoracao
 
@@ -82,3 +82,13 @@ A marcação e o CSS continuam no `index.html`; os módulos mantêm os mesmos no
 - `camp/archer-system.js`: renderer do arqueiro do acampamento; dialogos e interacao continuam no `ArqueiroNPC` original.
 
 Mapas compartilhados, renderers acoplados ao canvas e o loop principal continuam no código legado. Esses sistemas só devem ser extraídos em fases futuras, sempre em mudanças pequenas e testáveis.
+
+## Fronteira final do legado
+
+O estado central, o loop, `Player`, `Enemy`, pets, renderização compartilhada, `CampV2`, crafting, pesca, cozinha, controles móveis e handlers declarativos continuam intencionalmente no `index.html`. Eles não são código abandonado: ainda são consumidores e proprietários reais do estado do jogo.
+
+O inventário dos contratos globais está em [`../docs/global-inventory.md`](../docs/global-inventory.md), e o resultado completo da refatoração está em [`../docs/refactor-final-report.md`](../docs/refactor-final-report.md).
+
+## Verificação geral
+
+`node scripts/verify-all.mjs` executa, em ordem determinística, todos os verificadores especializados do pacote oficial.
