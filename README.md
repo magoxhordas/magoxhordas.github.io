@@ -13,7 +13,7 @@ Versão consolidada do jogo de ação em HTML, CSS e JavaScript.
 
 ## Estrutura do codigo
 
-O jogo está sendo modularizado de forma incremental, preservando o `index.html` como entrada oficial. Os limites dos sistemas já extraídos estão documentados em [`src/README.md`](src/README.md), incluindo Core, Acampamento, Combate, as 32 armas da campanha, as 75 bênçãos divinas e a loja entre ondas.
+O jogo está sendo modularizado de forma incremental, preservando o `index.html` como entrada oficial. Os limites dos sistemas já extraídos estão documentados em [`src/README.md`](src/README.md), incluindo Core, Acampamento, Combate, as 32 armas, as 75 bênçãos, a loja e a progressão completa da campanha com seus chefes.
 
 ## Executar localmente
 

@@ -6,7 +6,12 @@ const root=path.resolve(import.meta.dirname,'..');
 const read=relative=>fs.readFileSync(path.join(root,relative),'utf8');
 const html=read('index.html').replace(/\r\n/g,'\n');
 const source=read('src/core/audio-system.js').replace(/\r\n/g,'\n').trimEnd();
-const integrationSource=[html,read('src/blessings/blessing-system.js').replace(/\r\n/g,'\n')].join('\n');
+const integrationSource=[
+  html,
+  read('src/blessings/blessing-system.js'),
+  read('src/campaign/boss-rush-system.js'),
+  read('src/campaign/campaign-system.js')
+].join('\n').replace(/\r\n/g,'\n');
 let checks=0;
 
 function assert(condition,message){
