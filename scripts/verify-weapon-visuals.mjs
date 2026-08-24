@@ -5,7 +5,9 @@ import { fileURLToPath } from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8').replace(/\r\n/g,'\n');
 const weaponData=fs.readFileSync(path.join(root,'src','weapons','weapon-data.js'),'utf8').replace(/\r\n/g,'\n');
-const weaponSource=`${html}\n${weaponData}`;
+const shopSource=fs.readFileSync(path.join(root,'src','shop','shop-system.js'),'utf8').replace(/\r\n/g,'\n');
+const pageSource=`${html}\n${shopSource}`;
+const weaponSource=`${pageSource}\n${weaponData}`;
 const statusSource=fs.readFileSync(path.join(root,'src','combat','status-effects.js'),'utf8').replace(/\r\n/g,'\n');
 const combatSource=fs.readFileSync(path.join(root,'src','combat','combat-system.js'),'utf8').replace(/\r\n/g,'\n');
 const weaponIds={
@@ -54,7 +56,7 @@ const requiredSnippets=[
   'drawEnemyStatusFx(bossMajor,t)',
   'drawEnemyStatusFx(petBoss,t)'
 ];
-for(const snippet of requiredSnippets)assert(html.includes(snippet),`Integração ausente: ${snippet}`);
+for(const snippet of requiredSnippets)assert(pageSource.includes(snippet),`Integração ausente: ${snippet}`);
 for(const snippet of [
   "markEnemy(target,'ice',duration);",
   "markEnemy(target,'poison',duration);",

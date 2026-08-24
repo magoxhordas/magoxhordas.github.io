@@ -6,6 +6,7 @@ const root=path.resolve(import.meta.dirname,'..');
 const read=relative=>fs.readFileSync(path.join(root,relative),'utf8');
 const html=read('index.html').replace(/\r\n/g,'\n');
 const source=read('src/core/audio-system.js').replace(/\r\n/g,'\n').trimEnd();
+const integrationSource=[html,read('src/blessings/blessing-system.js').replace(/\r\n/g,'\n')].join('\n');
 let checks=0;
 
 function assert(condition,message){
@@ -157,7 +158,7 @@ assert(scriptIndex>=0,'index.html nao carrega o modulo de audio');
 assert(scriptIndex<html.indexOf('const GameSettings = (function(){'),'Audio deve carregar antes das configuracoes que o consomem');
 assert(!html.includes('const Audio = (function(){'),'implementacao de Audio ainda ficou duplicada no index.html');
 
-includesAll(html,[
+includesAll(integrationSource,[
   'function _audioStart(){\n  Audio.init();',
   "document.addEventListener('click',_audioStart);",
   "document.addEventListener('keydown',_audioStart);",
