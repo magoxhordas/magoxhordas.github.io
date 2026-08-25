@@ -12,6 +12,7 @@ function resetCampaignMapObjects(){
   structures=[]; webBlobs=[]; webPuddles=[];
   bossOrc=null; bossSkel=null; bossSpider=null; bossMajor=null;
   if(typeof petBoss!=='undefined') petBoss=null;
+  if(typeof NecromancerSystem!=='undefined')NecromancerSystem.clearWorld({preservePermanent:true});
 }
 
 function advWave(){

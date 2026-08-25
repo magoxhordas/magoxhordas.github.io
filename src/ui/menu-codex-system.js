@@ -1399,9 +1399,9 @@ function collStatBar(label,val,max,color,unit){
 
 // ── ARMAS ──
 function renderCollWeapons(grid){
-  const classLabels={mage:'Mago',warrior:'Guerreiro',archer:'Arqueiro',viking:'Viking'};
+  const classLabels={mage:'Mago',warrior:'Guerreiro',archer:'Arqueiro',viking:'Viking',necromancer:'Necromante'};
   const elementLabels={fire:'Fogo',ice:'Gelo',electric:'Elétrico',poison:'Veneno',shadow:'Sombras',arcane:'Arcano',solar:'Solar',wind:'Vento',blood:'Sangue',physical:'Físico'};
-  for(const classId of ['mage','warrior','archer','viking']){
+  for(const classId of ['mage','warrior','archer','viking','necromancer']){
     for(const spec of CAMPAIGN_WEAPON_SPECS[classId]||[]){
       const def=WEAPON_DEFS[spec[0]];if(!def)continue;
       const element=campaignWeaponElement(def.id);
@@ -1417,7 +1417,7 @@ function renderCollWeapons(grid){
 function showCollWeaponDetail(w){
   const det=document.getElementById('coll-detail');
   det.className='coll-detail visible';
-  const classNames={mage:'Mago · Magia',warrior:'Guerreiro · Corpo a corpo',archer:'Arqueiro · Longo alcance',viking:'Viking · Corpo a corpo'};
+  const classNames={mage:'Mago · Magia',warrior:'Guerreiro · Corpo a corpo',archer:'Arqueiro · Longo alcance',viking:'Viking · Corpo a corpo',necromancer:'Necromante · Invocações'};
   const elementNames={fire:'Fogo',ice:'Gelo',electric:'Elétrico',poison:'Veneno',shadow:'Sombras',arcane:'Arcano',solar:'Solar',wind:'Vento',blood:'Sangue',physical:'Físico'};
   const rarRows=RARITIES.map((r,index)=>{
     const c=RARITY_COLORS[r],dmg=Math.round(campaignWeaponDamage(w,r)),cd=(campaignWeaponCooldown(w,r)/1000).toFixed(2),power=w.stages[index]||w.stages[0];
@@ -1456,8 +1456,8 @@ function renderCollItems(grid){
     const det=document.getElementById('coll-detail');det.className='coll-detail visible';
     det.innerHTML=`<div class="coll-det-header"><div class="coll-det-icon">${collIconHtml(icon,54)}</div><div class="coll-det-info"><div class="coll-det-name">${spec.name}</div><div class="coll-det-type">${className}</div><div class="coll-det-kills">Compra única por campanha</div></div></div><div class="coll-det-divider"></div><div class="coll-boon-rarity-grid">${tiers}</div>`;
   };
-  const classNames={mage:'Mago',warrior:'Guerreiro',archer:'Arqueiro',viking:'Viking'};
-  const classColors={mage:'#b35cff',warrior:'#f05a42',archer:'#48d878',viking:'#e7b44a'};
+  const classNames={mage:'Mago',warrior:'Guerreiro',archer:'Arqueiro',viking:'Viking',necromancer:'Necromante'};
+  const classColors={mage:'#b35cff',warrior:'#f05a42',archer:'#48d878',viking:'#e7b44a',necromancer:'#70d98b'};
   section('RELIQUIAS DE CLASSE');
   Object.entries(CAMPAIGN_CLASS_BUFFS).forEach(([classId,specs])=>specs.forEach(spec=>{
     const icon=collItemIcon(spec,classId);
@@ -1535,13 +1535,13 @@ function showCollEnemyDetail(e){
 // ── CLASSES ──
 function renderCollClasses(grid){
   Object.values(CLASS_DEFS).forEach(cd=>{
-    const clsPal={'mage':()=>PAL_WIZARD,'warrior':()=>PAL_WARRIOR_P,'archer':()=>PAL_ARCHER_P,'viking':()=>PAL_VIKING_P}[cd.id];
+    const clsPal={'mage':()=>PAL_WIZARD,'warrior':()=>PAL_WARRIOR_P,'archer':()=>PAL_ARCHER_P,'viking':()=>PAL_VIKING_P,'necromancer':()=>PAL_NECROMANCER}[cd.id];
     const clsSet=(typeof HERO_IMG_SETS!=='undefined')?HERO_IMG_SETS[cd.id]:null;
     const clsIcon=clsSet
       ?{artPath:clsSet.base+(clsSet.icon||'icon.png')}
       :((typeof WIZ!=='undefined'&&clsPal)
         ?{spr:WIZ.down[0],pal:clsPal()}
-        :collGameIcon(({mage:'orb',warrior:'sword',archer:'bow',viking:'axe'})[cd.id]||'orb'));
+        :collGameIcon(({mage:'orb',warrior:'sword',archer:'bow',viking:'axe',necromancer:'skull'})[cd.id]||'orb'));
     grid.appendChild(collCard(
       clsIcon,
       cd.name, cd.badge, false,

@@ -733,7 +733,10 @@ const DNG={
   px:0,py:0,pHp:100,pMaxHp:100,pSpeed:1.9,
   pAttackCd:0,pAttackRange:54,pDmg:18,pInvTimer:0,
   pFacing:0,pFrameIdx:0,pFrameTick:0,pDir:'down',
-  pKills:0,pCoins:0,torchFlicker:0,floor:1,
+  pKills:0,pCoins:0,torchFlicker:0,floor:1,pClassId:'mage',
+  _necroSouls:0,_necroSoulCap:12,_necroPity:0,
+  _necroSoulOrbs:[],_necroCorpses:[],_necroSummons:[],
+  _necroSummonTimer:0,_necroRaiseTimer:0,_necroHealAt:0,_necroHealWindow:0,_necroHudTimer:0,
   // attack animation
   pAttackAnim:0, pAttackAnimMax:400,
   running:false,paused:false,invOpen:false,
@@ -844,6 +847,7 @@ const DNG={
   // === BOSQUE DA FENDA — entrada/saida/geracao (usa o motor da dungeon) ===
   _enterBosque(){
     this._bosqueReturn = this.floor;
+    this._necroClearFloor(true);
     this._inBosque = true; this._prevBiome = this._biome; this._biome = BIOMES.bosque;
     this._genBosque();
     this._msg('🌲 Voce atravessou a Fenda... Bem-vindo ao Bosque da Fenda.',2600);
@@ -1292,7 +1296,10 @@ const DNG={
   },
 
   start(){
+    this.pClassId=(typeof selectedClass!=='undefined'&&selectedClass.p1)||'mage';
     this.floor=1;this.pHp=100;this.pMaxHp=100;this.pDmg=18;this.pSpeed=1.9;
+    if(this.pClassId==='necromancer'){this.pMaxHp=90;this.pHp=90;this.pDmg=16;this.pSpeed=1.85;}
+    this._necroReset();
     this._revivesLeft=Math.min(2,Number((typeof metaUpgrades!=='undefined'&&metaUpgrades.destino_reviver)||0));
     this.pMaxHp+=10*((typeof MVP!=='undefined'&&MVP.upg.curandeira)||0); this.pHp=this.pMaxHp;   // Infusao Vital
     this.pKills=0;this.pCoins=0;this.pFacing=0;this.pAttackCd=0;this.pInvTimer=0;
@@ -1400,7 +1407,9 @@ const DNG={
       if(w){ const col=DNG_RCOL[w.rarity];
         wEl.innerHTML=`${w.icon} <span style="color:${col};font-size:14px;font-weight:bold;">${DNG_RNAME[w.rarity].toUpperCase()}</span> <span style="font-size:15px;color:#c8a84b;">⚔️${w.dmg}</span>`;
       } else {
-        wEl.innerHTML=`👊 <span style="font-size:12px;color:#5a4020;">SEM ARMA</span>`;
+        wEl.innerHTML=this.pClassId==='necromancer'
+          ?`✦ <span style="font-size:12px;color:#70d98b;">FOCO PROFANO</span>`
+          :`👊 <span style="font-size:12px;color:#5a4020;">SEM ARMA</span>`;
       }
     }
 
@@ -1419,6 +1428,14 @@ const DNG={
       if(this._regenActive){ const c=document.createElement('span');c.style.cssText=`font-size:11px;background:rgba(0,180,60,0.15);border:1px solid #44ff6644;color:#44ff88;padding:1px 5px;border-radius:8px;`;c.textContent=`💚 regen +${this._regenAmt||1}/s`;mealRow.appendChild(c); }
       if(this._dodge>0){ const c=document.createElement('span');c.style.cssText=`font-size:11px;background:rgba(100,220,200,0.15);border:1px solid #44ffcc44;color:#44ffcc;padding:1px 5px;border-radius:8px;`;c.textContent=`✨ esquiva ${Math.round(this._dodge*100)}%`;mealRow.appendChild(c); }
       if(this._aoe){ const c=document.createElement('span');c.style.cssText=`font-size:11px;background:rgba(200,80,0,0.15);border:1px solid #ff660044;color:#ff9944;padding:1px 5px;border-radius:8px;`;c.textContent='💥 AoE';mealRow.appendChild(c); }
+    }
+    const necroRow=g('dng-necro-row');
+    if(necroRow){
+      necroRow.style.display=this.pClassId==='necromancer'?'flex':'none';
+      if(this.pClassId==='necromancer'){
+        const permanent=this._necroSummons.filter(s=>s.permanent&&!s.dead).length;
+        necroRow.textContent=`✦ ALMAS ${this._necroSouls}/${this._necroSoulCap} · ☠ CADÁVERES ${this._necroCorpses.length}/8 · ⚔ EXÉRCITO ${permanent}/2`;
+      }
     }
 
     // Avatar — sprite do herói
@@ -1446,6 +1463,145 @@ const DNG={
       this.particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-0.8,col,r:1.5+Math.random()*2.5,life:250+Math.random()*400});}
   },
   _ft(x,y,txt,col){this.floatingTexts.push({x,y,txt,col,life:900});},
+
+  _necroReset(){
+    this._necroSouls=0;this._necroPity=0;this._necroSoulOrbs=[];this._necroCorpses=[];this._necroSummons=[];
+    this._necroSummonTimer=0;this._necroRaiseTimer=0;this._necroHealAt=0;this._necroHealWindow=0;this._necroHudTimer=0;
+  },
+  _necroClearFloor(preservePermanent=true){
+    this._necroSoulOrbs=[];this._necroCorpses=[];
+    this._necroSummons=(this._necroSummons||[]).filter(s=>preservePermanent&&s.permanent&&!s.dead);
+    this._necroSummons.forEach((s,index)=>{s.x=this.px+(index-.5)*24;s.y=this.py+22;s.target=null;});
+  },
+  _necroSpawnSoul(x,y,count=1){
+    if(this.pClassId!=='necromancer'||this._necroSouls>=this._necroSoulCap)return;
+    for(let i=0;i<count&&this._necroSoulOrbs.length<20;i++){
+      this._necroSoulOrbs.push({x:x+(Math.random()-.5)*14,y:y+(Math.random()-.5)*14,ttl:8000,phase:Math.random()*Math.PI*2});
+    }
+  },
+  _necroBossDamage(enemy,before,after){
+    if(this.pClassId!=='necromancer'||enemy?.type!=='boss'||before<=after)return;
+    const max=Math.max(1,enemy.maxHp||before);let mask=enemy._necroSoulMask||0,created=0;
+    for(let i=1;i<=5;i++){
+      const threshold=1-i*.2,bit=1<<(i-1);
+      if(!(mask&bit)&&before/max>threshold&&after/max<=threshold){mask|=bit;created++;}
+    }
+    enemy._necroSoulMask=mask;if(created)this._necroSpawnSoul(enemy.x,enemy.y,created);
+  },
+  _necroOnKill(enemy,source='direct'){
+    if(this.pClassId!=='necromancer'||!enemy||enemy.type==='boss'||enemy._necroRewarded)return;
+    enemy._necroRewarded=true;
+    const chance=source==='summon'?.14:.22;
+    if(Math.random()<chance||this._necroPity>=5){this._necroSpawnSoul(enemy.x,enemy.y,1);this._necroPity=0;}
+    else this._necroPity++;
+    if(Math.random()<(source==='summon'?.22:.35)){
+      while(this._necroCorpses.length>=8)this._necroCorpses.shift();
+      this._necroCorpses.push({x:enemy.x,y:enemy.y,ttl:6000,phase:Math.random()*Math.PI*2});
+    }
+  },
+  _necroSpawnSummon(type,x=this.px,y=this.py){
+    if(this.pClassId!=='necromancer')return null;
+    const permanent=type==='skeleton',same=this._necroSummons.filter(s=>!s.dead&&s.permanent===permanent).length;
+    if(this._necroSummons.filter(s=>!s.dead).length>=12||(permanent&&same>=2)||(!permanent&&same>=3))return null;
+    const maxHp=Math.max(10,Math.round(this.pMaxHp*(permanent?.34:.28)));
+    const summon={
+      x,y,hp:maxHp,maxHp,damage:Math.max(3,this.pDmg*(permanent?.48:.42)),speed:permanent?1.55:1.45,
+      range:permanent?48:44,attackCd:permanent?860:930,attackTimer:180,duration:permanent?Infinity:6000,
+      permanent,type,dead:false,target:null,hitTimer:0,phase:Math.random()*Math.PI*2,_necroSummon:true,
+    };
+    this._necroSummons.push(summon);
+    if(typeof Audio!=='undefined')Audio.sfxNecroSummon?.();
+    return summon;
+  },
+  _necroHeal(amount){
+    const stamp=performance.now();
+    if(stamp-this._necroHealAt>=1000){this._necroHealAt=stamp;this._necroHealWindow=0;}
+    const cap=this.pMaxHp*.03,allowed=Math.max(0,Math.min(amount,cap-this._necroHealWindow));
+    if(allowed>0){this._necroHealWindow+=allowed;this.pHp=Math.min(this.pMaxHp,this.pHp+allowed);}
+  },
+  _necroAggroTarget(enemy){
+    if(this.pClassId!=='necromancer'||!enemy||enemy.type==='boss'||enemy.ranged)return null;
+    let best=null,bd=110;
+    for(const summon of this._necroSummons){
+      if(summon.dead)continue;const d=Math.hypot(enemy.x-summon.x,enemy.y-summon.y);
+      if(d<bd){bd=d;best=summon;}
+    }
+    return best;
+  },
+  _necroUpdate(dt){
+    if(this.pClassId!=='necromancer')return;
+    this._necroSummonTimer-=dt;this._necroRaiseTimer-=dt;this._necroHudTimer-=dt;
+    for(const orb of this._necroSoulOrbs){
+      orb.ttl-=dt;orb.phase+=dt*.004;
+      const dx=this.px-orb.x,dy=this.py-orb.y,d=Math.max(1,Math.hypot(dx,dy));
+      if(d<125){const speed=(2.2+(125-d)*.018)*(dt/16.67);orb.x+=dx/d*speed;orb.y+=dy/d*speed;}
+      if(d<19){
+        const before=this._necroSouls;this._necroSouls=Math.min(this._necroSoulCap,this._necroSouls+1);orb.dead=true;
+        if(this._necroSouls>before&&typeof Audio!=='undefined')Audio.sfxNecroSoul?.();
+      }
+    }
+    this._necroSoulOrbs=this._necroSoulOrbs.filter(o=>!o.dead&&o.ttl>0);
+    for(const corpse of this._necroCorpses)corpse.ttl-=dt;
+    this._necroCorpses=this._necroCorpses.filter(c=>c.ttl>0);
+    if(this._necroSummonTimer<=0&&this._necroSouls>=2&&this._necroSummons.filter(s=>s.permanent&&!s.dead).length<2){
+      if(this._necroSpawnSummon('skeleton')){this._necroSouls-=2;this._necroSummonTimer=900;}
+    }
+    if(this._necroRaiseTimer<=0&&this._necroCorpses.length>=2&&this._necroSummons.filter(s=>!s.permanent&&!s.dead).length<3){
+      let raised=0;
+      for(const corpse of [...this._necroCorpses].slice(0,2)){
+        const summon=this._necroSpawnSummon('reanimated',corpse.x,corpse.y);if(!summon)break;
+        this._necroCorpses.splice(this._necroCorpses.indexOf(corpse),1);raised++;
+      }
+      if(raised)this._necroRaiseTimer=6500;
+    }
+    for(const summon of this._necroSummons){
+      summon.duration-=dt;summon.attackTimer-=dt;summon.hitTimer-=dt;
+      if(summon.hp<=0||summon.duration<=0){summon.dead=true;continue;}
+      if(Math.hypot(this.px-summon.x,this.py-summon.y)>380){summon.x=this.px+(Math.random()-.5)*22;summon.y=this.py+18;summon.target=null;}
+      if(!summon.target||summon.target.dead||Math.hypot(summon.target.x-summon.x,summon.target.y-summon.y)>300){
+        let best=null,bd=300;
+        for(const enemy of this.entities){if(enemy.dead||enemy._shadowBound)continue;const d=Math.hypot(enemy.x-summon.x,enemy.y-summon.y);if(d<bd){bd=d;best=enemy;}}
+        summon.target=best;
+      }
+      const target=summon.target;
+      if(target){
+        const dx=target.x-summon.x,dy=target.y-summon.y,d=Math.max(1,Math.hypot(dx,dy));
+        if(d>summon.range*.78){
+          const step=summon.speed*(dt/16.67),nx=summon.x+dx/d*step,ny=summon.y+dy/d*step;
+          if(this._tw(Math.floor(nx/DTS),Math.floor(ny/DTS))){summon.x=nx;summon.y=ny;}
+        }
+        if(d<=summon.range&&summon.attackTimer<=0){
+          summon.attackTimer=summon.attackCd;
+          const damage=summon.damage*(target.type==='boss'?.85:1),before=target.hp;
+          target.hp-=damage;target.flash=180;this._necroBossDamage(target,before,target.hp);
+          this._necroHeal(Math.min(before,damage)*.20);this._applyKill(target,null,damage,'summon');this._parts(target.x,target.y,'#70d98b',3,22);
+        }
+      }else if(Math.hypot(this.px-summon.x,this.py-summon.y)>70){
+        const dx=this.px-summon.x,dy=this.py-summon.y,d=Math.max(1,Math.hypot(dx,dy));
+        summon.x+=dx/d*summon.speed*(dt/16.67);summon.y+=dy/d*summon.speed*(dt/16.67);
+      }
+    }
+    this._necroSummons=this._necroSummons.filter(s=>!s.dead);
+    if(this._necroHudTimer<=0){this._necroHudTimer=160;this._updateHUD();}
+  },
+  _drawNecro(c,ts){
+    if(this.pClassId!=='necromancer')return;c.save();
+    for(const corpse of this._necroCorpses){
+      const x=corpse.x-this.camX,y=corpse.y-this.camY;c.globalAlpha=.38+.25*Math.sin(ts*.006+corpse.phase);c.strokeStyle='#9ac6a0';c.lineWidth=2;
+      c.beginPath();c.moveTo(x-6,y-4);c.lineTo(x+6,y+4);c.moveTo(x+6,y-4);c.lineTo(x-6,y+4);c.stroke();
+    }
+    for(const orb of this._necroSoulOrbs){
+      const x=orb.x-this.camX,y=orb.y-this.camY,p=1+Math.sin(ts*.008+orb.phase)*.16;c.globalAlpha=Math.min(1,orb.ttl/700);c.shadowColor='#64ffc0';c.shadowBlur=8;
+      c.fillStyle='#79e8d0';c.beginPath();c.arc(x,y,4*p,0,Math.PI*2);c.fill();c.shadowBlur=0;
+    }
+    for(const summon of this._necroSummons){
+      const x=summon.x-this.camX,y=summon.y-this.camY,bob=Math.sin(ts*.006+summon.phase);c.globalAlpha=summon.permanent?1:.78;
+      c.fillStyle='rgba(0,0,0,.35)';c.beginPath();c.ellipse(x,y+9,9,3,0,0,Math.PI*2);c.fill();c.fillStyle=summon.permanent?'#d8d1b5':'#89a783';
+      c.fillRect(x-5,y-7+bob,10,9);c.fillRect(x-4,y+2+bob,3,7);c.fillRect(x+1,y+2+bob,3,7);c.fillStyle='#18231d';c.fillRect(x-3,y-4+bob,2,2);c.fillRect(x+2,y-4+bob,2,2);
+      c.fillStyle='rgba(0,0,0,.7)';c.fillRect(x-8,y-12,16,2);c.fillStyle='#65d77d';c.fillRect(x-8,y-12,16*Math.max(0,summon.hp/summon.maxHp),2);
+    }
+    c.globalAlpha=1;c.restore();
+  },
 
   _togglePause(){
     if(this.invOpen)return;
@@ -2055,7 +2211,7 @@ const DNG={
     const dngAttackAllowed=dngAutoAttack||!!dngManualAim;
     if(this.pAttackCd<=0&&dngAttackAllowed){
       const equip=this.inv[this.equippedIdx];
-      const wId=equip?equip.defId:'sword';
+      const wId=equip?equip.defId:(this.pClassId==='necromancer'?'staff':'sword');
       // Alcance por tipo de arma
       const isRanged = wId==='bow'||wId==='staff';
       const isFastMelee = wId==='dagger';
@@ -2113,7 +2269,7 @@ const DNG={
           }
         } else if(best) {
           // ── MELEE: hit instantâneo ──
-          best.hp-=dmg;best.flash=300;
+          const beforeHp=best.hp;best.hp-=dmg;best.flash=300;this._necroBossDamage(best,beforeHp,best.hp);
           const impAng=Math.atan2(best.y-this.py,best.x-this.px);
           if(!best._shadowBound){
             const kbF=isCrit?80:50;
@@ -2157,7 +2313,9 @@ const DNG={
         e.frameTick=(e.frameTick||0)+dt;if(e.frameTick>400){e.frameTick=0;e.frameIdx=(e.frameIdx+1)%3;}
         continue;
       }
-      const dist=Math.hypot(e.x-this.px,e.y-this.py);
+      const necroAggro=this._necroAggroTarget(e);
+      const targetX=necroAggro?.x??this.px,targetY=necroAggro?.y??this.py;
+      const dist=Math.hypot(e.x-targetX,e.y-targetY);
       if(e.type==='boss'&&dist<260&&!e._bossThemeStarted&&typeof Audio!=='undefined'){
         e._bossThemeStarted=true;
         const dngBossTheme=e._hyper?'brute':e.biome==='ice'?'frost':e.biome==='fire'?'balrog':e.biome==='swamp'?'sandworm':'default';
@@ -2167,7 +2325,7 @@ const DNG={
       if(dist<190)e.alert=3000;
       if(e.alert>0){
         e.alert-=dt;
-        const ang=Math.atan2(this.py-e.y,this.px-e.x),mv=e.spd*(dt/16.67);
+        const ang=Math.atan2(targetY-e.y,targetX-e.x),mv=e.spd*(dt/16.67);
         const exn=e.x+Math.cos(ang)*mv,eyn=e.y+Math.sin(ang)*mv;
         // Usa raio real do inimigo (não metade) para colisão com paredes
         const er=Math.max(e.r||8, 8)*0.62;
@@ -2181,7 +2339,7 @@ const DNG={
                  &&this._tw(Math.floor((e.x-er)/DTS),Math.floor((eyn+er)/DTS))
                  &&this._tw(Math.floor((e.x+er)/DTS),Math.floor((eyn+er)/DTS));
         if(eyOk)e.y=eyn;
-        const adx=this.px-e.x,ady=this.py-e.y;
+        const adx=targetX-e.x,ady=targetY-e.y;
         if(Math.abs(adx)>Math.abs(ady))e.dir=adx>0?'right':'left';else e.dir=ady>0?'down':'up';
         e.frameTick=(e.frameTick||0)+dt;if(e.frameTick>200){e.frameTick=0;e.frameIdx=(e.frameIdx+1)%3;}
       }
@@ -2191,7 +2349,9 @@ const DNG={
       if(e.at<=0&&dist<e.ar){
         e.at=e.ac;
         if(e.ranged){const ang=Math.atan2(this.py-e.y,this.px-e.x);this.projectiles.push({x:e.x,y:e.y,vx:Math.cos(ang)*5.5,vy:Math.sin(ang)*5.5,dmg:e.dmg,r:5,life:1400,col:'#886600'});}
-        else if(this.pInvTimer<=0){this._takeDmg(e.dmg);}
+        else if(necroAggro){
+          if(necroAggro.hitTimer<=0){necroAggro.hp-=Math.max(1,e.dmg*.55);necroAggro.hitTimer=700;this._parts(necroAggro.x,necroAggro.y,'#9ac6a0',3,18);}
+        }else if(this.pInvTimer<=0){this._takeDmg(e.dmg);}
       }
       if(e.sk&&e.alert>0){e.skTimer-=dt;if(e.skTimer<=0){e.skTimer=e.skCd;this._enemySkill(e,dist);}}
       // Processa nuvem de veneno do Boss Bruxo
@@ -2225,7 +2385,7 @@ const DNG={
           if(e.dead||e._shadowBound) continue;
           if(Math.hypot(p.x-e.x,p.y-e.y)<(e.r||12)+p.r){
             // Aplica dano
-            e.hp-=p.dmg; e.flash=300;
+            const beforeHp=e.hp;e.hp-=p.dmg; e.flash=300;this._necroBossDamage(e,beforeHp,e.hp);
             // Efeito impacto
             this._parts(e.x,e.y,p.col,8,45);
             const impAng=Math.atan2(e.y-this.py,e.x-this.px);
@@ -2251,6 +2411,7 @@ const DNG={
     for(let i=this._projTrails.length-1;i>=0;i--){this._projTrails[i].life-=dt;if(this._projTrails[i].life<=0)this._projTrails.splice(i,1);}
     for(let i=this.floatingTexts.length-1;i>=0;i--){const f=this.floatingTexts[i];f.y-=0.9*(dt/16.67);f.life-=dt;if(f.life<=0)this.floatingTexts.splice(i,1);}
     for(let i=this.meleeSwings.length-1;i>=0;i--){this.meleeSwings[i].life-=dt;if(this.meleeSwings[i].life<=0)this.meleeSwings.splice(i,1);}
+    this._necroUpdate(dt);
     this._updateResources(dt);
     const itx=Math.floor(this.px/DTS),ity=Math.floor(this.py/DTS),tile=this._ta(itx,ity);
     if(tile===T_STAIRS&&!this._sc){this._sc=true;this._msg(`🪜 Descendo para o Piso ${this.floor+1}...`,1800);setTimeout(()=>{this._nextFloor();this._sc=false;},700);}
@@ -2343,9 +2504,10 @@ const DNG={
     if(typeof DNG._dngDashTick==='function') DNG._dngDashTick(dt);
   },
 
-  _applyKill(best, equip, dmg){
-    if(best.hp>0) return;
+  _applyKill(best, equip, dmg, source='direct'){
+    if(best.hp>0||best.dead) return;
     best.dead=true; this.pKills++;
+    this._necroOnKill(best,source);
     if(best.type==='boss') mvpOnKill('boss'); else mvpOnKill('enemy');   // progresso de missoes
     const bloodCol=best.type==='boss'?'#dd00ff':'#cc2200';
     for(let b=0;b<16;b++){const ba=Math.random()*Math.PI*2,bs=2+Math.random()*4;this._bloodParts.push({x:best.x,y:best.y,vx:Math.cos(ba)*bs,vy:Math.sin(ba)*bs-1,col:bloodCol,r:2+Math.random()*3,life:500+Math.random()*500,maxLife:1000,grav:0.1});}
@@ -2659,7 +2821,7 @@ const DNG={
       this._biome = newBiome;
       this._msg(`${newBiome.icon} BIOMA: ${newBiome.name}`,3500);
     }
-    this.generateMap(this.floor);this._updateHUD();
+    this._necroClearFloor(true);this.generateMap(this.floor);this._updateHUD();
     this._msg(`✨ Piso ${this.floor} — ${this._biome.icon} ${this._biome.name}`,2400);
     if(this.floor%2===0)setTimeout(()=>this._openShop(),500);
   },
@@ -2979,6 +3141,7 @@ const DNG={
     });
     // ── Draw shadow allies ──
     for(const s of shadowAllies){ if(!s.dead && s.draw) s.draw(ctx, this.camX, this.camY, ts); }
+    this._drawNecro(ctx,ts);
     // ── Per-weapon unique swing animations ──
     for(const sw of this.meleeSwings){
       const pr=1-(sw.life/sw.max);
@@ -3022,8 +3185,10 @@ const DNG={
       ctx.fillStyle='rgba(0,0,0,0.25)';ctx.beginPath();ctx.ellipse(psx,psy+14,16,5,0,0,Math.PI*2);ctx.fill();
 
       const equip=this.inv[this.equippedIdx];
-      const heroPal=getDngHeroPal(equip?equip.defId:null);
       const classId=this.pClassId||(typeof selectedClass!=='undefined'?selectedClass.p1:'mage');
+      // O Necromante sem equipamento usa a paleta espectral da propria classe.
+      // O fallback antigo devolvia PAL_WIZARD e o deixava roxo na Masmorra.
+      const heroPal=classId==='necromancer'&&!equip?null:getDngHeroPal(equip?equip.defId:null);
 
       // Determine sprite direction set
       let direction='down',flipX=false;

@@ -25,7 +25,12 @@
       const targets=nearestWeaponTargets(player,enemies,def.range,8);const target=targets[0];const aimTarget=manualTarget||target;if(!aimTarget)return;
       const angle=Math.atan2(aimTarget.y-player.y,aimTarget.x-player.x),col=def.color;
       const shoot=(a,dmg,opts={})=>{const shotOpts={...opts};if(shotOpts.homing&&!shotOpts.target)shotOpts.target=manualTarget||target;return spawnProjectile(player.x,player.y,a,dmg,player,weapon,shotOpts);};
-      if(def.classId==='mage'){
+      if(def.classId==='necromancer'){
+        return global.NecromancerSystem?.attackWeapon(player,enemies,rarity,manualTarget,weapon,type,{
+          getDefinition,getTier,getDamage:campaignWeaponDamage,nearestTargets:nearestWeaponTargets,
+          spawnProjectile,weaponDamage,weaponCone,weaponBurst,weaponKnockback,addMeleeAnim,
+        });
+      }else if(def.classId==='mage'){
         if(type==='mage_fire_staff'){
           const shots=tier>=4?3:tier>=2?2:1,mult=tier>=4?.65:tier>=3?.75:tier>=2?.65:1;
           for(let i=0;i<shots;i++)shoot(angle+(i-(shots-1)/2)*.16,base*mult,{color:col,homing:true,explode:tier===0?28:tier>=1?34:30,burn:tier>=3?{dps:base*(tier>=4?.25:.20),duration:3000}:null,fireTrail:tier>=4});

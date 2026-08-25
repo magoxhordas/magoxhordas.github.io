@@ -36,6 +36,16 @@ body {
   background:linear-gradient(0deg, rgba(6,4,12,0.85) 35%, rgba(6,4,12,0.45) 75%, transparent);
   border-radius:10px 10px 0 0; }
 #hud-bottom > * { pointer-events:auto; }
+#necromancer-resource-hud{
+  position:fixed;left:50%;bottom:104px;transform:translateX(-50%);display:none;
+  align-items:center;gap:12px;z-index:12;padding:6px 14px;border:1px solid #4da86b;
+  background:linear-gradient(180deg,rgba(8,28,19,.94),rgba(3,13,10,.96));
+  box-shadow:0 0 16px rgba(88,220,142,.22),inset 0 0 10px rgba(0,0,0,.72);
+  color:#baf6cc;font:700 11px 'Courier New',monospace;letter-spacing:1px;
+}
+#necromancer-resource-hud .necro-resource{display:flex;align-items:center;gap:5px;white-space:nowrap}
+#necromancer-resource-hud .necro-resource b{color:#f1df9b;font-size:13px}
+body.campaign-chapter-active #necromancer-resource-hud{display:none!important}
 .stat-box {
   background:rgba(8,6,15,0.85); border:1px solid #7a5c1a;
   padding:3px 12px; border-radius:2px; text-align:center; min-width:74px;
@@ -830,9 +840,9 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 }
 .cs-title { font-size:18px; color:#f0d080; letter-spacing:5px; text-transform:uppercase; margin-bottom:3px; text-shadow:0 0 14px rgba(200,168,75,0.4); }
 .cs-sub   { font-size:12px; color:#4a3a1a; letter-spacing:4px; text-transform:uppercase; margin-bottom:16px; }
-.cs-cards { display:flex; gap:12px; justify-content:center; margin-bottom:16px; }
+.cs-cards { display:flex; gap:10px; justify-content:center; margin-bottom:16px; flex-wrap:wrap; max-width:850px; }
 .cs-card {
-  width:152px; background:rgba(10,7,22,0.95); border:1px solid rgba(70,50,20,0.45);
+  width:150px; background:rgba(10,7,22,0.95); border:1px solid rgba(70,50,20,0.45);
   border-radius:5px; padding:13px 11px 11px; cursor:pointer; text-align:center;
   transition:all .22s; position:relative; overflow:hidden;
 }
@@ -841,6 +851,7 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 .cs-card.warrior { --cc:#cc4422; }
 .cs-card.archer  { --cc:#22aa55; }
 .cs-card.viking  { --cc:#cc8822; }
+.cs-card.necromancer { --cc:#70d98b; }
 .cs-card:hover,.cs-card.selected { border-color:var(--cc); background:rgba(14,10,28,0.98); transform:translateY(-4px); box-shadow:0 8px 28px rgba(0,0,0,0.6),0 0 20px color-mix(in srgb,var(--cc) 18%,transparent); }
 .cs-card:hover::before,.cs-card.selected::before { background:var(--cc); }
 .cs-preview { width:80px; height:80px; margin:0 auto 7px; position:relative; display:flex; align-items:center; justify-content:center; border-radius:50%; background:radial-gradient(circle,color-mix(in srgb,var(--cc) 12%,transparent) 0%,transparent 70%); }
@@ -4707,6 +4718,11 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
     <span id="dash-bar-label">DASH</span>
   </div>
 </div>
+<div id="necromancer-resource-hud" aria-live="polite">
+  <span class="necro-resource">✦ ALMAS <b id="necro-souls">0/12</b></span>
+  <span class="necro-resource">☠ CADÁVERES <b id="necro-corpses">0/8</b></span>
+  <span class="necro-resource">♜ EXÉRCITO <b id="necro-army">0/2</b></span>
+</div>
 <div id="pet-enc-hpbar-wrap">
   <div class="pet-enc-hpbar-inner"><div class="pet-enc-hpbar-fill" id="pet-enc-hp-bar" style="width:100%"></div></div>
   <div class="pet-enc-hpbar-label" id="pet-enc-hp-text">CRIATURA: 100%</div>
@@ -4919,6 +4935,7 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
         </div>
         <!-- Active meal buffs row -->
         <div id="dng-meal-buffs" style="display:flex;gap:4px;flex-wrap:wrap;min-height:12px;"></div>
+        <div id="dng-necro-row" style="display:none;gap:8px;align-items:center;font-size:11px;color:#79e8d0;letter-spacing:.5px;"></div>
 
         <!-- HP bar v2 — moldura dupla, brilho, texto interno -->
         <div id="dng-hp-wrap" style="width:225px;height:22px;background:linear-gradient(180deg,rgba(20,4,6,0.95),rgba(8,2,3,0.98));border-radius:11px;
@@ -5738,6 +5755,8 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
     register(id){ if(id&&!this.screens.includes(id))this.screens.push(id); },
     show(id){
       for(let i=0;i<this.screens.length;i++)setVisible(this.screens[i],this.screens[i]===id);
+      const necroHud=document.getElementById('necromancer-resource-hud');
+      if(necroHud)necroHud.style.display='none';
       const previous=current;
       current=id;
       if(global.GameEvents)GameEvents.emit('scene:changed',{previous,current:id});
@@ -9883,6 +9902,8 @@ function drawPetSprite(c, petId, x, y, flipX, now){
   <script src="src/ui/menu-codex-system.js"></script>
   <script src="src/campaign/boss-data.js"></script>
   <script src="src/campaign/boss-rush-system.js"></script>
+  <script src="src/classes/necromancer/necromancer-data.js"></script>
+  <script src="src/classes/necromancer/necromancer-system.js"></script>
   <script>
 // SCREEN SHAKE — for axe heavy impact
 // ═══════════════════════════════════════════════════════
@@ -10049,6 +10070,7 @@ const CLASS_DEFS = {
     ]
   }
 };
+CLASS_DEFS.necromancer=NecromancerData.CLASS_DEF;
 
 // ── Char select state ──
 charSelectStep = 1;
@@ -10105,7 +10127,7 @@ function buildCharSelectUI(playerIdx){
     : '— Escolha sua classe —';
   const row=document.getElementById('cs-cards-row');
   row.innerHTML='';
-  const classes=['mage','warrior','archer','viking']; // FIX: guerreiro e viking existiam mas nao apareciam na selecao
+  const classes=['mage','warrior','archer','viking','necromancer'];
   const cur = playerIdx===1 ? selectedClass.p1 : selectedClass.p2;
   classes.forEach(cid=>{
     const def=CLASS_DEFS[cid];
@@ -10141,7 +10163,7 @@ function buildCharSelectUI(playerIdx){
     row.appendChild(card);
     // Animate preview with real WIZ sprite + class palette
     const CS_FILL=0.82;   // folga no medalhao do card (1 = preenche tudo)
-    const palLookup = {PAL_WIZARD, PAL_WARRIOR_P, PAL_ARCHER_P, PAL_VIKING_P};
+    const palLookup = {PAL_WIZARD, PAL_WARRIOR_P, PAL_ARCHER_P, PAL_VIKING_P, PAL_NECROMANCER};
     requestAnimationFrame(function animate(){
       const cv=document.getElementById(previewId);
       if(!cv) return;
@@ -10150,7 +10172,7 @@ function buildCharSelectUI(playerIdx){
       const pal=palLookup[def.previewPalKey]||PAL_WIZARD;
       const t=Date.now();
       // Pick idle or gentle walk frame
-      const pvCls={PAL_WIZARD:'mage',PAL_WARRIOR_P:'warrior',PAL_ARCHER_P:'archer',PAL_VIKING_P:'viking'}[def.previewPalKey]||'mage';
+      const pvCls={PAL_WIZARD:'mage',PAL_WARRIOR_P:'warrior',PAL_ARCHER_P:'archer',PAL_VIKING_P:'viking',PAL_NECROMANCER:'necromancer'}[def.previewPalKey]||'mage';
       // Arte nova (PNG): andando sempre; se o card estiver selecionado, ataca.
       if(typeof drawHeroPortrait==='function'){
         const sel=card.classList.contains('selected');
@@ -11513,6 +11535,7 @@ function campaignWeaponElement(type=''){
   if(type.includes('solar'))return 'solar';
   if(type.includes('wind'))return 'wind';
   if(type.includes('blood'))return 'blood';
+  if(type.includes('necromancer')||type.includes('profane')||type.includes('soul'))return 'shadow';
   return 'physical';
 }
 
@@ -11526,7 +11549,8 @@ function campaignWeaponIconHtml(type,size=46,extraClass='',ringColor=''){
   if(!safe)return gamePixelIconHtml('orb',size,null,extraClass);
   const px=Math.max(20,Number(size)||46);
   const ring=ringColor||WEAPON_DEFS[safe].color||'#c8a84b';
-  return `<span class="campaign-weapon-medallion ${extraClass}" style="--weapon-size:${px}px;--weapon-ring:${ring};" aria-hidden="true"><img class="campaign-weapon-art" src="assets/weapons/${safe}.png" alt=""></span>`;
+  const extension=safe.startsWith('necromancer_')?'svg':'png';
+  return `<span class="campaign-weapon-medallion ${extraClass}" style="--weapon-size:${px}px;--weapon-ring:${ring};" aria-hidden="true"><img class="campaign-weapon-art" src="assets/weapons/${safe}.${extension}" alt=""></span>`;
 }
 function campaignDamageElement(source=''){
   return campaignStatusEffects.damageElement(source);
@@ -11695,6 +11719,20 @@ function updateUI(){
     }
     document.getElementById('lev2').textContent=player2.level;
     document.getElementById('xp2-bar').style.width=(player2.xp/player2.xpToNext*100)+'%';
+  }
+  const necroHud=document.getElementById('necromancer-resource-hud');
+  const necroPlayers=[player,...(gameMode===2&&player2?[player2]:[])].filter(pl=>pl?.classId==='necromancer');
+  if(necroHud){
+    // O HUD fica fora das telas modais para poder acompanhar o canvas. Por
+    // isso ele precisa respeitar explicitamente o SceneManager: sem esta
+    // guarda, os recursos da ultima run vazavam para derrota, menu e Codex.
+    const gameplayVisible=typeof SceneManager==='undefined'||SceneManager.getCurrent()===null;
+    necroHud.style.display=gameplayVisible&&necroPlayers.length?'flex':'none';
+    const snapshots=necroPlayers.map(pl=>({player:pl,hud:NecromancerSystem.getHud(pl)})).filter(item=>item.hud);
+    const resourceText=(key,capKey)=>snapshots.map(({player:pl,hud})=>`${gameMode===2?`P${pl.idx+1} `:''}${hud[key]}/${hud[capKey]}`).join(' · ');
+    document.getElementById('necro-souls').textContent=resourceText('souls','soulCap');
+    document.getElementById('necro-corpses').textContent=resourceText('corpses','corpseCap');
+    document.getElementById('necro-army').textContent=resourceText('permanent','permanentCap');
   }
 }
 
@@ -11904,6 +11942,7 @@ function nearestWeaponTargets(player,enemies,range,limit=1,exclude=[]){
 function weaponDamage(player,weapon,target,amount,color){
   if(!target||target.dead)return 0;
   const dmg=typeof applyCardCrit==='function'?applyCardCrit(player,amount,target,weapon):amount;
+  if(player?.classId==='necromancer'){target._lastDamageOwner=player;target._lastDamageSource='direct';target._lastNecroWeapon=weapon?.type||'';}
   target.takeDmg(dmg);weapon.damageDone=(weapon.damageDone||0)+dmg;
   markEnemyWeaponStatus(target,weapon);
   if(typeof applyClassHitEffect==='function')applyClassHitEffect({owner:player,dmg,weapon},target);
@@ -11974,6 +12013,18 @@ const campaignWeaponSystem=CampaignWeaponSystem.create({
   applyWeaponBurn,
   applyWeaponSlow,
   isPlaying:()=>state==='playing',
+});
+NecromancerSystem.configure({
+  getTargets:()=>allTargets(enemies),
+  getPlayers:()=>[player,...(gameMode===2&&player2?[player2]:[])].filter(Boolean),
+  getGlobalAttackSpeedBonus:owner=>getCampaignShopAttackSpeedBonus(owner),
+  getGlobalCritChance:owner=>(owner?.cardEffects?.critChance||0)+getCampaignShopCritBonus(owner),
+  spawnParts:(...args)=>spawnParts(...args),
+  notifyHit:(owner,target,damage,weapon)=>{if(typeof notifyBlessingHit==='function')notifyBlessingHit(owner,target,damage,weapon);},
+  playSfx:name=>{
+    const methods={soul:'sfxNecroSoul',summon:'sfxNecroSummon',curse:'sfxNecroCurse',scythe:'sfxNecroScythe',bell:'sfxNecroBell'};
+    const method=methods[name];if(method&&typeof Audio?.[method]==='function')Audio[method]();
+  },
 });
 
 function swordAttack(player, enemies, rarity, manualTarget=null){
@@ -12555,6 +12606,17 @@ const PAL_VIKING_P = {
   'E':'#1a1a1a','e':'#cc4400',
   'G':'#ddaa00','g':'#bb8800',
   'C':'#cc6600',
+};
+
+// ── NECROMANTE — ossos claros, tecido verde profundo e energia profana ──
+const PAL_NECROMANCER = {
+  'S':'#c7c3a7','s':'#9f9b82','k':'#746f5f',
+  'R':'#174a36','r':'#0c2d22','L':'#3f8b58','l':'#27633f',
+  'H':'#34343f','h':'#20202a','X':'#121219',
+  'V':'#70d98b','v':'#429d63','W':'#c7d6cf','w':'#74877e',
+  'O':'#6dffb0','o':'#37ba78','0':'#d7ffe7',
+  'B':'#81715d','b':'#554737','T':'#251c21','t':'#3c2c33',
+  'E':'#090b0c','e':'#70ff9d','G':'#8153b8','g':'#56327d','C':'#70d98b',
 };
 
 // ═══════════════════════════════════════════════════════
@@ -13444,7 +13506,7 @@ function drawHeroVisual(visual, x, feetY, flipX){
 }
 
 function getHeroClassPalette(classId){
-  const palMap={mage:PAL_WIZARD,warrior:PAL_WARRIOR_P,archer:PAL_ARCHER_P,viking:PAL_VIKING_P};
+  const palMap={mage:PAL_WIZARD,warrior:PAL_WARRIOR_P,archer:PAL_ARCHER_P,viking:PAL_VIKING_P,necromancer:PAL_NECROMANCER};
   return palMap[classId]||PAL_WIZARD;
 }
 function getActiveHeroSkinId(){
@@ -15076,11 +15138,12 @@ class Player {
     this.instantFreeze=false;
     this.frozen=false; this.frozenTimer=0; this.freezeFx=null;
     // Dash
-    const dashCdByClass={mage:2200,warrior:2600,archer:1800,viking:2000};
+    const dashCdByClass={mage:2200,warrior:2600,archer:1800,viking:2000,necromancer:2100};
     this._dashCd=0; this._dashMaxCd=dashCdByClass[this.classId]||2500;
     this._dashActive=false; this._dashTimer=0;
     this._dashVx=0; this._dashVy=0;
     this._dashAfterImages=[];
+    if(this.classId==='necromancer')NecromancerSystem.initializePlayer(this);
   }
 
   update(dt, el){
@@ -15208,7 +15271,11 @@ class Player {
       const cd=campaignWeaponCooldown(def,w.rarity,this,w);
       if(this.weapTimers[i]<=0&&attackAllowed){
         const weaponTarget=manualTarget||nearestWeaponTargets(this,el,def.range,1)[0];
-        if(weaponTarget){const proc=notifyCampaignShopAttack(this,weaponTarget,campaignWeaponDamage(def,w.rarity),w);def.attack(this,el,w.rarity,manualTarget,w);this.weapTimers[i]=cd*proc;}
+        if(weaponTarget){
+          const proc=notifyCampaignShopAttack(this,weaponTarget,campaignWeaponDamage(def,w.rarity),w);
+          const attacked=def.attack(this,el,w.rarity,manualTarget,w);
+          this.weapTimers[i]=attacked===false?Math.min(280,cd*.25):cd*proc;
+        }
       }
     }
   }
@@ -15233,7 +15300,11 @@ class Player {
       ?getHeroSkinAttackColors()
       :{primary:null,secondary:null,themed:false};
 
-    if(this.classId==='archer'){
+    if(this.classId==='necromancer'){
+      NecromancerSystem.basicAttack(this,tgt,{spawnProjectile:(x,y,a,dmg,owner,weapon,opts)=>{const projectile=new CampaignWeaponProj(x,y,a,dmg,owner,weapon,opts);projs.push(projectile);return projectile;}});
+      spawnParts(this.x,this.y-12,skinAttack.primary||'#70d98b',5,42);
+      this.isCasting=true;this.castTimer=300;this.castMaxTimer=300;
+    } else if(this.classId==='archer'){
       // Archer: fires ArrowProj (homing). multiShot means extra sequential arrows
       // with a small staggered delay — stored in pendingArrows queue
       const shots=1+(this.multiShot||0);
@@ -15520,6 +15591,7 @@ class Enemy {
   }
 
   update(dt,px,py){
+    NecromancerSystem.updateTargetEffects(this,dt);
     // Specter phase (invulnerable)
     if(this.isSpecter){
       this.phaseTimer-=dt*1000;
@@ -15700,6 +15772,7 @@ class Enemy {
       const nearPl = this._lastDamageOwner||[player,...(gameMode===2&&player2?[player2]:[])].filter(p=>p&&!p.dead)
         .sort((a,b)=>Math.hypot(a.x-this.x,a.y-this.y)-Math.hypot(b.x-this.x,b.y-this.y))[0];
       if(nearPl){
+        if(nearPl.classId==='necromancer')NecromancerSystem.onEnemyDeath(this,nearPl,this._lastDamageSource||'direct',this._lastNecroWeapon||'');
         applyCardLifesteal(nearPl, this.x, this.y);
         applyCardLightning(nearPl, this.x, this.y);
         // Death explosion — Sauron/Mordor
@@ -16428,7 +16501,9 @@ function collide(){
         if(p.isCampaignWeaponProj&&p.opts.bossBonus&&e.type?.startsWith('boss'))projectileDamage*=1+p.opts.bossBonus;
         if(p.isCampaignWeaponProj&&p.opts.frozenCrit&&e.frozen)projectileDamage*=1+p.opts.frozenCrit;
         const finalDmg = typeof applyCardCrit==='function' ? applyCardCrit(p.owner||player, projectileDamage, e, p.weapon||null) : projectileDamage;
+        if(p.owner?.classId==='necromancer'){e._lastDamageOwner=p.owner;e._lastDamageSource='direct';e._lastNecroWeapon=p.weapon?.type||'';}
         e.takeDmg(finalDmg);
+        if(p.owner?.classId==='necromancer')NecromancerSystem.onProjectileHit(p,e,finalDmg);
         if(p.isCampaignWeaponProj)markEnemyWeaponStatus(e,p.weapon);
         if(p.isCampaignWeaponProj){
           p.weapon.damageDone=(p.weapon.damageDone||0)+finalDmg;p.hitTargets.add(e);
@@ -16449,19 +16524,19 @@ function collide(){
     // Player projectiles hit bosses
     if(!p.dead&&bossOrc&&!bossOrc.dead&&Math.hypot(p.x-bossOrc.x,p.y-bossOrc.y)<p.radius+bossOrc.radius){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossOrc,p.weapon||null):p.dmg;
-      bossOrc.takeDmg(dmg); if(p.isCampaignWeaponProj){markEnemyWeaponStatus(bossOrc,p.weapon);p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossOrc);}else applyClassHitEffect(p,bossOrc); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
+      const before=bossOrc.hp;bossOrc.takeDmg(dmg); if(p.owner?.classId==='necromancer'){NecromancerSystem.onBossDamaged(p.owner,bossOrc,before,bossOrc.hp);NecromancerSystem.onProjectileHit(p,bossOrc,dmg);} if(p.isCampaignWeaponProj){markEnemyWeaponStatus(bossOrc,p.weapon);p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossOrc);}else applyClassHitEffect(p,bossOrc); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
     }
     if(!p.dead&&bossSkel&&!bossSkel.dead&&Math.hypot(p.x-bossSkel.x,p.y-bossSkel.y)<p.radius+bossSkel.radius){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossSkel,p.weapon||null):p.dmg;
-      bossSkel.takeDmg(dmg); if(p.isCampaignWeaponProj){markEnemyWeaponStatus(bossSkel,p.weapon);p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossSkel);}else applyClassHitEffect(p,bossSkel); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
+      const before=bossSkel.hp;bossSkel.takeDmg(dmg); if(p.owner?.classId==='necromancer'){NecromancerSystem.onBossDamaged(p.owner,bossSkel,before,bossSkel.hp);NecromancerSystem.onProjectileHit(p,bossSkel,dmg);} if(p.isCampaignWeaponProj){markEnemyWeaponStatus(bossSkel,p.weapon);p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossSkel);}else applyClassHitEffect(p,bossSkel); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
     }
     if(!p.dead&&bossSpider&&!bossSpider.dead&&Math.hypot(p.x-bossSpider.x,p.y-bossSpider.y)<p.radius+bossSpider.radius){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossSpider,p.weapon||null):p.dmg;
-      bossSpider.takeDmg(dmg); if(p.isCampaignWeaponProj){markEnemyWeaponStatus(bossSpider,p.weapon);p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossSpider);}else applyClassHitEffect(p,bossSpider); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
+      const before=bossSpider.hp;bossSpider.takeDmg(dmg); if(p.owner?.classId==='necromancer'){NecromancerSystem.onBossDamaged(p.owner,bossSpider,before,bossSpider.hp);NecromancerSystem.onProjectileHit(p,bossSpider,dmg);} if(p.isCampaignWeaponProj){markEnemyWeaponStatus(bossSpider,p.weapon);p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossSpider);}else applyClassHitEffect(p,bossSpider); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
     }
     if(!p.dead&&bossMajor&&!bossMajor.dead&&Math.hypot(p.x-bossMajor.x,p.y-bossMajor.y)<p.radius+(bossMajor.radius||36)){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossMajor,p.weapon||null):p.dmg;
-      bossMajor.takeDmg(dmg); if(p.isCampaignWeaponProj){markEnemyWeaponStatus(bossMajor,p.weapon);p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossMajor);}else applyClassHitEffect(p,bossMajor); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
+      const before=bossMajor.hp;bossMajor.takeDmg(dmg); if(p.owner?.classId==='necromancer'){NecromancerSystem.onBossDamaged(p.owner,bossMajor,before,bossMajor.hp);NecromancerSystem.onProjectileHit(p,bossMajor,dmg);} if(p.isCampaignWeaponProj){markEnemyWeaponStatus(bossMajor,p.weapon);p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossMajor);}else applyClassHitEffect(p,bossMajor); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
     }
     if(!p.dead&&petBoss&&!petBoss.dead&&!petBoss.tamed&&Math.hypot(p.x-petBoss.x,p.y-petBoss.y)<p.radius+petBoss.radius){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,petBoss,p.weapon||null):p.dmg;
@@ -17708,11 +17783,13 @@ function loop(ts){
     clampCampaignEntity(player);
     player.updateAbility(dt);
     if(gameMode===2&&player2&&!player2.dead){ player2.update(dt,enemies); clampCampaignEntity(player2); player2.updateAbility(dt); }
-    for(const e of enemies){ e.update(dt,player.x,player.y); clampCampaignEntity(e); }
+    NecromancerSystem.update(dt);
+    for(const e of enemies){ const aggro=NecromancerSystem.getEnemyAggroTarget(e,[player,player2])||player; e.update(dt,aggro.x,aggro.y); clampCampaignEntity(e); }
     // legacy non-boss-wave bosses (waves 2-4 mini-bosses kept for feel)
     if(bossOrc&&!bossOrc.dead){ bossOrc.update(dt,player.x,player.y); clampCampaignEntity(bossOrc,36); }
     if(bossSkel&&!bossSkel.dead){ bossSkel.update(dt,player.x,player.y); clampCampaignEntity(bossSkel,36); }
     if(bossSpider&&!bossSpider.dead){ bossSpider.update(dt,player.x,player.y); clampCampaignEntity(bossSpider,40); }
+    for(const boss of [bossOrc,bossSkel,bossSpider,bossMajor,petBoss])if(boss&&!boss.dead)NecromancerSystem.updateTargetEffects(boss,dt);
     for(const wb of webBlobs) wb.update(dt);
     for(const wp of webPuddles) wp.update(dt);
     for(const s of structures) s.update(dt, enemies);
@@ -17806,6 +17883,7 @@ function loop(ts){
   for(const wp of webPuddles) wp.draw();
   drawFirePatches(t);
   drawAnimTorches(t);
+  NecromancerSystem.draw(ctx,t);
   const ents=[
     ...coins.map(c=>({y:c.y,fn:()=>c.draw(t)})),
     ...enemies.map(e=>({y:e.y,fn:()=>{ e.draw(t); drawEnemyStatusFx(e,t); }})),
@@ -17981,6 +18059,7 @@ function beginGame(){
   // Init game state
   player=new Player(0);
   player2=is2p?new Player(1):null;
+  NecromancerSystem.resetRun([player,player2].filter(Boolean));
   applyMetaUpgrades(player);
   if(player2) applyMetaUpgrades(player2);
   player._revivesLeft=Math.min(2,Number(metaUpgrades.destino_reviver||0));

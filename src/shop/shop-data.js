@@ -48,6 +48,7 @@ const CAMPAIGN_CLASS_BUFFS={
     {id:'viking_frozen_beard',name:'Barba Congelada',pixelIcon:'ice',effect:'slowAura',values:[.05,.065,.08,.12,.15]},
     {id:'viking_valhalla_heart',name:'Coração de Valhalla',pixelIcon:'heart',effect:'killHealChance',values:[.01,.0125,.015,.02,.025]},
   ],
+  necromancer:global.NecromancerData?.SHOP_BUFFS||[],
 };
 
 const CAMPAIGN_UNIVERSAL_ITEMS=[
