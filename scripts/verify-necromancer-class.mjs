@@ -47,10 +47,20 @@ assert(data.CONFIG.permanentBaseCap===2&&data.CONFIG.permanentHardCap===5&&data.
 assert(data.CONFIG.summonProcCoefficient===.35&&data.CONFIG.summonBossDamage===.85&&data.CONFIG.bossDamageToSummons===1.35,'coeficientes de combate das invocacoes foram alterados');
 
 for(const spec of data.WEAPON_SPECS){
-  const icon=path.join(root,'assets','weapons',`${spec[2]}.svg`);
+  const icon=path.join(root,'assets','weapons',`${spec[2]}.png`);
   assert(fs.existsSync(icon),`icone ausente para ${spec[1]}`);
-  const svg=fs.readFileSync(icon,'utf8');
-  assert(svg.includes('<svg')&&svg.includes('viewBox=')&&!svg.includes('<image'),'icone deve ser SVG vetorial/pixel-art independente, sem recorte raster');
+  const png=fs.readFileSync(icon);
+  assert(png.subarray(1,4).toString()==='PNG',`icone raster invalido para ${spec[1]}`);
+  assert(png.readUInt32BE(16)===320&&png.readUInt32BE(20)===320,`icone deve ser 320x320 e centralizado para ${spec[1]}`);
+}
+
+for(const buff of data.SHOP_BUFFS){
+  const icon=path.join(root,'assets','codex','relics',`${buff.id}.png`);
+  assert(fs.existsSync(icon),`arte de Codex ausente para ${buff.name}`);
+  const png=fs.readFileSync(icon);
+  assert(png.subarray(1,4).toString()==='PNG',`arte de Codex invalida para ${buff.name}`);
+  assert(png.readUInt32BE(16)===192&&png.readUInt32BE(20)===192,`arte de Codex deve ser 192x192 para ${buff.name}`);
+  assert(codex.includes(`${buff.id}:'assets/codex/relics/${buff.id}.png'`),`mapeamento visual ausente no Codex para ${buff.name}`);
 }
 
 for(const direction of ['north','side','south']){
@@ -124,7 +134,7 @@ includesAll(html,[
   'NecromancerSystem.resetRun([player,player2].filter(Boolean))',
   'NecromancerSystem.update(dt)',
   'NecromancerSystem.draw(ctx,t)',
-  "safe.startsWith('necromancer_')?'svg':'png'",
+  "const extension='png'",
   "necromancer: make('assets/heroes/necromancer/', 64, 52, 6, 9)",
   "SceneManager.getCurrent()===null",
   'function drawNecromancerSummon(renderCtx,summon,time)',

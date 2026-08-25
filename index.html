@@ -11549,7 +11549,7 @@ function campaignWeaponIconHtml(type,size=46,extraClass='',ringColor=''){
   if(!safe)return gamePixelIconHtml('orb',size,null,extraClass);
   const px=Math.max(20,Number(size)||46);
   const ring=ringColor||WEAPON_DEFS[safe].color||'#c8a84b';
-  const extension=safe.startsWith('necromancer_')?'svg':'png';
+  const extension='png';
   return `<span class="campaign-weapon-medallion ${extraClass}" style="--weapon-size:${px}px;--weapon-ring:${ring};" aria-hidden="true"><img class="campaign-weapon-art" src="assets/weapons/${safe}.${extension}" alt=""></span>`;
 }
 function campaignDamageElement(source=''){

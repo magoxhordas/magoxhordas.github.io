@@ -5,17 +5,19 @@ import { fileURLToPath } from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8').replace(/\r\n/g,'\n');
 const weaponData=fs.readFileSync(path.join(root,'src','weapons','weapon-data.js'),'utf8').replace(/\r\n/g,'\n');
+const necromancerData=fs.readFileSync(path.join(root,'src','classes','necromancer','necromancer-data.js'),'utf8').replace(/\r\n/g,'\n');
 const shopSource=fs.readFileSync(path.join(root,'src','shop','shop-system.js'),'utf8').replace(/\r\n/g,'\n');
 const uiSource=fs.readFileSync(path.join(root,'src','ui','menu-codex-system.js'),'utf8').replace(/\r\n/g,'\n');
 const pageSource=`${html}\n${shopSource}\n${uiSource}`;
-const weaponSource=`${pageSource}\n${weaponData}`;
+const weaponSource=`${pageSource}\n${weaponData}\n${necromancerData}`;
 const statusSource=fs.readFileSync(path.join(root,'src','combat','status-effects.js'),'utf8').replace(/\r\n/g,'\n');
 const combatSource=fs.readFileSync(path.join(root,'src','combat','combat-system.js'),'utf8').replace(/\r\n/g,'\n');
 const weaponIds={
   mage:['mage_fire_staff','mage_lightning_staff','mage_ice_staff','mage_arcane_staff','mage_poison_staff','mage_shadow_staff','mage_solar_staff','mage_wind_staff'],
   warrior:['warrior_longsword','warrior_greatsword','warrior_spear','warrior_warhammer','warrior_warshield','warrior_twinblades','warrior_chainblade','warrior_spikedmace'],
   archer:['archer_shortbow','archer_longbow','archer_crossbow','archer_poisonbow','archer_explosivebow','archer_ricochetbow','archer_frostbow','archer_thunderbow'],
-  viking:['viking_waraxe','viking_twinaxes','viking_throwingaxe','viking_stormhammer','viking_bloodaxe','viking_frostaxe','viking_nordicspear','viking_colossalaxe']
+  viking:['viking_waraxe','viking_twinaxes','viking_throwingaxe','viking_stormhammer','viking_bloodaxe','viking_frostaxe','viking_nordicspear','viking_colossalaxe'],
+  necromancer:['necromancer_dead_staff','necromancer_profane_grimoire','necromancer_soul_scythe','necromancer_cursed_skull','necromancer_spectral_lantern','necromancer_bone_totem','necromancer_corrupted_heart','necromancer_death_bell']
 };
 
 function assert(ok,message){if(!ok)throw new Error(message);}
@@ -26,7 +28,7 @@ function pngSize(file){
 }
 
 const ids=Object.values(weaponIds).flat();
-assert(ids.length===32&&new Set(ids).size===32,'A lista deve conter 32 armas únicas.');
+assert(ids.length===40&&new Set(ids).size===40,'A lista deve conter 40 armas únicas.');
 for(const id of ids){
   assert(weaponSource.includes(`['${id}'`)||weaponSource.includes(`"${id}"`),`Arma ausente das definições: ${id}`);
   const file=path.join(root,'assets','weapons',`${id}.png`);
