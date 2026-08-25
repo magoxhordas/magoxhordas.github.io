@@ -18,6 +18,7 @@ const shop=read('src/shop/shop-system.js');
 const codex=read('src/ui/menu-codex-system.js');
 const audio=read('src/core/audio-system.js');
 const save=read('src/core/save-system.js');
+const artPrep=read('scripts/prepare-necromancer-hero-art.py');
 
 let clock=1000;
 const randomValues=[];
@@ -114,6 +115,8 @@ includesAll(systemSource,[
   'DATA.CLASS_DEF.baseDmg*spec.damage*(options.damageMult||1)',
   'angle,player.dmg,player,weapon',
   'noNecroRewards:true',
+  'visualTime:Math.random()*620',
+  'deps.drawSummon?.(ctx,summon,time)===true',
 ],'runtime perdeu recursos, anti-recursao, persistencia entre mapas ou regras de combate');
 includesAll(html,[
   'id="necromancer-resource-hud"',
@@ -124,7 +127,20 @@ includesAll(html,[
   "safe.startsWith('necromancer_')?'svg':'png'",
   "necromancer: make('assets/heroes/necromancer/', 64, 52, 6, 9)",
   "SceneManager.getCurrent()===null",
+  'function drawNecromancerSummon(renderCtx,summon,time)',
+  'PAL_NECRO_SKELETON',
+  'PAL_NECRO_SPIRIT',
+  'PAL_NECRO_REANIMATED',
+  'PAL_NECRO_ABOMINATION',
+  'PAL_NECRO_DKNIGHT',
 ],'selecao, HUD, loop, desenho ou icones do Necromante nao estao conectados');
+includesAll(artPrep,[
+  'Idle_walk_north.gif',
+  'Idle_walk_south.gif',
+  'Idle_walk_west.gif',
+  'Idle_custom-The_necromancer_performs_a_dar_north.gif',
+], 'preparador nao usa as animacoes direcionais fornecidas na raiz');
+assert(!artPrep.includes('walk_root ='),'preparador voltou a usar a pasta interna animations/Walk');
 includesAll(campaign,['NecromancerSystem.clearWorld({preservePermanent:true})'],'troca de mapa da campanha nao limpa recursos transitorios');
 includesAll(dungeon,[
   "this.pClassId==='necromancer'",
@@ -134,7 +150,10 @@ includesAll(dungeon,[
   '_necroAggroTarget',
   '_drawNecro',
   "classId==='necromancer'&&!equip?null",
-],'Masmorra nao cobre recursos, invocacoes, aggro e desenho do Necromante');
+  "visualTime:0,attackAnim:0,hurtAnim:0,spawnAnim:420,moving:false,facing:'right'",
+  "type:summon.type==='skeleton'?'skeleton_warrior':summon.type",
+  "drawNecromancerSummon(c,screenSummon,ts)===true",
+],'Masmorra nao cobre recursos, invocacoes, aggro e desenho detalhado do Necromante');
 includesAll(shop,data.SHOP_BUFFS.map(buff=>buff.id),'efeitos exclusivos do Necromante nao estao implementados na loja');
 includesAll(codex,['necromancer:\'Necromante\'','Necromante · Invocações','necromancer:\'#70d98b\''],'Códex nao cataloga a quinta classe corretamente');
 includesAll(audio,['sfxNecroSoul','sfxNecroSummon','sfxNecroCurse','sfxNecroScythe','sfxNecroBell'],'assinatura sonora da classe ficou incompleta');

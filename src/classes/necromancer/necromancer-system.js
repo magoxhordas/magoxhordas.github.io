@@ -164,7 +164,8 @@
       reviveOnce:!!options.reviveOnce,revived:false,weaponType:options.weaponType||'',family,
       pierce:options.pierce||0,traceEvery:options.traceEvery||0,attackCount:0,
       deathExplosion:options.deathExplosion||0,raiseChance:options.raiseChance||0,noRaise:!!options.noRaise,
-      rarityMult:options.damageMult||1,
+      rarityMult:options.damageMult||1,visualTime:Math.random()*620,attackAnim:0,hurtAnim:0,
+      spawnAnim:420,moving:false,facing:Math.random()<.5?'left':'right',
     };
     state.summons.push(summon);playSfx('summon',120);return summon;
   }
@@ -217,9 +218,15 @@
   }
   function updateSummon(state,summon,dt,targets){
     const owner=state.owner;if(!owner||owner.dead){summon.dead=true;return;}
-    summon.duration-=dt*1000;summon.attackTimer-=dt*1000;summon.hitTimer-=dt*1000;
+    const elapsed=dt*1000;
+    summon.duration-=elapsed;summon.attackTimer-=elapsed;summon.hitTimer-=elapsed;
+    summon.visualTime=(summon.visualTime||0)+elapsed;
+    summon.attackAnim=Math.max(0,(summon.attackAnim||0)-elapsed);
+    summon.hurtAnim=Math.max(0,(summon.hurtAnim||0)-elapsed);
+    summon.spawnAnim=Math.max(0,(summon.spawnAnim||0)-elapsed);
+    summon.moving=false;
     if(summon.duration<=0||summon.hp<=0){
-      if(summon.reviveOnce&&!summon.revived){summon.revived=true;summon.hp=summon.maxHp*.55;summon.duration=summon.permanent?Infinity:5000;return;}
+      if(summon.reviveOnce&&!summon.revived){summon.revived=true;summon.hp=summon.maxHp*.55;summon.duration=summon.permanent?Infinity:5000;summon.spawnAnim=420;return;}
       summon.dead=true;
       if(summon.deathExplosion>0){
         for(const target of targets)if(target&&!target.dead&&Math.hypot(target.x-summon.x,target.y-summon.y)<58)damageTarget(target,summon.damage*summon.deathExplosion,owner,{summoned:true,weaponType:summon.weaponType});
@@ -228,16 +235,18 @@
       explodeLastBreath(state,summon);return;
     }
     const ownerDistance=Math.hypot(owner.x-summon.x,owner.y-summon.y);
-    if(ownerDistance>440){summon.x=owner.x+(Math.random()-.5)*30;summon.y=owner.y+24;summon.target=null;return;}
+    if(ownerDistance>440){summon.x=owner.x+(Math.random()-.5)*30;summon.y=owner.y+24;summon.target=null;summon.spawnAnim=300;return;}
     if(!summon.target||summon.target.dead||Math.hypot(summon.target.x-summon.x,summon.target.y-summon.y)>340)summon.target=nearestTarget(summon,targets);
     const target=summon.target;
     if(target){
       const dx=target.x-summon.x,dy=target.y-summon.y,distance=Math.max(1,Math.hypot(dx,dy));
-      if(distance>summon.range*.8){summon.x+=dx/distance*summon.speed*dt;summon.y+=dy/distance*summon.speed*dt;}
+      summon.facing=dx<0?'left':'right';
+      if(distance>summon.range*.8){summon.x+=dx/distance*summon.speed*dt;summon.y+=dy/distance*summon.speed*dt;summon.moving=true;}
       if(distance<=summon.range&&summon.attackTimer<=0){
         const inheritedDamage=globalDamageBonus(owner)*.35;
         const attackSpeed=1+(effect(owner).necroSummonAttackSpeed||0)+globalAttackSpeedBonus(owner)*.30+(state.totems.some(t=>Math.hypot(t.x-summon.x,t.y-summon.y)<120&&t.buffTimer>0)?.10:0);
         summon.attackTimer=summon.attackCd/attackSpeed;
+        summon.attackAnim=summon.type==='spirit'||summon.type==='skeleton_archer'?320:240;
         const wasAlive=!target.dead;
         damageTarget(target,summon.damage*(1+inheritedDamage),owner,{summoned:true,canCrit:true,weaponType:summon.weaponType});
         summon.attackCount++;
@@ -257,6 +266,7 @@
       }
     }else if(ownerDistance>80){
       const dx=owner.x-summon.x,dy=owner.y-summon.y,distance=Math.max(1,ownerDistance);
+      summon.facing=dx<0?'left':'right';summon.moving=true;
       summon.x+=dx/distance*summon.speed*.8*dt;summon.y+=dy/distance*summon.speed*.8*dt;
     }
     // Inimigos comuns podem atacar uma invocacao proxima. Chefes continuam
@@ -264,7 +274,7 @@
     if(summon.hitTimer<=0){
       for(const target of targets){
         if(!target||target.dead||Math.hypot(target.x-summon.x,target.y-summon.y)>(target.radius||14)+12)continue;
-        summon.hp-=Math.max(1,(target.damage||8)*(isBoss(target)?CFG.bossDamageToSummons:.55));summon.hitTimer=700;break;
+        summon.hp-=Math.max(1,(target.damage||8)*(isBoss(target)?CFG.bossDamageToSummons:.55));summon.hitTimer=700;summon.hurtAnim=180;break;
       }
     }
   }
@@ -474,11 +484,25 @@
         ctx.globalAlpha=1;ctx.fillStyle='#6f6657';ctx.fillRect(totem.x-7,totem.y-8,14,16);ctx.fillStyle='#ded3b0';ctx.fillRect(totem.x-5,totem.y-12,3,7);ctx.fillRect(totem.x+2,totem.y-12,3,7);ctx.fillStyle='#70d98b';ctx.fillRect(totem.x-2,totem.y-3,4,4);
       }
       for(const summon of state.summons){
-        const bob=Math.sin(time*.006+summon.phase)*1.5;ctx.globalAlpha=summon.type==='spirit'?.72:1;ctx.shadowColor=summon.color;ctx.shadowBlur=summon.type==='spirit'?12:4;
-        ctx.fillStyle='rgba(0,0,0,.32)';ctx.beginPath();ctx.ellipse(summon.x,summon.y+11,10,4,0,0,Math.PI*2);ctx.fill();
-        ctx.fillStyle=summon.color;ctx.fillRect(summon.x-6,summon.y-7+bob,12,10);ctx.fillRect(summon.x-4,summon.y+3+bob,3,8);ctx.fillRect(summon.x+1,summon.y+3+bob,3,8);
-        ctx.fillStyle='#18231d';ctx.fillRect(summon.x-3,summon.y-4+bob,2,2);ctx.fillRect(summon.x+2,summon.y-4+bob,2,2);ctx.shadowBlur=0;
-        ctx.fillStyle='rgba(0,0,0,.65)';ctx.fillRect(summon.x-9,summon.y-14,18,2);ctx.fillStyle='#65d77d';ctx.fillRect(summon.x-9,summon.y-14,18*clamp(summon.hp/summon.maxHp,0,1),2);
+        const spawnProgress=1-clamp((summon.spawnAnim||0)/420,0,1);
+        ctx.save();ctx.globalAlpha=.2+.8*spawnProgress;
+        if(summon.spawnAnim>0){
+          ctx.strokeStyle='#9b5cff';ctx.lineWidth=1.5;ctx.shadowColor='#7d35dc';ctx.shadowBlur=8;
+          ctx.beginPath();ctx.ellipse(summon.x,summon.y+10,6+spawnProgress*9,2+spawnProgress*4,0,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;
+        }
+        if(summon.hurtAnim>0)ctx.filter='brightness(1.8) saturate(1.4)';
+        const rendered=deps.drawSummon?.(ctx,summon,time)===true;
+        if(!rendered){
+          const bob=Math.sin(time*.006+summon.phase)*1.5;ctx.globalAlpha*=summon.type==='spirit'?.72:1;ctx.shadowColor=summon.color;ctx.shadowBlur=summon.type==='spirit'?12:4;
+          ctx.fillStyle='rgba(0,0,0,.32)';ctx.beginPath();ctx.ellipse(summon.x,summon.y+11,10,4,0,0,Math.PI*2);ctx.fill();
+          ctx.fillStyle=summon.color;ctx.fillRect(summon.x-6,summon.y-7+bob,12,10);ctx.fillRect(summon.x-4,summon.y+3+bob,3,8);ctx.fillRect(summon.x+1,summon.y+3+bob,3,8);
+          ctx.fillStyle='#18231d';ctx.fillRect(summon.x-3,summon.y-4+bob,2,2);ctx.fillRect(summon.x+2,summon.y-4+bob,2,2);ctx.shadowBlur=0;
+        }
+        ctx.filter='none';ctx.globalAlpha=1;ctx.shadowBlur=0;
+        const barWidth=summon.type==='abomination'||summon.type==='death_knight'?24:20;
+        ctx.fillStyle='rgba(4,2,9,.78)';ctx.fillRect(summon.x-barWidth/2,summon.y-18,barWidth,3);
+        ctx.fillStyle='#9b5cff';ctx.fillRect(summon.x-barWidth/2,summon.y-18,barWidth*clamp(summon.hp/summon.maxHp,0,1),3);
+        ctx.restore();
       }
     }
     ctx.globalAlpha=1;ctx.restore();
