@@ -8,7 +8,7 @@
     badge:'NECROMANCIA',desc:'Invoca mortos, recolhe almas e controla o campo.',
     stats:Object.freeze({vida:43,dano:72,veloc:55,crit:42}),
     ability:'Senhor dos Mortos',
-    abilityDesc:'Cajado usa Almas; Sino transforma Cadaveres temporarios em exercito.',
+    abilityDesc:'Cajado usa Almas; inimigos abatidos podem ressuscitar e o Sino fortalece os Reanimados.',
     baseHp:98,baseDmg:21,baseSpd:132,baseAtk:760,baseRange:300,baseMulti:0,
     abilityKey:'necromancy',previewPalKey:'PAL_NECROMANCER',
     shopItems:Object.freeze([]),
@@ -22,7 +22,7 @@
       'O Guerreiro recebe +5% de velocidade de ataque e reposicao um pouco mais rapida.',
       'Pode manter 2 Guerreiros; ambos recebem +10% de velocidade de ataque.',
       'Guerreiros recebem +20% de vida e explodem por 60% de um ataque ao morrer.',
-      'Abates dos Guerreiros tem 16% de chance de erguer um Soldado de Ossos por 5s.'
+      'Abates dos Guerreiros tem 16% de chance de erguer outro Reanimado, respeitando o limite da classe.'
     ]],
     ['necromancer_profane_grimoire','Grimorio Profano','necromancer_profane_grimoire','#a66bff',22,330,900,[
       'Dispara um projetil profano que aplica Marca Profana por 3s.',
@@ -67,11 +67,11 @@
       'Abaixo de 35% de vida, o pulso causa +20% de dano e cura um pouco mais.'
     ]],
     ['necromancer_death_bell','Sino dos Mortos','necromancer_death_bell','#d9c071',16,240,1450,[
-      'Consome ate 2 cadaveres e os reanima por 6s.',
-      'Reanimados duram 6,5s.',
-      'Consome ate 3 cadaveres e os reanima por 7s.',
-      'Cadaver de elite pode criar 1 Abominacao forte por ativacao.',
-      'A cada quarta ativacao efetiva, invoca 1 Cavaleiro da Morte por 9s.'
+      'Toca um pulso em ate 2 Reanimados, cura 25% da vida e fere inimigos proximos.',
+      'A cura dos Reanimados sobe para 35%.',
+      'Afeta ate 3 Reanimados e cura 45% da vida.',
+      'Reanimados fortalecidos causam +25% de dano por 4s.',
+      'A cada quarta ativacao, restaura toda a vida e duplica o dano do pulso.'
     ]],
   ];
 
@@ -88,8 +88,8 @@
 
   const CONFIG=Object.freeze({
     soulBaseCap:12,soulHardCap:20,soulTtl:8000,soulDirectChance:.22,
-    soulSummonChance:.14,soulPity:6,corpseBaseCap:8,corpseBuffCap:10,
-    corpseTtl:6000,corpseDirectChance:.35,corpseSummonChance:.22,
+    soulSummonChance:.14,soulPity:6,corpseBaseCap:3,corpseBuffCap:4,
+    corpseDirectChance:.35,corpseSummonChance:.22,
     permanentBaseCap:2,permanentHardCap:5,temporaryCap:3,globalCoopCap:12,
     summonProcCoefficient:.35,summonBossDamage:.85,bossDamageToSummons:1.35,
   });

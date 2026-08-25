@@ -24,7 +24,7 @@
   function createState(owner){
     return {
       owner,ownerId:ownerKey(owner),souls:0,pityMisses:0,
-      soulOrbs:[],corpses:[],summons:[],totems:[],
+      soulOrbs:[],summons:[],totems:[],
       bellConsumed:0,lastBreathAt:-Infinity,healWindowAt:now(),healWindow:0,
       bossThresholds:new WeakMap(),weaponCounters:Object.create(null),
       scytheRingAt:-Infinity,heartHealAt:-Infinity,bellActivations:0,
@@ -41,7 +41,6 @@
   function soulCap(owner){return clamp(CFG.soulBaseCap+(effect(owner).necroSoulCap||0),CFG.soulBaseCap,CFG.soulHardCap);}
   function corpseCap(owner){return effect(owner).necroCorpseMaster?CFG.corpseBuffCap:CFG.corpseBaseCap;}
   function permanentCap(owner){return clamp(CFG.permanentBaseCap+(effect(owner).necroPermanentCap||0),CFG.permanentBaseCap,CFG.permanentHardCap);}
-  function corpseTtl(owner){return CFG.corpseTtl+(effect(owner).necroCorpseMaster?2000:0);}
   function globalSummonCount(){let total=0;for(const state of states.values())total+=state.summons.length;return total;}
   function isBoss(target){return !!target&&(target.isBoss||target.type?.startsWith?.('boss')||target.constructor?.name?.includes?.('Boss'))}
   function isMiniboss(enemy){return !!enemy&&!isBoss(enemy)&&(enemy.isMiniboss||enemy.miniBoss||enemy.type?.includes?.('miniboss'));}
@@ -64,9 +63,9 @@
   function clearWorld(options={}){
     const preservePermanent=!!options.preservePermanent;
     for(const state of states.values()){
-      state.soulOrbs.length=0;state.corpses.length=0;state.totems.length=0;
+      state.soulOrbs.length=0;state.totems.length=0;
       if(preservePermanent){
-        state.summons=state.summons.filter(s=>s.permanent&&!s.dead);
+        state.summons=state.summons.filter(s=>(s.permanent||s.lifeBound)&&!s.dead);
         state.summons.forEach((s,index)=>{s.x=state.owner.x+(index-0.5)*26;s.y=state.owner.y+30;s.target=null;});
       }else state.summons.length=0;
     }
@@ -82,10 +81,18 @@
       });
     }
   }
-  function addCorpse(owner,enemy){
-    const state=stateFor(owner);if(!state||isBoss(enemy)||enemy?.isReanimated||enemy?.noNecroRewards)return;
-    while(state.corpses.length>=corpseCap(owner))state.corpses.shift();
-    state.corpses.push({x:enemy.x,y:enemy.y,ttl:corpseTtl(owner),phase:Math.random()*Math.PI*2,type:enemy.type||'enemy',elite:isElite(enemy)});
+  function raiseCorpse(owner,enemy){
+    const state=stateFor(owner);if(!state||isBoss(enemy)||enemy?.isReanimated||enemy?.noNecroRewards)return null;
+    const elite=isElite(enemy)||isMiniboss(enemy);
+    const summon=spawnSummon(owner,'reanimated',{
+      duration:Infinity,lifeBound:true,fromCorpse:true,isReanimated:true,noRaise:true,
+      family:'raised_corpse',familyMax:corpseCap(owner),weaponType:'necromancer_reanimation',
+      hpMult:(elite?1.35:1)*(effect(owner).necroCorpseMaster?1.20:1),damageMult:elite?1.15:1,
+    });
+    if(!summon)return null;
+    summon.x=enemy.x;summon.y=enemy.y;summon.eliteSource=elite;summon.spawnAnim=520;
+    deps.spawnParts?.(enemy.x,enemy.y,elite?'#c7ff8a':'#8d55cf',elite?12:8,55);
+    return summon;
   }
   function eligibleSource(enemy,owner,source){
     if(!isNecromancer(owner)||!enemy||enemy.noNecroRewards||enemy.isSummoned||enemy.isReanimated)return false;
@@ -118,7 +125,7 @@
       else state.pityMisses++;
     }
     const corpseChance=elite?1:(source==='summon'?CFG.corpseSummonChance:CFG.corpseDirectChance);
-    if(Math.random()<corpseChance)addCorpse(owner,enemy);
+    if(Math.random()<corpseChance)raiseCorpse(owner,enemy);
   }
   function onBossDamaged(owner,boss,beforeHp,afterHp){
     if(!isNecromancer(owner)||!boss||beforeHp<=afterHp)return;
@@ -143,12 +150,14 @@
   function spawnSummon(owner,type,options={}){
     const state=stateFor(owner);const spec=SUMMON_TYPES[type];if(!state||!spec)return null;
     const permanent=!!options.permanent;
-    const sameKind=state.summons.filter(s=>!s.dead&&(permanent?s.permanent:!s.permanent)).length;
+    const lifeBound=!!options.lifeBound;
+    const sameKind=state.summons.filter(s=>!s.dead&&(permanent?s.permanent:(lifeBound?s.lifeBound:!s.permanent&&!s.lifeBound))).length;
     const family=options.family||type;
     const familyCount=state.summons.filter(s=>!s.dead&&s.family===family).length;
     if(globalSummonCount()>=CFG.globalCoopCap)return null;
     if(permanent&&sameKind>=permanentCap(owner))return null;
-    if(!permanent&&sameKind>=CFG.temporaryCap)return null;
+    if(lifeBound&&sameKind>=corpseCap(owner))return null;
+    if(!permanent&&!lifeBound&&sameKind>=CFG.temporaryCap)return null;
     if(Number.isFinite(options.familyMax)&&familyCount>=options.familyMax)return null;
     if(type==='death_knight'&&state.summons.some(s=>!s.dead&&s.type==='death_knight'))return null;
     const hpBonus=1+(effect(owner).necroSummonHp||0);
@@ -159,7 +168,7 @@
       owner,ownerId:ownerKey(owner),type,name:spec.name,x:owner.x+(Math.random()-.5)*36,y:owner.y+24,
       hp:maxHp,maxHp,damage:Math.max(3,DATA.CLASS_DEF.baseDmg*spec.damage*(options.damageMult||1)),range:spec.range,
       attackCd:spec.cd/(options.attackSpeedMult||1),attackTimer:180+Math.random()*240,speed:spec.speed,color:spec.color,
-      permanent,duration:permanent?Infinity:(options.duration||10000),dead:false,target:null,
+      permanent,lifeBound,fromCorpse:!!options.fromCorpse,duration:permanent||lifeBound?Infinity:(options.duration||10000),dead:false,target:null,
       isSummoned:true,isReanimated:!!options.isReanimated,noNecroRewards:true,hitTimer:0,phase:Math.random()*Math.PI*2,
       reviveOnce:!!options.reviveOnce,revived:false,weaponType:options.weaponType||'',family,
       pierce:options.pierce||0,traceEvery:options.traceEvery||0,attackCount:0,
@@ -219,13 +228,14 @@
   function updateSummon(state,summon,dt,targets){
     const owner=state.owner;if(!owner||owner.dead){summon.dead=true;return;}
     const elapsed=dt*1000;
-    summon.duration-=elapsed;summon.attackTimer-=elapsed;summon.hitTimer-=elapsed;
+    if(Number.isFinite(summon.duration))summon.duration-=elapsed;
+    summon.attackTimer-=elapsed;summon.hitTimer-=elapsed;summon.bellPowerTimer=Math.max(0,(summon.bellPowerTimer||0)-elapsed);
     summon.visualTime=(summon.visualTime||0)+elapsed;
     summon.attackAnim=Math.max(0,(summon.attackAnim||0)-elapsed);
     summon.hurtAnim=Math.max(0,(summon.hurtAnim||0)-elapsed);
     summon.spawnAnim=Math.max(0,(summon.spawnAnim||0)-elapsed);
     summon.moving=false;
-    if(summon.duration<=0||summon.hp<=0){
+    if(summon.hp<=0||(!summon.lifeBound&&summon.duration<=0)){
       if(summon.reviveOnce&&!summon.revived){summon.revived=true;summon.hp=summon.maxHp*.55;summon.duration=summon.permanent?Infinity:5000;summon.spawnAnim=420;return;}
       summon.dead=true;
       if(summon.deathExplosion>0){
@@ -248,7 +258,8 @@
         summon.attackTimer=summon.attackCd/attackSpeed;
         summon.attackAnim=summon.type==='spirit'||summon.type==='skeleton_archer'?320:240;
         const wasAlive=!target.dead;
-        damageTarget(target,summon.damage*(1+inheritedDamage),owner,{summoned:true,canCrit:true,weaponType:summon.weaponType});
+        const bellPower=summon.bellPowerTimer>0?1.25:1;
+        damageTarget(target,summon.damage*(1+inheritedDamage)*bellPower,owner,{summoned:true,canCrit:true,weaponType:summon.weaponType});
         summon.attackCount++;
         if(summon.pierce>0){
           const secondary=targets.filter(other=>other&&!other.dead&&other!==target&&Math.hypot(other.x-target.x,other.y-target.y)<92)[0];
@@ -259,7 +270,7 @@
           deps.spawnParts?.(target.x,target.y,'#70cfff',4,34);
         }
         if(wasAlive&&target.dead&&summon.raiseChance&&!summon.noRaise&&Math.random()<summon.raiseChance){
-          const soldier=spawnSummon(owner,'reanimated',{duration:5000,family:'dead_staff_soldier',familyMax:2,weaponType:summon.weaponType,noRaise:true,damageMult:summon.rarityMult});
+          const soldier=spawnSummon(owner,'reanimated',{duration:Infinity,lifeBound:true,fromCorpse:true,isReanimated:true,family:'raised_corpse',familyMax:corpseCap(owner),weaponType:summon.weaponType,noRaise:true,damageMult:summon.rarityMult});
           if(soldier){soldier.x=target.x;soldier.y=target.y;}
         }
         deps.spawnParts?.(target.x,target.y,summon.color,summon.type==='death_knight'?8:4,38);
@@ -342,8 +353,6 @@
         }
       }
       state.soulOrbs=state.soulOrbs.filter(orb=>!orb.dead);
-      for(const corpse of state.corpses)corpse.ttl-=step*1000;
-      state.corpses=state.corpses.filter(corpse=>corpse.ttl>0);
       for(const summon of state.summons)updateSummon(state,summon,step,targets);
       state.summons=state.summons.filter(summon=>!summon.dead);
       separateSummons(state);
@@ -363,8 +372,8 @@
   }
   function getHud(owner){
     const state=stateFor(owner,false);if(!state)return null;
-    const nextCorpseMs=state.corpses.length?Math.max(0,Math.min(...state.corpses.map(corpse=>corpse.ttl))):0;
-    return {souls:state.souls,soulCap:soulCap(owner),corpses:state.corpses.length,corpseCap:corpseCap(owner),nextCorpseMs,permanent:state.summons.filter(s=>s.permanent).length,permanentCap:permanentCap(owner),temporary:state.summons.filter(s=>!s.permanent).length,temporaryCap:CFG.temporaryCap};
+    const reanimated=state.summons.filter(s=>!s.dead&&s.lifeBound).length;
+    return {souls:state.souls,soulCap:soulCap(owner),corpses:reanimated,corpseCap:corpseCap(owner),reanimated,permanent:state.summons.filter(s=>s.permanent&&!s.dead).length,permanentCap:permanentCap(owner),temporary:state.summons.filter(s=>!s.permanent&&!s.lifeBound&&!s.dead).length,temporaryCap:CFG.temporaryCap};
   }
 
   function applyMark(target,tier,options={}){
@@ -474,21 +483,19 @@
         state.heartHealAt=now();collectHeal(player,Math.max(2,Math.round(player.maxHp*(tier>=4&&low ? .025 : .018))));
       }
     }else if(type==='necromancer_death_bell'){
-      if(!state.corpses.length)return false;
-      const limit=tier>=2?3:2,duration=tier>=2?7000:tier>=1?6500:6000;
-      const corpses=[...state.corpses].sort((a,b)=>Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y)).slice(0,limit);
-      let effective=0,abominationUsed=false;
-      for(const corpse of corpses){
-        const summonType=tier>=3&&corpse.elite&&!abominationUsed?'abomination':'reanimated';
-        const summon=spawnSummon(player,summonType,{duration,isReanimated:true,weaponType:type,family:'death_bell',damageMult:base/def.baseDmg});
-        if(!summon)continue;
-        summon.x=corpse.x;summon.y=corpse.y;effective++;abominationUsed||=summonType==='abomination';
-        state.corpses.splice(state.corpses.indexOf(corpse),1);
-      }
-      if(!effective)return false;
+      const limit=tier>=2?3:2;
+      const reanimated=state.summons.filter(s=>!s.dead&&s.lifeBound).sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp).slice(0,limit);
+      if(!reanimated.length)return false;
       playSfx('bell',350);
       state.bellActivations++;
-      if(tier>=4&&effective>=2&&state.bellActivations%4===0)spawnSummon(player,'death_knight',{duration:9000,isReanimated:true,weaponType:type,family:'death_knight',familyMax:1,damageMult:base/def.baseDmg});
+      const legendary=tier>=4&&state.bellActivations%4===0;
+      const healRatio=legendary?1:(tier>=2?.45:tier>=1?.35:.25),pulseDamage=base*(legendary?2:.55);
+      for(const summon of reanimated){
+        summon.hp=legendary?summon.maxHp:Math.min(summon.maxHp,summon.hp+summon.maxHp*healRatio);
+        if(tier>=3)summon.bellPowerTimer=4000;
+        deps.spawnParts?.(summon.x,summon.y,'#d9c071',legendary?12:7,48);
+        for(const enemy of enemies||[])if(enemy&&!enemy.dead&&Math.hypot(enemy.x-summon.x,enemy.y-summon.y)<=82)damageTarget(enemy,pulseDamage,player,{weapon,weaponType:type});
+      }
     }
     return true;
   }
@@ -505,11 +512,6 @@
     if(!ctx)return;
     ctx.save();
     for(const state of states.values()){
-      for(const corpse of state.corpses){
-        const alpha=clamp(corpse.ttl/1200,0,1);ctx.globalAlpha=.28+.38*alpha;ctx.strokeStyle='#9ac6a0';ctx.lineWidth=2;
-        ctx.beginPath();ctx.moveTo(corpse.x-7,corpse.y-4);ctx.lineTo(corpse.x+7,corpse.y+5);ctx.moveTo(corpse.x+7,corpse.y-4);ctx.lineTo(corpse.x-7,corpse.y+5);ctx.stroke();
-        ctx.fillStyle='#d7d0b2';ctx.fillRect(corpse.x-3,corpse.y-3,6,5);
-      }
       for(const orb of state.soulOrbs){
         const pulse=1+Math.sin(time*.008+orb.phase)*.16;ctx.globalAlpha=clamp(orb.ttl/800,0,1);ctx.shadowColor='#64ffc0';ctx.shadowBlur=10;
         ctx.fillStyle='#79e8d0';ctx.beginPath();ctx.arc(orb.x,orb.y,4.2*pulse,0,Math.PI*2);ctx.fill();ctx.fillStyle='#e8fff4';ctx.fillRect(orb.x-1,orb.y-2,2,4);ctx.shadowBlur=0;

@@ -735,8 +735,8 @@ const DNG={
   pFacing:0,pFrameIdx:0,pFrameTick:0,pDir:'down',
   pKills:0,pCoins:0,torchFlicker:0,floor:1,pClassId:'mage',
   _necroSouls:0,_necroSoulCap:12,_necroPity:0,
-  _necroSoulOrbs:[],_necroCorpses:[],_necroSummons:[],
-  _necroSummonTimer:0,_necroRaiseTimer:0,_necroHealAt:0,_necroHealWindow:0,_necroHudTimer:0,
+  _necroSoulOrbs:[],_necroSummons:[],
+  _necroSummonTimer:0,_necroHealAt:0,_necroHealWindow:0,_necroHudTimer:0,
   // attack animation
   pAttackAnim:0, pAttackAnimMax:400,
   running:false,paused:false,invOpen:false,
@@ -1434,10 +1434,10 @@ const DNG={
       necroRow.style.display=this.pClassId==='necromancer'?'flex':'none';
       if(this.pClassId==='necromancer'){
         const permanent=this._necroSummons.filter(s=>s.permanent&&!s.dead).length;
-        const temporary=this._necroSummons.filter(s=>!s.permanent&&!s.dead).length;
-        const corpseLife=this._necroCorpses.length?` (${Math.max(1,Math.ceil(Math.min(...this._necroCorpses.map(c=>c.ttl))/1000))}s)`:'';
-        necroRow.textContent=`✦ ALMAS ${this._necroSouls}/${this._necroSoulCap} · ☠ CADÁVERES ${this._necroCorpses.length}/8${corpseLife} · ⚔ EXÉRCITO ${permanent}/2 +${temporary}/3 TEMP`;
-        necroRow.title='Almas criam esqueletos; cadáveres expiram e são reanimados automaticamente; EXÉRCITO separa permanentes de temporários.';
+        const reanimated=this._necroSummons.filter(s=>s.lifeBound&&!s.dead).length;
+        const temporary=this._necroSummons.filter(s=>!s.permanent&&!s.lifeBound&&!s.dead).length;
+        necroRow.textContent=`✦ ALMAS ${this._necroSouls}/${this._necroSoulCap} · ☠ REANIMADOS ${reanimated}/3 · ⚔ EXÉRCITO ${permanent}/2${temporary?` +${temporary}/3 TEMP`:''}`;
+        necroRow.title='Inimigos abatidos podem ressuscitar imediatamente. Reanimados não têm cronômetro e só morrem ao perder toda a vida.';
       }
     }
 
@@ -1468,12 +1468,12 @@ const DNG={
   _ft(x,y,txt,col){this.floatingTexts.push({x,y,txt,col,life:900});},
 
   _necroReset(){
-    this._necroSouls=0;this._necroPity=0;this._necroSoulOrbs=[];this._necroCorpses=[];this._necroSummons=[];
-    this._necroSummonTimer=0;this._necroRaiseTimer=0;this._necroHealAt=0;this._necroHealWindow=0;this._necroHudTimer=0;
+    this._necroSouls=0;this._necroPity=0;this._necroSoulOrbs=[];this._necroSummons=[];
+    this._necroSummonTimer=0;this._necroHealAt=0;this._necroHealWindow=0;this._necroHudTimer=0;
   },
   _necroClearFloor(preservePermanent=true){
-    this._necroSoulOrbs=[];this._necroCorpses=[];
-    this._necroSummons=(this._necroSummons||[]).filter(s=>preservePermanent&&s.permanent&&!s.dead);
+    this._necroSoulOrbs=[];
+    this._necroSummons=(this._necroSummons||[]).filter(s=>preservePermanent&&(s.permanent||s.lifeBound)&&!s.dead);
     this._necroSummons.forEach((s,index)=>{s.x=this.px+(index-.5)*24;s.y=this.py+22;s.target=null;});
   },
   _necroSpawnSoul(x,y,count=1){
@@ -1498,19 +1498,19 @@ const DNG={
     if(Math.random()<chance||this._necroPity>=5){this._necroSpawnSoul(enemy.x,enemy.y,1);this._necroPity=0;}
     else this._necroPity++;
     if(Math.random()<(source==='summon'?.22:.35)){
-      while(this._necroCorpses.length>=8)this._necroCorpses.shift();
-      this._necroCorpses.push({x:enemy.x,y:enemy.y,ttl:6000,phase:Math.random()*Math.PI*2});
+      this._necroSpawnSummon('reanimated',enemy.x,enemy.y,{lifeBound:true,fromCorpse:true});
     }
   },
-  _necroSpawnSummon(type,x=this.px,y=this.py){
+  _necroSpawnSummon(type,x=this.px,y=this.py,options={}){
     if(this.pClassId!=='necromancer')return null;
-    const permanent=type==='skeleton',same=this._necroSummons.filter(s=>!s.dead&&s.permanent===permanent).length;
-    if(this._necroSummons.filter(s=>!s.dead).length>=12||(permanent&&same>=2)||(!permanent&&same>=3))return null;
+    const permanent=type==='skeleton',lifeBound=type==='reanimated'||!!options.lifeBound;
+    const same=this._necroSummons.filter(s=>!s.dead&&(permanent?s.permanent:(lifeBound?s.lifeBound:!s.permanent&&!s.lifeBound))).length;
+    if(this._necroSummons.filter(s=>!s.dead).length>=12||(permanent&&same>=2)||(lifeBound&&same>=3)||(!permanent&&!lifeBound&&same>=3))return null;
     const maxHp=Math.max(10,Math.round(this.pMaxHp*(permanent?.34:.28)));
     const summon={
       x,y,hp:maxHp,maxHp,damage:Math.max(3,this.pDmg*(permanent?.48:.42)),speed:permanent?1.55:1.45,
-      range:permanent?48:44,attackCd:permanent?860:930,attackTimer:180,duration:permanent?Infinity:6000,
-      permanent,type,dead:false,target:null,hitTimer:0,phase:Math.random()*Math.PI*2,_necroSummon:true,
+      range:permanent?48:44,attackCd:permanent?860:930,attackTimer:180,duration:permanent||lifeBound?Infinity:6000,
+      permanent,lifeBound,fromCorpse:!!options.fromCorpse,type,dead:false,target:null,hitTimer:0,phase:Math.random()*Math.PI*2,_necroSummon:true,
       visualTime:0,attackAnim:0,hurtAnim:0,spawnAnim:420,moving:false,facing:'right',
     };
     this._necroSummons.push(summon);
@@ -1555,7 +1555,7 @@ const DNG={
   },
   _necroUpdate(dt){
     if(this.pClassId!=='necromancer')return;
-    this._necroSummonTimer-=dt;this._necroRaiseTimer-=dt;this._necroHudTimer-=dt;
+    this._necroSummonTimer-=dt;this._necroHudTimer-=dt;
     for(const orb of this._necroSoulOrbs){
       orb.ttl-=dt;orb.phase+=dt*.004;
       const dx=this.px-orb.x,dy=this.py-orb.y,d=Math.max(1,Math.hypot(dx,dy));
@@ -1566,24 +1566,15 @@ const DNG={
       }
     }
     this._necroSoulOrbs=this._necroSoulOrbs.filter(o=>!o.dead&&o.ttl>0);
-    for(const corpse of this._necroCorpses)corpse.ttl-=dt;
-    this._necroCorpses=this._necroCorpses.filter(c=>c.ttl>0);
     if(this._necroSummonTimer<=0&&this._necroSouls>=2&&this._necroSummons.filter(s=>s.permanent&&!s.dead).length<2){
       if(this._necroSpawnSummon('skeleton')){this._necroSouls-=2;this._necroSummonTimer=900;}
     }
-    if(this._necroRaiseTimer<=0&&this._necroCorpses.length>=2&&this._necroSummons.filter(s=>!s.permanent&&!s.dead).length<3){
-      let raised=0;
-      for(const corpse of [...this._necroCorpses].slice(0,2)){
-        const summon=this._necroSpawnSummon('reanimated',corpse.x,corpse.y);if(!summon)break;
-        this._necroCorpses.splice(this._necroCorpses.indexOf(corpse),1);raised++;
-      }
-      if(raised)this._necroRaiseTimer=6500;
-    }
     for(const summon of this._necroSummons){
-      summon.duration-=dt;summon.attackTimer-=dt;summon.hitTimer-=dt;summon.visualTime+=dt;
+      if(Number.isFinite(summon.duration))summon.duration-=dt;
+      summon.attackTimer-=dt;summon.hitTimer-=dt;summon.visualTime+=dt;
       summon.attackAnim=Math.max(0,(summon.attackAnim||0)-dt);summon.hurtAnim=Math.max(0,(summon.hurtAnim||0)-dt);
       summon.spawnAnim=Math.max(0,(summon.spawnAnim||0)-dt);summon.moving=false;
-      if(summon.hp<=0||summon.duration<=0){summon.dead=true;continue;}
+      if(summon.hp<=0||(!summon.lifeBound&&summon.duration<=0)){summon.dead=true;continue;}
       if(Math.hypot(this.px-summon.x,this.py-summon.y)>380){summon.x=this.px+(Math.random()-.5)*22;summon.y=this.py+18;summon.target=null;summon.spawnAnim=260;}
       if(!summon.target||summon.target.dead||Math.hypot(summon.target.x-summon.x,summon.target.y-summon.y)>300){
         let best=null,bd=300;
@@ -1614,10 +1605,6 @@ const DNG={
   },
   _drawNecro(c,ts){
     if(this.pClassId!=='necromancer')return;c.save();
-    for(const corpse of this._necroCorpses){
-      const x=corpse.x-this.camX,y=corpse.y-this.camY;c.globalAlpha=.38+.25*Math.sin(ts*.006+corpse.phase);c.strokeStyle='#9ac6a0';c.lineWidth=2;
-      c.beginPath();c.moveTo(x-6,y-4);c.lineTo(x+6,y+4);c.moveTo(x+6,y-4);c.lineTo(x-6,y+4);c.stroke();
-    }
     for(const orb of this._necroSoulOrbs){
       const x=orb.x-this.camX,y=orb.y-this.camY,p=1+Math.sin(ts*.008+orb.phase)*.16;c.globalAlpha=Math.min(1,orb.ttl/700);c.shadowColor='#64ffc0';c.shadowBlur=8;
       c.fillStyle='#79e8d0';c.beginPath();c.arc(x,y,4*p,0,Math.PI*2);c.fill();c.shadowBlur=0;

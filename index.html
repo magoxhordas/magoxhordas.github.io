@@ -4723,9 +4723,9 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
 </div>
 <div id="necromancer-resource-hud" aria-live="polite">
   <span class="necro-resource" title="O Cajado dos Mortos consome 2 almas para erguer um Guerreiro Esqueleto.">✦ ALMAS <b id="necro-souls">0/12</b></span>
-  <span class="necro-resource" id="necro-corpses-wrap" title="Cadáveres duram poucos segundos. O Sino dos Mortos os consome e cria reanimados temporários.">☠ CADÁVERES <b id="necro-corpses">0/8</b> <span id="necro-corpse-life" class="necro-resource-detail"></span></span>
-  <span class="necro-resource" title="Exército mostra invocações permanentes e temporárias.">♜ EXÉRCITO <b id="necro-army">0/2</b> <span id="necro-army-temp" class="necro-resource-detail"></span></span>
-  <span class="necro-resource-guide">CAJADO: 2 ALMAS → ESQUELETO · SINO: CADÁVERES → REANIMADOS · CADÁVERES EXPIRAM</span>
+  <span class="necro-resource" id="necro-corpses-wrap" title="Inimigos abatidos podem ressuscitar imediatamente. Reanimados não têm cronômetro e só morrem com 0 de vida.">☠ REANIMADOS <b id="necro-corpses">0/3</b></span>
+  <span class="necro-resource" title="Exército mostra invocações permanentes e temporárias; Reanimados são contados separadamente.">♜ EXÉRCITO <b id="necro-army">0/2</b> <span id="necro-army-temp" class="necro-resource-detail"></span></span>
+  <span class="necro-resource-guide">CADÁVER CAI → RESSUSCITA AUTOMATICAMENTE · REANIMADOS SÓ MORREM COM 0 VIDA · SINO CURA E FORTALECE</span>
 </div>
 <div id="pet-enc-hpbar-wrap">
   <div class="pet-enc-hpbar-inner"><div class="pet-enc-hpbar-fill" id="pet-enc-hp-bar" style="width:100%"></div></div>
@@ -9906,8 +9906,8 @@ function drawPetSprite(c, petId, x, y, flipX, now){
   <script src="src/ui/menu-codex-system.js"></script>
   <script src="src/campaign/boss-data.js"></script>
   <script src="src/campaign/boss-rush-system.js"></script>
-  <script src="src/classes/necromancer/necromancer-data.js?v=20260825-mechanics"></script>
-  <script src="src/classes/necromancer/necromancer-system.js?v=20260825-mechanics"></script>
+  <script src="src/classes/necromancer/necromancer-data.js?v=20260825-reanimation"></script>
+  <script src="src/classes/necromancer/necromancer-system.js?v=20260825-reanimation"></script>
   <script>
 // SCREEN SHAKE — for axe heavy impact
 // ═══════════════════════════════════════════════════════
@@ -11737,14 +11737,9 @@ function updateUI(){
     document.getElementById('necro-souls').textContent=resourceText('souls','soulCap');
     document.getElementById('necro-corpses').textContent=resourceText('corpses','corpseCap');
     document.getElementById('necro-army').textContent=resourceText('permanent','permanentCap');
-    const corpseLife=document.getElementById('necro-corpse-life');
-    const corpsesWrap=document.getElementById('necro-corpses-wrap');
-    const expiring=snapshots.filter(({hud})=>hud.corpses>0&&Number.isFinite(hud.nextCorpseMs)).map(({player:pl,hud})=>`${gameMode===2?`P${pl.idx+1} `:''}${Math.max(1,Math.ceil(hud.nextCorpseMs/1000))}s`);
-    if(corpseLife)corpseLife.textContent=expiring.length?`(${expiring.join(' · ')})`:'';
-    if(corpsesWrap)corpsesWrap.classList.toggle('expiring',expiring.length>0);
     const armyTemp=document.getElementById('necro-army-temp');
     if(armyTemp){
-      const temporary=snapshots.map(({player:pl,hud})=>`${gameMode===2?`P${pl.idx+1} `:''}+${Number(hud.temporary)||0}/${Number(hud.temporaryCap)||3} TEMP`).join(' · ');
+      const temporary=snapshots.filter(({hud})=>Number(hud.temporary)>0).map(({player:pl,hud})=>`${gameMode===2?`P${pl.idx+1} `:''}+${Number(hud.temporary)||0}/${Number(hud.temporaryCap)||3} TEMP`).join(' · ');
       armyTemp.textContent=temporary;
     }
   }
