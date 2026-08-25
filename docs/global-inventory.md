@@ -9,6 +9,7 @@ São pontos de integração publicados intencionalmente pelos módulos ou consum
 - Core: `SaveSystem`, `InputManager`, `Audio` e `GameSettings`;
 - combate: `CampaignStatusEffects`, `CampaignDamageSystem` e `CampaignCombatSystem`;
 - armas: `CampaignWeaponData`, `CampaignWeaponSystem` e `CampaignProjectileSystem`;
+- Necromante: `NecromancerData` e `NecromancerSystem` (recursos exclusivamente transitórios por jogador);
 - conteúdo: `MagoBlessingData`, `MagoShopData`, `MagoCampaignBossData` e `MagoCampaignChapterData`;
 - bênçãos: `DEITY_BLESSINGS_V2`, `DEITY_BLESSING_RARITIES`, `applyDeityBoon` e os hooks `notifyBlessing*`;
 - loja: `CAMPAIGN_CLASS_BUFFS`, `CAMPAIGN_UNIVERSAL_ITEMS` e `CAMPAIGN_POTIONS`;

@@ -48,6 +48,12 @@
     ],
   };
 
+  // A quinta classe e anexada pelo modulo proprio para manter o catalogo
+  // original das quatro classes intacto e facilmente auditavel.
+  if(global.NecromancerData?.WEAPON_SPECS){
+    CAMPAIGN_WEAPON_SPECS.necromancer=global.NecromancerData.WEAPON_SPECS;
+  }
+
   for(const list of Object.values(CAMPAIGN_WEAPON_SPECS)){
     for(const spec of list){
       Object.freeze(spec[7]);
@@ -63,10 +69,10 @@
       for(const [id,name,pixelIcon,color,baseDmg,range,cd,stages] of list){
         definitions[id]={
           id,classId,name,pixelIcon,icon:pixelIcon,
-          type:classId==='archer'?'ranged':(classId==='mage'?'magic':'melee'),
+          type:classId==='archer'?'ranged':((classId==='mage'||classId==='necromancer')?'magic':'melee'),
           color,baseDmg,range,cd,stages,
           desc:rarity=>stages[Math.max(0,rarities.indexOf(rarity))]||stages[0],
-          attack(player,enemies,rarity,target,weapon){attack(player,enemies,rarity,target,weapon,id);},
+          attack(player,enemies,rarity,target,weapon){return attack(player,enemies,rarity,target,weapon,id);},
         };
       }
     }

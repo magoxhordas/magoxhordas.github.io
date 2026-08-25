@@ -52,6 +52,14 @@ function campaignShopBuffDescription(spec,rarity){
     case 'viking_thor_totem':return `A cada ${v} ataques, um raio atinge um inimigo próximo por 50% do dano da arma.`;
     case 'viking_frozen_beard':return `Inimigos próximos sofrem ${campaignShopPct(v,1)} de lentidão.${legendary?' Após 3s próximos, recebem 20% por 1s.':''}`;
     case 'viking_valhalla_heart':return `${campaignShopPct(v,2)} de chance por abate de recuperar 1 de vida; elites e chefes aumentam a chance.`;
+    case 'necromancer_soul_reservoir':return '+3 ao limite de almas e maior alcance de atração.';
+    case 'necromancer_profane_army':return '+1 invocação permanente; −8% de vida máxima.';
+    case 'necromancer_reinforced_bones':return '+25% de vida para todas as invocações.';
+    case 'necromancer_command_dead':return '+15% de velocidade de ataque para invocações.';
+    case 'necromancer_soul_harvest':return 'Abates diretos passam de 22% para 30% de chance de gerar alma.';
+    case 'necromancer_corpse_master':return 'Cadáveres duram +2s e o limite aumenta de 8 para 10.';
+    case 'necromancer_blood_pact':return '+20% de dano das invocações; −10% de vida máxima.';
+    case 'necromancer_last_breath':return 'Invocações permanentes explodem ao morrer, com recarga por jogador.';
     case 'universal_light_boots':return `+${campaignShopPct(v,1)} de velocidade de movimento.`;
     case 'universal_red_heart':return `+${v} de vida máxima.`;
     case 'universal_combat_ration':return `Regenera 1 de vida a cada ${(v/1000).toFixed(1).replace('.0','')}s.`;
@@ -90,6 +98,12 @@ function applyCampaignShopItem(playerRef,spec,rarity){
   if(spec.id==='viking_war_horn'&&rarity==='legendary')e.meleeArea=.05;
   if(spec.id==='viking_odin_eye'&&rarity==='legendary')e.odinCritImpact=true;
   if(spec.id==='viking_frozen_beard'&&rarity==='legendary')e.deepSlowAura=true;
+  if(spec.id==='necromancer_profane_army'){
+    const loss=Math.max(1,Math.round(playerRef.maxHp*.08));playerRef.maxHp=Math.max(1,playerRef.maxHp-loss);playerRef.hp=Math.min(playerRef.hp,playerRef.maxHp);
+  }
+  if(spec.id==='necromancer_blood_pact'){
+    const loss=Math.max(1,Math.round(playerRef.maxHp*.10));playerRef.maxHp=Math.max(1,playerRef.maxHp-loss);playerRef.hp=Math.min(playerRef.hp,playerRef.maxHp);
+  }
   if(spec.id==='universal_merchant_bag'&&rarity==='legendary')e.merchantRerollDiscount=true;
   if(spec.id==='universal_runic_magnet'&&rarity==='legendary')e.magnetPull=true;
   e.lastDamageAt=e.lastDamageAt||-Infinity;
@@ -359,7 +373,7 @@ function renderShopGrid(){
   const rarityFlavour={common:'COMUM',uncommon:'INCOMUM',rare:'RARO',epic:'ÉPICO',legendary:'LENDÁRIO'};
   const titleEl=document.getElementById('shop-title-text');
   if(titleEl&&def){
-    const titleIcons={mage:'orb',warrior:'sword',archer:'bow',viking:'axe'};
+    const titleIcons={mage:'orb',warrior:'sword',archer:'bow',viking:'axe',necromancer:'skull'};
     const p2Title=gameMode===2?` + ${CLASS_DEFS[selectedClass.p2]?.name||'P2'}`:'';
     titleEl.innerHTML=`<span class="pixel-inline">${gamePixelIconHtml(titleIcons[cid]||'hammer',26)} Arsenal da ${def.name}${p2Title}</span>`;
   }

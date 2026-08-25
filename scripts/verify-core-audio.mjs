@@ -104,7 +104,7 @@ vm.createContext(sandbox);
 vm.runInContext(source,sandbox,{filename:'src/core/audio-system.js'});
 const audio=vm.runInContext('Audio',sandbox);
 
-assert(Object.keys(audio).join(',')==='init,stopMusic,playMenuMusic,playCryptMusic,playHauntedForestMusic,playFrozenMusic,playFossilDesertMusic,playAncientVolcanoMusic,playCombatMusic,playBossMusic,playCampMusic,playDeathStinger,playBossDefeat,playBossSpawn,playDeityArrival,playChapterIntro,sfxSword,sfxBow,sfxAxe,sfxHit,sfxPlayerHit,sfxCoin,sfxEnemyDeath,sfxLevelUp,sfxWaveClear,sfxMenuClick,sfxShopBuy,sfxPetCapture,setMusicVol,setSfxVol,setAttackVol,setAttackEnabled,toggle,enabled,attackEnabled,activeMusicTheme','API publica do Audio foi alterada');
+assert(Object.keys(audio).join(',')==='init,stopMusic,playMenuMusic,playCryptMusic,playHauntedForestMusic,playFrozenMusic,playFossilDesertMusic,playAncientVolcanoMusic,playCombatMusic,playBossMusic,playCampMusic,playDeathStinger,playBossDefeat,playBossSpawn,playDeityArrival,playChapterIntro,sfxSword,sfxBow,sfxAxe,sfxHit,sfxPlayerHit,sfxCoin,sfxEnemyDeath,sfxLevelUp,sfxWaveClear,sfxMenuClick,sfxShopBuy,sfxPetCapture,sfxNecroSoul,sfxNecroSummon,sfxNecroCurse,sfxNecroScythe,sfxNecroBell,setMusicVol,setSfxVol,setAttackVol,setAttackEnabled,toggle,enabled,attackEnabled,activeMusicTheme','API publica do Audio foi alterada');
 assert(audio.enabled===true&&audio.attackEnabled===true&&audio.activeMusicTheme==='none','estado inicial do Audio foi alterado');
 
 audio.init();
@@ -122,6 +122,14 @@ audio.setAttackEnabled(false);
 assert(audio.attackEnabled===false&&gains[3].gain.value===0,'mute de ataque deixou de zerar o canal');
 audio.setAttackEnabled(true);
 assert(audio.attackEnabled===true&&gains[3].gain.value===.41,'reativar ataque nao restaura o volume configurado');
+
+const necroNodesBefore=allNodes.length;
+audio.sfxNecroSoul();
+audio.sfxNecroSummon();
+audio.sfxNecroCurse();
+audio.sfxNecroScythe();
+audio.sfxNecroBell();
+assert(allNodes.length>necroNodesBefore,'efeitos sonoros do Necromante nao criaram fontes de audio');
 
 audio.playMenuMusic();
 assert(audio.activeMusicTheme==='menu'&&document.documentElement.dataset.musicTheme==='menu','musica do menu nao registra o tema atual');

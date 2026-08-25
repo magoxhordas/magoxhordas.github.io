@@ -916,6 +916,52 @@ const Audio = (function(){
     });
   }
 
+  // Assinaturas curtas do Necromante. Elas usam a mesma cadeia de volume dos
+  // demais efeitos e evitam graves/subgraves excessivos para continuarem
+  // legiveis quando varias invocacoes estiverem atacando.
+  function sfxNecroSoul(){
+    if(!ctx||!enabled) return;
+    const g=ctx.createGain();g.gain.value=.24;g.connect(sfxGain);const t=ctx.currentTime;
+    osc(392,'sine',.12,g,t,.20,.004,.17);
+    osc(587.33,'sine',.10,g,t+.035,.25,.003,.22);
+    osc(987.77,'triangle',.045,g,t+.09,.22,.002,.19);
+  }
+
+  function sfxNecroSummon(){
+    if(!ctx||!enabled) return;
+    const g=ctx.createGain();g.gain.value=.30;g.connect(sfxGain);const t=ctx.currentTime;
+    noise(.25,g,t,.16,620,1.15);
+    osc(118,'triangle',.18,g,t,.32,.006,.27);
+    osc(176,'sine',.075,g,t+.08,.38,.02,.31);
+  }
+
+  function sfxNecroCurse(){
+    if(!ctx||!enabled||!attackEnabled) return;
+    const g=ctx.createGain();g.gain.value=.22;g.connect(attackGain);const t=ctx.currentTime;
+    const o=ctx.createOscillator();o.type='triangle';o.frequency.setValueAtTime(430,t);o.frequency.exponentialRampToValueAtTime(125,t+.24);
+    const og=ctx.createGain();og.gain.setValueAtTime(.17,t);og.gain.exponentialRampToValueAtTime(.001,t+.25);
+    o.connect(og);og.connect(g);o.start(t);o.stop(t+.27);
+    noise(.11,g,t+.02,.20,1150,2.4);
+  }
+
+  function sfxNecroScythe(){
+    if(!ctx||!enabled||!attackEnabled) return;
+    const g=ctx.createGain();g.gain.value=.28;g.connect(attackGain);const t=ctx.currentTime;
+    noise(.32,g,t,.16,2400,1.35);
+    const o=ctx.createOscillator();o.type='sine';o.frequency.setValueAtTime(760,t);o.frequency.exponentialRampToValueAtTime(210,t+.18);
+    const og=ctx.createGain();og.gain.setValueAtTime(.12,t);og.gain.exponentialRampToValueAtTime(.001,t+.20);
+    o.connect(og);og.connect(g);o.start(t);o.stop(t+.22);
+  }
+
+  function sfxNecroBell(){
+    if(!ctx||!enabled) return;
+    const g=ctx.createGain();g.gain.value=.25;g.connect(sfxGain);const t=ctx.currentTime;
+    [[220,1],[440,.43],[659.25,.22],[933.08,.10]].forEach(([freq,mix],index)=>{
+      osc(freq,index===0?'triangle':'sine',.18*mix,g,t+index*.008,.72,.003,.64);
+    });
+    noise(.07,g,t+.02,.18,760,3.1);
+  }
+
   // Assinatura curta de aparicao divina (cerca de 2 s). A base e comum a
   // todos os fornecedores; os deuses gregos recebem um acento reconhecivel.
   function deitySweep(t,fromFreq,toFreq,dur,vol,dest,type='sine',attack=0.012){
@@ -1204,6 +1250,7 @@ const Audio = (function(){
     playDeathStinger, playBossDefeat, playBossSpawn, playDeityArrival, playChapterIntro,
     sfxSword, sfxBow, sfxAxe, sfxHit, sfxPlayerHit, sfxCoin,
     sfxEnemyDeath, sfxLevelUp, sfxWaveClear, sfxMenuClick, sfxShopBuy, sfxPetCapture,
+    sfxNecroSoul, sfxNecroSummon, sfxNecroCurse, sfxNecroScythe, sfxNecroBell,
     setMusicVol, setSfxVol, setAttackVol, setAttackEnabled, toggle,
     get enabled(){ return enabled; },
     get attackEnabled(){ return attackEnabled; },
