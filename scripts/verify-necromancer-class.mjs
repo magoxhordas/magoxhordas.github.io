@@ -93,6 +93,8 @@ system.onBossDamaged(owner,boss,1000,0);
 assert(system.stateFor(owner).soulOrbs.length===11,'atravessar cinco faixas do chefe deve gerar no maximo cinco almas');
 system.onBossDamaged(owner,boss,1000,0);
 assert(system.stateFor(owner).soulOrbs.length===11,'faixas do chefe nao podem gerar almas repetidas');
+system.onBossDamaged(owner,{x:230,y:180,hp:40,maxHp:40,type:'skeleton'},40,0);
+assert(system.stateFor(owner).soulOrbs.length===11,'inimigos comuns nao podem gerar almas de marcos de chefe');
 
 for(let index=0;index<12;index++)system.onEnemyDeath({x:index,y:index,hp:0,maxHp:50,type:'enemy'},owner,'direct','necromancer_basic');
 assert(system.stateFor(owner).corpses.length<=8,'cadaveres excederam o limite-base');
@@ -137,6 +139,10 @@ includesAll(html,[
   "const extension='png'",
   "necromancer: make('assets/heroes/necromancer/', 64, 52, 6, 9)",
   "SceneManager.getCurrent()===null",
+  'NecromancerSystem.onBossDamaged(player,target,beforeHp,Number(target.hp||0))',
+  'NecromancerSystem.onBossDamaged(p.owner,petBoss,before,petBoss.hp)',
+  'NecromancerSystem.onProjectileHit(p,petBoss,dmg)',
+  "necromancer:'shadow'",
   'function drawNecromancerSummon(renderCtx,summon,time)',
   'PAL_NECRO_SKELETON',
   'PAL_NECRO_SPIRIT',
