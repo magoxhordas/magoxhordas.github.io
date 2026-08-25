@@ -84,6 +84,8 @@ const arenaBounds=between(html,'const CAMPAIGN_ARENA_BOUNDS=Object.freeze({','})
 for(const arena of ['crypt','forest','snow','desert','volcano']){
   assert(new RegExp(`\\b${arena}:\\s*\\{`).test(arenaBounds),`arena da campanha ausente: ${arena}`);
 }
+assert(/crypt:\s*\{[^}]*top:240/.test(arenaBounds),'limite do castelo permite inimigos sobre a muralha/portao');
+assert(html.includes('const yMin=arenaBounds.top+8;'),'spawn de inimigo nao respeita o limite visual da arena');
 const chapters=between(campaignSource,'const CAMPAIGN_CHAPTERS={','};','capitulos da campanha');
 for(const [wave,arena] of [[1,'crypt'],[6,'forest'],[11,'snow'],[16,'desert'],[21,'volcano']]){
   assert(new RegExp(`${wave}:\\s*\\{[^}]*arena:['"]${arena}['"]`).test(chapters),`capitulo da onda ${wave} nao aponta para ${arena}`);

@@ -23,7 +23,10 @@ Quinta classe jogável do Mago x Hordas. O Necromante troca dano direto por cont
 
 A classe participa da Campanha, Boss Rush, Cooperativo e Masmorra. A loja oferece oito armas exclusivas com cinco raridades e oito buffs de compra única. O Códex exibe a classe e as armas, e o HUD de almas/cadáveres/armada só aparece para um Necromante ativo.
 
-O herói usa a silhueta pixel-art de reserva do projeto com paleta própria em todas as direções e ataques. Um conjunto PNG exclusivo com animações `idle`, `walk`, `attack` e `death` pode substituir esse fallback futuramente sem alterar o sistema da classe.
+O herói usa o conjunto PNG dedicado em `assets/heroes/necromancer`, com parado,
+caminhada e ataque nas três direções consumidas pelo renderer. Os quadros são
+normalizados para 64x64 e ancorados na linha dos pés pelo script
+`scripts/prepare-necromancer-hero-art.py`, preservando os arquivos de origem.
 
 Validação dedicada: `node scripts/verify-necromancer-class.mjs`.
 

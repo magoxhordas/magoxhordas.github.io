@@ -52,6 +52,16 @@ for(const spec of data.WEAPON_SPECS){
   assert(svg.includes('<svg')&&svg.includes('viewBox=')&&!svg.includes('<image'),'icone deve ser SVG vetorial/pixel-art independente, sem recorte raster');
 }
 
+for(const direction of ['north','side','south']){
+  assert(fs.existsSync(path.join(root,'assets','heroes','necromancer',`idle_${direction}.png`)),`sprite parado ausente: ${direction}`);
+  for(let frame=0;frame<6;frame++){
+    assert(fs.existsSync(path.join(root,'assets','heroes','necromancer',`walk_${direction}_${frame}.png`)),`caminhada ausente: ${direction} ${frame}`);
+  }
+  for(let frame=0;frame<9;frame++){
+    assert(fs.existsSync(path.join(root,'assets','heroes','necromancer',`atk_${direction}_${frame}.png`)),`ataque ausente: ${direction} ${frame}`);
+  }
+}
+
 const makeOwner=(idx=0)=>({idx,classId:'necromancer',x:100+idx*40,y:120,hp:98,maxHp:98,dmg:21,dead:false,shopEffects:{}});
 const owner=makeOwner(0);
 const owner2=makeOwner(1);
@@ -112,6 +122,7 @@ includesAll(html,[
   'NecromancerSystem.update(dt)',
   'NecromancerSystem.draw(ctx,t)',
   "safe.startsWith('necromancer_')?'svg':'png'",
+  "necromancer: make('assets/heroes/necromancer/', 64, 52, 6, 9)",
   "SceneManager.getCurrent()===null",
 ],'selecao, HUD, loop, desenho ou icones do Necromante nao estao conectados');
 includesAll(campaign,['NecromancerSystem.clearWorld({preservePermanent:true})'],'troca de mapa da campanha nao limpa recursos transitorios');

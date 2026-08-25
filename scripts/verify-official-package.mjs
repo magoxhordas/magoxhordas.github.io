@@ -35,7 +35,7 @@ const literalAssets=new Set(
 );
 for(const asset of literalAssets) required(asset);
 
-const heroes={mage:[6,6],warrior:[6,9],archer:[6,9],viking:[6,9]};
+const heroes={mage:[6,6],warrior:[6,9],archer:[6,9],viking:[6,9],necromancer:[6,9]};
 for(const [hero,[walkFrames,attackFrames]] of Object.entries(heroes)){
   required(`assets/heroes/${hero}/icon.png`);
   for(const direction of ['north','side','south']){

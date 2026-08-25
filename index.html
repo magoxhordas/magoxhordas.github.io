@@ -13425,6 +13425,7 @@ const HERO_IMG_SETS = (() => {
     warrior: make('assets/heroes/warrior/', 68, 56, 6, 9),
     archer:  make('assets/heroes/archer/',  60, 50, 6, 9),
     viking:  make('assets/heroes/viking/',  68, 56, 6, 9),
+    necromancer: make('assets/heroes/necromancer/', 64, 52, 6, 9),
   };
   // Recorte util (uniao de parado+andar): tira a moldura vazia do quadro para
   // o personagem preencher medalhoes e o heroi do menu.
@@ -13433,6 +13434,7 @@ const HERO_IMG_SETS = (() => {
     warrior: {x:13, y:8, w:42, h:51},
     archer:  {x:13, y:6, w:37, h:47},
     viking:  {x:15, y:9, w:38, h:50},
+    necromancer:{x:15,y:7, w:34, h:46},
   };
   for(const k in crops){ sets[k].crop = crops[k]; sets[k].icon = 'icon.png'; }
   return sets;
@@ -15492,7 +15494,9 @@ class Player {
 // Limites exclusivos da campanha. O cenário é visual, mas áreas altas, bordas e
 // rios de lava não podem receber jogadores, inimigos ou chefes.
 const CAMPAIGN_ARENA_BOUNDS=Object.freeze({
-  crypt:  {left:38,right:38,top:205,bottom:24},
+  // A muralha do castelo termina em y~228 no fundo oficial. A folga extra
+  // impede inimigos e chefes de entrarem no portao/parede antes do combate.
+  crypt:  {left:38,right:38,top:240,bottom:24},
   forest: {left:38,right:38,top:205,bottom:24},
   snow:   {left:38,right:38,top:205,bottom:24},
   desert: {left:38,right:38,top:205,bottom:24},
@@ -16341,7 +16345,9 @@ function pickType(wave){
 }
 
 function spawnEnemy(){
-  const m=48, yMin=210; // yMin = safely on the ground, below the castle wall
+  const m=48;
+  const arenaBounds=CAMPAIGN_ARENA_BOUNDS[currentArena]||CAMPAIGN_ARENA_BOUNDS.castle;
+  const yMin=arenaBounds.top+8; // sempre no piso, nunca sobre muralha/portao
   const side=Math.floor(Math.random()*4);
   let x,y;
   if(side===0){x=m+Math.random()*(W-m*2); y=yMin;}           // top edge
