@@ -110,6 +110,41 @@ for(let index=0;index<5;index++)system.spawnSummon(owner2,'skeleton_archer',{per
 assert([...system.states.values()].reduce((total,state)=>total+state.summons.length,0)===12,'limite global cooperativo deve bloquear a decima terceira invocacao');
 assert(system.spawnSummon(owner2,'spirit',{duration:5000,family:'overflow'})===null,'decima terceira invocacao cooperativa nao foi bloqueada');
 
+// O jogador continua atravessando a formacao sem travar, mas o runtime afasta
+// sprites sobrepostos para que heroi e invocacoes nunca fiquem no mesmo ponto.
+const formationOwner=makeOwner(0);
+system.resetRun([formationOwner]);
+const firstFormation=system.spawnSummon(formationOwner,'skeleton_warrior',{permanent:true,family:'formation-a'});
+const secondFormation=system.spawnSummon(formationOwner,'skeleton_archer',{permanent:true,family:'formation-b'});
+firstFormation.x=secondFormation.x=formationOwner.x;firstFormation.y=secondFormation.y=formationOwner.y;
+system.configure({getTargets:()=>[]});
+system.update(.016);
+assert(Math.hypot(firstFormation.x-formationOwner.x,firstFormation.y-formationOwner.y)>=25.9,'invocacao permaneceu sobreposta ao jogador');
+assert(Math.hypot(secondFormation.x-formationOwner.x,secondFormation.y-formationOwner.y)>=25.9,'segunda invocacao permaneceu sobreposta ao jogador');
+assert(Math.hypot(firstFormation.x-secondFormation.x,firstFormation.y-secondFormation.y)>=19.9,'invocacoes permaneceram empilhadas');
+
+const formationState=system.stateFor(formationOwner);
+formationState.corpses.push({x:20,y:20,ttl:1400,phase:0,type:'enemy',elite:false});
+assert(system.getHud(formationOwner).nextCorpseMs===1400,'HUD nao informa a expiracao do proximo cadaver');
+for(let frame=0;frame<10;frame++)system.update(.05);
+assert(system.getHud(formationOwner).nextCorpseMs===900,'contagem regressiva do cadaver nao acompanha o tempo da partida');
+for(let frame=0;frame<18;frame++)system.update(.05);
+assert(system.getHud(formationOwner).corpses===0,'cadaver expirado permaneceu contado no HUD');
+
+// Stress curto: exercito cheio, muitos alvos e varios segundos de atualizacao
+// nao podem criar coordenadas invalidas nem prender o loop da partida.
+const stressOwner=makeOwner(0);stressOwner.shopEffects.necroPermanentCap=3;
+system.resetRun([stressOwner]);
+const stressSummons=[];
+for(let index=0;index<5;index++)stressSummons.push(system.spawnSummon(stressOwner,index%2?'skeleton_archer':'skeleton_warrior',{permanent:true,family:`stress-p-${index}`}));
+for(let index=0;index<3;index++)stressSummons.push(system.spawnSummon(stressOwner,'reanimated',{duration:12000,family:`stress-t-${index}`}));
+for(const summon of stressSummons){summon.x=stressOwner.x;summon.y=stressOwner.y;}
+const stressTargets=Array.from({length:80},(_,index)=>({x:180+(index%10)*25,y:60+Math.floor(index/10)*28,hp:500,maxHp:500,dead:false,damage:4,takeDmg(amount){this.hp-=amount;if(this.hp<=0)this.dead=true;}}));
+system.configure({getTargets:()=>stressTargets,spawnParts:()=>{},notifyHit:()=>{}});
+for(let frame=0;frame<600;frame++)system.update(.016);
+assert(stressSummons.every(summon=>Number.isFinite(summon.x)&&Number.isFinite(summon.y)),'stress do exercito produziu coordenadas invalidas');
+assert(stressSummons.every(summon=>Math.hypot(summon.x-stressOwner.x,summon.y-stressOwner.y)>=25.9),'stress do exercito voltou a sobrepor o jogador');
+
 includesAll(systemSource,[
   'soulOrbs:[],corpses:[],summons:[],totems:[]',
   "source==='summon'||source==='direct'",
@@ -127,6 +162,8 @@ includesAll(systemSource,[
   'noNecroRewards:true',
   'visualTime:Math.random()*620',
   'deps.drawSummon?.(ctx,summon,time)===true',
+  'separateSummons(state)',
+  'nextCorpseMs',
 ],'runtime perdeu recursos, anti-recursao, persistencia entre mapas ou regras de combate');
 includesAll(html,[
   'id="necromancer-resource-hud"',
@@ -143,6 +180,9 @@ includesAll(html,[
   'PAL_NECRO_REANIMATED',
   'PAL_NECRO_ABOMINATION',
   'PAL_NECRO_DKNIGHT',
+  'CAJADO: 2 ALMAS → ESQUELETO',
+  'necro-army-temp',
+  'necromancer-system.js?v=20260825-mechanics',
 ],'selecao, HUD, loop, desenho ou icones do Necromante nao estao conectados');
 includesAll(artPrep,[
   'Idle_walk_north.gif',
@@ -163,6 +203,8 @@ includesAll(dungeon,[
   "visualTime:0,attackAnim:0,hurtAnim:0,spawnAnim:420,moving:false,facing:'right'",
   "type:summon.type==='skeleton'?'skeleton_warrior':summon.type",
   "drawNecromancerSummon(c,screenSummon,ts)===true",
+  '_necroSeparateSummons',
+  '+${temporary}/3 TEMP',
 ],'Masmorra nao cobre recursos, invocacoes, aggro e desenho detalhado do Necromante');
 includesAll(shop,data.SHOP_BUFFS.map(buff=>buff.id),'efeitos exclusivos do Necromante nao estao implementados na loja');
 includesAll(codex,['necromancer:\'Necromante\'','Necromante · Invocações','necromancer:\'#70d98b\''],'Códex nao cataloga a quinta classe corretamente');

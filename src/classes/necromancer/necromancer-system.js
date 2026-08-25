@@ -278,6 +278,37 @@
       }
     }
   }
+  function separateSummons(state){
+    const owner=state.owner;
+    const active=state.summons.filter(summon=>!summon.dead);
+    if(!owner)return;
+    // As invocacoes continuam sem colisao solida (nao prendem o jogador), mas
+    // cedem espaco para que heroi e exercito nunca ocupem o mesmo desenho.
+    const separateFromOwner=(summon,index)=>{
+      let dx=summon.x-owner.x,dy=summon.y-owner.y,distance=Math.hypot(dx,dy);
+      const minimum=summon.type==='abomination'||summon.type==='death_knight'?31:26;
+      if(distance>=minimum)return;
+      if(distance<.001){
+        const angle=(summon.phase||index*1.7)+index*.83;
+        dx=Math.cos(angle);dy=Math.sin(angle);distance=1;
+      }
+      const push=minimum-distance;
+      summon.x+=dx/distance*push;summon.y+=dy/distance*push;
+    };
+    active.forEach(separateFromOwner);
+    // Evita pilhas ilegíveis de summons sem transformar a formação em parede.
+    for(let left=0;left<active.length;left++)for(let right=left+1;right<active.length;right++){
+      const a=active[left],b=active[right];
+      let dx=b.x-a.x,dy=b.y-a.y,distance=Math.hypot(dx,dy);
+      const minimum=(a.type==='abomination'||b.type==='abomination'||a.type==='death_knight'||b.type==='death_knight')?24:20;
+      if(distance>=minimum)continue;
+      if(distance<.001){const angle=(left+1)*(right+2)*1.137;dx=Math.cos(angle);dy=Math.sin(angle);distance=1;}
+      const push=(minimum-distance)*.5;
+      a.x-=dx/distance*push;a.y-=dy/distance*push;
+      b.x+=dx/distance*push;b.y+=dy/distance*push;
+    }
+    active.forEach(separateFromOwner);
+  }
   function updateTotem(state,totem,dt,targets){
     totem.duration-=dt*1000;totem.attackTimer-=dt*1000;totem.buffTimer=Math.max(0,(totem.buffTimer||0)-dt*1000);if(totem.duration<=0){totem.dead=true;return;}
     if(totem.attackTimer<=0){
@@ -294,14 +325,15 @@
     }
   }
   function update(dt){
-    const targets=deps.getTargets?deps.getTargets():[];
+    const step=clamp(Number(dt)||0,0,.05);
+    const targets=(deps.getTargets?deps.getTargets():[]).filter(target=>target&&Number.isFinite(target.x)&&Number.isFinite(target.y));
     for(const state of states.values()){
       const owner=state.owner;if(!owner||owner.dead)continue;
       const attract=130+(effect(owner).necroSoulCap?55:0);
       for(const orb of state.soulOrbs){
-        orb.ttl-=dt*1000;orb.phase+=dt*4;if(orb.ttl<=0){orb.dead=true;continue;}
+        orb.ttl-=step*1000;orb.phase+=step*4;if(orb.ttl<=0){orb.dead=true;continue;}
         const dx=owner.x-orb.x,dy=owner.y-orb.y,distance=Math.max(1,Math.hypot(dx,dy));
-        if(distance<attract){const speed=100+(attract-distance)*2.5;orb.x+=dx/distance*speed*dt;orb.y+=dy/distance*speed*dt;}
+        if(distance<attract){const speed=100+(attract-distance)*2.5;orb.x+=dx/distance*speed*step;orb.y+=dy/distance*speed*step;}
         if(distance<23){
           const before=state.souls;state.souls=Math.min(soulCap(owner),state.souls+1);orb.dead=true;
           if(state.souls>before&&owner._necroScytheCollectHeal)collectHeal(owner,1);
@@ -310,11 +342,12 @@
         }
       }
       state.soulOrbs=state.soulOrbs.filter(orb=>!orb.dead);
-      for(const corpse of state.corpses)corpse.ttl-=dt*1000;
+      for(const corpse of state.corpses)corpse.ttl-=step*1000;
       state.corpses=state.corpses.filter(corpse=>corpse.ttl>0);
-      for(const summon of state.summons)updateSummon(state,summon,dt,targets);
+      for(const summon of state.summons)updateSummon(state,summon,step,targets);
       state.summons=state.summons.filter(summon=>!summon.dead);
-      for(const totem of state.totems)updateTotem(state,totem,dt,targets);
+      separateSummons(state);
+      for(const totem of state.totems)updateTotem(state,totem,step,targets);
       state.totems=state.totems.filter(totem=>!totem.dead);
     }
   }
@@ -330,7 +363,8 @@
   }
   function getHud(owner){
     const state=stateFor(owner,false);if(!state)return null;
-    return {souls:state.souls,soulCap:soulCap(owner),corpses:state.corpses.length,corpseCap:corpseCap(owner),permanent:state.summons.filter(s=>s.permanent).length,permanentCap:permanentCap(owner),temporary:state.summons.filter(s=>!s.permanent).length};
+    const nextCorpseMs=state.corpses.length?Math.max(0,Math.min(...state.corpses.map(corpse=>corpse.ttl))):0;
+    return {souls:state.souls,soulCap:soulCap(owner),corpses:state.corpses.length,corpseCap:corpseCap(owner),nextCorpseMs,permanent:state.summons.filter(s=>s.permanent).length,permanentCap:permanentCap(owner),temporary:state.summons.filter(s=>!s.permanent).length,temporaryCap:CFG.temporaryCap};
   }
 
   function applyMark(target,tier,options={}){

@@ -1434,7 +1434,10 @@ const DNG={
       necroRow.style.display=this.pClassId==='necromancer'?'flex':'none';
       if(this.pClassId==='necromancer'){
         const permanent=this._necroSummons.filter(s=>s.permanent&&!s.dead).length;
-        necroRow.textContent=`✦ ALMAS ${this._necroSouls}/${this._necroSoulCap} · ☠ CADÁVERES ${this._necroCorpses.length}/8 · ⚔ EXÉRCITO ${permanent}/2`;
+        const temporary=this._necroSummons.filter(s=>!s.permanent&&!s.dead).length;
+        const corpseLife=this._necroCorpses.length?` (${Math.max(1,Math.ceil(Math.min(...this._necroCorpses.map(c=>c.ttl))/1000))}s)`:'';
+        necroRow.textContent=`✦ ALMAS ${this._necroSouls}/${this._necroSoulCap} · ☠ CADÁVERES ${this._necroCorpses.length}/8${corpseLife} · ⚔ EXÉRCITO ${permanent}/2 +${temporary}/3 TEMP`;
+        necroRow.title='Almas criam esqueletos; cadáveres expiram e são reanimados automaticamente; EXÉRCITO separa permanentes de temporários.';
       }
     }
 
@@ -1529,6 +1532,27 @@ const DNG={
     }
     return best;
   },
+  _necroSeparateSummons(){
+    const active=this._necroSummons.filter(s=>!s.dead);
+    const separateFromPlayer=(summon,index)=>{
+      let dx=summon.x-this.px,dy=summon.y-this.py,d=Math.hypot(dx,dy);
+      const minimum=summon.type==='abomination'||summon.type==='death_knight'?31:26;
+      if(d>=minimum)return;
+      if(d<.001){const angle=(summon.phase||index*1.7)+index*.83;dx=Math.cos(angle);dy=Math.sin(angle);d=1;}
+      const push=minimum-d,nx=summon.x+dx/d*push,ny=summon.y+dy/d*push;
+      if(this._tw(Math.floor(nx/DTS),Math.floor(ny/DTS))){summon.x=nx;summon.y=ny;}
+    };
+    active.forEach(separateFromPlayer);
+    for(let left=0;left<active.length;left++)for(let right=left+1;right<active.length;right++){
+      const a=active[left],b=active[right];let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);const minimum=20;
+      if(d>=minimum)continue;
+      if(d<.001){const angle=(left+1)*(right+2)*1.137;dx=Math.cos(angle);dy=Math.sin(angle);d=1;}
+      const push=(minimum-d)*.5,ax=a.x-dx/d*push,ay=a.y-dy/d*push,bx=b.x+dx/d*push,by=b.y+dy/d*push;
+      if(this._tw(Math.floor(ax/DTS),Math.floor(ay/DTS))){a.x=ax;a.y=ay;}
+      if(this._tw(Math.floor(bx/DTS),Math.floor(by/DTS))){b.x=bx;b.y=by;}
+    }
+    active.forEach(separateFromPlayer);
+  },
   _necroUpdate(dt){
     if(this.pClassId!=='necromancer')return;
     this._necroSummonTimer-=dt;this._necroRaiseTimer-=dt;this._necroHudTimer-=dt;
@@ -1584,6 +1608,7 @@ const DNG={
         summon.x+=dx/d*summon.speed*(dt/16.67);summon.y+=dy/d*summon.speed*(dt/16.67);summon.moving=true;summon.facing=dx<0?'left':'right';
       }
     }
+    this._necroSeparateSummons();
     this._necroSummons=this._necroSummons.filter(s=>!s.dead);
     if(this._necroHudTimer<=0){this._necroHudTimer=160;this._updateHUD();}
   },

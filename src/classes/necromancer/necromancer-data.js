@@ -8,7 +8,7 @@
     badge:'NECROMANCIA',desc:'Invoca mortos, recolhe almas e controla o campo.',
     stats:Object.freeze({vida:43,dano:72,veloc:55,crit:42}),
     ability:'Senhor dos Mortos',
-    abilityDesc:'Almas alimentam invocacoes; inimigos podem deixar cadaveres.',
+    abilityDesc:'Cajado usa Almas; Sino transforma Cadaveres temporarios em exercito.',
     baseHp:98,baseDmg:21,baseSpd:132,baseAtk:760,baseRange:300,baseMulti:0,
     abilityKey:'necromancy',previewPalKey:'PAL_NECROMANCER',
     shopItems:Object.freeze([]),
