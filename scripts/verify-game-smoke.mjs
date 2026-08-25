@@ -69,13 +69,15 @@ includesAll(applicationSource,[
   'window.CampV2 = (function(){',
 ],'entradas do menu');
 
-// Selecao: as quatro classes e seus contratos basicos permanecem registradas.
+// Selecao: as quatro classes originais permanecem registradas e o Necromante
+// entra como quinta classe sem reescrever os contratos anteriores.
 const classDefs=between(html,'const CLASS_DEFS = {','const classes=','classes');
 for(const [id,name] of Object.entries({mage:'Mago',archer:'Arqueiro',warrior:'Guerreiro',viking:'Viking'})){
   assert(new RegExp(`\\b${id}:\\s*\\{`).test(classDefs),`classe ausente: ${id}`);
   assert(classDefs.includes(`name:'${name}'`),`nome da classe foi alterado: ${name}`);
 }
-assert(/const classes\s*=\s*\[['"]mage['"],['"]warrior['"],['"]archer['"],['"]viking['"]\]/.test(html),'ordem/lista de classes foi alterada');
+assert(html.includes('CLASS_DEFS.necromancer=NecromancerData.CLASS_DEF;'),'classe ausente: necromancer');
+assert(/const classes\s*=\s*\[['"]mage['"],['"]warrior['"],['"]archer['"],['"]viking['"],['"]necromancer['"]\]/.test(html),'ordem/lista de classes foi alterada');
 
 // Campanha: biomas e marcos de capitulos devem continuar iguais.
 const arenaBounds=between(html,'const CAMPAIGN_ARENA_BOUNDS=Object.freeze({','});','arenas da campanha');

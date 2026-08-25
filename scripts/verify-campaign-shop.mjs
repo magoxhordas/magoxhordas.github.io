@@ -5,6 +5,7 @@ import vm from 'node:vm';
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const uiSource=fs.readFileSync(new URL('../src/ui/menu-codex-system.js',import.meta.url),'utf8');
 assert.match(uiSource,/ITENS UNIVERSAIS DA LOJA/,'O Códex deve listar os itens universais da campanha.');
+const necromancerDataSource=fs.readFileSync(new URL('../src/classes/necromancer/necromancer-data.js',import.meta.url),'utf8');
 const shopDataSource=fs.readFileSync(new URL('../src/shop/shop-data.js',import.meta.url),'utf8');
 const shopSystemSource=fs.readFileSync(new URL('../src/shop/shop-system.js',import.meta.url),'utf8');
 assert.match(shopDataSource,/const CAMPAIGN_CLASS_BUFFS=/,'Os dados da loja da campanha não foram encontrados.');
@@ -26,7 +27,7 @@ const context={
   RARITY_NAMES:{common:'Comum',uncommon:'Incomum',rare:'Raro',epic:'Épico',legendary:'Lendário'},
   RARITY_COLORS:{common:'#aaa',uncommon:'#2d6',rare:'#4af',epic:'#c6f',legendary:'#fc0'},
   WEAPON_DEFS:weaponDefs,
-  CLASS_DEFS:{mage:{name:'Mago'},warrior:{name:'Guerreiro'},archer:{name:'Arqueiro'},viking:{name:'Viking'}},
+  CLASS_DEFS:{mage:{name:'Mago'},warrior:{name:'Guerreiro'},archer:{name:'Arqueiro'},viking:{name:'Viking'},necromancer:{name:'Necromante'}},
   selectedClass:{p1:'mage',p2:'warrior'},gameMode:1,wave:1,difficulty:'medium',
   DIFF:{medium:{shopCap:3,shopBase:1,shopWave:.02,shopBiome:.05,rerollBase:2,rerollWave:.2}},
   player:{idx:0,classId:'mage',hp:100,maxHp:100,speed:100,dmgReduce:0,shopEffects:{}},player2:null,
@@ -42,11 +43,12 @@ const context={
 };
 vm.createContext(context);
 context.window=context;
+vm.runInContext(necromancerDataSource,context,{filename:'necromancer-data.js'});
 vm.runInContext(shopDataSource,context,{filename:'shop-data.js'});
 vm.runInContext(shopSystemSource,context,{filename:'shop-system.js'});
 
 const counts=vm.runInContext(`({classes:Object.fromEntries(Object.entries(CAMPAIGN_CLASS_BUFFS).map(([id,list])=>[id,list.length])),universals:CAMPAIGN_UNIVERSAL_ITEMS.length,allFive:Object.values(CAMPAIGN_CLASS_BUFFS).flat().concat(CAMPAIGN_UNIVERSAL_ITEMS).every(item=>item.values.length===5)})`,context);
-assert.deepEqual({...counts.classes},{mage:8,warrior:8,archer:8,viking:8});
+assert.deepEqual({...counts.classes},{mage:8,warrior:8,archer:8,viking:8,necromancer:8});
 assert.equal(counts.universals,8);
 assert.equal(counts.allFive,true,'Todo item precisa ter Comum, Incomum, Raro, Épico e Lendário.');
 
@@ -77,4 +79,4 @@ const coop=vm.runInContext(`shopPool.map(item=>({category:item?.category,pidx:it
 assert.equal(coop.filter(item=>item.category==='universal').length,1);
 assert.ok(coop.filter(item=>item.category!=='universal').every(item=>item.pidx===0||item.pidx===1),'Ofertas de classe no cooperativo precisam indicar P1 ou P2.');
 
-console.log('OK: 32 buffs de classe, 8 universais, 5 raridades, composição da loja e não repetição validados.');
+console.log('OK: 40 buffs de classe, 8 universais, 5 raridades, composição da loja e não repetição validados.');
