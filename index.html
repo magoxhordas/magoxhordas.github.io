@@ -11549,7 +11549,7 @@ function campaignWeaponIconHtml(type,size=46,extraClass='',ringColor=''){
   if(!safe)return gamePixelIconHtml('orb',size,null,extraClass);
   const px=Math.max(20,Number(size)||46);
   const ring=ringColor||WEAPON_DEFS[safe].color||'#c8a84b';
-  const extension=safe.startsWith('necromancer_')?'svg':'png';
+  const extension='png';
   return `<span class="campaign-weapon-medallion ${extraClass}" style="--weapon-size:${px}px;--weapon-ring:${ring};" aria-hidden="true"><img class="campaign-weapon-art" src="assets/weapons/${safe}.${extension}" alt=""></span>`;
 }
 function campaignDamageElement(source=''){
@@ -12014,6 +12014,86 @@ const campaignWeaponSystem=CampaignWeaponSystem.create({
   applyWeaponSlow,
   isPlaying:()=>state==='playing',
 });
+
+// As invocacoes do Necromante reutilizam os modelos detalhados dos inimigos,
+// mas recebem paletas exclusivas e leitura visual profana. Assim continuam
+// reconheciveis em combate sem parecerem inimigos comuns do mesmo bioma.
+const PAL_NECRO_SKELETON={
+  'X':'#100a18','W':'#d2c8d8','w':'#91849c','s':'#5c5068',
+  'E':'#7dff8a','i':'#d7ffd8','A':'#443052','a':'#2b1d38',
+  'C':'#68408a','c':'#352044','Y':'#b486f4','R':'#541c69','r':'#2d103a',
+};
+const PAL_NECRO_SPIRIT={
+  'B':'#6e3aa3','b':'#4b247a','D':'#2b163f','d':'#9f75d7',
+  'L':'#d9c7ff','l':'#b99ae8','E':'#8dffba','e':'#d7ffe5','i':'#ffffff',
+  'T':'#3f1d65','t':'#67339a','W':'#cbb2ff','w':'#eadfff',
+  'G':'#24103d','g':'#160929','X':'#0b0612','x':'#160b22','A':'#7e4eb4','a':'#a679d2',
+};
+const PAL_NECRO_REANIMATED={
+  'F':'#9b92aa','f':'#6d637b','D':'#493b59','d':'#31263d','H':'#211429','h':'#170d1e',
+  'E':'#7dff8a','e':'#45d965','i':'#ddffe2','B':'#4a2b65','b':'#342047',
+  'R':'#5e1e66','r':'#391040','T':'#25172f','t':'#160d1d','W':'#c6bdd0','w':'#8c8196',
+  'S':'#a774dc','s':'#72449e','N':'#d2b5ef','n':'#9c72c4','G':'#1b1025','g':'#110919','X':'#09050d','x':'#12091a',
+};
+const PAL_NECRO_ABOMINATION={
+  'X':'#0b0710','Q':'#493456','q':'#30233b','D':'#1c1225','M':'#6b4c78','m':'#4a3458',
+  'E':'#7dff8a','e':'#36d75f','i':'#e0ffe4','W':'#d1c5d7','w':'#90849a','B':'#321d3e','b':'#1e1128',
+};
+const PAL_NECRO_DKNIGHT={
+  'A':'#2a1638','a':'#44245a','D':'#120a1b','d':'#60347b','P':'#7441a4','p':'#975ad0','Q':'#b47aef',
+  'S':'#cfc6d8','s':'#8f8499','M':'#665d70','E':'#7dff8a','e':'#baffc2','i':'#ffffff',
+  'H':'#170d20','h':'#0c0711','C':'#623374','c':'#3b1c49','G':'#464052','g':'#2b2635',
+  'T':'#1a101f','t':'#0d0811','X':'#08050c','x':'#030205',
+};
+
+function drawNecromancerSummon(renderCtx,summon,time){
+  if(!summon)return false;
+  const g=renderCtx,walkFrame=Math.floor((summon.visualTime||0)/(summon.moving?115:210))%3;
+  const flip=summon.facing==='left',attacking=(summon.attackAnim||0)>0;
+  const attackPhase=attacking?1-Math.min(1,summon.attackAnim/(summon.type==='spirit'||summon.type==='skeleton_archer'?320:240)):0;
+  const bob=summon.type==='spirit'?Math.sin(time*.007+summon.phase)*3:Math.sin(time*.004+summon.phase)*.7;
+  const auraColor=summon.type==='spirit'?'#9b65e8':'#6d2e9b';
+
+  g.save();
+  g.globalAlpha=.28;g.fillStyle='#050209';g.beginPath();g.ellipse(summon.x,summon.y+12,11,4,0,0,Math.PI*2);g.fill();
+  g.globalAlpha=.15+.07*Math.sin(time*.008+summon.phase);g.strokeStyle=auraColor;g.lineWidth=1.5;
+  g.beginPath();g.ellipse(summon.x,summon.y+10,12+Math.sin(time*.005+summon.phase)*2,5,0,0,Math.PI*2);g.stroke();
+  g.globalAlpha=summon.type==='spirit'?.82:1;g.shadowColor=auraColor;g.shadowBlur=summon.type==='spirit'?10:4;
+
+  if(summon.type==='skeleton_warrior'){
+    drawSpriteAt(SKL_DOWN[walkFrame],PAL_NECRO_SKELETON,summon.x,summon.y+13+bob,flip,.76);
+    g.save();g.translate(summon.x+(flip?-10:10),summon.y-2);g.rotate((flip?-1:1)*(attacking?-.95+attackPhase*1.25:-.28));
+    g.strokeStyle='#d8cedd';g.lineWidth=3;g.beginPath();g.moveTo(0,7);g.lineTo(0,-9);g.stroke();
+    g.strokeStyle='#8f59bf';g.lineWidth=2;g.beginPath();g.moveTo(-4,4);g.lineTo(4,4);g.stroke();g.restore();
+  }else if(summon.type==='skeleton_archer'){
+    drawSpriteAt(SKL_DOWN[walkFrame],PAL_NECRO_SKELETON,summon.x,summon.y+13+bob,flip,.72);
+    const side=flip?-1:1,bowX=summon.x+side*10;
+    g.strokeStyle='#8e5ab8';g.lineWidth=2;g.beginPath();g.arc(bowX,summon.y-1,8,Math.PI*.5,Math.PI*1.5,flip);g.stroke();
+    g.strokeStyle='#d6baff';g.lineWidth=1;g.beginPath();g.moveTo(bowX,summon.y-9);g.lineTo(bowX-side*(attacking?5:1),summon.y-1);g.lineTo(bowX,summon.y+7);g.stroke();
+    if(attacking){g.strokeStyle='#8dffba';g.beginPath();g.moveTo(bowX-side*4,summon.y-1);g.lineTo(bowX+side*(10+attackPhase*8),summon.y-1);g.stroke();}
+  }else if(summon.type==='spirit'){
+    drawSpriteAt(SPECTER_SPR[walkFrame],PAL_NECRO_SPIRIT,summon.x,summon.y+15+bob,false,.68);
+    g.globalAlpha=.28+.18*Math.sin(time*.01+summon.phase);g.strokeStyle='#b886ff';g.lineWidth=1.5;
+    g.beginPath();g.arc(summon.x,summon.y-1+bob,11+Math.sin(time*.006)*2,0,Math.PI*2);g.stroke();
+    if(attacking&&summon.target){g.globalAlpha=.65;g.strokeStyle='#8dffba';g.lineWidth=2;g.beginPath();g.moveTo(summon.x,summon.y-4+bob);g.lineTo(summon.target.x,summon.target.y);g.stroke();}
+  }else if(summon.type==='abomination'){
+    drawSpriteAt(TRL_DOWN[walkFrame],PAL_NECRO_ABOMINATION,summon.x,summon.y+14+bob,flip,.76);
+    g.globalAlpha=.42+.18*Math.sin(time*.009+summon.phase);g.fillStyle='#8dff9a';g.beginPath();g.arc(summon.x,summon.y-4,2.5,0,Math.PI*2);g.fill();
+  }else if(summon.type==='death_knight'){
+    drawSpriteAt(DKNIGHT_SPR[walkFrame],PAL_NECRO_DKNIGHT,summon.x,summon.y+14+bob,flip,.72);
+    g.save();g.translate(summon.x+(flip?-11:11),summon.y-1);g.rotate((flip?-1:1)*(attacking?-.9+attackPhase*1.2:-.18));
+    g.shadowColor='#a95cff';g.shadowBlur=7;g.strokeStyle='#c9a1ff';g.lineWidth=3;g.beginPath();g.moveTo(0,8);g.lineTo(0,-11);g.stroke();g.restore();
+  }else if(summon.type==='reanimated'){
+    drawSpriteAt(SNOW_ZOMBIE[walkFrame],PAL_NECRO_REANIMATED,summon.x,summon.y+13+bob,flip,.74);
+    if(attacking){const side=flip?-1:1;g.strokeStyle='#9f65d8';g.lineWidth=2;for(let i=-1;i<=1;i++){g.beginPath();g.moveTo(summon.x+side*5,summon.y+i*3);g.lineTo(summon.x+side*(12+attackPhase*5),summon.y+i*3-2);g.stroke();}}
+  }else{g.restore();return false;}
+
+  if(attacking&&summon.type!=='spirit'&&summon.type!=='skeleton_archer'){
+    g.globalAlpha=.22*(1-attackPhase);g.strokeStyle='#a95cff';g.lineWidth=2;g.beginPath();g.arc(summon.x,summon.y,13+attackPhase*7,0,Math.PI*2);g.stroke();
+  }
+  g.restore();return true;
+}
+
 NecromancerSystem.configure({
   getTargets:()=>allTargets(enemies),
   getPlayers:()=>[player,...(gameMode===2&&player2?[player2]:[])].filter(Boolean),
@@ -12021,6 +12101,7 @@ NecromancerSystem.configure({
   getGlobalCritChance:owner=>(owner?.cardEffects?.critChance||0)+getCampaignShopCritBonus(owner),
   spawnParts:(...args)=>spawnParts(...args),
   notifyHit:(owner,target,damage,weapon)=>{if(typeof notifyBlessingHit==='function')notifyBlessingHit(owner,target,damage,weapon);},
+  drawSummon:(renderCtx,summon,time)=>drawNecromancerSummon(renderCtx,summon,time),
   playSfx:name=>{
     const methods={soul:'sfxNecroSoul',summon:'sfxNecroSummon',curse:'sfxNecroCurse',scythe:'sfxNecroScythe',bell:'sfxNecroBell'};
     const method=methods[name];if(method&&typeof Audio?.[method]==='function')Audio[method]();

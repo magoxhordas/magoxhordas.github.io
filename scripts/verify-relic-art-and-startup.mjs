@@ -11,7 +11,7 @@ const integrationSource=`${html}\n${shopSource}\n${dungeonSource}\n${uiSource}`;
 const relicDir=path.join(root,'assets','codex','relics');
 const relicFiles=fs.readdirSync(relicDir).filter(name=>name.endsWith('.png')).sort();
 
-assert.equal(relicFiles.length,55,'O Códex precisa ter 55 artes de relíquia: 32 de classe, 8 universais, 8 da Dungeon e 7 anéis.');
+assert.equal(relicFiles.length,63,'O Códex precisa ter 63 artes de relíquia: 40 de classe, 8 universais, 8 da Dungeon e 7 anéis.');
 for(const name of relicFiles){
   const data=fs.readFileSync(path.join(relicDir,name));
   assert.equal(data.toString('ascii',1,4),'PNG',`${name} não é um PNG válido.`);

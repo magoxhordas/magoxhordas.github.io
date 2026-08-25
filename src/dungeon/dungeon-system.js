@@ -1508,6 +1508,7 @@ const DNG={
       x,y,hp:maxHp,maxHp,damage:Math.max(3,this.pDmg*(permanent?.48:.42)),speed:permanent?1.55:1.45,
       range:permanent?48:44,attackCd:permanent?860:930,attackTimer:180,duration:permanent?Infinity:6000,
       permanent,type,dead:false,target:null,hitTimer:0,phase:Math.random()*Math.PI*2,_necroSummon:true,
+      visualTime:0,attackAnim:0,hurtAnim:0,spawnAnim:420,moving:false,facing:'right',
     };
     this._necroSummons.push(summon);
     if(typeof Audio!=='undefined')Audio.sfxNecroSummon?.();
@@ -1555,9 +1556,11 @@ const DNG={
       if(raised)this._necroRaiseTimer=6500;
     }
     for(const summon of this._necroSummons){
-      summon.duration-=dt;summon.attackTimer-=dt;summon.hitTimer-=dt;
+      summon.duration-=dt;summon.attackTimer-=dt;summon.hitTimer-=dt;summon.visualTime+=dt;
+      summon.attackAnim=Math.max(0,(summon.attackAnim||0)-dt);summon.hurtAnim=Math.max(0,(summon.hurtAnim||0)-dt);
+      summon.spawnAnim=Math.max(0,(summon.spawnAnim||0)-dt);summon.moving=false;
       if(summon.hp<=0||summon.duration<=0){summon.dead=true;continue;}
-      if(Math.hypot(this.px-summon.x,this.py-summon.y)>380){summon.x=this.px+(Math.random()-.5)*22;summon.y=this.py+18;summon.target=null;}
+      if(Math.hypot(this.px-summon.x,this.py-summon.y)>380){summon.x=this.px+(Math.random()-.5)*22;summon.y=this.py+18;summon.target=null;summon.spawnAnim=260;}
       if(!summon.target||summon.target.dead||Math.hypot(summon.target.x-summon.x,summon.target.y-summon.y)>300){
         let best=null,bd=300;
         for(const enemy of this.entities){if(enemy.dead||enemy._shadowBound)continue;const d=Math.hypot(enemy.x-summon.x,enemy.y-summon.y);if(d<bd){bd=d;best=enemy;}}
@@ -1568,17 +1571,17 @@ const DNG={
         const dx=target.x-summon.x,dy=target.y-summon.y,d=Math.max(1,Math.hypot(dx,dy));
         if(d>summon.range*.78){
           const step=summon.speed*(dt/16.67),nx=summon.x+dx/d*step,ny=summon.y+dy/d*step;
-          if(this._tw(Math.floor(nx/DTS),Math.floor(ny/DTS))){summon.x=nx;summon.y=ny;}
+          if(this._tw(Math.floor(nx/DTS),Math.floor(ny/DTS))){summon.x=nx;summon.y=ny;summon.moving=true;summon.facing=dx<0?'left':'right';}
         }
         if(d<=summon.range&&summon.attackTimer<=0){
-          summon.attackTimer=summon.attackCd;
+          summon.attackTimer=summon.attackCd;summon.attackAnim=260;summon.facing=dx<0?'left':'right';
           const damage=summon.damage*(target.type==='boss'?.85:1),before=target.hp;
           target.hp-=damage;target.flash=180;this._necroBossDamage(target,before,target.hp);
           this._necroHeal(Math.min(before,damage)*.20);this._applyKill(target,null,damage,'summon');this._parts(target.x,target.y,'#70d98b',3,22);
         }
       }else if(Math.hypot(this.px-summon.x,this.py-summon.y)>70){
         const dx=this.px-summon.x,dy=this.py-summon.y,d=Math.max(1,Math.hypot(dx,dy));
-        summon.x+=dx/d*summon.speed*(dt/16.67);summon.y+=dy/d*summon.speed*(dt/16.67);
+        summon.x+=dx/d*summon.speed*(dt/16.67);summon.y+=dy/d*summon.speed*(dt/16.67);summon.moving=true;summon.facing=dx<0?'left':'right';
       }
     }
     this._necroSummons=this._necroSummons.filter(s=>!s.dead);
@@ -1595,10 +1598,16 @@ const DNG={
       c.fillStyle='#79e8d0';c.beginPath();c.arc(x,y,4*p,0,Math.PI*2);c.fill();c.shadowBlur=0;
     }
     for(const summon of this._necroSummons){
-      const x=summon.x-this.camX,y=summon.y-this.camY,bob=Math.sin(ts*.006+summon.phase);c.globalAlpha=summon.permanent?1:.78;
-      c.fillStyle='rgba(0,0,0,.35)';c.beginPath();c.ellipse(x,y+9,9,3,0,0,Math.PI*2);c.fill();c.fillStyle=summon.permanent?'#d8d1b5':'#89a783';
-      c.fillRect(x-5,y-7+bob,10,9);c.fillRect(x-4,y+2+bob,3,7);c.fillRect(x+1,y+2+bob,3,7);c.fillStyle='#18231d';c.fillRect(x-3,y-4+bob,2,2);c.fillRect(x+2,y-4+bob,2,2);
-      c.fillStyle='rgba(0,0,0,.7)';c.fillRect(x-8,y-12,16,2);c.fillStyle='#65d77d';c.fillRect(x-8,y-12,16*Math.max(0,summon.hp/summon.maxHp),2);
+      const x=summon.x-this.camX,y=summon.y-this.camY;
+      if(summon.spawnAnim>0){const p=1-summon.spawnAnim/420;c.globalAlpha=.55*(1-p);c.strokeStyle='#a95cff';c.lineWidth=2;c.beginPath();c.arc(x,y,6+p*18,0,Math.PI*2);c.stroke();}
+      c.globalAlpha=summon.hurtAnim>0?.62:(summon.permanent?1:.82);
+      const screenSummon={...summon,type:summon.type==='skeleton'?'skeleton_warrior':summon.type,x,y};
+      const detailed=typeof drawNecromancerSummon==='function'&&drawNecromancerSummon(c,screenSummon,ts)===true;
+      if(!detailed){
+        const bob=Math.sin(ts*.006+summon.phase);c.fillStyle='rgba(0,0,0,.35)';c.beginPath();c.ellipse(x,y+9,9,3,0,0,Math.PI*2);c.fill();c.fillStyle=summon.permanent?'#8d74a3':'#68457e';
+        c.fillRect(x-5,y-7+bob,10,9);c.fillRect(x-4,y+2+bob,3,7);c.fillRect(x+1,y+2+bob,3,7);c.fillStyle='#7dff8a';c.fillRect(x-3,y-4+bob,2,2);c.fillRect(x+2,y-4+bob,2,2);
+      }
+      c.globalAlpha=1;c.fillStyle='rgba(0,0,0,.76)';c.fillRect(x-10,y-17,20,3);c.fillStyle='#7dff8a';c.fillRect(x-9,y-16,18*Math.max(0,summon.hp/summon.maxHp),1);
     }
     c.globalAlpha=1;c.restore();
   },
@@ -2350,7 +2359,7 @@ const DNG={
         e.at=e.ac;
         if(e.ranged){const ang=Math.atan2(this.py-e.y,this.px-e.x);this.projectiles.push({x:e.x,y:e.y,vx:Math.cos(ang)*5.5,vy:Math.sin(ang)*5.5,dmg:e.dmg,r:5,life:1400,col:'#886600'});}
         else if(necroAggro){
-          if(necroAggro.hitTimer<=0){necroAggro.hp-=Math.max(1,e.dmg*.55);necroAggro.hitTimer=700;this._parts(necroAggro.x,necroAggro.y,'#9ac6a0',3,18);}
+          if(necroAggro.hitTimer<=0){necroAggro.hp-=Math.max(1,e.dmg*.55);necroAggro.hitTimer=700;necroAggro.hurtAnim=180;this._parts(necroAggro.x,necroAggro.y,'#9f65d8',4,20);}
         }else if(this.pInvTimer<=0){this._takeDmg(e.dmg);}
       }
       if(e.sk&&e.alert>0){e.skTimer-=dt;if(e.skTimer<=0){e.skTimer=e.skCd;this._enemySkill(e,dist);}}
