@@ -57,7 +57,7 @@ function campaignShopBuffDescription(spec,rarity){
     case 'necromancer_reinforced_bones':return '+25% de vida para todas as invocações.';
     case 'necromancer_command_dead':return '+15% de velocidade de ataque para invocações.';
     case 'necromancer_soul_harvest':return 'Abates diretos passam de 22% para 30% de chance de gerar alma.';
-    case 'necromancer_corpse_master':return 'Cadáveres duram +2s e o limite aumenta de 8 para 10.';
+    case 'necromancer_corpse_master':return 'O limite de Reanimados sobe de 3 para 4 e eles recebem +20% de vida máxima.';
     case 'necromancer_blood_pact':return '+20% de dano das invocações; −10% de vida máxima.';
     case 'necromancer_last_breath':return 'Invocações permanentes explodem ao morrer, com recarga por jogador.';
     case 'universal_light_boots':return `+${campaignShopPct(v,1)} de velocidade de movimento.`;

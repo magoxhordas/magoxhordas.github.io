@@ -42,7 +42,7 @@ assert(data.SHOP_BUFFS.length===8&&new Set(data.SHOP_BUFFS.map(buff=>buff.id)).s
 assert(data.SHOP_BUFFS.every(buff=>buff.values.length===5),'buffs devem participar das cinco raridades da loja');
 assert(data.CONFIG.soulDirectChance===.22&&data.CONFIG.soulSummonChance===.14&&data.CONFIG.soulPity===6,'probabilidades ou pity de almas foram alterados');
 assert(data.CONFIG.corpseDirectChance===.35&&data.CONFIG.corpseSummonChance===.22,'probabilidades de cadaveres foram alteradas');
-assert(data.CONFIG.soulBaseCap===12&&data.CONFIG.soulHardCap===20&&data.CONFIG.corpseBaseCap===8&&data.CONFIG.corpseBuffCap===10,'limites de recursos foram alterados');
+assert(data.CONFIG.soulBaseCap===12&&data.CONFIG.soulHardCap===20&&data.CONFIG.corpseBaseCap===3&&data.CONFIG.corpseBuffCap===4,'limites de recursos foram alterados');
 assert(data.CONFIG.permanentBaseCap===2&&data.CONFIG.permanentHardCap===5&&data.CONFIG.temporaryCap===3&&data.CONFIG.globalCoopCap===12,'limites de invocacao foram alterados');
 assert(data.CONFIG.summonProcCoefficient===.35&&data.CONFIG.summonBossDamage===.85&&data.CONFIG.bossDamageToSummons===1.35,'coeficientes de combate das invocacoes foram alterados');
 
@@ -96,12 +96,27 @@ assert(system.stateFor(owner).soulOrbs.length===11,'faixas do chefe nao podem ge
 system.onBossDamaged(owner,{x:230,y:180,hp:40,maxHp:40,type:'skeleton'},40,0);
 assert(system.stateFor(owner).soulOrbs.length===11,'inimigos comuns nao podem gerar almas de marcos de chefe');
 
-for(let index=0;index<12;index++)system.onEnemyDeath({x:index,y:index,hp:0,maxHp:50,type:'enemy'},owner,'direct','necromancer_basic');
-assert(system.stateFor(owner).corpses.length<=8,'cadaveres excederam o limite-base');
-owner.shopEffects.necroCorpseMaster=1;
-for(let index=0;index<14;index++)system.onEnemyDeath({x:index,y:index,hp:0,maxHp:50,type:'enemy'},owner,'direct','necromancer_basic');
-assert(system.stateFor(owner).corpses.length<=10,'Mestre dos Cadaveres excedeu o limite de 10');
+const corpseOwner=makeOwner(0);
+system.resetRun([corpseOwner]);
+for(let index=0;index<8;index++)system.onEnemyDeath({x:40+index*8,y:80,hp:0,maxHp:300,type:'elite_guard',isElite:true},corpseOwner,'direct','necromancer_basic');
+let raised=system.stateFor(corpseOwner).summons.filter(summon=>summon.lifeBound);
+assert(raised.length===3,'Reanimados excederam o limite-base de 3');
+assert(raised.every(summon=>summon.fromCorpse&&summon.duration===Infinity),'cadaver nao ressuscitou imediatamente como invocacao sem cronometro');
+const durableRaised=raised[0],durableHp=durableRaised.hp;
+system.configure({getTargets:()=>[]});
+for(let frame=0;frame<1200;frame++)system.update(.016);
+assert(system.stateFor(corpseOwner).summons.includes(durableRaised)&&durableRaised.hp===durableHp,'Reanimado desapareceu sem perder toda a vida');
+durableRaised.hp=0;system.update(.016);
+assert(!system.stateFor(corpseOwner).summons.includes(durableRaised),'Reanimado com 0 de vida permaneceu ativo');
+corpseOwner.shopEffects.necroCorpseMaster=1;
+system.resetRun([corpseOwner]);
+for(let index=0;index<8;index++)system.onEnemyDeath({x:40+index*8,y:80,hp:0,maxHp:300,type:'elite_guard',isElite:true},corpseOwner,'direct','necromancer_basic');
+raised=system.stateFor(corpseOwner).summons.filter(summon=>summon.lifeBound);
+assert(raised.length===4&&raised.every(summon=>summon.maxHp>=44),'Mestre dos Cadaveres nao aplicou limite 4 e bonus de vida');
+system.clearWorld({preservePermanent:true});
+assert(system.stateFor(corpseOwner).summons.length===4,'troca de mapa removeu Reanimados ainda vivos');
 
+system.resetRun([owner,owner2]);
 owner.shopEffects.necroPermanentCap=3;
 for(let index=0;index<7;index++)system.spawnSummon(owner,'skeleton_warrior',{permanent:true,family:`p${index}`});
 assert(system.stateFor(owner).summons.filter(summon=>summon.permanent).length===5,'limite permanente reforcado deve respeitar o hard cap de 5');
@@ -112,11 +127,52 @@ for(let index=0;index<5;index++)system.spawnSummon(owner2,'skeleton_archer',{per
 assert([...system.states.values()].reduce((total,state)=>total+state.summons.length,0)===12,'limite global cooperativo deve bloquear a decima terceira invocacao');
 assert(system.spawnSummon(owner2,'spirit',{duration:5000,family:'overflow'})===null,'decima terceira invocacao cooperativa nao foi bloqueada');
 
+// O jogador continua atravessando a formacao sem travar, mas o runtime afasta
+// sprites sobrepostos para que heroi e invocacoes nunca fiquem no mesmo ponto.
+const formationOwner=makeOwner(0);
+system.resetRun([formationOwner]);
+const firstFormation=system.spawnSummon(formationOwner,'skeleton_warrior',{permanent:true,family:'formation-a'});
+const secondFormation=system.spawnSummon(formationOwner,'skeleton_archer',{permanent:true,family:'formation-b'});
+firstFormation.x=secondFormation.x=formationOwner.x;firstFormation.y=secondFormation.y=formationOwner.y;
+system.configure({getTargets:()=>[]});
+system.update(.016);
+assert(Math.hypot(firstFormation.x-formationOwner.x,firstFormation.y-formationOwner.y)>=25.9,'invocacao permaneceu sobreposta ao jogador');
+assert(Math.hypot(secondFormation.x-formationOwner.x,secondFormation.y-formationOwner.y)>=25.9,'segunda invocacao permaneceu sobreposta ao jogador');
+assert(Math.hypot(firstFormation.x-secondFormation.x,firstFormation.y-secondFormation.y)>=19.9,'invocacoes permaneceram empilhadas');
+
+system.onEnemyDeath({x:20,y:20,hp:0,maxHp:300,type:'elite_guard',isElite:true},formationOwner,'direct','necromancer_basic');
+assert(system.getHud(formationOwner).corpses===1&&system.getHud(formationOwner).reanimated===1,'HUD nao conta o cadaver ressuscitado como Reanimado');
+const bellAlly=system.stateFor(formationOwner).summons.find(summon=>summon.lifeBound);
+const bellEnemy={x:bellAlly.x+10,y:bellAlly.y,hp:100,maxHp:100,dead:false,takeDmg(amount){this.hp-=amount;if(this.hp<=0)this.dead=true;}};
+bellAlly.hp=1;
+const bellUsed=system.attackWeapon(formationOwner,[bellEnemy],'common',bellEnemy,{type:'necromancer_death_bell',rarity:'common'},'necromancer_death_bell',{
+  getDefinition:()=>({range:240,baseDmg:16,color:'#d9c071'}),getTier:()=>0,getDamage:()=>16,nearestTargets:()=>[bellEnemy],
+});
+assert(bellUsed&&bellAlly.hp>1,'Sino dos Mortos nao curou o Reanimado');
+assert(bellEnemy.hp<100,'Sino dos Mortos nao produziu o pulso ofensivo ao redor do Reanimado');
+
+// Stress curto: exercito cheio, muitos alvos e varios segundos de atualizacao
+// nao podem criar coordenadas invalidas nem prender o loop da partida.
+const stressOwner=makeOwner(0);stressOwner.shopEffects.necroPermanentCap=3;
+system.resetRun([stressOwner]);
+const stressSummons=[];
+for(let index=0;index<5;index++)stressSummons.push(system.spawnSummon(stressOwner,index%2?'skeleton_archer':'skeleton_warrior',{permanent:true,family:`stress-p-${index}`}));
+for(let index=0;index<3;index++)stressSummons.push(system.spawnSummon(stressOwner,'reanimated',{duration:Infinity,lifeBound:true,fromCorpse:true,family:'raised_corpse',familyMax:3}));
+for(const summon of stressSummons){summon.x=stressOwner.x;summon.y=stressOwner.y;}
+const stressTargets=Array.from({length:80},(_,index)=>({x:180+(index%10)*25,y:60+Math.floor(index/10)*28,hp:500,maxHp:500,dead:false,damage:4,takeDmg(amount){this.hp-=amount;if(this.hp<=0)this.dead=true;}}));
+system.configure({getTargets:()=>stressTargets,spawnParts:()=>{},notifyHit:()=>{}});
+const stressStarted=Date.now();
+for(let frame=0;frame<1200;frame++)system.update(.016);
+assert(Date.now()-stressStarted<3000,'stress do exercito ficou lento demais e pode travar a partida');
+assert(stressSummons.every(summon=>Number.isFinite(summon.x)&&Number.isFinite(summon.y)),'stress do exercito produziu coordenadas invalidas');
+assert(stressSummons.every(summon=>Math.hypot(summon.x-stressOwner.x,summon.y-stressOwner.y)>=25.9),'stress do exercito voltou a sobrepor o jogador');
+assert(stressSummons.filter(summon=>summon.lifeBound).every(summon=>summon.duration===Infinity),'stress alterou o tempo de vida dos Reanimados');
+
 includesAll(systemSource,[
-  'soulOrbs:[],corpses:[],summons:[],totems:[]',
+  'soulOrbs:[],summons:[],totems:[]',
   "source==='summon'||source==='direct'",
   'enemy.isSummoned||enemy.isReanimated',
-  'state.summons=state.summons.filter(s=>s.permanent&&!s.dead)',
+  'state.summons=state.summons.filter(s=>(s.permanent||s.lifeBound)&&!s.dead)',
   "type==='death_knight'",
   'Number(owner?.lifeSteal||0))*.20',
   'summonProcCoefficient',
@@ -129,6 +185,10 @@ includesAll(systemSource,[
   'noNecroRewards:true',
   'visualTime:Math.random()*620',
   'deps.drawSummon?.(ctx,summon,time)===true',
+  'separateSummons(state)',
+  'raiseCorpse(owner,enemy)',
+  'duration:permanent||lifeBound?Infinity',
+  '!summon.lifeBound&&summon.duration<=0',
 ],'runtime perdeu recursos, anti-recursao, persistencia entre mapas ou regras de combate');
 includesAll(html,[
   'id="necromancer-resource-hud"',
@@ -149,6 +209,9 @@ includesAll(html,[
   'PAL_NECRO_REANIMATED',
   'PAL_NECRO_ABOMINATION',
   'PAL_NECRO_DKNIGHT',
+  'CADÁVER CAI → RESSUSCITA AUTOMATICAMENTE',
+  'necro-army-temp',
+  'necromancer-system.js?v=20260825-reanimation',
 ],'selecao, HUD, loop, desenho ou icones do Necromante nao estao conectados');
 includesAll(artPrep,[
   'Idle_walk_north.gif',
@@ -169,6 +232,9 @@ includesAll(dungeon,[
   "visualTime:0,attackAnim:0,hurtAnim:0,spawnAnim:420,moving:false,facing:'right'",
   "type:summon.type==='skeleton'?'skeleton_warrior':summon.type",
   "drawNecromancerSummon(c,screenSummon,ts)===true",
+  '_necroSeparateSummons',
+  '☠ REANIMADOS ${reanimated}/3',
+  'duration:permanent||lifeBound?Infinity:6000',
 ],'Masmorra nao cobre recursos, invocacoes, aggro e desenho detalhado do Necromante');
 includesAll(shop,data.SHOP_BUFFS.map(buff=>buff.id),'efeitos exclusivos do Necromante nao estao implementados na loja');
 includesAll(codex,['necromancer:\'Necromante\'','Necromante · Invocações','necromancer:\'#70d98b\''],'Códex nao cataloga a quinta classe corretamente');

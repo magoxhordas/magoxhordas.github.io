@@ -13,13 +13,17 @@
     const getBlessingIncomingDamageMultiplier=options.getBlessingIncomingDamageMultiplier||one;
     const getCampaignShopIncomingDamageMultiplier=options.getCampaignShopIncomingDamageMultiplier||one;
     const getWeaponShieldReduction=options.getWeaponShieldReduction||(()=>0);
+    const getCampProgressionDamageReduction=options.getCampProgressionDamageReduction||(()=>0);
     const shouldBlessingDodge=options.shouldBlessingDodge||no;
+    const shouldCampProgressionDodge=options.shouldCampProgressionDodge||no;
     const shouldCampaignShopBlock=options.shouldCampaignShopBlock||no;
     const shouldBlessingPreventDeath=options.shouldBlessingPreventDeath||no;
+    const shouldCampProgressionPreventDeath=options.shouldCampProgressionPreventDeath||no;
     const shouldEndGame=options.shouldEndGame||no;
     const notifyBlessingDashAvoid=options.notifyBlessingDashAvoid||noop;
     const notifyBlessingDamageTaken=options.notifyBlessingDamageTaken||noop;
     const notifyCampaignShopDamageTaken=options.notifyCampaignShopDamageTaken||noop;
+    const notifyCampProgressionDamageTaken=options.notifyCampProgressionDamageTaken||noop;
     const weaponShieldCounter=options.weaponShieldCounter||noop;
     const spawnParts=options.spawnParts||noop;
     const spawnLevelUpNotice=options.spawnLevelUpNotice||noop;
@@ -31,7 +35,7 @@
       const difficulty=getDifficulty();
       const blessingMult=getBlessingIncomingDamageMultiplier(player);
       return amount*blessingMult*getCampaignShopIncomingDamageMultiplier(player)*
-        (1-Math.min(difficulty.playerArmorCap,(player.dmgReduce||0)+getWeaponShieldReduction(player)));
+        (1-Math.min(difficulty.playerArmorCap,(player.dmgReduce||0)+getWeaponShieldReduction(player)+getCampProgressionDamageReduction(player)));
     }
 
     function damagePlayer(player,amount){
@@ -40,6 +44,7 @@
         return;
       }
       if(shouldBlessingDodge(player))return;
+      if(shouldCampProgressionDodge(player))return;
       if(shouldCampaignShopBlock(player))return;
       const reduced=calculatePlayerDamage(player,amount);
       player.hp-=reduced;
@@ -48,9 +53,11 @@
       weaponShieldCounter(player);
       notifyBlessingDamageTaken(player,reduced);
       notifyCampaignShopDamageTaken(player,reduced);
+      notifyCampProgressionDamageTaken(player,reduced);
       spawnParts(player.x,player.y,'#ff4444',8,65);
       triggerScreenShake(6,220);
       if(player.hp<=0){
+        if(shouldCampProgressionPreventDeath(player))return;
         if(shouldBlessingPreventDeath(player))return;
         if((player._revivesLeft||0)>0){
           player._revivesLeft--;

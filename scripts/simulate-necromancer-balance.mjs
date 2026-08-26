@@ -114,7 +114,7 @@ console.table(results.map(item=>({
   proporcao:`${(item.ratio*100).toFixed(1)}%`,
   alvo:`${(item.target[0]*100).toFixed(0)}–${(item.target[1]*100).toFixed(0)}%`,
 })));
-console.log(`Economia: ${Math.round(CONFIG.soulDirectChance*100)}% alma direta, ${Math.round(CONFIG.soulSummonChance*100)}% por summon e pity no ${CONFIG.soulPity}o abate. Horda cheia usa 4 permanentes + 3 temporarios; boss remove os temporarios de cadaver e aplica ${Math.round(CONFIG.summonBossDamage*100)}% de dano.`);
-console.log('Observacao: simulacao deterministica de DPS sustentado; posicionamento, tempo para coletar almas/cadaveres e perda de summons ainda exigem playtest humano.');
+console.log(`Economia: ${Math.round(CONFIG.soulDirectChance*100)}% alma direta, ${Math.round(CONFIG.soulSummonChance*100)}% por summon e pity no ${CONFIG.soulPity}o abate. Horda cheia usa 4 permanentes + ${CONFIG.corpseBaseCap} Reanimados limitados por vida; invocacoes aplicam ${Math.round(CONFIG.summonBossDamage*100)}% de dano em chefes.`);
+console.log('Observacao: simulacao deterministica de DPS sustentado; posicionamento, coleta de almas e perda de vida dos summons ainda exigem playtest humano.');
 if(errors.length){console.error(`FALHA DE BALANCEAMENTO:\n- ${errors.join('\n- ')}`);process.exit(1);}
 console.log('OK: testes A–D e limites cooperativos ficaram dentro das metas normalizadas.');
