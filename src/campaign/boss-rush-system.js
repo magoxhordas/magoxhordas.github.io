@@ -156,6 +156,7 @@ function spawnNextBossRush(){
     bossWarning=1800; bossSpawnedThisWave=true; waveTimer=999999;
     spawnLevelUpNotice(W/2,H/2-50,`⚔ ${b.icon} ${b.name.toUpperCase()}!`,0);
   }
+  CampProgressionSystem.onBossStarted([player,player2],petBoss||bossMajor);
 }
 
 let campaignCompletionPending=false;
@@ -178,6 +179,8 @@ function endBossRush(victory){
 }
 
 function showVictoryScreen(mode='bossrush'){
+  CampProgressionSystem.endRun([player,player2]);
+  runCookingBuffs=[];
   if(raf){cancelAnimationFrame(raf);raf=null;}
   const campaignClear=mode==='campaign';
   const screen=document.getElementById('victory-screen');

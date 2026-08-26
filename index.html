@@ -4686,6 +4686,20 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
 
 </style>
 
+<style id="camp-progression-style">
+  .meal-limit-label{width:100%;font-weight:900;color:#f0cf72;letter-spacing:1.4px;text-align:center;margin-bottom:5px}
+  .cook-owned,.meta-owned{border-radius:3px;padding:2px 4px}.cook-owned.enough,.meta-owned.enough{color:#8fe6a4}.cook-owned.missing,.meta-owned.missing{color:#f07b76}
+  .recipe-locked{color:#ba78d8;font-size:11px;line-height:1.35}.meta-tabs-row{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;justify-content:center}
+  .meta-new-discovery{padding:7px 12px;margin:-2px 0 10px;border:1px solid #e8c45a;background:rgba(232,196,90,.08);color:#ffe68b;font-weight:900;letter-spacing:1px;text-align:center}
+  .echo-summary{grid-column:1/-1;border:1px solid rgba(180,100,255,.45);background:rgba(38,14,55,.55);padding:10px;text-align:center;color:#e0b8ff}
+  .echo-artifacts{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:8px}.artifact-count{padding:4px 7px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25)}
+  .echo-card{cursor:pointer}.echo-card.equipped{border-color:#d891ff!important;box-shadow:0 0 15px rgba(190,80,255,.35) inset,0 0 10px rgba(190,80,255,.25)}
+  .echo-origin{color:#9d77ad;font-size:11px;letter-spacing:1px;margin:-2px 0 6px;text-transform:uppercase}.echo-state{color:#8fe6a4;font-size:11px;font-weight:900;letter-spacing:.8px}
+  #meal-replace-overlay{position:fixed;inset:0;z-index:260;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:14px}
+  .meal-replace-box{width:min(520px,95vw);max-height:82vh;overflow:auto;background:#07150c;border:2px solid #d4ad4f;box-shadow:0 0 28px rgba(0,0,0,.8);padding:18px;color:#e9d990;font-family:'Courier New',monospace;text-align:center}
+  .meal-replace-option{width:100%;margin:6px 0;padding:10px;border:1px solid #52795c;background:#0c2415;color:#d7eadb;font:700 14px 'Courier New',monospace;cursor:pointer}.meal-replace-option:hover{border-color:#e4bf5d;background:#17331f}
+  @media(max-width:700px){.meta-tabs-row .ws-tab{font-size:10px;padding:7px 8px}.echo-summary{font-size:12px}.meta-grid{grid-template-columns:1fr!important}.cook-grid{grid-template-columns:1fr!important}}
+</style>
 </head>
 <body>
 
@@ -5330,11 +5344,14 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
 <div id="meta-shop">
   <div class="meta-title"><span class="pixel-icon-slot" data-pixel-icon="wizard" data-pixel-size="34"></span> MAGO MERLIN</div>
   <div class="meta-sub">— Melhorias Permanentes —</div>
-  <div style="display:flex;gap:6px;margin-bottom:12px;">
+  <div id="meta-new-discovery" class="meta-new-discovery" style="display:none"></div>
+  <div class="meta-tabs-row">
     <div class="ws-tab active" id="meta-tab-alma"     onclick="metaSetTree('alma')"    ><span class="pixel-btn-content"><span class="pixel-icon-slot" data-pixel-icon="heart" data-pixel-size="20"></span> Alma</span></div>
     <div class="ws-tab"       id="meta-tab-fazenda"   onclick="metaSetTree('fazenda')" ><span class="pixel-btn-content"><span class="pixel-icon-slot" data-pixel-icon="sprout" data-pixel-size="20"></span> Fazenda</span></div>
     <div class="ws-tab"       id="meta-tab-expedicao" onclick="metaSetTree('expedicao')"><span class="pixel-btn-content"><span class="pixel-icon-slot" data-pixel-icon="sword" data-pixel-size="20"></span> Expedição</span></div>
     <div class="ws-tab"       id="meta-tab-destino"   onclick="metaSetTree('destino')"><span class="pixel-btn-content"><span class="pixel-icon-slot" data-pixel-icon="heart" data-pixel-size="20"></span> Destino</span></div>
+    <div class="ws-tab"       id="meta-tab-gastronomia" onclick="metaSetTree('gastronomia')"><span class="pixel-btn-content"><span class="pixel-icon-slot" data-pixel-icon="bowl" data-pixel-size="20"></span> Gastronomia</span></div>
+    <div class="ws-tab"       id="meta-tab-ecos" onclick="metaSetTree('ecos')"><span class="pixel-btn-content"><span class="pixel-icon-slot" data-pixel-icon="orb" data-pixel-size="20"></span> Ecos</span></div>
   </div>
   <div class="meta-grid" id="meta-grid"></div>
   <div class="meta-close" onclick="closeMetaShop()"><span class="pixel-btn-content"><span class="pixel-icon-slot pixel-icon-danger" data-pixel-icon="cross" data-pixel-size="18"></span> Fechar</span></div>
@@ -5779,6 +5796,7 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
 
 </script>
 <script src="src/core/save-system.js"></script>
+<script src="src/camp/meta-progression-system.js?v=20260826-camp-progression"></script>
   <script>
 (function(global){
   'use strict';
@@ -5924,11 +5942,15 @@ let metaUpgrades = {
   exp_resistencia:0, exp_eventos:0, exp_recuperacao:0,
   // Árvore do Destino
   destino_reviver:0,
+  // Gastronomia Arcana
+  gastro_maestria:0, gastro_precisao:0, gastro_mesa:false,
+  gastro_mares:0, gastro_profundezas:false, gastro_conservacao:0,
 };
 
 // Workshops e crafting state
 let workshopUpgrades = { enxada_metal:0, regador_ferro:0, vara_pesca:0, talismã_fogo:0, talismã_gelo:0, talismã_sombra:0 };
 let activeCookingBuffs = []; // [{id, name, icon, timer, effect}]
+let runCookingBuffs = [];    // snapshot aplicado à expedição atual
 let selectedBiome = 'castelo';
 
 // Custo das melhorias Merlin — agora organizado por árvore
@@ -7293,60 +7315,88 @@ function closeCookingPanel(){
 function renderCookingPanel(){
   // Active buffs
   const buffsRow = document.getElementById('active-buffs-row');
-  buffsRow.innerHTML = activeCookingBuffs.length
+  const mealLimit=typeof CampProgressionSystem!=='undefined'&&CampProgressionSystem?CampProgressionSystem.mealLimit():3;
+  buffsRow.innerHTML = `<div class="meal-limit-label">Comidas preparadas: ${activeCookingBuffs.length}/${mealLimit}</div>`+(activeCookingBuffs.length
     ? activeCookingBuffs.map(b=>{
-      const recipe=COOKING_RECIPES.find(r=>r.id===b.id);
-      return `<div class="buff-chip pixel-inline">${gamePixelIconHtml(recipe?.pixelIcon||'feast',18)} ${b.name}</div>`;
-    }).join('')
-    : '<div style="font-size:12px;color:#6fbf8a;letter-spacing:2px;">Nenhum bônus ativo</div>';
+       const recipe=COOKING_RECIPES.find(r=>r.id===b.id);
+       return `<div class="buff-chip pixel-inline">${gamePixelIconHtml(recipe?.pixelIcon||'feast',18)} ${b.name}</div>`;
+     }).join('')
+    : '<div style="font-size:12px;color:#6fbf8a;letter-spacing:2px;">Nenhum bônus preparado</div>');
   // Recipes
   const grid = document.getElementById('cook-grid');
   grid.innerHTML = '';
   for(const r of COOKING_RECIPES){
-    const canAfford = Object.entries(r.cost).every(([k,v])=>(globalInventory[k]||0)>=v);
+    const progression=typeof CampProgressionSystem!=='undefined'?CampProgressionSystem:null;
+    const cost=progression?progression.recipeCost(r):r.cost;
+    const canAfford = progression?progression.canAfford(cost):Object.entries(cost).every(([k,v])=>(globalInventory[k]||0)>=v);
+    const unlocked = !progression||progression.recipeUnlocked(r);
     const already = activeCookingBuffs.some(b=>b.id===r.id);
     const card = document.createElement('div');
-    card.className = `cook-card rarity-${r.rarity}` + ((!canAfford||already)?' cant-afford':'');
-    const costStr = Object.entries(r.cost).map(([k,v])=>`<span class="pixel-inline">${gamePixelIconHtml(gameItemPixelKind(k),16)}×${v}</span>`).join(' ');
+    card.className = `cook-card rarity-${r.rarity}` + ((!canAfford||already||!unlocked)?' cant-afford':'');
+    const costStr = Object.entries(cost).map(([k,v])=>{
+      const have=progression?progression.quantity(k):(globalInventory[k]||0);
+      const kind=progression?progression.ingredientPixelKind(k):gameItemPixelKind(k);
+      const name=progression?progression.ingredientName(k):LOOT_ITEM_NAME(k);
+      return `<span class="pixel-inline cook-owned ${have>=v?'enough':'missing'}" title="${name}">${gamePixelIconHtml(kind,16)}${have}/${v}</span>`;
+    }).join(' ');
     const rarityLabel = {comum:'COMUM',rara:'RARA',mistica:'MÍSTICA'}[r.rarity];
     card.innerHTML = `<div class="cook-icon">${gamePixelIconHtml(r.pixelIcon,42)}</div>
       <div class="cook-name">${r.name}</div>
       <div class="cook-rarity rarity-${r.rarity}">${rarityLabel}</div>
       <div class="cook-effect">${r.desc}</div>
-      <div class="cook-cost">${already?`<span class="pixel-inline">${gamePixelIconHtml('spark',15)} Ativo</span>`:costStr}</div>
+      <div class="cook-cost">${!unlocked?'<span class="recipe-locked">Requer: Receitas das Profundezas — Merlin</span>':already?`<span class="pixel-inline">${gamePixelIconHtml('spark',15)} Preparada</span>`:costStr}</div>
       <div class="cook-duration pixel-inline">${gamePixelIconHtml('clock',15)} ${r.duration}</div>`;
-    if(canAfford && !already) card.onclick = ()=>cookRecipe(r.id);
+    if(canAfford && !already && unlocked) card.onclick = ()=>cookRecipe(r.id);
     grid.appendChild(card);
   }
 }
 function cookRecipe(id){
   const r = COOKING_RECIPES.find(r=>r.id===id);
   if(!r) return;
-  if(!Object.entries(r.cost).every(([k,v])=>(globalInventory[k]||0)>=v)) return;
-  for(const [k,v] of Object.entries(r.cost)) globalInventory[k]-=v;
+  const progression=typeof CampProgressionSystem!=='undefined'?CampProgressionSystem:null;
+  const cost=progression?progression.recipeCost(r):r.cost;
+  if(progression?!progression.canAfford(cost):!Object.entries(cost).every(([k,v])=>(globalInventory[k]||0)>=v)) return;
+  if(progression){if(!progression.consume(cost))return;}
+  else for(const [k,v] of Object.entries(cost)) globalInventory[k]=Math.max(0,(globalInventory[k]||0)-v);
   activeCookingBuffs = activeCookingBuffs.filter(b=>b.id!==id);
   activeCookingBuffs.push({id:r.id, name:r.name, icon:r.icon, effect:r.effect});
+  if(progression)progression.setPreparedMeals(activeCookingBuffs);
   savePersistentData();
   showInvNotif(`🍲 ${r.name} preparado!`);
   renderCookingPanel();
 }
 function applyCookingBuffs(p){
-  for(const b of activeCookingBuffs){
-    if(b.effect.hp_restore) healCampaignPlayer(p,b.effect.hp_restore,undefined,undefined,false);
-    if(b.effect.dmg_mult) p.dmgMult = (p.dmgMult||1) * b.effect.dmg_mult;
-    if(b.effect.speed_mult) p.speed *= b.effect.speed_mult;
-    if(b.effect.dodge_bonus) p.dmgReduce = Math.min(0.5,(p.dmgReduce||0)+b.effect.dodge_bonus);
-  }
+  CampProgressionSystem.applyMealsToPlayer(p,runCookingBuffs,(pl,amount)=>healCampaignPlayer(pl,amount,undefined,undefined,false));
 }
 function applyCookingWaveRegen(p){
-  for(const b of activeCookingBuffs){
-    if(b.effect.regen_per_wave) healCampaignPlayer(p,p.maxHp*b.effect.regen_per_wave,undefined,undefined,true);
-  }
+  CampProgressionSystem.applyMealWaveRegen(p,runCookingBuffs,(pl,amount)=>healCampaignPlayer(pl,amount,undefined,undefined,true));
 }
-function applyCookingLifesteal(p){
-  for(const b of activeCookingBuffs) if(b.effect.lifesteal) healCampaignPlayer(p,b.effect.lifesteal,undefined,undefined,true);
+function applyCookingKillEffects(p,target){
+  CampProgressionSystem.applyMealKillEffects(p,target,runCookingBuffs,(pl,amount)=>healCampaignPlayer(pl,amount,undefined,undefined,true),performance.now());
 }
 
+const CampProgressionSystem=CampProgressionCore.create({
+  saveSystem:SaveSystem,
+  getGlobalInventory:()=>globalInventory,
+  getFishInventory:()=>fishInventory,
+  getMetaUpgrades:()=>metaUpgrades,
+  saveGlobal:immediate=>savePersistentData(Boolean(immediate)),
+  saveFish:()=>saveFishInventory(),
+  itemName:id=>LOOT_ITEM_NAME(id),
+  itemPixelKind:id=>gameItemPixelKind(id),
+  notify:message=>showInvNotif(message),
+  announce:(x,y,message)=>spawnLevelUpNotice(x,y,message,0),
+  getIsBossRush:()=>Boolean(bossRushMode),
+  getWave:()=>Number(wave)||0,
+  isBoss:target=>target===bossOrc||target===bossSkel||target===bossSpider||target===bossMajor||target===petBoss||Boolean(target?.isBoss),
+});
+for(const def of CampProgressionSystem.GASTRONOMY_UPGRADES){
+  if(!META_UPGRADE_DEFS.some(item=>item.id===def.id))META_UPGRADE_DEFS.push(def);
+  if(typeof metaUpgrades[def.id]==='undefined')metaUpgrades[def.id]=def.maxLevel===1?false:0;
+}
+for(const recipe of CampProgressionSystem.FISH_RECIPES){
+  if(!COOKING_RECIPES.some(item=>item.id===recipe.id))COOKING_RECIPES.push(recipe);
+}
 // ══════════════════════════════════════════════════════════
 // SISTEMA DE OFICINA
 // ══════════════════════════════════════════════════════════
@@ -7676,7 +7726,11 @@ function farmAction(idx){
 // ══════════════════════════════════════════════
 function openMetaShop(){
   document.getElementById('meta-shop').classList.add('open');
+  const novelty=CampProgressionSystem?.hasNewDiscoveries();
+  const noveltyEl=document.getElementById('meta-new-discovery');
+  if(noveltyEl){noveltyEl.style.display=novelty?'block':'none';noveltyEl.textContent=novelty?'NOVO ECO DESCOBERTO · Consulte a seção Ecos':'';}
   renderMetaShop();
+  if(novelty)CampProgressionSystem.markDiscoveriesSeen();
 }
 
 function closeMetaShop(){
@@ -7684,16 +7738,13 @@ function closeMetaShop(){
 }
 
 function canAffordMeta(costObj){
-  for(const [key, val] of Object.entries(costObj)){
-    if((globalInventory[key]||0) < val) return false;
-  }
-  return true;
+  return CampProgressionSystem?CampProgressionSystem.canAfford(costObj):Object.entries(costObj).every(([key,val])=>(globalInventory[key]||0)>=val);
 }
 
 let metaCurrentTree = 'alma';
 function metaSetTree(tree){
   metaCurrentTree=tree;
-  ['alma','fazenda','expedicao','destino'].forEach(t=>{
+  ['alma','fazenda','expedicao','destino','gastronomia','ecos'].forEach(t=>{
     document.getElementById('meta-tab-'+t)?.classList[t===tree?'add':'remove']('active');
   });
   renderMetaShop();
@@ -7715,12 +7766,54 @@ function metaUpgradePixelKind(id){
     exp_eventos:'dice',
     exp_recuperacao:'heart',
     destino_reviver:'heart',
+    gastro_maestria:'bowl',
+    gastro_precisao:'target',
+    gastro_mesa:'feast',
+    gastro_mares:'fishing',
+    gastro_profundezas:'abyss',
+    gastro_conservacao:'chest',
   })[id]||'spark';
+}
+
+function metaIngredientHtml(cost){
+  return Object.entries(cost).map(([k,v])=>{
+    const have=CampProgressionSystem.quantity(k),kind=CampProgressionSystem.ingredientPixelKind(k),name=CampProgressionSystem.ingredientName(k);
+    return `<span class="pixel-inline meta-owned ${have>=v?'enough':'missing'}" title="${name}">${gamePixelIconHtml(kind,16)}${have}/${v} ${name}</span>`;
+  }).join(' · ');
+}
+
+function renderEchoShop(grid){
+  const data=CampProgressionSystem.exportState();
+  const equipped=new Set(data.equippedEchoes);
+  const artifacts=Object.values(CampProgressionSystem.ARTIFACT_DEFS)
+    .map(def=>`<span class="pixel-inline artifact-count">${gamePixelIconHtml(def.pixelKind,18)}${CampProgressionSystem.quantity(def.id)} ${def.name}</span>`).join(' ');
+  const summary=document.createElement('div');summary.className='echo-summary';
+  summary.innerHTML=`<strong>ECOS ATIVOS ${equipped.size}/3</strong><div class="echo-artifacts">${artifacts}</div>`;
+  grid.appendChild(summary);
+  for(const def of CampProgressionSystem.ECHO_DEFS){
+    const unlocked=Boolean(data.echoesUnlocked[def.id]),isEquipped=equipped.has(def.id),affordable=CampProgressionSystem.canAfford(def.cost);
+    const card=document.createElement('div');
+    card.className=`meta-card echo-card ${unlocked?'bought':'locked'} ${isEquipped?'equipped':''} ${!unlocked&&!affordable?'cant-afford':''}`;
+    card.innerHTML=`<div class="meta-card-icon">${gamePixelIconHtml(CampProgressionSystem.ARTIFACT_DEFS[def.artifact].pixelKind,32)}</div>
+      <div class="meta-card-name">${def.name}</div><div class="echo-origin">${def.origin}</div>
+      <div class="meta-card-desc">${def.desc}</div>
+      ${unlocked?`<div class="echo-state">${isEquipped?'EQUIPADO':'DESBLOQUEADO · clique para equipar'}</div>`:`<div class="meta-card-cost">${metaIngredientHtml(def.cost)}</div>`}`;
+    card.onclick=()=>{
+      if(!unlocked){if(CampProgressionSystem.unlockEcho(def.id)){renderMetaShop();}return;}
+      const result=CampProgressionSystem.toggleEcho(def.id);
+      if(!result.ok&&result.reason==='limit')showInvNotif('ECOS ATIVOS 3/3 · desequipe um Eco primeiro.');
+      renderMetaShop();
+    };
+    grid.appendChild(card);
+  }
 }
 
 function renderMetaShop(){
   const grid = document.getElementById('meta-grid');
   grid.innerHTML = '';
+  const oldHeader=grid.previousElementSibling;
+  if(oldHeader?.classList.contains('meta-inv-line'))oldHeader.remove();
+  if(metaCurrentTree==='ecos'){renderEchoShop(grid);return;}
   const defs = META_UPGRADE_DEFS.filter(d=>d.tree===metaCurrentTree);
   for(const def of defs){
     const currentLevel = (typeof metaUpgrades[def.id]==='boolean')?(metaUpgrades[def.id]?1:0):(metaUpgrades[def.id]||0);
@@ -7730,7 +7823,7 @@ function renderMetaShop(){
     const card = document.createElement('div');
     card.className = 'meta-card'+(maxed?' bought':(!affordable?' cant-afford':''));
     let costHtml = '';
-    if(!maxed) costHtml = Object.entries(cost).map(([k,v])=>`<span class="pixel-inline">${gamePixelIconHtml(gameItemPixelKind(k),16)}${v} ${LOOT_ITEM_NAME(k)}</span>`).join(' · ');
+    if(!maxed) costHtml = metaIngredientHtml(cost);
     const levelStr = def.maxLevel===1 ? (maxed?'✓ COMPRADO':'Único') : `Nível ${currentLevel}/${def.maxLevel}`;
     card.innerHTML = `
       <div class="meta-card-icon">${gamePixelIconHtml(metaUpgradePixelKind(def.id),32)}</div>
@@ -7742,7 +7835,9 @@ function renderMetaShop(){
     grid.appendChild(card);
   }
   // Inventory header
-  const invStr = Object.entries(globalInventory).filter(([,v])=>v>0).map(([k,v])=>`<span class="pixel-inline">${gamePixelIconHtml(gameItemPixelKind(k),18)}${v}</span>`).join(' ');
+  const resourceIds=[...Object.keys(globalInventory),...(typeof FISH_DEFS!=='undefined'?FISH_DEFS.map(f=>f.id):Object.keys(fishInventory||{}))];
+  const invStr=Array.from(new Set(resourceIds)).filter(k=>CampProgressionSystem.quantity(k)>0)
+    .map(k=>`<span class="pixel-inline" title="${CampProgressionSystem.ingredientName(k)}">${gamePixelIconHtml(CampProgressionSystem.ingredientPixelKind(k),18)}${CampProgressionSystem.quantity(k)}</span>`).join(' ');
   let header = grid.previousElementSibling;
   if(!header || !header.classList.contains('meta-inv-line')){
     const line = document.createElement('div');
@@ -7761,12 +7856,11 @@ function buyMetaUpgrade(id){
   if(currentLevel >= def.maxLevel) return;
   const cost = def.cost(currentLevel);
   if(!canAffordMeta(cost)) return;
-  // Deducte cost
-  for(const [k,v] of Object.entries(cost)) globalInventory[k]-=v;
+  if(!CampProgressionSystem.consume(cost)) return;
   // Apply upgrade
   if(def.maxLevel===1) metaUpgrades[id]=true;
   else metaUpgrades[id]=(currentLevel+1);
-  savePersistentData();
+  savePersistentData(true);
   showInvNotif(`${def.name} desbloqueado!`);
   renderMetaShop();
 }
@@ -8440,7 +8534,8 @@ function updateBlessingsHUD(){
 
 // ── Apply card effects in gameplay ──
 // Crit — called when dealing damage
-function applyCardCrit(player, baseDmg){
+function applyCardCrit(player,baseDmg,target){
+  baseDmg*=1+CampProgressionSystem.damageBonus(player,target);
   const cc = player.cardEffects?.critChance||0;
   if(cc>0 && Math.random()<cc){
     const mult = player.cardEffects?.critMult||2.5;
@@ -9046,6 +9141,7 @@ function drawHubMerlin(c, x, y, now){
   // Label
   c.fillStyle='rgba(120,230,190,0.8)'; c.font='bold 11px Courier New'; c.textAlign='center';
   c.fillText('MERLIN',x,y+38); c.textAlign='left';
+  CampProgressionSystem.drawArtifacts(c,x,y,now);
 }
 
 function drawHubFarmArea(c, x, y){
@@ -15240,6 +15336,7 @@ class Player {
 
   update(dt, el){
     if(this.dead) return;
+    CampProgressionSystem.updatePlayer(this,performance.now());
     if(typeof updateBlessingEffects==='function') updateBlessingEffects(this,dt);
     updateCampaignShopEffects(this,dt);
     if(this.frozen){
@@ -15315,7 +15412,7 @@ class Player {
       this.slowTimer-=dt*1000;
       if(this.slowTimer<=0) this.slowed=false;
     }
-    const moveMult=this.webbed?0.32:(this.slowed?0.55:1);
+    const moveMult=(this.webbed?0.32:(this.slowed?0.55:1))*CampProgressionSystem.movementMultiplier(this);
     this.x+=dx*this.speed*moveMult*dt; this.y+=dy*this.speed*moveMult*dt;
     this.x=Math.max(38,Math.min(W-38,this.x));
     this.y=Math.max(205,Math.min(H-24,this.y));
@@ -15497,7 +15594,7 @@ class Player {
   }
 
   gainXP(a){
-    this.xp+=a;
+    this.xp+=a*(this.xpGainMult||1);
     while(this.xp>=this.xpToNext){
       this.xp-=this.xpToNext;
       this.xpToNext=Math.floor(this.xpToNext*1.35);
@@ -15867,6 +15964,8 @@ class Enemy {
         .sort((a,b)=>Math.hypot(a.x-this.x,a.y-this.y)-Math.hypot(b.x-this.x,b.y-this.y))[0];
       if(nearPl){
         if(nearPl.classId==='necromancer')NecromancerSystem.onEnemyDeath(this,nearPl,this._lastDamageSource||'direct',this._lastNecroWeapon||'');
+        applyCookingKillEffects(nearPl,this);
+        CampProgressionSystem.onEnemyKilled(nearPl,this);
         applyCardLifesteal(nearPl, this.x, this.y);
         applyCardLightning(nearPl, this.x, this.y);
         // Death explosion — Sauron/Mordor
@@ -16126,13 +16225,17 @@ const campaignDamageSystem=CampaignDamageSystem.create({
   getBlessingIncomingDamageMultiplier:pl=>typeof getBlessingIncomingDamageMultiplier==='function'?getBlessingIncomingDamageMultiplier(pl):1,
   getCampaignShopIncomingDamageMultiplier:pl=>campaignShopIncomingDamageMultiplier(pl),
   getWeaponShieldReduction:pl=>weaponShieldReduction(pl),
+  getCampProgressionDamageReduction:pl=>CampProgressionSystem.damageReduction(pl),
   shouldBlessingDodge:pl=>typeof shouldBlessingDodge==='function'&&shouldBlessingDodge(pl),
+  shouldCampProgressionDodge:pl=>Math.random()<(pl._campFoodDodge||0),
   shouldCampaignShopBlock:pl=>shouldCampaignShopBlock(pl),
   shouldBlessingPreventDeath:pl=>typeof shouldBlessingPreventDeath==='function'&&shouldBlessingPreventDeath(pl),
+  shouldCampProgressionPreventDeath:pl=>CampProgressionSystem.shouldPreventFatalDamage(pl),
   shouldEndGame:()=>gameMode===1||(player.dead&&(!player2||player2.dead)),
   notifyBlessingDashAvoid:pl=>{if(typeof notifyBlessingDashAvoid==='function')notifyBlessingDashAvoid(pl);},
   notifyBlessingDamageTaken:(pl,amount)=>{if(typeof notifyBlessingDamageTaken==='function')notifyBlessingDamageTaken(pl,amount);},
   notifyCampaignShopDamageTaken:(pl,amount)=>notifyCampaignShopDamageTaken(pl,amount),
+  notifyCampProgressionDamageTaken:pl=>CampProgressionSystem.onPlayerDamaged(pl),
   weaponShieldCounter:pl=>weaponShieldCounter(pl),
   spawnParts:(...args)=>spawnParts(...args),
   spawnLevelUpNotice:(...args)=>spawnLevelUpNotice(...args),
@@ -18156,8 +18259,10 @@ function beginGame(){
   player=new Player(0);
   player2=is2p?new Player(1):null;
   NecromancerSystem.resetRun([player,player2].filter(Boolean));
+  runCookingBuffs=activeCookingBuffs.map(meal=>JSON.parse(JSON.stringify(meal)));
   applyMetaUpgrades(player);
   if(player2) applyMetaUpgrades(player2);
+  CampProgressionSystem.beginRun([player,player2]);
   player._revivesLeft=Math.min(2,Number(metaUpgrades.destino_reviver||0));
   if(player2) player2._revivesLeft=Math.min(2,Number(metaUpgrades.destino_reviver||0));
   // Biome modifier — scale enemy HP/reward
@@ -18165,9 +18270,11 @@ function beginGame(){
   window._biomeRewardMult = window._biomeModReward || 1;
   window._biomeModHp = 1; window._biomeModDmg = 1; window._biomeModReward = 1;
   // Clear cooking buffs after applying (they last one run)
-  activeCookingBuffs = [];
+  activeCookingBuffs=[];
+  CampProgressionSystem.setPreparedMeals([]);
   enemies=[]; projs=[]; coins=[]; parts=[]; meleeAnims=[]; firePatches=[]; structures=[];
   kills=0; wave=1; waveTimer=DIFF[difficulty].waveLen;
+  CampProgressionSystem.onWaveStarted([player,player2],wave);
   const initSpawnInt=(DIFF[difficulty]||DIFF.medium).spawnBase;
   spawnInt=initSpawnInt; spawnTimer=800; lastTs=null;
   totalCoins=0; levelNotices=[];
@@ -18203,6 +18310,8 @@ function beginGame(){
 }
 
 function endGame(){
+  CampProgressionSystem.endRun([player,player2]);
+  runCookingBuffs=[];
   state='dead';
   document.body.classList.remove('campaign-coop-active');
   const wasBossRush=bossRushMode;
@@ -18389,6 +18498,9 @@ buildBG('castle');
 if(bgCanvas) ctx.drawImage(bgCanvas,0,0);
 drawAnimTorches(Date.now());
 loadPersistentData();
+activeCookingBuffs=CampProgressionSystem.preparedMeals()
+  .filter(meal=>COOKING_RECIPES.some(recipe=>recipe.id===meal.id))
+  .slice(0,CampProgressionSystem.mealLimit());
 showScreen('main-menu');
 selectMode(1); selectDiff('medium');
 
@@ -18410,16 +18522,16 @@ GameRuntime.onSuspend(()=>{
 // SISTEMA DE PESCA — Estilo Stardew Valley
 // ═══════════════════════════════════════════════════════
 const FISH_DEFS = [
-  {id:'truta',      name:'Truta Arco-Íris', pixelIcon:'fish', rarity:'comum',    spd:1.1, sz:0.38, loc:'rio',       desc:'Peixe de rio comum. Restaura vida ao pescar.',          value:6,  buff:{type:'hp',      amt:25,   dur:0}},
-  {id:'carpa',      name:'Carpa Dourada',   pixelIcon:'fish', rarity:'comum',    spd:0.8, sz:0.42, loc:'lago',      desc:'Peixe de lago. Aumenta velocidade brevemente.',          value:6,  buff:{type:'spd',     amt:0.12, dur:45000}},
-  {id:'perca',      name:'Perca Listrada',  pixelIcon:'fish', rarity:'comum',    spd:1.0, sz:0.40, loc:'qualquer',  desc:'Encontrada em qualquer lugar. Dá XP extra.',             value:5,  buff:{type:'xp',      amt:30,   dur:0}},
-  {id:'enguia',     name:'Enguia Elétrica', pixelIcon:'fish', rarity:'incomum',  spd:1.9, sz:0.28, loc:'abismo',    desc:'Choca quem tenta agarrá-la. +dano por 1 min.',           value:14, buff:{type:'dmg',     amt:0.18, dur:60000}},
-  {id:'bagre',      name:'Bagre-Sombra',    pixelIcon:'fish', rarity:'incomum',  spd:1.6, sz:0.33, loc:'noite',     desc:'Emerge das profundezas. +dano por 45s.',                 value:16, buff:{type:'dmg',     amt:0.12, dur:45000}},
-  {id:'lampreia',   name:'Lampreia Antiga', pixelIcon:'fish', rarity:'incomum',  spd:2.0, sz:0.26, loc:'rio',       desc:'Parasita ancestral. +XP e cura ao pescar.',              value:20, buff:{type:'hpxp',    amt:40,   xp:50, dur:0}},
-  {id:'lanterna',   name:'Peixe-Lanterna',  pixelIcon:'fish', rarity:'raro',     spd:2.3, sz:0.30, loc:'abismo',    desc:'Ilumina o fundo. +20% dano e reduz cooldown por 90s.',   value:40, buff:{type:'dmgcd',   amt:0.20, cd:0.85, dur:90000}},
-  {id:'fantasma',   name:'Peixe-Fantasma',  pixelIcon:'fish', rarity:'raro',     spd:2.6, sz:0.22, loc:'noite',     desc:'Atravessa redes. +velocidade e +esquiva por 60s.',       value:45, buff:{type:'spddef',  amt:0.22, def:0.12,dur:60000}},
-  {id:'dragao',     name:'Peixe-Dragão',    pixelIcon:'fish', rarity:'épico',    spd:2.9, sz:0.20, loc:'abismo',    desc:'Incandescente. +35% dano e +30 HP por 2 min.',           value:90, buff:{type:'dmghp',   amt:0.35, hp:30,   dur:120000}},
-  {id:'celestial',  name:'Peixe Celestial', pixelIcon:'fish', rarity:'lendário', spd:3.0, sz:0.18, loc:'qualquer',  desc:'Aparece uma vez por lua. Potencializa TUDO por 3 min.',  value:250,buff:{type:'all',     amt:0.30, dur:180000}},
+  {id:'truta',      name:'Truta Arco-Íris', pixelIcon:'fish', rarity:'comum',    spd:1.1, sz:0.38, loc:'rio',      desc:'Peixe de rio comum usado na cozinha do acampamento.',      value:6,   use:'Truta Grelhada'},
+  {id:'carpa',      name:'Carpa Dourada',   pixelIcon:'fish', rarity:'comum',    spd:0.8, sz:0.42, loc:'lago',     desc:'Peixe de lago de carne firme e dourada.',                  value:6,   use:'Carpa na Brasa'},
+  {id:'perca',      name:'Perca Listrada',  pixelIcon:'fish', rarity:'comum',    spd:1.0, sz:0.40, loc:'qualquer', desc:'Ingrediente versátil encontrado em qualquer lago.',        value:5,   use:'Caldo de Perca'},
+  {id:'enguia',     name:'Enguia Elétrica', pixelIcon:'fish', rarity:'incomum',  spd:1.9, sz:0.28, loc:'abismo',   desc:'Ainda estala depois de pescada. Ingrediente energizante.', value:14,  use:'Enguia Faiscante'},
+  {id:'bagre',      name:'Bagre-Sombra',    pixelIcon:'fish', rarity:'incomum',  spd:1.6, sz:0.33, loc:'noite',    desc:'Carne escura que absorve temperos e magia.',               value:16,  use:'Ensopado Sombrio'},
+  {id:'lampreia',   name:'Lampreia Antiga', pixelIcon:'fish', rarity:'incomum',  spd:2.0, sz:0.26, loc:'rio',      desc:'Ingrediente ancestral, rico e restaurador.',               value:20,  use:'Sopa Ancestral'},
+  {id:'lanterna',   name:'Peixe-Lanterna',  pixelIcon:'fish', rarity:'raro',     spd:2.3, sz:0.30, loc:'abismo',   desc:'Seu brilho permanece depois do preparo.',                  value:40,  use:'Lanterna ao Molho Lunar'},
+  {id:'fantasma',   name:'Peixe-Fantasma',  pixelIcon:'fish', rarity:'raro',     spd:2.6, sz:0.22, loc:'noite',    desc:'Ingrediente etéreo para receitas de grande mobilidade.',   value:45,  use:'Sashimi Espectral'},
+  {id:'dragao',     name:'Peixe-Dragão',    pixelIcon:'fish', rarity:'épico',    spd:2.9, sz:0.20, loc:'abismo',   desc:'Carne incandescente reservada a cozinheiros experientes.', value:90,  use:'Banquete do Dragão'},
+  {id:'celestial',  name:'Peixe Celestial', pixelIcon:'fish', rarity:'lendário', spd:3.0, sz:0.18, loc:'qualquer', desc:'Ingrediente lendário que concentra o poder das estrelas.', value:250, use:'Ceia Celestial'},
 ];
 
 const FISH_RARITY_COL = {
@@ -18949,27 +19061,11 @@ function _renderFishInventory(){
     chip.className='fish-chip';
     const col=FISH_RARITY_COL[f.rarity];
     chip.style.borderColor=col+'55';
-    chip.title=f.desc+'\nBuff: '+_fishBuffLabel(f.buff);
+    chip.title=f.desc+'\nUso: '+f.use;
     chip.innerHTML=`${_fishPixelHtml(f,22)} <span style="color:${col};font-weight:bold">${f.name}</span> <span style="color:#88aacc">×${qty}</span>`;
     row.appendChild(chip);
   });
   if(!any) row.innerHTML='<div style="font-size:14px;color:#1a3a5a;letter-spacing:1px;font-style:italic;">Nenhum peixe ainda — lance sua linha!</div>';
-}
-
-function _fishBuffLabel(buff){
-  if(!buff) return '';
-  switch(buff.type){
-    case 'hp':     return `+${buff.amt} HP (instantâneo)`;
-    case 'xp':     return `+${buff.amt} XP (instantâneo)`;
-    case 'hpxp':   return `+${buff.amt} HP · +${buff.xp} XP`;
-    case 'spd':    return `+${Math.round(buff.amt*100)}% velocidade (${buff.dur/1000}s)`;
-    case 'dmg':    return `+${Math.round(buff.amt*100)}% dano (${buff.dur/1000}s)`;
-    case 'dmgcd':  return `+${Math.round(buff.amt*100)}% dano · cooldown -${Math.round((1-(buff.cd||1))*100)}% (${buff.dur/1000}s)`;
-    case 'spddef': return `+${Math.round(buff.amt*100)}% velocidade · +${Math.round((buff.def||0)*100)}% esquiva (${buff.dur/1000}s)`;
-    case 'dmghp':  return `+${Math.round(buff.amt*100)}% dano · +${buff.hp} HP máx (${buff.dur/1000}s)`;
-    case 'all':    return `+${Math.round(buff.amt*100)}% TUDO · +20 HP (${buff.dur/1000}s)`;
-    default:       return `+${Math.round((buff.amt||0)*100)}% ${buff.type}${buff.dur>0?` (${buff.dur/1000}s)`:''}`;
-  }
 }
 
 function _setFishStatus(html){ const el=document.getElementById('fish-status'); if(el) el.innerHTML=html; }
@@ -19081,9 +19177,10 @@ function _startMinigame(location){
   // Pick fish
   const pool=FISH_DEFS.filter(f=>f.loc===location||f.loc==='qualquer');
   const weights={comum:50,incomum:25,raro:12,épico:4,lendário:1};
-  let total=pool.reduce((a,f)=>a+(weights[f.rarity]||1),0);
+  const fishWeight=f=>CampProgressionSystem?CampProgressionSystem.fishWeight(f.rarity,weights[f.rarity]||1):(weights[f.rarity]||1);
+  let total=pool.reduce((a,f)=>a+fishWeight(f),0);
   let r=Math.random()*total; let fish=pool[0];
-  for(const f of pool){ r-=(weights[f.rarity]||1); if(r<=0){fish=f;break;} }
+  for(const f of pool){ r-=fishWeight(f); if(r<=0){fish=f;break;} }
   const fishDifficulty=FISH_DIFFICULTY[fish.rarity]||FISH_DIFFICULTY.raro;
   // A barra começa pequena; cada melhoria da oficina a aproxima da antiga barra ampla.
   const zoneMult=fishDifficulty.zone*(1+varaLv*0.22);
@@ -19109,7 +19206,7 @@ function _startMinigame(location){
       <div style="font-size:12px;color:${fishCol};letter-spacing:2px;margin-bottom:10px;text-transform:uppercase;">${fish.rarity}</div>
       <div style="font-size:12px;color:#88b8d8;letter-spacing:1px;margin:-5px 0 8px;">Dificuldade: ${fishDifficulty.label}</div>
       <div style="font-size:13px;color:#4a7a9a;line-height:1.7;margin-bottom:10px;">${fish.desc}</div>
-      <div class="pixel-inline" style="font-size:14px;color:#3a7a5a;">${gamePixelIconHtml('spark',15,{Y:'#44cc88'})} ${_fishBuffLabel(fish.buff)}</div>
+      <div class="pixel-inline" style="font-size:14px;color:#3a7a5a;">${gamePixelIconHtml('spark',15,{Y:'#44cc88'})} Ingrediente: ${fish.use}</div>
       <div class="pixel-inline" style="font-size:14px;color:#aa8830;margin-top:4px;">${gamePixelIconHtml('coin',17)} ${fish.value} moedas</div>
       ${varaHint}
       <div id="fish-prog-wrap" style="margin-top:12px;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.08);border-radius:6px;height:12px;overflow:hidden;">
@@ -19256,12 +19353,10 @@ function _onFishCaught(fish){
   const isDouble = dblChance>0 && Math.random()<dblChance;
   const qty = isDouble ? 2 : 1;
 
-  fishInventory[fish.id]=(fishInventory[fish.id]||0)+qty;
-  saveFishInventory();
+  CampProgressionSystem.recordFishCatch(fish.id,qty);
   const earned = fish.value * qty;
   if(typeof totalCoins!=='undefined') totalCoins+=earned;
   const cd=document.getElementById('coin-display'); if(cd) cd.innerHTML=`<span class="pixel-inline">${gamePixelIconHtml('coin',18)} ${totalCoins}</span>`;
-  if(typeof applyFishBuff==='function'&&typeof player!=='undefined'&&player&&!player.dead&&fish.buff) applyFishBuff(fish.buff);
 
   const fishCol=FISH_RARITY_COL[fish.rarity];
   document.getElementById('fish-mg-wrap').style.display='none';
@@ -19270,7 +19365,7 @@ function _onFishCaught(fish){
       <div class="pixel-inline" style="margin-bottom:4px;justify-content:center;">${_fishPixelHtml(fish,40)}${isDouble?_fishPixelHtml(fish,40):''}</div>
       <div class="pixel-inline" style="font-size:24px;font-weight:bold;color:${fishCol};text-shadow:0 0 20px ${fishCol}88;letter-spacing:2px;justify-content:center;">${isDouble?gamePixelIconHtml('fishing',24,{B:fishCol}):''}${isDouble?'CAPTURA DUPLA!':'CAPTURADO!'}</div>
       <div class="pixel-inline" style="font-size:17px;color:#f0d080;margin-top:3px;justify-content:center;">${fish.name}${isDouble?' ×2':''} · ${gamePixelIconHtml('coin',17)} ${earned}</div>
-      <div class="pixel-inline" style="font-size:14px;color:#44cc88;margin-top:2px;justify-content:center;">${gamePixelIconHtml('spark',15,{Y:'#44cc88'})} ${_fishBuffLabel(fish.buff)}</div>
+      <div class="pixel-inline" style="font-size:14px;color:#44cc88;margin-top:2px;justify-content:center;">${gamePixelIconHtml('spark',15,{Y:'#44cc88'})} Guardado para: ${fish.use}</div>
     </div>`);
   _renderFishInventory();
   setTimeout(()=>{
@@ -19294,59 +19389,6 @@ function closeFishing(){
       // Remove so _buildFishOverlay can recreate it fresh next time
       ov.remove();
     },450);
-  }
-}
-
-function applyFishBuff(buff){
-  const pls=[player, typeof player2!=='undefined'?player2:null].filter(p=>p&&!p.dead);
-  for(const pl of pls){
-    switch(buff.type){
-      case 'hp':
-        pl.hp=Math.min(pl.maxHp, pl.hp+buff.amt);
-        showInvNotif(`❤️ +${buff.amt} HP`); break;
-
-      case 'xp':
-        pl.gainXP(buff.amt);
-        showInvNotif(`+${buff.amt} XP`); break;
-
-      case 'hpxp':
-        pl.hp=Math.min(pl.maxHp, pl.hp+(buff.amt||0));
-        pl.gainXP(buff.xp||0);
-        showInvNotif(`+${buff.amt} HP · +${buff.xp} XP`); break;
-
-      case 'spd':
-        pl.speed*=(1+buff.amt);
-        showInvNotif(`💨 +${Math.round(buff.amt*100)}% velocidade (${buff.dur/1000}s)`);
-        if(buff.dur>0) setTimeout(()=>{ if(pl&&!pl.dead) pl.speed/=(1+buff.amt); }, buff.dur); break;
-
-      case 'dmg':
-        pl.dmg*=(1+buff.amt);
-        showInvNotif(`⚔️ +${Math.round(buff.amt*100)}% dano (${buff.dur/1000}s)`);
-        if(buff.dur>0) setTimeout(()=>{ if(pl&&!pl.dead) pl.dmg/=(1+buff.amt); }, buff.dur); break;
-
-      case 'dmgcd':
-        pl.dmg*=(1+buff.amt);
-        pl.atkCd*=(buff.cd||1);
-        showInvNotif(`⚔️ +${Math.round(buff.amt*100)}% dano · ⚡ cooldown reduzido (${buff.dur/1000}s)`);
-        if(buff.dur>0) setTimeout(()=>{ if(pl&&!pl.dead){ pl.dmg/=(1+buff.amt); pl.atkCd/=(buff.cd||1); } }, buff.dur); break;
-
-      case 'spddef':
-        pl.speed*=(1+buff.amt);
-        pl.dmgReduce=Math.min(0.55,(pl.dmgReduce||0)+(buff.def||0));
-        showInvNotif(`💨 +velocidade · 🛡️ +esquiva (${buff.dur/1000}s)`);
-        if(buff.dur>0) setTimeout(()=>{ if(pl&&!pl.dead){ pl.speed/=(1+buff.amt); pl.dmgReduce=Math.max(0,(pl.dmgReduce||0)-(buff.def||0)); } }, buff.dur); break;
-
-      case 'dmghp':
-        pl.dmg*=(1+buff.amt);
-        pl.maxHp+=(buff.hp||0); pl.hp=Math.min(pl.maxHp, pl.hp+(buff.hp||0));
-        showInvNotif(`⚔️ +${Math.round(buff.amt*100)}% dano · ❤️ +${buff.hp} HP máx (${buff.dur/1000}s)`);
-        if(buff.dur>0) setTimeout(()=>{ if(pl&&!pl.dead){ pl.dmg/=(1+buff.amt); pl.maxHp-=(buff.hp||0); pl.hp=Math.min(pl.maxHp,pl.hp); } }, buff.dur); break;
-
-      case 'all':
-        pl.speed*=(1+buff.amt); pl.dmg*=(1+buff.amt); pl.maxHp+=20; pl.hp=Math.min(pl.maxHp,pl.hp+20);
-        showInvNotif(`TUDO +${Math.round(buff.amt*100)}% · +20 HP (${buff.dur/1000}s)`);
-        if(buff.dur>0) setTimeout(()=>{ if(pl&&!pl.dead){ pl.speed/=(1+buff.amt); pl.dmg/=(1+buff.amt); } }, buff.dur); break;
-    }
   }
 }
 
@@ -20264,6 +20306,7 @@ window.CampV2 = (function(){
     desenharAmbiente(c,t);
     desenharHorta(c,t);
     desenharPlantas(c,t);
+    CampProgressionSystem.drawArtifacts(c,.835*MW,.590*MH,t,S.camX,S.camY);
 
     if(S.depurar){                                          // [F2] confere colisao
       c.globalAlpha=.35;
@@ -20395,48 +20438,24 @@ window.CampV2 = (function(){
 // a qualidade so multiplica o efeito declarado pela receita.
 // ══════════════════════════════════════════════════════════════════
 window.CookMinigame = (function(){
-  // Faixas medidas a partir do centro (0 = miolo exato, 1 = ponta da barra)
-  const FAIXAS = [
-    {q:'EXCELENTE', ate:.08, mult:1.60, cor:'#ffd23a', bonus:true },
-    {q:'BOM',       ate:.30, mult:1.25, cor:'#7de89a', bonus:false},
-    {q:'COMUM',     ate:1.00,mult:1.00, cor:'#9ab0a2', bonus:false},
-  ];
-  // Bonus do Excelente: nunca e so "numero maior", e um efeito NOVO.
-  const BONUS = {
-    ensopado_trigo:{regen_per_wave:.06},
-    sopa_tomate:   {regen_per_wave:.05},
-    pocao_erva:    {dodge_bonus:.05},
-    cha_cogumelo:  {dmg_mult:1.08},
-  };
-  const PADRAO_BONUS = {dmg_mult:1.06};
-
-  const T = {recipe:null, raf:null, pos:0, dir:1, rodando:false, vel:1.55};
-
-  // Escala o efeito conforme a qualidade. Multiplicador (_mult) escala o que
-  // passa de 1 — multiplicar direto faria 1.20 virar 1.92, um salto absurdo.
-  function escalar(chave, valor, mult){
-    if(typeof valor!=='number') return valor;
-    if(/_mult$/.test(chave)) return Math.round((1+(valor-1)*mult)*1000)/1000;
-    return (valor>=1) ? Math.round(valor*mult) : Math.round(valor*mult*1000)/1000;
-  }
-  function efeitoDaQualidade(r, faixa){
-    const ef={};
-    for(const [k,v] of Object.entries(r.effect||{})) ef[k]=escalar(k,v,faixa.mult);
-    if(faixa.bonus){
-      const extra=BONUS[r.id]||PADRAO_BONUS;
-      for(const [k,v] of Object.entries(extra)){
-        if(/_mult$/.test(k)) ef[k]=Math.round(((ef[k]||1)*v)*1000)/1000;
-        else ef[k]=Math.round(((ef[k]||0)+v)*1000)/1000;
-      }
-    }
-    return ef;
-  }
+  const T = {recipe:null,replaceId:null,cost:null,raf:null,pos:0,dir:1,rodando:false,vel:1.55};
+  function faixas(){ return CampProgressionSystem.qualityBands(); }
+  function efeitoDaQualidade(r,faixa){ return CampProgressionSystem.buildMealEffect(r,faixa); }
   function textoEfeito(ef){
     const L={hp_restore:v=>'+'+v+' de vida na largada',
              dmg_mult:v=>'+'+Math.round((v-1)*100)+'% de dano',
              speed_mult:v=>'+'+Math.round((v-1)*100)+'% de velocidade',
              dodge_bonus:v=>'+'+Math.round(v*100)+'% de esquiva',
-             regen_per_wave:v=>'+'+Math.round(v*100)+'% de regeneracao por onda'};
+             damage_reduction:v=>Math.round(v*100)+'% de redução de dano',
+             xp_mult:v=>'+'+Math.round((v-1)*100)+'% de XP',
+             max_hp_flat:v=>'+'+v+' de vida máxima',
+             max_hp_mult:v=>'+'+Math.round((v-1)*100)+'% de vida máxima',
+             kill_heal_flat:v=>'cura '+v+' HP por abate',
+             kill_heal_cd:v=>'recarga de '+(v/1000).toFixed(1)+'s',
+             elite_kill_heal_ratio:v=>'cura '+Math.round(v*100)+'% por Elite',
+             elite_kill_heal_cd:v=>'recarga de '+(v/1000).toFixed(1)+'s',
+             lifesteal:v=>'cura '+v+' HP por abate',
+             regen_per_wave:v=>'+'+Math.round(v*100)+'% de regeneração por onda'};
     return Object.entries(ef).map(([k,v])=>L[k]?L[k](v):k+': '+v).join(' · ');
   }
 
@@ -20447,8 +20466,9 @@ window.CookMinigame = (function(){
     const bx=10, bw=W-20, by=18, bh=26, cx=bx+bw/2;
     c.fillStyle='#08120a'; c.fillRect(bx,by,bw,bh);
     // faixas, da mais larga para a mais estreita
-    for(let i=FAIXAS.length-1;i>=0;i--){
-      const f=FAIXAS[i], w=bw*f.ate;
+    const bands=faixas();
+    for(let i=bands.length-1;i>=0;i--){
+      const f=bands[i], w=bw*f.ate;
       c.fillStyle=f.cor+(i===0?'55':i===1?'33':'1c');
       c.fillRect(cx-w/2,by,w,bh);
       c.strokeStyle=f.cor+'88'; c.lineWidth=1;
@@ -20475,11 +20495,12 @@ window.CookMinigame = (function(){
     desenhar();
   }
 
-  function abrir(id){
+  function abrir(id,replaceId=null){
     const r=(typeof COOKING_RECIPES!=='undefined')?COOKING_RECIPES.find(x=>x.id===id):null;
-    if(!r) return;
-    if(!Object.entries(r.cost).every(([k,v])=>(globalInventory[k]||0)>=v)) return;
-    T.recipe=r; T.pos=-1; T.dir=1; T.rodando=true;
+    if(!r||!CampProgressionSystem.recipeUnlocked(r)) return false;
+    const cost=CampProgressionSystem.recipeCost(r);
+    if(!CampProgressionSystem.canAfford(cost)) return false;
+    T.recipe=r;T.replaceId=replaceId;T.cost=cost;T.pos=-1;T.dir=1;T.rodando=true;
     // receita mais rara, barra mais rapida
     T.vel = r.rarity==='mistica'?2.15 : r.rarity==='rara'?1.85 : 1.55;
     document.getElementById('cm-nome').textContent=r.name;
@@ -20488,21 +20509,25 @@ window.CookMinigame = (function(){
     document.getElementById('cm-hint').textContent='[ESPAÇO] para acertar';
     document.getElementById('cm-resultado').style.display='none';
     document.getElementById('cookmini').classList.add('open');
-    desenhar(); T.raf=requestAnimationFrame(passo);
+    desenhar();T.raf=requestAnimationFrame(passo);return true;
   }
 
   function bater(){
     if(!T.rodando) return;
     T.rodando=false; if(T.raf){cancelAnimationFrame(T.raf);T.raf=null;}
-    const r=T.recipe, desvio=Math.abs(T.pos);
-    const faixa=FAIXAS.find(f=>desvio<=f.ate)||FAIXAS[FAIXAS.length-1];
+    const r=T.recipe,desvio=Math.abs(T.pos),bands=faixas();
+    const faixa=bands.find(f=>desvio<=f.ate)||bands[bands.length-1];
     const ef=efeitoDaQualidade(r,faixa);
-    // paga o custo e registra o buff — mesmo caminho do sistema antigo
-    for(const [k,v] of Object.entries(r.cost)) globalInventory[k]-=v;
+    // O custo só é pago depois do acerto. Fechar/cancelar nunca consome ingredientes.
+    if(!CampProgressionSystem.consume(T.cost)){
+      showInvNotif('Ingredientes insuficientes. Nada foi consumido.');fechar();return;
+    }
+    if(T.replaceId) activeCookingBuffs=activeCookingBuffs.filter(b=>b.id!==T.replaceId);
     activeCookingBuffs=activeCookingBuffs.filter(b=>b.id!==r.id);
     activeCookingBuffs.push({id:r.id, name:r.name+' ('+faixa.q.toLowerCase()+')',
-                             icon:r.icon, effect:ef, qualidade:faixa.q});
-    if(typeof savePersistentData==='function') savePersistentData();
+                             icon:r.icon,pixelIcon:r.pixelIcon,effect:ef,qualidade:faixa.q});
+    CampProgressionSystem.setPreparedMeals(activeCookingBuffs);
+    if(typeof savePersistentData==='function')savePersistentData(true);
     const qEl=document.getElementById('cm-qualidade');
     qEl.textContent=faixa.q; qEl.style.color=faixa.cor;
     document.getElementById('cm-efeito').innerHTML=
@@ -20515,6 +20540,7 @@ window.CookMinigame = (function(){
   function fechar(){
     T.rodando=false; if(T.raf){cancelAnimationFrame(T.raf);T.raf=null;}
     document.getElementById('cookmini').classList.remove('open');
+    T.recipe=null;T.replaceId=null;T.cost=null;
     if(typeof renderCookingPanel==='function') renderCookingPanel();
   }
 
@@ -20523,19 +20549,37 @@ window.CookMinigame = (function(){
     if(!aberto||!aberto.classList.contains('open')) return;
     if(e.code==='Space'||e.key===' '){ e.preventDefault(); e.stopPropagation();
       if(T.rodando) bater(); else fechar(); }
-    else if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); if(!T.rodando) fechar(); }
+    else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();fechar();}
   },true);
 
-  return {abrir, fechar, bater, FAIXAS, escalar, efeitoDaQualidade};
+  return {abrir,fechar,bater,faixas,efeitoDaQualidade};
 })();
 
 // A cozinha agora passa pelo minigame em vez de preparar na hora.
 (function(){
   const antigo=window.cookRecipe;
+  function fecharSubstituicao(){document.getElementById('meal-replace-overlay')?.remove();}
+  function escolherSubstituicao(id){
+    const recipe=COOKING_RECIPES.find(item=>item.id===id);if(!recipe)return;
+    fecharSubstituicao();
+    const overlay=document.createElement('div');overlay.id='meal-replace-overlay';
+    overlay.innerHTML=`<div class="meal-replace-box"><h3>SUBSTITUIR COMIDA</h3><p>A mesa está cheia. Escolha uma comida para substituir por <b>${recipe.name}</b>.</p><div class="meal-replace-list"></div><button class="cm-btn" type="button">CANCELAR</button></div>`;
+    overlay.querySelector('.cm-btn').onclick=fecharSubstituicao;
+    overlay.onclick=e=>{if(e.target===overlay)fecharSubstituicao();};
+    const list=overlay.querySelector('.meal-replace-list');
+    activeCookingBuffs.forEach(meal=>{
+      const button=document.createElement('button');button.type='button';button.className='meal-replace-option';
+      button.textContent=meal.name;button.onclick=()=>{fecharSubstituicao();CookMinigame.abrir(id,meal.id);};list.appendChild(button);
+    });
+    document.body.appendChild(overlay);
+  }
   window.cookRecipe=function(id){
-    if(window.CookMinigame) CookMinigame.abrir(id);
+    if(activeCookingBuffs.some(meal=>meal.id===id))return;
+    if(activeCookingBuffs.length>=CampProgressionSystem.mealLimit())escolherSubstituicao(id);
+    else if(window.CookMinigame)CookMinigame.abrir(id);
     else if(typeof antigo==='function') antigo(id);
   };
+  window.closeMealReplacement=fecharSubstituicao;
 })();
 // [/COOK-MINI]
 </script>

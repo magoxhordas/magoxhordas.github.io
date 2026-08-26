@@ -19,6 +19,7 @@ function advWave(){
   weaponDmgDone=[0,0,0];
   for(const w of [...weaponSlots,...weaponSlots2])if(w)w.damageDone=0;
   wave++;
+  CampProgressionSystem.onWaveStarted([player,player2],wave);
   waveTimer=DIFF[difficulty].waveLen;
   const d=DIFF[difficulty]||DIFF.medium;
   spawnInt=Math.max(d.spawnMin,d.spawnBase-wave*d.spawnStep);
@@ -163,6 +164,7 @@ function updateCampaignBiomeAndBoss(wildPetFight){
       bossMajor.shieldMax=Math.round(bossMajor.shieldMax*bossDiff.bossHp*bossWaveHp);
       bossMajor.shieldHp=bossMajor.shieldMax;
     }
+    CampProgressionSystem.onBossStarted([player,player2],bossMajor);
     if(typeof Audio!=='undefined'){
       const bossTheme={5:'skeleton_king',10:'aracne',15:'frost',20:'sandworm',25:'balrog',30:'brute'}[wave]||bossMajor.type||'default';
       Audio.playBossMusic(bossTheme);

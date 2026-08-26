@@ -246,7 +246,7 @@
 
   applyCardCrit=function(pl,baseDmg,target){
     if(!pl)return baseDmg;
-    const e=pl.cardEffects||{};let damage=baseDmg*(1+dynamicDamageBonus(pl,target)+getCampaignShopDamageBonus(pl,target));
+    const e=pl.cardEffects||{};let damage=baseDmg*(1+dynamicDamageBonus(pl,target)+getCampaignShopDamageBonus(pl,target)+CampProgressionSystem.damageBonus(pl,target));
     if((pl.classId==='warrior'||pl.classId==='viking')&&e.meleeDamage)damage*=1+e.meleeDamage;
     let chance=(e.critChance||0)+getCampaignShopCritBonus(pl),didCrit=false;
     if(e.lowHpCrit)chance+=e.lowHpCrit*(1-hpRatio(pl));
@@ -507,7 +507,7 @@
 
   applyCardCrit=function(pl,baseDmg,target,weapon=null){
     if(!pl)return baseDmg;const e=effect(pl),now=performance.now();
-    let damage=baseDmg*(1+dynamicDamageBonusV3(pl,target,weapon)+getCampaignShopDamageBonus(pl,target));
+    let damage=baseDmg*(1+dynamicDamageBonusV3(pl,target,weapon)+getCampaignShopDamageBonus(pl,target)+CampProgressionSystem.damageBonus(pl,target));
     let chance=getCampaignShopCritBonus(pl)+(e.attackCritBonus||0)+(e.morosCritMiss||0),force=!!e.forceCrit;
     const marked=boon(pl,'moros_marked_fate');
     const last=boon(pl,'moros_last_page');if(last)chance+=bv(last)*(1-hpRatio(pl));
