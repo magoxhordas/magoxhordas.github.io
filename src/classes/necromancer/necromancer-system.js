@@ -128,7 +128,7 @@
     if(Math.random()<corpseChance)raiseCorpse(owner,enemy);
   }
   function onBossDamaged(owner,boss,beforeHp,afterHp){
-    if(!isNecromancer(owner)||!boss||beforeHp<=afterHp)return;
+    if(!isNecromancer(owner)||!isBoss(boss)||beforeHp<=afterHp)return;
     const state=stateFor(owner);let mask=state.bossThresholds.get(boss)||0;
     const max=Math.max(1,boss.maxHp||beforeHp);let created=0;
     for(let index=1;index<=5;index++){

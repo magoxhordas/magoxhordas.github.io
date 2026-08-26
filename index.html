@@ -12047,8 +12047,11 @@ function nearestWeaponTargets(player,enemies,range,limit=1,exclude=[]){
 function weaponDamage(player,weapon,target,amount,color){
   if(!target||target.dead)return 0;
   const dmg=typeof applyCardCrit==='function'?applyCardCrit(player,amount,target,weapon):amount;
+  const beforeHp=Number(target.hp||0);
   if(player?.classId==='necromancer'){target._lastDamageOwner=player;target._lastDamageSource='direct';target._lastNecroWeapon=weapon?.type||'';}
-  target.takeDmg(dmg);weapon.damageDone=(weapon.damageDone||0)+dmg;
+  target.takeDmg(dmg);
+  if(player?.classId==='necromancer')NecromancerSystem.onBossDamaged(player,target,beforeHp,Number(target.hp||0));
+  weapon.damageDone=(weapon.damageDone||0)+dmg;
   markEnemyWeaponStatus(target,weapon);
   if(typeof applyClassHitEffect==='function')applyClassHitEffect({owner:player,dmg,weapon},target);
   spawnParts(target.x,target.y,color||'#ffffff',5,38);
@@ -16739,7 +16742,21 @@ function collide(){
     }
     if(!p.dead&&petBoss&&!petBoss.dead&&!petBoss.tamed&&Math.hypot(p.x-petBoss.x,p.y-petBoss.y)<p.radius+petBoss.radius){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,petBoss,p.weapon||null):p.dmg;
-      petBoss.takeDmg(dmg);markEnemyWeaponStatus(petBoss,p.weapon?.type&&WEAPON_DEFS[p.weapon.type]?p.weapon:{type:{mage:'ice',warrior:'fire',archer:'electric',viking:'blood'}[p.owner?.classId]||'physical'});p.dead=true;
+      const before=petBoss.hp;
+      petBoss.takeDmg(dmg);
+      if(p.owner?.classId==='necromancer'){
+        NecromancerSystem.onBossDamaged(p.owner,petBoss,before,petBoss.hp);
+        NecromancerSystem.onProjectileHit(p,petBoss,dmg);
+      }
+      if(p.isCampaignWeaponProj){
+        markEnemyWeaponStatus(petBoss,p.weapon);
+        p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;
+        applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},petBoss);
+      }else{
+        markEnemyWeaponStatus(petBoss,{type:{mage:'ice',warrior:'fire',archer:'electric',viking:'blood',necromancer:'shadow'}[p.owner?.classId]||'physical'});
+        applyClassHitEffect(p,petBoss);
+      }
+      if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
     }
   }
   // Enemies vs players — with iceBarrier slow-on-contact
