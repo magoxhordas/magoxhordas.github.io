@@ -65,6 +65,7 @@
         .echo-summary strong{font-size:14px;letter-spacing:1px;}
         .echo-artifacts{gap:4px;margin-top:4px;}
         .artifact-count{padding:2px 5px;font-size:10px;line-height:1.1;}
+        #necromancer-resource-hud .necro-resource-guide{display:none!important;}
         @media(max-width:700px){
           .echo-summary{width:100%;padding:4px 6px;font-size:10px;}
           .echo-summary strong{font-size:12px;}
@@ -75,7 +76,61 @@
     }
   }
 
+  // O ataque visual do Espirito/Sombra desenhava, por ~320 ms, um feixe longo
+  // ate o alvo enquanto o contexto ainda estava com shadowBlur alto. Em canvas
+  // grande isso pode custar varios raster passes por frame. Mantemos o ataque e
+  // o dano intactos; trocamos apenas o feixe visual por um risco curto sem blur.
+  function installNecromancerShadowPerformanceFix(){
+    const patch=()=>{
+      const original=global.drawNecromancerSummon;
+      if(typeof original!=='function'||original.__necroShadowPerfFix)return false;
+
+      function optimizedNecromancerSummonRenderer(renderCtx,summon,time){
+        if(!summon||summon.type!=='spirit'||!(summon.attackAnim>0))return original(renderCtx,summon,time);
+
+        const attackAnim=summon.attackAnim;
+        summon.attackAnim=0;
+        let rendered=false;
+        try{
+          rendered=original(renderCtx,summon,time);
+        }finally{
+          summon.attackAnim=attackAnim;
+        }
+
+        const target=summon.target;
+        if(rendered===true&&renderCtx&&target&&!target.dead){
+          const dx=target.x-summon.x,dy=target.y-summon.y;
+          const distance=Math.hypot(dx,dy);
+          if(distance>1){
+            const beamLength=Math.min(distance,72);
+            renderCtx.save();
+            renderCtx.globalAlpha=.52;
+            renderCtx.filter='none';
+            renderCtx.shadowBlur=0;
+            renderCtx.strokeStyle='#8dffba';
+            renderCtx.lineWidth=1;
+            renderCtx.beginPath();
+            renderCtx.moveTo(summon.x,summon.y-4);
+            renderCtx.lineTo(summon.x+dx/distance*beamLength,summon.y-4+dy/distance*beamLength);
+            renderCtx.stroke();
+            renderCtx.restore();
+          }
+        }
+        return rendered;
+      }
+
+      optimizedNecromancerSummonRenderer.__necroShadowPerfFix=true;
+      optimizedNecromancerSummonRenderer.__original=original;
+      global.drawNecromancerSummon=optimizedNecromancerSummonRenderer;
+      return true;
+    };
+
+    if(patch())return;
+    if(typeof global.addEventListener==='function')global.addEventListener('load',patch,{once:true});
+  }
+
   installMerlinUiCleanup();
+  installNecromancerShadowPerformanceFix();
 
   global.CampLayoutData=Object.freeze({HORTA,LUZES_ACAMPAMENTO,ARQ});
 })(window);
