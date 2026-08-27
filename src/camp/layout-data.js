@@ -76,29 +76,60 @@
     }
   }
 
-  // O ataque visual do Espirito/Sombra desenhava, por ~320 ms, um feixe longo
-  // ate o alvo enquanto o contexto ainda estava com shadowBlur alto. Em canvas
-  // grande isso pode custar varios raster passes por frame. Mantemos o ataque e
-  // o dano intactos; trocamos apenas o feixe visual por um risco curto sem blur.
+  // A Sombra/Espirito e pixel art. O renderer original ativa shadowBlur=10 antes
+  // de chamar drawSpriteAt, fazendo o navegador aplicar blur em cada fillRect do
+  // sprite. Em vez disso, desligamos o blur apenas enquanto os pixels do sprite
+  // sao rasterizados e o restauramos logo depois, preservando aura e efeitos.
+  // O feixe longo do ataque continua substituido por um risco curto sem blur.
   function installNecromancerShadowPerformanceFix(){
+    let activeSpiritRenderCtx=null;
+
+    const patchSpriteRenderer=()=>{
+      const originalSprite=global.drawSpriteAt;
+      if(typeof originalSprite!=='function')return false;
+      if(originalSprite.__necroSpiritPixelBlurFix)return true;
+
+      function optimizedSpriteRenderer(...args){
+        if(!activeSpiritRenderCtx)return originalSprite(...args);
+        const previousBlur=activeSpiritRenderCtx.shadowBlur;
+        activeSpiritRenderCtx.shadowBlur=0;
+        try{
+          return originalSprite(...args);
+        }finally{
+          activeSpiritRenderCtx.shadowBlur=previousBlur;
+        }
+      }
+
+      optimizedSpriteRenderer.__necroSpiritPixelBlurFix=true;
+      optimizedSpriteRenderer.__original=originalSprite;
+      global.drawSpriteAt=optimizedSpriteRenderer;
+      return true;
+    };
+
     const patch=()=>{
+      patchSpriteRenderer();
       const original=global.drawNecromancerSummon;
-      if(typeof original!=='function'||original.__necroShadowPerfFix)return false;
+      if(typeof original!=='function')return false;
+      if(original.__necroShadowPerfFixV2)return true;
 
       function optimizedNecromancerSummonRenderer(renderCtx,summon,time){
-        if(!summon||summon.type!=='spirit'||!(summon.attackAnim>0))return original(renderCtx,summon,time);
+        if(!summon||summon.type!=='spirit')return original(renderCtx,summon,time);
 
-        const attackAnim=summon.attackAnim;
-        summon.attackAnim=0;
+        const attackAnim=summon.attackAnim||0;
+        const attacking=attackAnim>0;
+        if(attacking)summon.attackAnim=0;
+
         let rendered=false;
+        activeSpiritRenderCtx=renderCtx||null;
         try{
           rendered=original(renderCtx,summon,time);
         }finally{
-          summon.attackAnim=attackAnim;
+          activeSpiritRenderCtx=null;
+          if(attacking)summon.attackAnim=attackAnim;
         }
 
         const target=summon.target;
-        if(rendered===true&&renderCtx&&target&&!target.dead){
+        if(attacking&&rendered===true&&renderCtx&&target&&!target.dead){
           const dx=target.x-summon.x,dy=target.y-summon.y;
           const distance=Math.hypot(dx,dy);
           if(distance>1){
@@ -120,6 +151,7 @@
       }
 
       optimizedNecromancerSummonRenderer.__necroShadowPerfFix=true;
+      optimizedNecromancerSummonRenderer.__necroShadowPerfFixV2=true;
       optimizedNecromancerSummonRenderer.__original=original;
       global.drawNecromancerSummon=optimizedNecromancerSummonRenderer;
       return true;
