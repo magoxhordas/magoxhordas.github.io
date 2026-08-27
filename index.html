@@ -8613,6 +8613,7 @@ let hubPlayerDir = 'down', hubPlayerFrame = 0, hubPlayerTick = 0;
 
 function goToHub(){
   if(raf){cancelAnimationFrame(raf);raf=null;}
+  if(typeof cleanupCampaignRuntime==='function')cleanupCampaignRuntime('camp');
   state = 'hub';
   hideAllScreens();
   document.getElementById('hub-screen').style.display = 'flex';
@@ -10194,6 +10195,7 @@ function resetBossRushState(clearSelection=false){
 
 function openCampaignSetup(){
   if(raf){ cancelAnimationFrame(raf); raf=null; }
+  if(typeof cleanupCampaignRuntime==='function')cleanupCampaignRuntime('campaign-setup');
   closeCampaignChapterOverlay();
   resetBossRushState(false);
   state='menu';
@@ -10204,6 +10206,7 @@ function openCampaignSetup(){
 
 function openBossRushMenu(){
   if(raf){ cancelAnimationFrame(raf); raf=null; }
+  if(typeof cleanupCampaignRuntime==='function')cleanupCampaignRuntime('boss-rush-menu');
   closeCampaignChapterOverlay();
   resetBossRushState(false);
   state='menu';
@@ -10333,6 +10336,7 @@ function selectDiff(d){
 }
 function goMainMenu(){
   if(raf){cancelAnimationFrame(raf);raf=null;}
+  if(typeof cleanupCampaignRuntime==='function')cleanupCampaignRuntime('main-menu');
   closeCampaignChapterOverlay();
   resetBossRushState(false);
   document.body.classList.remove('campaign-hud-active','campaign-coop-active');
@@ -11623,6 +11627,7 @@ function campaignWeaponCooldown(def,rarity,player=null,weapon=null){
   if(player?.cardEffects?.weaponDashReduction){cd*=1-player.cardEffects.weaponDashReduction;player.cardEffects.weaponDashReduction=0;}
   if(weapon?.berserkTimer>0)cd*=def.id==='viking_twinaxes'?.75:.80;
   if(def.id==='viking_bloodaxe'&&rarity==='legendary'&&player&&player.hp/player.maxHp<.35)cd*=.80;
+  if(player&&typeof campaignObjectives!=='undefined')cd*=campaignObjectives.cooldownDurationMultiplier(player);
   return cd;
 }
 function campaignWeaponElement(type=''){
@@ -12036,6 +12041,7 @@ function allTargets(enemies){
     ...(bossSpider&&!bossSpider.dead?[bossSpider]:[]),
     ...(bossMajor&&!bossMajor.dead?[bossMajor]:[]),
     ...(petBoss&&!petBoss.dead&&!petBoss.tamed?[petBoss]:[]),
+    ...(typeof campaignObjectiveTargets==='function'?campaignObjectiveTargets():[]),
   ];
 }
 
@@ -12048,7 +12054,8 @@ function weaponDamage(player,weapon,target,amount,color){
   if(!target||target.dead)return 0;
   const dmg=typeof applyCardCrit==='function'?applyCardCrit(player,amount,target,weapon):amount;
   const beforeHp=Number(target.hp||0);
-  if(player?.classId==='necromancer'){target._lastDamageOwner=player;target._lastDamageSource='direct';target._lastNecroWeapon=weapon?.type||'';}
+  target._lastDamageOwner=player;
+  if(player?.classId==='necromancer'){target._lastDamageSource='direct';target._lastNecroWeapon=weapon?.type||'';}
   target.takeDmg(dmg);
   if(player?.classId==='necromancer')NecromancerSystem.onBossDamaged(player,target,beforeHp,Number(target.hp||0));
   weapon.damageDone=(weapon.damageDone||0)+dmg;
@@ -12100,10 +12107,12 @@ function weaponShieldCounter(player){
   if(shield.rarity==='legendary')weaponBurst(player,enemies,player.x+Math.cos(angle)*80,player.y+Math.sin(angle)*80,55,shield,campaignWeaponDamage(def,shield.rarity)*.7,def.color);
 }
 function applyWeaponPoison(target,owner,weapon,dps,duration,maxStacks){
-  return campaignStatusEffects.applyPoison(target,owner,weapon,dps,duration,maxStacks);
+  const adjusted=typeof campaignModifyOutgoingDamage==='function'?campaignModifyOutgoingDamage(owner,target,dps):dps;
+  return campaignStatusEffects.applyPoison(target,owner,weapon,adjusted,duration,maxStacks);
 }
 function applyWeaponBurn(target,owner,weapon,dps,duration){
-  return campaignStatusEffects.applyBurn(target,owner,weapon,dps,duration);
+  const adjusted=typeof campaignModifyOutgoingDamage==='function'?campaignModifyOutgoingDamage(owner,target,dps):dps;
+  return campaignStatusEffects.applyBurn(target,owner,weapon,adjusted,duration);
 }
 
 const campaignWeaponSystem=CampaignWeaponSystem.create({
@@ -12207,6 +12216,7 @@ NecromancerSystem.configure({
   getPlayers:()=>[player,...(gameMode===2&&player2?[player2]:[])].filter(Boolean),
   getGlobalAttackSpeedBonus:owner=>getCampaignShopAttackSpeedBonus(owner),
   getGlobalCritChance:owner=>(owner?.cardEffects?.critChance||0)+getCampaignShopCritBonus(owner),
+  modifyDamage:(owner,target,damage)=>typeof campaignModifyOutgoingDamage==='function'?campaignModifyOutgoingDamage(owner,target,damage):damage,
   spawnParts:(...args)=>spawnParts(...args),
   notifyHit:(owner,target,damage,weapon)=>{if(typeof notifyBlessingHit==='function')notifyBlessingHit(owner,target,damage,weapon);},
   drawSummon:(renderCtx,summon,time)=>drawNecromancerSummon(renderCtx,summon,time),
@@ -12236,6 +12246,7 @@ function swordAttack(player, enemies, rarity, manualTarget=null){
       // Armor pierce reduces enemy effective HP (apply extra % dmg)
       const ap = player.cardEffects?.armorPierce||0;
       if(ap>0) dmg += e.maxHp * ap * 0.05;
+      e._lastDamageOwner=player;
       e.takeDmg(dmg);
       weaponDmgDone[0]=Math.round((weaponDmgDone[0]||0)+dmg);
       // Knockback card
@@ -12301,6 +12312,7 @@ function axeAttack(player, enemies, rarity, manualTarget=null){
       let dmg = applyCardCrit(player, baseDmg, e);
       const ap = player.cardEffects?.armorPierce||0;
       if(ap>0) dmg += (e.maxHp||50)*ap*0.04;
+      e._lastDamageOwner=player;
       e.takeDmg(dmg);
       hitCount++;
       weaponDmgDone[2]=Math.round((weaponDmgDone[2]||0)+dmg);
@@ -15415,7 +15427,8 @@ class Player {
       this.slowTimer-=dt*1000;
       if(this.slowTimer<=0) this.slowed=false;
     }
-    const moveMult=(this.webbed?0.32:(this.slowed?0.55:1))*CampProgressionSystem.movementMultiplier(this);
+    const objectiveMove=typeof campaignObjectives!=='undefined'?campaignObjectives.movementMultiplier(this):1;
+    const moveMult=(this.webbed?0.32:(this.slowed?0.55:1))*CampProgressionSystem.movementMultiplier(this)*objectiveMove;
     this.x+=dx*this.speed*moveMult*dt; this.y+=dy*this.speed*moveMult*dt;
     this.x=Math.max(38,Math.min(W-38,this.x));
     this.y=Math.max(205,Math.min(H-24,this.y));
@@ -15450,7 +15463,7 @@ class Player {
     const attackAllowed=this.idx!==0||typeof GameSettings==='undefined'||GameSettings.autoAttack||manualAttack;
     if(this.atkTimer<=0&&attackAllowed){
       const tgt=manualTarget||this.findNearest(el);
-      if(tgt){const proc=notifyCampaignShopAttack(this,tgt,this.dmg);this.fireAt(tgt);this.atkTimer=Math.max(120,this.atkCd/(1+getCampaignShopAttackSpeedBonus(this))*proc);}
+      if(tgt){const proc=notifyCampaignShopAttack(this,tgt,this.dmg);this.fireAt(tgt);const objectiveCd=typeof campaignObjectives!=='undefined'?campaignObjectives.cooldownDurationMultiplier(this):1;this.atkTimer=Math.max(120,this.atkCd/(1+getCampaignShopAttackSpeedBonus(this))*proc*objectiveCd);}
     }
     this.updateArrowQueue(dt);
     const ws=this.idx===0?weaponSlots:weaponSlots2;
@@ -15474,13 +15487,7 @@ class Player {
 
   findNearest(list){
     let best=null,md=this.range;
-    const all=[...list,
-      ...(bossOrc&&!bossOrc.dead?[bossOrc]:[]),
-      ...(bossSkel&&!bossSkel.dead?[bossSkel]:[]),
-      ...(bossSpider&&!bossSpider.dead?[bossSpider]:[]),
-      ...(bossMajor&&!bossMajor.dead?[bossMajor]:[]),
-      ...(petBoss&&!petBoss.dead&&!petBoss.tamed?[petBoss]:[]),
-    ];
+    const all=allTargets(list);
     for(const e of all){if(e.dead)continue;const d=Math.hypot(e.x-this.x,e.y-this.y);if(d<md){md=d;best=e;}}
     return best;
   }
@@ -15588,7 +15595,8 @@ class Player {
     if(this.abilityTimer>0){
       const cdBoost=this.cardEffects?.abilityCd||0;
       const shopCd=getCampaignShopEffect(this).cooldownReduction||0;
-      this.abilityTimer-=dt*1000*(1+cdBoost+shopCd/(1-Math.min(.45,shopCd)));
+      const objectiveRecovery=typeof campaignObjectives!=='undefined'?campaignObjectives.cooldownRecoveryMultiplier(this):1;
+      this.abilityTimer-=dt*1000*(1+cdBoost+shopCd/(1-Math.min(.45,shopCd)))*objectiveRecovery;
     }
     if(this.berserkActive){
       this.berserkTimer-=dt*1000;
@@ -16420,7 +16428,10 @@ function updateFirePatches(dt){
         if(fp.noStackKey){
           e._fireTrailTick=e._fireTrailTick||{};const now=Date.now();if(now-(e._fireTrailTick[fp.noStackKey]||0)<360)continue;e._fireTrailTick[fp.noStackKey]=now;
         }
-        const tickDamage=fp.noStackKey?damage*.4:damage;e.takeDmg(tickDamage);markEnemyWeaponStatus(e,'fire',700);if(fp.owner&&fp.noStackKey){const w=getSlots(fp.owner.idx).find(x=>x&&x.type===fp.noStackKey);if(w)w.damageDone=(w.damageDone||0)+tickDamage;}
+        const rawTickDamage=fp.noStackKey?damage*.4:damage;
+        const tickDamage=typeof campaignModifyOutgoingDamage==='function'?campaignModifyOutgoingDamage(fp.owner,e,rawTickDamage):rawTickDamage;
+        if(fp.owner)e._lastDamageOwner=fp.owner;
+        e.takeDmg(tickDamage);markEnemyWeaponStatus(e,'fire',700);if(fp.owner&&fp.noStackKey){const w=getSlots(fp.owner.idx).find(x=>x&&x.type===fp.noStackKey);if(w)w.damageDone=(w.damageDone||0)+tickDamage;}
       }
     }
   }
@@ -16550,7 +16561,10 @@ function spawnEnemy(){
   else if(side===1){x=W-m; y=yMin+Math.random()*(H-yMin-m);} // right edge
   else if(side===2){x=m+Math.random()*(W-m*2); y=H-m;}        // bottom edge
   else{x=m; y=yMin+Math.random()*(H-yMin-m);}                 // left edge
-  enemies.push(new Enemy(x,y,wave,pickType(wave)));
+  const enemy=new Enemy(x,y,wave,pickType(wave));
+  enemies.push(enemy);
+  if(typeof campaignObjectives!=='undefined')campaignObjectives.onEnemySpawn(enemy);
+  return enemy;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -16570,7 +16584,7 @@ window.triggerVikingWarCry=triggerVikingWarCry;
 
 const campaignCombatSystem=CampaignCombatSystem.create({
   getShopEffect:owner=>getCampaignShopEffect(owner),
-  getEnemies:()=>enemies,
+  getEnemies:()=>allTargets(enemies),
   hasWeaponType:type=>Boolean(WEAPON_DEFS[type]),
   spawnParts:(...args)=>spawnParts(...args),
   markEnemyStatus:(enemy,type)=>markEnemyWeaponStatus(enemy,type),
@@ -16673,6 +16687,26 @@ function nearbyEnemies(x,y,radius){
   return enemyCollisionGrid.queryRange(x,y,Math.max(0,radius||0),enemyCollisionCandidates);
 }
 
+function hitCampaignObjectiveWithProjectile(p,target){
+  if(!p||p.dead||!target||target.dead)return false;
+  if(p.isCampaignWeaponProj&&p.hitTargets?.has(target))return false;
+  if(Math.hypot(p.x-target.x,p.y-target.y)>=p.radius+(target.radius||0))return false;
+  const owner=p.owner||player;
+  const damage=typeof applyCardCrit==='function'?applyCardCrit(owner,p.dmg,target,p.weapon||null):p.dmg;
+  target._lastDamageOwner=owner;
+  target.takeDmg(damage);
+  if(owner?.classId==='necromancer')NecromancerSystem.onProjectileHit(p,target,damage);
+  if(p.isCampaignWeaponProj){
+    p.hitTargets.add(target);markEnemyWeaponStatus(target,p.weapon);
+    p.weapon.damageDone=(p.weapon.damageDone||0)+damage;
+    applyClassHitEffect({owner,dmg:damage,weapon:p.weapon},target);
+  }else applyClassHitEffect(p,target);
+  const canContinue=p.isCampaignWeaponProj&&p.pierce>0;
+  if(canContinue)p.pierce--;else p.dead=true;
+  spawnParts(target.x,target.y,p.color||'#f0d080',5,34);
+  return true;
+}
+
 function collide(){
   enemyCollisionGrid.rebuild(enemies,e=>e.x,e=>e.y,e=>e.radius||0);
   const allPlayers=[player,...(gameMode===2&&player2?[player2]:[])].filter(p=>!p.dead);
@@ -16721,6 +16755,12 @@ function collide(){
         if(p.isCampaignWeaponProj&&(p.pierce>0||ricochetContinues)){if(p.pierce>0)p.pierce--;}
         else p.dead=true;
         break;
+      }
+    }
+    // Objetivos usam a mesma rota de projéteis, sem entrar em kills, almas ou cadáveres.
+    if(!p.dead&&!(p instanceof BeaconArrow)&&!(p instanceof BallistaBolt)){
+      for(const target of (typeof campaignObjectiveTargets==='function'?campaignObjectiveTargets():[])){
+        if(hitCampaignObjectiveWithProjectile(p,target))break;
       }
     }
     // Player projectiles hit bosses
@@ -17738,6 +17778,10 @@ function templeChoose(choice){
 }
 
 </script>
+  <script src="src/campaign/campaign-ui.js"></script>
+  <script src="src/campaign/campaign-objectives.js"></script>
+  <script src="src/campaign/campaign-events.js"></script>
+  <script src="src/campaign/campaign-runtime.js"></script>
   <script src="src/campaign/chapter-data.js"></script>
   <script src="src/campaign/campaign-system.js"></script>
   <script src="src/ui/campaign-overlays.js"></script>
@@ -17983,7 +18027,7 @@ function loop(ts){
 
   if(state==='playing'&&maybeStartCampaignChapter(wave)) return;
 
-  if(state==='dead'||state==='shop'||state==='menu'||state==='endwave'||state==='paused'||state==='temple'||state==='hub'||state==='chapter'){
+  if(state==='dead'||state==='shop'||state==='menu'||state==='endwave'||state==='paused'||state==='temple'||state==='hub'||state==='chapter'||state==='campaign-choice'){
     campaignClock.reset(ts);
     return;
   }
@@ -17995,12 +18039,19 @@ function loop(ts){
   if(state==='playing'){
     try {
     removeCampaignRandomObjects();
+    campaignObjectives.update(dt);
+    campaignEvents.update(dt);
+    if(state!=='playing'){campaignClock.reset(ts);return;}
     player.update(dt,enemies);
     clampCampaignEntity(player);
     player.updateAbility(dt);
     if(gameMode===2&&player2&&!player2.dead){ player2.update(dt,enemies); clampCampaignEntity(player2); player2.updateAbility(dt); }
     NecromancerSystem.update(dt);
-    for(const e of enemies){ const aggro=NecromancerSystem.getEnemyAggroTarget(e,[player,player2])||player; e.update(dt,aggro.x,aggro.y); clampCampaignEntity(e); }
+    for(const e of enemies){
+      campaignObjectives.applyEnemySpeed(e);
+      const aggro=campaignObjectives.enemyAggroTarget(e)||NecromancerSystem.getEnemyAggroTarget(e,[player,player2])||player;
+      e.update(dt,aggro.x,aggro.y); clampCampaignEntity(e);
+    }
     // legacy non-boss-wave bosses (waves 2-4 mini-bosses kept for feel)
     if(bossOrc&&!bossOrc.dead){ bossOrc.update(dt,player.x,player.y); clampCampaignEntity(bossOrc,36); }
     if(bossSkel&&!bossSkel.dead){ bossSkel.update(dt,player.x,player.y); clampCampaignEntity(bossSkel,36); }
@@ -18031,26 +18082,28 @@ function loop(ts){
     webBlobs=webBlobs.filter(w=>!w.dead);
     webPuddles=webPuddles.filter(w=>w.timer>0);
     const wildPetFight=!!(petBoss&&!petBoss.dead);
+    const campaignEventActive=campaignEvents.isActive();
     const campaignBossWave=!bossRushMode&&!wildPetFight&&wave>=5&&wave%5===0;
-    if(!campaignBossWave) waveTimer-=dt*1000;
+    if(!campaignBossWave&&!campaignEventActive&&!campaignObjectives.controlsWaveTimer()) waveTimer-=dt*1000;
     // In boss rush: end wave only when boss is dead (handled in bossMajor death trigger)
     // Regular mode: end by timer
-    if(!bossRushMode && !wildPetFight && !campaignBossWave && waveTimer<=0){ endWave(); return; }
+    if(!bossRushMode && !wildPetFight && !campaignBossWave && !campaignEventActive && waveTimer<=0){ endWave(); return; }
     // In boss rush: keep waveTimer from going negative (it's set to 999999, just reset it)
     if(bossRushMode && waveTimer<0) waveTimer=999999;
-    spawnTimer-=dt*1000;
-    if(spawnTimer<=0){
+    if(!campaignEventActive&&campaignObjectives.allowNormalSpawns())spawnTimer-=dt*1000;
+    if(!campaignEventActive&&campaignObjectives.allowNormalSpawns()&&spawnTimer<=0){
       // Skip normal spawns in boss rush (only boss fights)
       if(!bossRushMode && !wildPetFight){
         const d=DIFF[difficulty]||DIFF.medium;
-        if(enemies.filter(e=>!e.dead).length < d.spawnMax){
+        const campaignSpawnCap=campaignObjectives.normalSpawnCap(d.spawnMax);
+        if(enemies.filter(e=>!e.dead).length < campaignSpawnCap){
           const maxBatch=Math.min(d.spawnBatchMax,1+Math.floor(Math.max(0,wave-1)/d.spawnBatchEvery));
           for(let i=0;i<maxBatch;i++) spawnEnemy();
         }
       }
-      spawnTimer=spawnInt;
+      spawnTimer=spawnInt*campaignObjectives.spawnIntervalMultiplier();
     }
-    updateCampaignBiomeAndBoss(wildPetFight);
+    if(!campaignEventActive)updateCampaignBiomeAndBoss(wildPetFight);
     // Update bossMajor
     if(bossMajor&&!bossMajor.dead){ bossMajor.update(dt,player.x,player.y); clampCampaignEntity(bossMajor,bossMajor.radius||40); }
     if(bossMajor&&bossMajor.dead){
@@ -18100,6 +18153,8 @@ function loop(ts){
   drawFirePatches(t);
   drawAnimTorches(t);
   NecromancerSystem.draw(ctx,t);
+  campaignObjectives.draw(ctx,t);
+  campaignEvents.draw(ctx,t);
   const ents=[
     ...coins.map(c=>({y:c.y,fn:()=>c.draw(t)})),
     ...enemies.map(e=>({y:e.y,fn:()=>{ e.draw(t); drawEnemyStatusFx(e,t); }})),
@@ -18116,6 +18171,7 @@ function loop(ts){
   for(const wb of webBlobs) wb.draw();
   for(const m of meleeAnims) m.draw(t);
   for(const p of parts) p.draw();
+  campaignObjectives.drawOverlay(ctx,t,W,H);
   drawAbilityHUD(t);
   drawWaveAnnounce(t);
   drawWaveCountdown(t,dt);
@@ -18303,11 +18359,14 @@ function beginGame(){
   if(typeof updateBlessingsHUD==='function') updateBlessingsHUD();
   if(typeof resetShopPurchases==='function') resetShopPurchases();
   webBlobs=[]; webPuddles=[];
+  campaignObjectives.resetRun();
+  campaignEvents.resetRun();
   const initialArena=bossRushMode?(bossRushQueue[0]?.arena||'crypt'):'crypt';
   buildBG(initialArena);
   weaponSlots=[null,null,null]; weaponSlots2=[null,null,null];
   updateWeaponUI();
   state='playing';
+  campaignObjectives.startWave(wave);
   if(bossRushMode&&typeof window.resumeCampaignMusic==='function') window.resumeCampaignMusic();
   else if(typeof Audio!=='undefined') Audio.init();
   // A tela do primeiro capitulo precisa existir antes do primeiro frame do
@@ -18329,6 +18388,7 @@ function beginGame(){
 function endGame(){
   CampProgressionSystem.endRun([player,player2]);
   runCookingBuffs=[];
+  cleanupCampaignRuntime('death');
   state='dead';
   document.body.classList.remove('campaign-coop-active');
   const wasBossRush=bossRushMode;
@@ -18367,6 +18427,11 @@ function campaignKeyDown(e){
     if(state==='playing') e.preventDefault();
   }
   const actionPressed=(action,fallback)=>typeof GameSettings!=='undefined'?GameSettings.matchesAction(action,e):fallback;
+  const campaignInteract=e.key==='e'||e.key==='E'||e.key==='Enter';
+  if(state==='playing'&&campaignInteract&&!e.repeat&&typeof campaignHandleActionDown==='function'){
+    const playerIndex=e.key==='Enter'&&gameMode===2?1:0;
+    if(campaignHandleActionDown(playerIndex))e.preventDefault();
+  }
   if(actionPressed('pause',e.key==='Escape')){
     e.preventDefault();
     if(state==='playing'){ state='paused'; showScreen('pause-menu'); }
@@ -18383,6 +18448,9 @@ function campaignKeyDown(e){
 function campaignKeyUp(e){
   // Prevent lingering scroll on Arrow keys
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+  if((e.key==='e'||e.key==='E'||e.key==='Enter')&&typeof campaignHandleActionUp==='function'){
+    campaignHandleActionUp(e.key==='Enter'&&gameMode===2?1:0);
+  }
 }
 InputManager.registerScope('campaign',{
   state:keys,

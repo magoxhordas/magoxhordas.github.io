@@ -85,6 +85,7 @@ function buildBossRushScreen(){
 
 function startBossRush(){
   if(!bossRushSelected.length) return;
+  if(typeof cleanupCampaignRuntime==='function')cleanupCampaignRuntime('boss-rush-start');
   bossRushMode=true;
   // Merge regular + pet bosses in selected order
   const allBosses=[...BOSS_RUSH_LIST,...PET_BOSS_RUSH_LIST];
@@ -165,6 +166,7 @@ let campaignVictoryCountdownTimer=null;
 
 function endBossRush(victory){
   if(victory&&typeof GameSettings!=='undefined'&&typeof GameSettings.recordBossRushVictory==='function') GameSettings.recordBossRushVictory(bossRushQueue);
+  if(typeof cleanupCampaignRuntime==='function')cleanupCampaignRuntime('boss-rush-end');
   bossRushMode=false;
   document.body.classList.remove('boss-rush-no-coins');
   const hud=document.getElementById('br-hud'); if(hud) hud.className='br-hud';
@@ -271,6 +273,7 @@ function closeVictory(dest){
 function completeCampaign(){
   if(campaignCompletionPending||state==='victory') return;
   campaignCompletionPending=true;
+  if(typeof cleanupCampaignRuntime==='function')cleanupCampaignRuntime('campaign-complete');
   state='victory';
   document.body.classList.remove('campaign-coop-active');
   totalWavesSurvived++;

@@ -196,6 +196,7 @@
         damage*=2;meta.didCrit=true;deps.spawnParts?.(target.x,target.y,'#d8ffb7',4,32);
       }
     }
+    if(deps.modifyDamage)damage=deps.modifyDamage(owner,target,damage,meta);
     const before=Number(target.hp||0);
     target._lastDamageOwner=owner;target._lastDamageSource=meta.summoned?'summon':'direct';
     target._lastNecroWeapon=meta.weaponType||'';
@@ -447,16 +448,16 @@
       helpers.addMeleeAnim?.('sword',player.x,player.y,angle,range,def.color,330);
       helpers.weaponCone?.(player,enemies,angle,range,Math.PI*.9,weapon,base,def.color,enemy=>{
         enemy._lastDamageSource='direct';enemy._lastNecroWeapon=type;
-        if(harvest&&!isBoss(enemy)&&!isElite(enemy)&&enemy.hp>0&&enemy.hp/enemy.maxHp<.08){
+        if(harvest&&!enemy.noNecroRewards&&!isBoss(enemy)&&!isElite(enemy)&&enemy.hp>0&&enemy.hp/enemy.maxHp<.08){
           damageTarget(enemy,enemy.hp+1,player,{weapon,weaponType:type});
-          if(enemy.dead)spawnSoulOrb(player,enemy.x,enemy.y,1);
+          if(enemy.dead&&!enemy.noNecroRewards)spawnSoulOrb(player,enemy.x,enemy.y,1);
         }
       });
       if(tier>=4&&now()-state.scytheRingAt>=6000){
         state.scytheRingAt=now();
         const candidates=targets.filter(enemy=>enemy&&!enemy.dead&&Math.hypot(enemy.x-player.x,enemy.y-player.y)<145);
         helpers.weaponBurst?.(player,enemies,player.x,player.y,145,weapon,base*1.40,def.color);
-        for(const enemy of candidates)if(enemy.dead&&!isBoss(enemy)&&!isElite(enemy)&&Math.random()<.75)spawnSoulOrb(player,enemy.x,enemy.y,1);
+        for(const enemy of candidates)if(enemy.dead&&!enemy.noNecroRewards&&!isBoss(enemy)&&!isElite(enemy)&&Math.random()<.75)spawnSoulOrb(player,enemy.x,enemy.y,1);
       }
     }else if(type==='necromancer_cursed_skull'){
       playSfx('curse',220);

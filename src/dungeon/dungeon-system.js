@@ -3706,6 +3706,7 @@ GameRuntime.onSuspend(()=>{
 window.DNG = DNG;
 
 window.startDungeonMode = function(){
+  if(typeof cleanupCampaignRuntime==='function')cleanupCampaignRuntime('dungeon');
   hideAllScreens();
   document.body.classList.remove('campaign-hud-active');
   document.getElementById('ui-top').style.display='none';

@@ -256,6 +256,7 @@
     }
     pl._lastAttackWasCrit=didCrit;
     if(target){target._lastDamageOwner=pl;target._lastHitCrit=didCrit;}
+    if(typeof campaignModifyOutgoingDamage==='function')damage=campaignModifyOutgoingDamage(pl,target,damage);
     return damage;
   };
 
@@ -531,6 +532,7 @@
     }
     e.attackBonus=0;e.attackCritBonus=0;e.forceCrit=false;e.morosMarkedCrit=false;e._usingZeusThunder=false;e._usingArtemisSupreme=false;
     pl._lastAttackWasCrit=didCrit;if(target){target._lastDamageOwner=pl;target._lastHitCrit=didCrit;}
+    if(typeof campaignModifyOutgoingDamage==='function')damage=campaignModifyOutgoingDamage(pl,target,damage);
     return damage;
   };
 
