@@ -10,8 +10,7 @@
   const LUZES_ACAMPAMENTO = [
     [141,468,'#ffc04a',22,0],[181,470,'#ffb43a',34,.8],[304,467,'#ffc04a',22,1.7],
     [122,830,'#ffad32',24,.4],[261,820,'#ff9b28',18,2.2],
-    [1050,457,'#b66cff',22,.2],[1097,463,'#a44cff',17,1.2],
-    [1164,525,'#c175ff',19,2.4],[1351,526,'#bd68ff',21,.7],
+    [1050,457,'#b66cff',22,.2],[1097,463,'#a44cff',17,1.2],[1164,525,'#c175ff',19,2.4],[1351,526,'#bd68ff',21,.7],
     [1105,901,'#45ff9b',24,.3],[1354,901,'#45ff9b',24,1.4],
     [650,943,'#58cfff',22,.9],[873,943,'#58cfff',22,2.1],
   ];
@@ -76,30 +75,32 @@
     }
   }
 
-  // A Sombra/Espirito e pixel art. O renderer original ativa shadowBlur=10 antes
-  // de chamar drawSpriteAt, fazendo o navegador aplicar blur em cada fillRect do
-  // sprite. Em vez disso, desligamos o blur apenas enquanto os pixels do sprite
-  // sao rasterizados e o restauramos logo depois, preservando aura e efeitos.
-  // O feixe longo do ataque continua substituido por um risco curto sem blur.
+  // Todos os summons do Necromante sao pixel art. O renderer original ativa
+  // shadowBlur antes de drawSpriteAt; como drawSpriteAt usa muitos fillRect,
+  // o blur acabava sendo rasterizado repetidamente para cada pixel de cada
+  // invocacao. Desligamos o blur somente durante o sprite e o restauramos logo
+  // depois, preservando a aura, os golpes e os demais efeitos visuais.
+  // O feixe longo do Espirito continua substituido por um risco curto sem blur.
   function installNecromancerShadowPerformanceFix(){
-    let activeSpiritRenderCtx=null;
+    let activeNecromancerRenderCtx=null;
 
     const patchSpriteRenderer=()=>{
       const originalSprite=global.drawSpriteAt;
       if(typeof originalSprite!=='function')return false;
-      if(originalSprite.__necroSpiritPixelBlurFix)return true;
+      if(originalSprite.__necroAllSummonPixelBlurFix)return true;
 
       function optimizedSpriteRenderer(...args){
-        if(!activeSpiritRenderCtx)return originalSprite(...args);
-        const previousBlur=activeSpiritRenderCtx.shadowBlur;
-        activeSpiritRenderCtx.shadowBlur=0;
+        if(!activeNecromancerRenderCtx)return originalSprite(...args);
+        const previousBlur=activeNecromancerRenderCtx.shadowBlur;
+        activeNecromancerRenderCtx.shadowBlur=0;
         try{
           return originalSprite(...args);
         }finally{
-          activeSpiritRenderCtx.shadowBlur=previousBlur;
+          activeNecromancerRenderCtx.shadowBlur=previousBlur;
         }
       }
 
+      optimizedSpriteRenderer.__necroAllSummonPixelBlurFix=true;
       optimizedSpriteRenderer.__necroSpiritPixelBlurFix=true;
       optimizedSpriteRenderer.__original=originalSprite;
       global.drawSpriteAt=optimizedSpriteRenderer;
@@ -110,28 +111,29 @@
       patchSpriteRenderer();
       const original=global.drawNecromancerSummon;
       if(typeof original!=='function')return false;
-      if(original.__necroShadowPerfFixV2)return true;
+      if(original.__necroShadowPerfFixV3)return true;
 
       function optimizedNecromancerSummonRenderer(renderCtx,summon,time){
-        if(!summon||summon.type!=='spirit')return original(renderCtx,summon,time);
+        if(!summon)return original(renderCtx,summon,time);
 
+        const spirit=summon.type==='spirit';
         const attackAnim=summon.attackAnim||0;
-        const attacking=attackAnim>0;
-        if(attacking)summon.attackAnim=0;
+        const suppressLongSpiritBeam=spirit&&attackAnim>0;
+        if(suppressLongSpiritBeam)summon.attackAnim=0;
 
         let rendered=false;
-        activeSpiritRenderCtx=renderCtx||null;
+        activeNecromancerRenderCtx=renderCtx||null;
         try{
           rendered=original(renderCtx,summon,time);
         }finally{
-          activeSpiritRenderCtx=null;
-          if(attacking)summon.attackAnim=attackAnim;
+          activeNecromancerRenderCtx=null;
+          if(suppressLongSpiritBeam)summon.attackAnim=attackAnim;
         }
 
         const target=summon.target;
-        if(attacking&&rendered===true&&renderCtx&&target&&!target.dead){
+        if(suppressLongSpiritBeam&&rendered===true&&renderCtx&&target&&!target.dead){
           const dx=target.x-summon.x,dy=target.y-summon.y;
-          const distance=Math.hypot(dx,dy);
+          const distance=Math.sqrt(dx*dx+dy*dy);
           if(distance>1){
             const beamLength=Math.min(distance,72);
             renderCtx.save();
@@ -152,6 +154,7 @@
 
       optimizedNecromancerSummonRenderer.__necroShadowPerfFix=true;
       optimizedNecromancerSummonRenderer.__necroShadowPerfFixV2=true;
+      optimizedNecromancerSummonRenderer.__necroShadowPerfFixV3=true;
       optimizedNecromancerSummonRenderer.__original=original;
       global.drawNecromancerSummon=optimizedNecromancerSummonRenderer;
       return true;
@@ -161,8 +164,75 @@
     if(typeof global.addEventListener==='function')global.addEventListener('load',patch,{once:true});
   }
 
+  // A horda consulta getEnemyAggroTarget uma vez para cada inimigo em todo frame.
+  // O metodo original percorre states/summons e usa Math.hypot em cada candidato.
+  // Mantemos o mesmo raio e a mesma escolha de alvo, mas montamos a lista de
+  // summons ativos uma unica vez apos o update e comparamos distancia ao quadrado.
+  function installNecromancerCpuPerformanceFix(){
+    const patch=()=>{
+      const original=global.NecromancerSystem;
+      if(!original||typeof original.update!=='function'||typeof original.getEnemyAggroTarget!=='function')return false;
+      if(original.__necroCpuPerfFix)return true;
+
+      let activeSummons=[];
+      const refreshActiveSummons=()=>{
+        const next=[];
+        const stateMap=original.states;
+        if(stateMap&&typeof stateMap.values==='function'){
+          for(const state of stateMap.values()){
+            if(!state?.summons)continue;
+            for(const summon of state.summons)if(summon&&!summon.dead)next.push(summon);
+          }
+        }
+        activeSummons=next;
+      };
+
+      const originalUpdate=original.update;
+      const optimizedUpdate=(dt)=>{
+        const result=originalUpdate(dt);
+        refreshActiveSummons();
+        return result;
+      };
+
+      const isBossFast=enemy=>!!enemy&&(
+        enemy.isBoss||
+        enemy.type?.startsWith?.('boss')||
+        enemy.constructor?.name?.includes?.('Boss')
+      );
+
+      const optimizedAggro=(enemy,_players=[])=>{
+        if(!enemy||isBossFast(enemy)||activeSummons.length===0)return null;
+        const enemyX=enemy.x,enemyY=enemy.y;
+        let best=null,bestDistanceSq=125*125;
+        for(let index=0;index<activeSummons.length;index++){
+          const summon=activeSummons[index];
+          if(!summon||summon.dead)continue;
+          const dx=enemyX-summon.x,dy=enemyY-summon.y;
+          const distanceSq=dx*dx+dy*dy;
+          if(distanceSq<bestDistanceSq){best=summon;bestDistanceSq=distanceSq;}
+        }
+        return best;
+      };
+
+      refreshActiveSummons();
+      const optimized=Object.freeze({
+        ...original,
+        update:optimizedUpdate,
+        getEnemyAggroTarget:optimizedAggro,
+        get states(){return original.states;},
+        __necroCpuPerfFix:true,
+      });
+      global.NecromancerSystem=optimized;
+      return true;
+    };
+
+    if(patch())return;
+    if(typeof global.addEventListener==='function')global.addEventListener('load',patch,{once:true});
+  }
+
   installMerlinUiCleanup();
   installNecromancerShadowPerformanceFix();
+  installNecromancerCpuPerformanceFix();
 
   global.CampLayoutData=Object.freeze({HORTA,LUZES_ACAMPAMENTO,ARQ});
 })(window);
