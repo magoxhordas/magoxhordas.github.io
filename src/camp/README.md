@@ -30,7 +30,7 @@ Os pontos de luz e a posicao do arqueiro tambem foram movidos para `layout-data.
 
 ## farming-system.js
 
-Contem a implementacao dos 15 canteiros, selecao e troca de sementes, acionamento de `farmAction` e desenho da terra/culturas. O modulo recebe `HORTA`, dados das sementes, estado `S` e os helpers `px`/`dentro` do CampV2, preservando os mesmos bindings globais de inventario e ferramentas usados antes da extracao.
+Contem a implementacao dos 15 canteiros, selecao e troca de sementes, acionamento de `farmAction` e desenho da terra/culturas. O modulo recebe `HORTA`, dados das sementes, estado `S` e os helpers `px`/`dentro` do CampV2, preservando os mesmos bindings globais de inventario e ferramentas usados antes da extracao. O solo nao arado vem somente da arte original do acampamento; o renderer sobrepoe terra arada por celula apenas depois da interacao correspondente.
 
 Save, `farmCells`, `globalInventory`, `selectedSeed`, `activeTool` e `farmAction` nao foram reescritos nem duplicados.
 
