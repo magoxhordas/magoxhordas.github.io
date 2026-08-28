@@ -2,13 +2,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 
-const root=path.resolve(import.meta.dirname,'..');
+const root=process.env.TEST_ROOT||path.resolve(import.meta.dirname,'..');
 const read=relative=>fs.readFileSync(path.join(root,relative),'utf8');
 const html=read('index.html').replace(/\r\n/g,'\n');
 const source=read('src/core/input-system.js');
 const dungeonSource=read('src/dungeon/dungeon-system.js').replace(/\r\n/g,'\n');
 const settingsSource=read('src/ui/settings-system.js').replace(/\r\n/g,'\n');
-const integrationSource=`${html}\n${dungeonSource}\n${settingsSource}`;
+const integrationSource=`${html}\n${dungeonSource}\n${settingsSource}\n${source}`;
 let checks=0;
 
 function assert(condition,message){
@@ -23,27 +23,30 @@ function includesAll(haystack,needles,context){
 new vm.Script(source,{filename:'src/core/input-system.js'});
 assert((source.match(/document\.addEventListener\('keydown'/g)||[]).length===1,'o modulo deve registrar um unico listener keydown');
 assert((source.match(/document\.addEventListener\('keyup'/g)||[]).length===1,'o modulo deve registrar um unico listener keyup');
-assert((source.match(/document\.addEventListener\('pointerdown'/g)||[]).length===1,'o modulo deve registrar um unico listener pointerdown');
+assert((source.match(/document\.addEventListener\('pointerdown'/g)||[]).length===2,'input central e sensor devem registrar exatamente dois pointerdown');
+assert((source.match(/document\.addEventListener\('pointermove'/g)||[]).length===1,'sensor deve registrar um unico pointermove');
 
 const listeners=new Map();
 const events=[];
 const document={
+  readyState:'loading',
   addEventListener(type,handler,options){
     if(!listeners.has(type)) listeners.set(type,[]);
     listeners.get(type).push({handler,options});
   }
 };
-const sandbox={console,document,GameEvents:{emit(...args){events.push(args);}}};
+const sandbox={console,document,GameEvents:{emit(...args){events.push(args);}},addEventListener(){}};
 sandbox.window=sandbox;
 vm.createContext(sandbox);
 vm.runInContext(source,sandbox,{filename:'src/core/input-system.js'});
 
 const input=sandbox.InputManager;
 assert(!!input,'InputManager deve ser exposto em window');
-assert(Object.keys(input).join(',')==='registerScope,unregisterScope,pressVirtual,releaseVirtual,releaseSource,releaseAll,normalizeKey,onPointerAttack','API publica e ordem foram alteradas');
+assert(!!sandbox.MobileTouchSensor,'MobileTouchSensor deve ser exposto em window');
+assert(Object.keys(input).join(',')==='registerScope,unregisterScope,pressVirtual,releaseVirtual,releaseSource,releaseAll,normalizeKey,onPointerAttack','API publica de InputManager e ordem foram alteradas');
 assert(input.normalizeKey('W')==='w'&&input.normalizeKey(' ')===' '&&input.normalizeKey(null)==='','normalizacao de teclas foi alterada');
-assert(listeners.get('keydown')?.length===1&&listeners.get('keyup')?.length===1&&listeners.get('pointerdown')?.length===1,'listeners centrais devem ser registrados uma vez');
-assert(listeners.get('pointerdown')[0].options?.passive===false,'pointerdown deve continuar nao passivo');
+assert(listeners.get('keydown')?.length===1&&listeners.get('keyup')?.length===1&&listeners.get('pointerdown')?.length===1,'listeners centrais devem ser registrados uma vez antes da instalacao touch');
+assert(listeners.get('pointerdown')[0].options?.passive===false,'pointerdown central deve continuar nao passivo');
 
 const campaignState={};
 const campaignCalls=[];
@@ -101,10 +104,26 @@ assert(events.some(event=>event[0]==='input:released'&&event[1]?.reason==='blur-
 
 let pointerCount=0;
 const stopPointer=input.onPointerAttack(()=>{ pointerCount++; });
-listeners.get('pointerdown')[0].handler({pointerId:1});
+const neutralTarget={closest:()=>null};
+listeners.get('pointerdown')[0].handler({pointerId:1,pointerType:'mouse',target:neutralTarget});
+assert(pointerCount===1,'ataque por mouse deixou de chegar ao handler de ponteiro');
+
+sandbox.navigator={maxTouchPoints:5};
+sandbox.matchMedia=()=>({matches:true});
+document.body={classList:{contains:name=>name==='mobile-gameplay-active'}};
+const touchEvent={pointerId:2,pointerType:'touch',isPrimary:true,target:neutralTarget};
+assert(sandbox.MobileTouchSensor.shouldCapture(touchEvent),'sensor nao capturou toque durante gameplay mobile');
+listeners.get('pointerdown')[0].handler(touchEvent);
+assert(pointerCount===1,'toque de locomocao foi interpretado como ataque manual');
 stopPointer();
-listeners.get('pointerdown')[0].handler({pointerId:2});
-assert(pointerCount===1,'registro/descarte de ataque por ponteiro foi alterado');
+
+const direction=sandbox.MobileTouchSensor.directionForDelta;
+assert(JSON.stringify(direction(50,0))===JSON.stringify(['d']),'sensor nao mapeou direita');
+assert(JSON.stringify(direction(-50,0))===JSON.stringify(['a']),'sensor nao mapeou esquerda');
+assert(JSON.stringify(direction(0,-50))===JSON.stringify(['w']),'sensor nao mapeou cima');
+assert(JSON.stringify(direction(0,50))===JSON.stringify(['s']),'sensor nao mapeou baixo');
+assert(JSON.stringify(direction(40,40))===JSON.stringify(['d','s']),'sensor nao permite diagonal');
+assert(direction(3,3).length===0,'zona morta do sensor foi removida');
 
 campaignState.d=true;
 unregisterCampaign();
@@ -129,16 +148,14 @@ includesAll(integrationSource,[
   "if(gameMode===1){\n      if(keys['ArrowLeft'])  dx-=1;",
   "if(keys['ArrowLeft'])  dx=-1;\n    if(keys['ArrowRight']) dx+=1;",
   '({dx,dy}=normalizeCampaignMovementVector(dx,dy));',
-  'data-mobile-key="w"',
-  'data-mobile-key="a"',
-  'data-mobile-key="d"',
-  'data-mobile-key="s"',
-  'data-mobile-action="dash"',
-  'data-mobile-action="context"',
-  'data-mobile-action="menu"',
-  'data-mobile-action="pause"',
-  'InputManager.pressVirtual(source,normalized)',
-  'InputManager.releaseVirtual(source,normalized)'
+  "const SOURCE='mobile-sensor'",
+  "legacy.replaceChildren?.()",
+  '#mobile-controls{display:none!important;pointer-events:none!important}',
+  ':root{--mobile-controls-height:0px!important}',
+  "global.GameSettings?.autoAttack===false",
+  'if(mobileSensor.shouldCapture(event))return;',
+  'pressVirtual(SOURCE,key)',
+  'releaseVirtual(SOURCE,key)'
 ],'contrato de controles');
 
-console.log(`OK: core input preservou API, listeners, prioridades, aliases, fontes virtuais e mapas (${checks} verificacoes).`);
+console.log(`OK: core input preservou teclado/escopos e adotou sensor mobile sem botoes (${checks} verificacoes).`);
