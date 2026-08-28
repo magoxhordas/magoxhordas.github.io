@@ -99,8 +99,9 @@ function campaignHandleActionUp(playerIndex=0){
 }
 campaignObjectiveUI.setActionHandlers(campaignHandleActionDown,campaignHandleActionUp);
 
+let campaignSuppressObjectiveTargets=false;
 function campaignObjectiveTargets(){
-  return campaignObjectives.getCombatTargets();
+  return campaignSuppressObjectiveTargets?[]:campaignObjectives.getCombatTargets();
 }
 function campaignModifyOutgoingDamage(owner,target,amount){
   return campaignObjectives.modifyOutgoingDamage(owner,target,amount);
@@ -111,7 +112,48 @@ function cleanupCampaignRuntime(reason='cleanup'){
   campaignObjectiveUI.reset();
 }
 
+// O ataque base corpo a corpo do Guerreiro/Viking ainda usa a lista `enemies`
+// diretamente no legado de index.html. Durante o update dessas duas classes,
+// inclui temporariamente as estruturas de objetivo nessa mesma lista. Ao mesmo
+// tempo, suprime a segunda inclusao feita por allTargets(), evitando hit duplo
+// em armas que ja usam a lista canonica. Tudo e restaurado no mesmo frame.
+function installCampaignMeleeObjectiveBridge(){
+  if(typeof Player==='undefined'||!Player?.prototype?.update)return false;
+  if(Player.prototype.update.__campaignMeleeObjectiveBridge)return true;
+  const original=Player.prototype.update;
+  const wrapped=function(dt,enemyList){
+    const melee=this?.classId==='warrior'||this?.classId==='viking';
+    if(!melee)return original.call(this,dt,enemyList);
+    const objectives=campaignObjectives.getCombatTargets().filter(target=>target&&!target.dead);
+    if(!objectives.length)return original.call(this,dt,enemyList);
+    const lists=[];
+    if(typeof enemies!=='undefined'&&Array.isArray(enemies))lists.push(enemies);
+    if(Array.isArray(enemyList)&&!lists.includes(enemyList))lists.push(enemyList);
+    const added=[];
+    for(const list of lists){
+      const own=[];
+      for(const target of objectives)if(!list.includes(target)){list.push(target);own.push(target);}
+      added.push([list,own]);
+    }
+    campaignSuppressObjectiveTargets=true;
+    try{return original.call(this,dt,enemyList);}
+    finally{
+      campaignSuppressObjectiveTargets=false;
+      for(const [list,own] of added)for(let i=own.length-1;i>=0;i--){
+        const index=list.lastIndexOf(own[i]);if(index>=0)list.splice(index,1);
+      }
+    }
+  };
+  wrapped.__campaignMeleeObjectiveBridge=true;
+  wrapped.__originalCampaignPlayerUpdate=original;
+  Player.prototype.update=wrapped;
+  return true;
+}
+if(!installCampaignMeleeObjectiveBridge()&&typeof window?.addEventListener==='function')
+  window.addEventListener('load',installCampaignMeleeObjectiveBridge,{once:true});
+
 window.campaignObjectives=campaignObjectives;
 window.campaignEvents=campaignEvents;
 window.campaignObjectiveUI=campaignObjectiveUI;
 window.cleanupCampaignRuntime=cleanupCampaignRuntime;
+window.installCampaignMeleeObjectiveBridge=installCampaignMeleeObjectiveBridge;
