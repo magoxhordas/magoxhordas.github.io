@@ -86,14 +86,14 @@
     if(global.GameEvents) global.GameEvents.emit('input:released',{reason:reason||'manual'});
   }
 
-  // Controle mobile sem botoes: joystick/sensor flutuante criado no ponto do toque.
-  // O controle antigo continua no HTML por compatibilidade, mas e removido do DOM
-  // em dispositivos touch para nao ocupar espaco nem disputar eventos de ponteiro.
+  // Controle mobile: sensor/joystick flutuante para movimento, com Dash e Pausa
+  // preservados como os unicos botoes fixos durante o gameplay touch.
   const mobileSensor=(()=>{
     const SOURCE='mobile-sensor';
-    const DEAD_ZONE=11;
-    const AXIS_THRESHOLD=.28;
+    const DEAD_ZONE=6;
+    const AXIS_THRESHOLD=.24;
     const VISUAL_RADIUS=46;
+    const MOVEMENT_BOOST=1.45;
     const keys=new Set();
     let pointerId=null,startX=0,startY=0;
     let sensorEl=null,knobEl=null,installed=false;
@@ -106,6 +106,10 @@
 
     function isGameplayActive(){
       return !!global.document?.body?.classList?.contains('mobile-gameplay-active');
+    }
+
+    function isMoving(){
+      return pointerId!==null&&keys.size>0;
     }
 
     function blockedTarget(target){
@@ -151,8 +155,30 @@
       style.id='mobile-touch-sensor-style';
       style.textContent=`
         :root{--mobile-controls-height:0px!important}
-        #mobile-controls{display:none!important;pointer-events:none!important}
         body.mobile-gameplay-active #canvas{transform:none!important}
+
+        /* No mobile ficam apenas Dash + Pausa. As setas, Criar/Acao e Itens somem. */
+        #mobile-controls{
+          inset:auto max(10px,var(--safe-right,0px)) max(10px,var(--safe-bottom,0px)) auto!important;
+          left:auto!important;right:max(10px,var(--safe-right,0px))!important;
+          width:auto!important;padding:0!important;transform:none!important;
+          align-items:center!important;justify-content:flex-end!important;
+          pointer-events:none!important;
+        }
+        #mobile-controls.active{display:flex!important}
+        #mobile-controls .mobile-dpad{display:none!important}
+        #mobile-controls .mobile-action-pad{
+          width:auto!important;display:flex!important;grid-template-columns:none!important;
+          gap:8px!important;pointer-events:auto!important;
+        }
+        #mobile-controls [data-mobile-action="context"],
+        #mobile-controls [data-mobile-action="menu"]{display:none!important}
+        #mobile-controls [data-mobile-action="dash"],
+        #mobile-controls [data-mobile-action="pause"]{
+          display:flex!important;min-width:64px!important;min-height:52px!important;
+          padding:8px 10px!important;
+        }
+
         #mobile-touch-sensor{position:fixed;left:0;top:0;width:94px;height:94px;z-index:46;
           display:none;pointer-events:none;border-radius:50%;border:1px solid rgba(240,208,128,.34);
           background:radial-gradient(circle,rgba(240,208,128,.08),rgba(8,6,15,.10) 60%,rgba(8,6,15,.22));
@@ -174,14 +200,14 @@
       global.document.body.appendChild(sensorEl);
     }
 
-    function hideLegacyControls(){
+    function configureLegacyControls(){
       const legacy=global.document?.getElementById?.('mobile-controls');
-      if(legacy){
-        legacy.classList.remove('active');
-        legacy.setAttribute('aria-hidden','true');
-        legacy.style.setProperty('display','none','important');
-        legacy.replaceChildren?.();
-      }
+      if(!legacy)return;
+      legacy.style.removeProperty?.('display');
+      legacy.querySelector?.('.mobile-dpad')?.remove?.();
+      legacy.querySelector?.('[data-mobile-action="context"]')?.remove?.();
+      legacy.querySelector?.('[data-mobile-action="menu"]')?.remove?.();
+      // Dash e Pausa permanecem com os handlers originais do setupMobileControls.
       global.document?.documentElement?.style?.setProperty('--mobile-controls-height','0px');
     }
 
@@ -232,10 +258,43 @@
       release();
     }
 
+    function installMovementBoosts(){
+      try{
+        if(typeof Player!=='undefined'&&Player?.prototype?.update&&!Player.prototype.update.__mobileTouchSpeedBoost){
+          const original=Player.prototype.update;
+          const wrapped=function(){
+            if(!isMoving()||!Number.isFinite(this?.speed))return original.apply(this,arguments);
+            const baseSpeed=this.speed;
+            this.speed=baseSpeed*MOVEMENT_BOOST;
+            try{return original.apply(this,arguments);}
+            finally{this.speed=baseSpeed;}
+          };
+          wrapped.__mobileTouchSpeedBoost=true;
+          wrapped.__originalMobileTouchPlayerUpdate=original;
+          Player.prototype.update=wrapped;
+        }
+      }catch(_){}
+
+      const dng=global.DNG;
+      if(dng?._update&&!dng._update.__mobileTouchSpeedBoost){
+        const original=dng._update;
+        const wrapped=function(){
+          if(!isMoving()||!Number.isFinite(this?.pSpeed))return original.apply(this,arguments);
+          const baseSpeed=this.pSpeed;
+          this.pSpeed=baseSpeed*MOVEMENT_BOOST;
+          try{return original.apply(this,arguments);}
+          finally{this.pSpeed=baseSpeed;}
+        };
+        wrapped.__mobileTouchSpeedBoost=true;
+        wrapped.__originalMobileTouchDungeonUpdate=original;
+        dng._update=wrapped;
+      }
+    }
+
     function install(){
       if(installed||!isCoarseDevice()||!global.document)return false;
       installed=true;
-      hideLegacyControls();ensureVisual();
+      configureLegacyControls();ensureVisual();installMovementBoosts();
       // No touch o combate permanece automatico: o gesto inteiro fica reservado
       // para locomocao, sem clique/ataque manual concorrendo com o dedo.
       if(global.GameSettings?.autoAttack===false&&typeof global.GameSettings.toggleAutoAttack==='function')
@@ -249,7 +308,11 @@
       return true;
     }
 
-    return {install,release,shouldCapture,directionForDelta,isCoarseDevice};
+    return {
+      install,release,shouldCapture,directionForDelta,isCoarseDevice,isMoving,
+      get movementMultiplier(){return MOVEMENT_BOOST;},
+      installMovementBoosts
+    };
   })();
 
   function bind(){
