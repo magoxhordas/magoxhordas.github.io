@@ -8,6 +8,8 @@ function campaignArenaForWave(nextWave){
 }
 
 function resetCampaignMapObjects(){
+  if(typeof campaignEvents!=='undefined')campaignEvents.cleanup('chapter');
+  if(typeof campaignObjectives!=='undefined')campaignObjectives.cleanup('chapter');
   enemies=[]; projs=[]; coins=[]; parts=[]; meleeAnims=[]; firePatches=[];
   structures=[]; webBlobs=[]; webPuddles=[];
   bossOrc=null; bossSkel=null; bossSpider=null; bossMajor=null;
@@ -28,6 +30,7 @@ function advWave(){
   const nextArena=campaignArenaForWave(wave);
   if(nextArena!==currentArena) resetCampaignMapObjects();
   spawnWaveObstacles(nextArena);
+  if(typeof campaignObjectives!=='undefined')campaignObjectives.startWave(wave);
 }
 
 // A campanha não gera mais pedras, árvores ou rochas aleatórias.
@@ -164,6 +167,7 @@ function updateCampaignBiomeAndBoss(wildPetFight){
       bossMajor.shieldMax=Math.round(bossMajor.shieldMax*bossDiff.bossHp*bossWaveHp);
       bossMajor.shieldHp=bossMajor.shieldMax;
     }
+    if(typeof campaignObjectives!=='undefined')campaignObjectives.onBossSpawn(bossMajor,wave);
     CampProgressionSystem.onBossStarted([player,player2],bossMajor);
     if(typeof Audio!=='undefined'){
       const bossTheme={5:'skeleton_king',10:'aracne',15:'frost',20:'sandworm',25:'balrog',30:'brute'}[wave]||bossMajor.type||'default';
@@ -241,7 +245,10 @@ class LavaRock {
 function endWave(){
   if(state==='endwave'||state==='shop'||state==='temple') return;
   if(bossRushMode) return;
+  if(typeof campaignEvents!=='undefined'&&campaignEvents.isActive()) return;
   if(wave>=5&&wave%5===0&&bossMajor&&!bossMajor.dead) return;
+  if(typeof campaignObjectives!=='undefined'&&!campaignObjectives.canEndWave(wave)) return;
+  if(typeof campaignObjectives!=='undefined')campaignObjectives.onWaveEnd(wave);
   state='endwave';
   totalWavesSurvived++;
   growFarm(1);
@@ -284,15 +291,19 @@ function endWave(){
     if(bossRushMode){
       state='playing'; enemies=[]; spawnNextBossRush(); return;
     }
-    // Card offer every 2 waves from wave 2 onwards, shop on odd waves
-    if(wave>=2 && (wave%2===0)){
+    const continueBetweenWaves=()=>{
+      // Card offer every 2 waves from wave 2 onwards, shop on odd waves
+      if(wave>=2 && (wave%2===0)){
+        if(rollPetEncounter()){ openPetEncounter(); return; }
+        if(rollTemple()){ openTempleEvent(); return; }
+        openCardOffer(); return;
+      }
+      // Odd waves (1, 3, 5...) → shop, but skip shop on boss waves (already handled above)
       if(rollPetEncounter()){ openPetEncounter(); return; }
       if(rollTemple()){ openTempleEvent(); return; }
-      openCardOffer(); return;
-    }
-    // Odd waves (1, 3, 5...) → shop, but skip shop on boss waves (already handled above)
-    if(rollPetEncounter()){ openPetEncounter(); return; }
-    if(rollTemple()){ openTempleEvent(); return; }
-    openShop();
+      openShop();
+    };
+    if(typeof campaignEvents!=='undefined'&&campaignEvents.tryStartAfterWave(wave,continueBetweenWaves))return;
+    continueBetweenWaves();
   }, totalDelay);
 }
