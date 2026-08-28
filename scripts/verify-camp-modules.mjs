@@ -70,8 +70,10 @@ const petState={x:500,y:500,camX:100,camY:150,correndo:false,pet:null};
 let activePetId='zefiro';
 const capturedPets={zefiro:true,ignis:true};
 const petDrawCalls=[];
+let bloquearCaminhoPet=false;
 const petSystem=sandbox.CampPetSystem.create({
-  S:petState,livre:()=>true,
+  S:petState,
+  livre:(x,y)=>!bloquearCaminhoPet||(Math.abs(x-(petState.x-38))<.01&&Math.abs(y-(petState.y+8))<.01),
   getImageSets:()=>({zefiro:{},ignis:{}}),
   getCapturedPets:()=>capturedPets,
   getActivePetId:()=>activePetId,
@@ -81,17 +83,27 @@ const petSystem=sandbox.CampPetSystem.create({
 });
 petSystem.atualizarPet(.016);
 assert(petState.pet&&petState.pet.id==='zefiro','pet ativo nao foi criado a partir da selecao existente');
-assert(petState.pet.x===442&&petState.pet.y===510&&petState.pet.dir==='south'&&petState.pet.flip===false,
-  'estado inicial do pet foi alterado');
+assert(petState.pet.x===462&&petState.pet.y===508&&petState.pet.dir==='south'&&petState.pet.flip===false,
+  'pet nao nasceu ao lado do jogador');
 petState.pet.x=350; petState.pet.y=500;
 petSystem.atualizarPet(.1);
 assert(petState.pet.x>350&&petState.pet.andando&&petState.pet.dir==='side'&&!petState.pet.flip,
-  'movimento/direcao do pet foram alterados');
+  'pet nao acompanhou o jogador em direcao ao ponto lateral');
+petState.x=900;petState.y=700;petState.correndo=true;
+petSystem.atualizarPet(.016);
+assert(Math.hypot(petState.pet.x-petState.x,petState.pet.y-petState.y)<55&&!petState.pet.andando,
+  'pet distante nao foi recuperado imediatamente ao lado do jogador');
+petState.x=500;petState.y=500;petState.correndo=false;petState.pet.x=390;petState.pet.y=500;
+bloquearCaminhoPet=true;
+for(let i=0;i<5;i++)petSystem.atualizarPet(.1);
+assert(petState.pet.x===462&&petState.pet.y===508&&!petState.pet.andando,
+  'pet preso em um objeto nao foi recuperado no ponto lateral livre');
+bloquearCaminhoPet=false;
 const petCtx={beginPath(){},ellipse(){petDrawCalls.push('shadow');},fill(){}};
 petSystem.desenharPet(petCtx,500);
 assert(petDrawCalls.includes('shadow'),'sombra do pet deixou de ser desenhada');
 const imageCall=petDrawCalls.find(call=>Array.isArray(call));
-assert(imageCall&&imageCall[1]==='zefiro'&&imageCall[4]===false&&imageCall[5]===true&&imageCall[7]==='side',
+assert(imageCall&&imageCall[1]==='zefiro'&&imageCall[4]===false&&imageCall[5]===false&&imageCall[7]==='side',
   'renderer do pet alterou sprite, direcao ou animacao');
 activePetId=null;
 petSystem.atualizarPet(.016);
@@ -156,8 +168,11 @@ assert(!farmDrawCalls.some(call=>call[0]==='fillRect'||call[0]==='strokeRect'),
   'canteiros nao arados ainda desenham uma grade fixa sobre o cenario');
 sandbox.farmCells[0].state='plowed'; sandbox.farmCells[0].tilled=true;
 farmingSystem.desenharHorta(farmCtx,1200);
-assert(farmDrawCalls.some(call=>call[0]==='fillRect')&&farmDrawCalls.some(call=>call[0]==='strokeRect'),
-  'canteiro arado nao recebeu o visual de terra arada');
+const farmFills=farmDrawCalls.filter(call=>call[0]==='fillRect');
+assert(farmFills.length>0&&!farmDrawCalls.some(call=>call[0]==='strokeRect'),
+  'canteiro arado nao recebeu sulcos discretos ou voltou a desenhar borda artificial');
+assert(farmFills.every(([,x,y,w,h])=>w*h<=8),
+  'canteiro arado voltou a cobrir a arte original com retangulo opaco');
 farmingSystem.usarCanteiro(firstPlot);
 assert(sandbox.selectedSeed==='semente_tomate'&&sandbox.activeTool==='plant','semente/ferramenta nao foram preparadas como antes');
 assert(sandbox.farmCells[0].state==='planted'&&sandbox.farmCells[0].seed==='semente_tomate','transicao plowed -> planted foi alterada');
