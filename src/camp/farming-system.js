@@ -23,6 +23,11 @@
       function celula(k){
         return (typeof farmCells!=='undefined'&&k.idx<farmCells.length)?farmCells[k.idx]:null;
       }
+      function estaArado(cell){
+        // `state` continua sendo aceito para saves antigos, anteriores ao campo
+        // `tilled`. No estado inicial vazio, nada e desenhado sobre camp_bg.png.
+        return !!cell&&(cell.tilled===true||cell.state!=='empty');
+      }
       
       function usarCanteiro(k){
         const cell=celula(k); if(!cell) return;
@@ -163,17 +168,13 @@
         if(x>c.canvas.width+30||y>c.canvas.height+30||x+h.w<-30||y+h.h<-30) return;
         c.save(); c.imageSmoothingEnabled=false;
 
-        // Moldura de madeira e terra escura unem os 15 lotes em uma plantacao.
-        c.fillStyle='rgba(24,16,8,.96)'; c.fillRect(x-7,y-7,h.w+14,h.h+14);
-        c.fillStyle='#77502c'; c.fillRect(x-9,y-9,h.w+18,5);
-        c.fillRect(x-9,y+h.h+4,h.w+18,5);
-        c.fillRect(x-9,y-4,5,h.h+8); c.fillRect(x+h.w+4,y-4,5,h.h+8);
-        c.strokeStyle='#b17a3d'; c.lineWidth=1; c.strokeRect(x-7.5,y-7.5,h.w+15,h.h+15);
-
+        // O solo nao arado ja existe na arte do acampamento. Desenhar somente
+        // a celula que foi arada evita criar uma segunda grade fixa no cenario.
         for(const k of CANTEIROS){
+          const cell=celula(k); if(!estaArado(cell)) continue;
           const b=px(k), rx=Math.round(b.x-S.camX)+2, ry=Math.round(b.y-S.camY)+2;
           const rw=Math.round(b.w)-4, rh=Math.round(b.h)-4;
-          const cell=celula(k), molhada=cell&&cell.state==='watered';
+          const molhada=cell.state==='watered';
           c.fillStyle=molhada?'rgba(35,25,18,.98)':'rgba(61,39,20,.97)';
           c.fillRect(rx,ry,rw,rh);
           c.strokeStyle='rgba(174,116,55,.62)'; c.strokeRect(rx+.5,ry+.5,rw-1,rh-1);
@@ -191,13 +192,6 @@
             c.fillRect(rx+7+(k.idx%3)*5,ry+rh-8,9,1);
           }
         }
-
-        // Espantalho pixelado, pequeno e fora das celulas interativas.
-        const sx=Math.round(x+h.w/2), sy=y-8;
-        c.fillStyle='#74502d'; c.fillRect(sx-2,sy-15,4,25); c.fillRect(sx-13,sy-8,26,3);
-        c.fillStyle='#c79a4c'; c.fillRect(sx-7,sy-17,14,4); c.fillRect(sx-5,sy-22,10,6);
-        c.fillStyle='#6d3421'; c.fillRect(sx-8,sy-5,16,10);
-        c.fillStyle='#d2b062'; c.fillRect(sx-3,sy-14,2,2); c.fillRect(sx+2,sy-14,2,2);
         c.restore();
       }
       function desenharPlantas(c,t){
@@ -205,10 +199,7 @@
           const cell=celula(k); if(!cell||cell.state==='empty') continue;
           const b=px(k), cx=b.x+b.w/2-S.camX, base=b.y+b.h*.78-S.camY;
           if(cx<-40||cx>c.canvas.width+40) continue;
-          if(cell.state==='plowed'){                       // so a terra revirada
-            c.fillStyle='rgba(90,62,32,.45)';
-            c.fillRect(b.x+3-S.camX,b.y+3-S.camY,b.w-6,b.h-6); continue;
-          }
+          if(cell.state==='plowed') continue;              // solo ja desenhado acima
           if(cell.state==='watered'){                      // terra molhada
             c.fillStyle='rgba(30,20,10,.42)';
             c.fillRect(b.x+3-S.camX,b.y+3-S.camY,b.w-6,b.h-6);

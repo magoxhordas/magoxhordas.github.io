@@ -5986,7 +5986,11 @@ function loadPersistentData(){
       if(d.inventory) globalInventory = {...globalInventory, ...d.inventory};
       if(d.totalWaves) totalWavesSurvived = d.totalWaves;
       if(d.metaUpgrades) metaUpgrades = {...metaUpgrades, ...d.metaUpgrades};
-      if(d.farmCells) farmCells = d.farmCells.map(c=>({...c}));
+      if(d.farmCells) farmCells = d.farmCells.map(c=>({
+        ...c,
+        // Compatibilidade com saves anteriores ao estado visual explicito.
+        tilled:typeof c.tilled==='boolean'?c.tilled:c.state!=='empty',
+      }));
       if(d.workshopUpgrades) workshopUpgrades = {...workshopUpgrades, ...d.workshopUpgrades};
     }
   } catch(e){}
@@ -7533,6 +7537,7 @@ function startExpeditionFromMap(){
 let farmPlots = 15;
 try{ farmPlots = Math.min(25, Math.max(15, SaveSystem.readNumber('mvh_farm_plots',15))); }catch(e){}
 let farmCells = Array.from({length:farmPlots}, ()=>({
+  tilled:false,    // o solo original permanece visivel ate a acao [E] Arar
   state:'empty',   // empty | plowed | planted | watered | ready
   seed:null,       // 'semente_trigo' etc
   wavesNeeded:0,
@@ -7643,20 +7648,24 @@ function farmAction(idx){
       if(enxadaLv>=3){
         // Nível 3: ara TODAS as parcelas vazias
         let count=0;
-        farmCells.forEach(c=>{ if(c.state==='empty'){ c.state='plowed'; count++; } });
+        farmCells.forEach(c=>{ if(c.state==='empty'){ c.state='plowed'; c.tilled=true; count++; } });
         showInvNotif(`⛏ Enxada Max: ${count} parcelas aradas!`);
       } else if(enxadaLv>=2){
         // Nível 2: ara 4 parcelas ao redor do clique
         const targets=[idx, idx+1, idx-1, idx+5, idx-5].filter(i=>i>=0&&i<farmCells.length);
         let count=0;
-        targets.forEach(i=>{ if(farmCells[i].state==='empty'){ farmCells[i].state='plowed'; count++; } });
+        targets.forEach(i=>{ if(farmCells[i].state==='empty'){ farmCells[i].state='plowed'; farmCells[i].tilled=true; count++; } });
         showInvNotif(`⛏ ${count} parcelas aradas!`);
       } else if(enxadaLv>=1){
         // Nível 1: ara 2 parcelas (atual + próxima)
-        [idx, idx+1].forEach(i=>{ if(i<farmCells.length && farmCells[i].state==='empty') farmCells[i].state='plowed'; });
+        [idx, idx+1].forEach(i=>{
+          if(i<farmCells.length && farmCells[i].state==='empty'){
+            farmCells[i].state='plowed'; farmCells[i].tilled=true;
+          }
+        });
         showInvNotif('⛏ 2 parcelas aradas!');
       } else {
-        cell.state='plowed';
+        cell.state='plowed'; cell.tilled=true;
         showInvNotif('Terra arada!');
       }
     }
@@ -7713,7 +7722,7 @@ function farmAction(idx){
       const dupla = Math.random() < dblChance;
       if(dupla) qty *= 2;
       globalInventory[cropKey] = (globalInventory[cropKey]||0) + qty;
-      cell.state = 'empty'; cell.seed = null; cell.wavesWatered = 0; cell.wavesToGrow = 0;
+      cell.state = 'empty'; cell.tilled = false; cell.seed = null; cell.wavesWatered = 0; cell.wavesToGrow = 0;
       showInvNotif(dupla ? `🍀 COLHEITA DUPLA! +${qty} ${LOOT_ITEM_NAME(cropKey)}!` : `+${qty} ${LOOT_ITEM_NAME(cropKey)} colhidos!`);
       savePersistentData();
     }
@@ -7889,7 +7898,7 @@ function expandFarm(){
   const custo = 150;
   if(totalCoins < custo){ showInvNotif(`🪙 Precisa de ${custo} moedas para expandir!`); return; }
   totalCoins -= custo;
-  for(let i=0;i<5;i++) farmCells.push({state:'empty', seed:null, wavesWatered:0, wavesToGrow:0});
+  for(let i=0;i<5;i++) farmCells.push({tilled:false, state:'empty', seed:null, wavesWatered:0, wavesToGrow:0});
   SaveSystem.writeText('mvh_farm_plots',String(farmCells.length));
   savePersistentData();
   showInvNotif(`🌾 Fazenda expandida! ${farmCells.length} parcelas (−${custo}🪙)`);

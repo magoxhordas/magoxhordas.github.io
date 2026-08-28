@@ -5,6 +5,7 @@ import {fileURLToPath} from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=(file)=>fs.readFileSync(path.join(root,file),'utf8');
+const html=read('index.html');
 const sandbox={console,performance:{now:()=>1200}};
 sandbox.window=sandbox;
 vm.createContext(sandbox);
@@ -128,7 +129,7 @@ assert(farm.ACAO.empty==='Arar'&&farm.ACAO.ready==='Colher','rotulos de acao da 
 sandbox.globalInventory={semente_tomate:2,semente_trigo:1};
 sandbox.selectedSeed=null;
 sandbox.activeTool=null;
-sandbox.farmCells=Array.from({length:15},()=>({state:'empty',seed:null}));
+sandbox.farmCells=Array.from({length:15},()=>({tilled:false,state:'empty',seed:null}));
 sandbox.farmAction=(idx)=>{
   const cell=sandbox.farmCells[idx];
   if(sandbox.activeTool==='plant'&&cell.state==='plowed'){cell.state='planted';cell.seed=sandbox.selectedSeed;}
@@ -143,12 +144,31 @@ assert(farmingSystem.CANTEIROS.length===15,'farming-system nao criou os 15 cante
 assert(farmingSystem.CANTEIROS.every((k,i)=>k.idx===i),'indices dos canteiros foram alterados');
 const firstPlot=farmingSystem.CANTEIROS[0], firstBox=farmPx(firstPlot);
 assert(farmingSystem.canteiroEm(firstBox.x+firstBox.w/2,firstBox.y+firstBox.h/2-6)===firstPlot,'deteccao do canteiro foi alterada');
-sandbox.farmCells[0].state='plowed';
+const farmDrawCalls=[];
+const farmCtx={
+  canvas:{width:1447,height:1087},save(){},restore(){},
+  fillRect(...args){farmDrawCalls.push(['fillRect',...args]);},
+  strokeRect(...args){farmDrawCalls.push(['strokeRect',...args]);},
+  beginPath(){},moveTo(){},lineTo(){},stroke(){},
+};
+farmingSystem.desenharHorta(farmCtx,1200);
+assert(!farmDrawCalls.some(call=>call[0]==='fillRect'||call[0]==='strokeRect'),
+  'canteiros nao arados ainda desenham uma grade fixa sobre o cenario');
+sandbox.farmCells[0].state='plowed'; sandbox.farmCells[0].tilled=true;
+farmingSystem.desenharHorta(farmCtx,1200);
+assert(farmDrawCalls.some(call=>call[0]==='fillRect')&&farmDrawCalls.some(call=>call[0]==='strokeRect'),
+  'canteiro arado nao recebeu o visual de terra arada');
 farmingSystem.usarCanteiro(firstPlot);
 assert(sandbox.selectedSeed==='semente_tomate'&&sandbox.activeTool==='plant','semente/ferramenta nao foram preparadas como antes');
 assert(sandbox.farmCells[0].state==='planted'&&sandbox.farmCells[0].seed==='semente_tomate','transicao plowed -> planted foi alterada');
 assert(farmState.aviso==='Plantar ok'&&farmState.avisoAte===3000,'feedback de plantio foi alterado');
 assert(typeof farmingSystem.desenharHorta==='function'&&typeof farmingSystem.desenharPlantas==='function','renderizacao da horta nao foi exportada');
+assert(html.includes('tilled:false,    // o solo original permanece visivel ate a acao [E] Arar'),
+  'parcelas novas nao comecam com tilled=false');
+assert(html.includes("cell.state='plowed'; cell.tilled=true;"),
+  'acao de arar nao marca a parcela correspondente como tilled=true');
+assert(html.includes("cell.state = 'empty'; cell.tilled = false;"),
+  'colheita nao restaura o estado visual nao arado');
 
 const ids=['fazenda','cozinha','merlin','oficina','santuario','fogueira','portal','lago','arqueiro'];
 const actions=Object.fromEntries(ids.map(id=>[id,()=>id]));
