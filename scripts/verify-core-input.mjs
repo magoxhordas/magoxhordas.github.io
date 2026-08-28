@@ -123,7 +123,10 @@ assert(JSON.stringify(direction(-50,0))===JSON.stringify(['a']),'sensor nao mape
 assert(JSON.stringify(direction(0,-50))===JSON.stringify(['w']),'sensor nao mapeou cima');
 assert(JSON.stringify(direction(0,50))===JSON.stringify(['s']),'sensor nao mapeou baixo');
 assert(JSON.stringify(direction(40,40))===JSON.stringify(['d','s']),'sensor nao permite diagonal');
-assert(direction(3,3).length===0,'zona morta do sensor foi removida');
+assert(direction(5,0).length===0&&JSON.stringify(direction(7,0))===JSON.stringify(['d']),
+  'sensibilidade/zona morta do sensor voltou a ficar lenta');
+assert(sandbox.MobileTouchSensor.movementMultiplier===1.45,'boost de velocidade touch foi alterado');
+assert(sandbox.MobileTouchSensor.isMoving()===false,'sensor nao deve iniciar em estado de movimento');
 
 campaignState.d=true;
 unregisterCampaign();
@@ -148,14 +151,23 @@ includesAll(integrationSource,[
   "if(gameMode===1){\n      if(keys['ArrowLeft'])  dx-=1;",
   "if(keys['ArrowLeft'])  dx=-1;\n    if(keys['ArrowRight']) dx+=1;",
   '({dx,dy}=normalizeCampaignMovementVector(dx,dy));',
+  'data-mobile-action="dash"',
+  'data-mobile-action="pause"',
   "const SOURCE='mobile-sensor'",
-  "legacy.replaceChildren?.()",
-  '#mobile-controls{display:none!important;pointer-events:none!important}',
-  ':root{--mobile-controls-height:0px!important}',
+  'const DEAD_ZONE=6',
+  'const MOVEMENT_BOOST=1.45',
+  "legacy.querySelector?.('.mobile-dpad')?.remove?.()",
+  "legacy.querySelector?.('[data-mobile-action=\"context\"]')?.remove?.()",
+  "legacy.querySelector?.('[data-mobile-action=\"menu\"]')?.remove?.()",
+  '#mobile-controls.active{display:flex!important}',
+  '#mobile-controls [data-mobile-action="dash"]',
+  '#mobile-controls [data-mobile-action="pause"]',
+  'Player.prototype.update=wrapped',
+  'dng._update=wrapped',
   "global.GameSettings?.autoAttack===false",
   'if(mobileSensor.shouldCapture(event))return;',
   'pressVirtual(SOURCE,key)',
   'releaseVirtual(SOURCE,key)'
 ],'contrato de controles');
 
-console.log(`OK: core input preservou teclado/escopos e adotou sensor mobile sem botoes (${checks} verificacoes).`);
+console.log(`OK: core input preservou teclado/escopos e adotou sensor mobile rapido com Dash/Pausa (${checks} verificacoes).`);
