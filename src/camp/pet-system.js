@@ -16,7 +16,7 @@
       throw new TypeError('CampPetSystem.create recebeu dependencias invalidas.');
 
     const PET_OFFSET_X=-38, PET_OFFSET_Y=8;
-    const PET_SEGUE=42, PET_PARA=18, PET_LONGE=300, PET_PRESO_MS=360;
+    const PET_SEGUE=46, PET_PARA=25, PET_LONGE=150, PET_PRESO_MS=420;
 
     function petAtivo(){
       const imageSets=getImageSets();
@@ -28,11 +28,26 @@
       return null;
     }
 
-    function pontoLateral(){ return {x:S.x+PET_OFFSET_X,y:S.y+PET_OFFSET_Y}; }
+    function pontosLaterais(){
+      // Prioriza o lado tradicional, mas oferece alternativas ao redor do
+      // jogador. Assim casas, tendas, fogueira e portal nao fazem o pet sumir
+      // quando exatamente aquele primeiro ponto esta bloqueado.
+      return [
+        {x:S.x+PET_OFFSET_X,y:S.y+PET_OFFSET_Y},
+        {x:S.x-PET_OFFSET_X,y:S.y+PET_OFFSET_Y},
+        {x:S.x-28,y:S.y+28},
+        {x:S.x+28,y:S.y+28},
+        {x:S.x,y:S.y-34},
+        {x:S.x,y:S.y+34},
+      ];
+    }
+
+    function pontoLateral(){ return pontosLaterais().find(pos=>livre(pos.x,pos.y))||null; }
+    function pontoPadrao(){ return {x:S.x+PET_OFFSET_X,y:S.y+PET_OFFSET_Y}; }
 
     function reposicionarAoLado(p){
       const alvo=pontoLateral();
-      if(!livre(alvo.x,alvo.y)) return false;
+      if(!alvo) return false;
       p.x=alvo.x; p.y=alvo.y;
       p.seguindo=false; p.andando=false; p.presoMs=0;
       return true;
@@ -42,22 +57,22 @@
       const id=petAtivo();
       if(!id){ S.pet=null; return; }
       if(!S.pet || S.pet.id!==id){
-        const alvo=pontoLateral();
+        const alvo=pontoLateral()||pontoPadrao();
         S.pet={id,x:alvo.x,y:alvo.y,dir:'south',flip:false,andando:false,seguindo:false,presoMs:0};
       }
       const p=S.pet;
-      const alvo=pontoLateral();
+      const alvo=pontoLateral()||pontoPadrao();
       const dx=alvo.x-p.x, dy=alvo.y-p.y, d=Math.hypot(dx,dy);
 
       // Se o jogador disparou para longe, nao deixa o companheiro atravessar o
       // mapa tentando alcancar a posicao antiga: recupera-o no ponto lateral.
-      if(d>PET_LONGE){ reposicionarAoLado(p); return; }
+      if(d>PET_LONGE&&reposicionarAoLado(p)) return;
       if(d>PET_SEGUE) p.seguindo=true;
       else if(d<PET_PARA) p.seguindo=false;
       if(!p.seguindo){ p.andando=false; p.presoMs=0; return; }
 
-      const maxPasso=(S.correndo?235:165)*Math.max(0,Number(dt)||0);
-      const vel=Math.min(Math.max(0,d-PET_PARA*.45),maxPasso);
+      const maxPasso=(S.correndo?310:215)*Math.max(0,Number(dt)||0);
+      const vel=Math.min(Math.max(0,d-PET_PARA*.55),maxPasso);
       if(d<=.001||vel<=0){ p.andando=false; return; }
 
       const ax=p.x, ay=p.y;
