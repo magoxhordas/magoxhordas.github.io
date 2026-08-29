@@ -19,10 +19,10 @@ const petState={x:500,y:500,camX:100,camY:150,correndo:false,pet:null};
 let activePetId='zefiro';
 const capturedPets={zefiro:true,ignis:true};
 const petDrawCalls=[];
-let bloquearCaminhoPet=false;
+let bloquearPontoPrimario=false;
 const petSystem=sandbox.CampPetSystem.create({
   S:petState,
-  livre:(x,y)=>!bloquearCaminhoPet||(Math.abs(x-(petState.x-38))<.01&&Math.abs(y-(petState.y+8))<.01),
+  livre:(x,y)=>!bloquearPontoPrimario||Math.abs(x-(petState.x-38))>=.01||Math.abs(y-(petState.y+8))>=.01,
   getImageSets:()=>({zefiro:{},ignis:{}}),
   getCapturedPets:()=>capturedPets,
   getActivePetId:()=>activePetId,
@@ -45,12 +45,12 @@ petSystem.atualizarPet(.016);
 ok(Math.hypot(petState.pet.x-petState.x,petState.pet.y-petState.y)<55&&!petState.pet.andando,
   'pet distante nao foi recuperado imediatamente ao lado do jogador');
 
-petState.x=500;petState.y=500;petState.correndo=false;petState.pet.x=390;petState.pet.y=500;
-bloquearCaminhoPet=true;
-for(let i=0;i<5;i++)petSystem.atualizarPet(.1);
-ok(petState.pet.x===462&&petState.pet.y===508&&!petState.pet.andando,
-  'pet preso em objeto nao foi recuperado no ponto lateral livre');
-bloquearCaminhoPet=false;
+petState.x=500;petState.y=500;petState.correndo=false;petState.pet.x=100;petState.pet.y=100;
+bloquearPontoPrimario=true;
+petSystem.atualizarPet(.016);
+ok(petState.pet.x===538&&petState.pet.y===508&&!petState.pet.andando,
+  'pet nao tentou o lado alternativo quando o ponto lateral primario estava bloqueado');
+bloquearPontoPrimario=false;
 
 const petCtx={beginPath(){},ellipse(){petDrawCalls.push('shadow');},fill(){}};
 petSystem.desenharPet(petCtx,500);
@@ -82,7 +82,8 @@ const farmCtx={
   canvas:{width:1447,height:1087},save(){},restore(){},
   fillRect(...args){farmDrawCalls.push(['fillRect',...args]);},
   strokeRect(...args){farmDrawCalls.push(['strokeRect',...args]);},
-  beginPath(){},moveTo(){},lineTo(){},stroke(){},
+  beginPath(){},moveTo(){},lineTo(){},quadraticCurveTo(){},bezierCurveTo(){},
+  arc(){},ellipse(){},stroke(){},fill(){},
 };
 farmingSystem.desenharHorta(farmCtx,1200);
 ok(!farmDrawCalls.some(call=>call[0]==='fillRect'||call[0]==='strokeRect'),
@@ -94,6 +95,12 @@ ok(farmFills.length>0&&!farmDrawCalls.some(call=>call[0]==='strokeRect'),
   'canteiro arado nao recebeu sulcos discretos ou voltou a desenhar borda artificial');
 ok(farmFills.every(([,x,y,w,h])=>w*h<=8),
   'canteiro arado voltou a cobrir a arte original com retangulo opaco');
+sandbox.farmCells[0].state='watered';sandbox.farmCells[0].seed='semente_tomate';
+farmDrawCalls.length=0;
+farmingSystem.desenharHorta(farmCtx,1200);
+farmingSystem.desenharPlantas(farmCtx,1200);
+ok(!farmDrawCalls.some(([,x,y,w,h])=>Number(w)*Number(h)>16),
+  'parcela regada voltou a receber uma caixa grande durante o desenho das plantas');
 
 const runtime=read('src/campaign/campaign-runtime.js');
 new vm.Script(runtime,{filename:'campaign-runtime.js'});

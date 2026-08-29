@@ -205,10 +205,9 @@
         const b=px(k), cx=b.x+b.w/2-S.camX, base=b.y+b.h*.78-S.camY;
         if(cx<-40||cx>c.canvas.width+40) continue;
         if(cell.state==='plowed') continue;
-        if(cell.state==='watered'){
-          c.fillStyle='rgba(30,20,10,.42)';
-          c.fillRect(b.x+3-S.camX,b.y+3-S.camY,b.w-6,b.h-6);
-        }
+        // O brilho/sulco de terra molhada ja e desenhado em `desenharHorta`.
+        // Nao cobrir a celula aqui: esse retangulo duplicado escondia a arte
+        // original do acampamento e recriava a grade grande da plantacao.
         const prog=cell.state==='ready'?1:(cell.state==='watered'?.62:.32);
         const pronto=cell.state==='ready';
         const desenhar=DESENHO_CULTIVO[cell.seed]||plantaErva;
