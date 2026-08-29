@@ -90,10 +90,10 @@
   // preservados como os unicos botoes fixos durante o gameplay touch.
   const mobileSensor=(()=>{
     const SOURCE='mobile-sensor';
-    const DEAD_ZONE=6;
-    const AXIS_THRESHOLD=.24;
+    const DEAD_ZONE=3;
+    const AXIS_THRESHOLD=.18;
     const VISUAL_RADIUS=46;
-    const MOVEMENT_BOOST=1.45;
+    const MOVEMENT_BOOST=1.85;
     const keys=new Set();
     let pointerId=null,startX=0,startY=0;
     let sensorEl=null,knobEl=null,installed=false;

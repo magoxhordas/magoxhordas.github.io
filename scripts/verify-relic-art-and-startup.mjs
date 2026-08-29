@@ -22,6 +22,8 @@ for(const name of relicFiles){
 }
 
 assert.match(html,/#settings-screen\{\s*display:none;/,'A tela de Configurações ainda pode aparecer no primeiro quadro.');
+assert.match(html,/<link rel="icon" type="image\/png" href="assets\/heroes\/mage\/icon\.png">/,'A página precisa declarar um favicon existente.');
+assert.doesNotMatch(html,/id="deity-intro-art"[^>]*\ssrc=""/,'A arte divina vazia não pode requisitar a própria página como imagem.');
 assert.match(html,/\.codex-art-image\s*\{[\s\S]*?object-fit:contain;/,'As artes do Códex precisam ser centralizadas sem recorte.');
 assert.match(integrationSource,/artPath:CODEX_RELIC_ART\[spec\.id\]|const artPath=typeof CODEX_RELIC_ART/,'Os itens da campanha não receberam a arte de relíquia.');
 assert.match(integrationSource,/item\.artPath\s*\?\s*codexArtIconHtml\(item\.artPath,84/,'A loja da campanha não usa os novos ícones.');

@@ -69,8 +69,37 @@ for(const contract of [
   'function prepareBossRushArena(b)','resetCampaignMapObjects();','buildBG(arena);',
   'function spawnNextBossRush()','function endBossRush(victory)','function completeCampaign()',
   "SaveSystem.writeText('mvh_campaign_complete','1')","SaveSystem.writeText('mvh_max_wave',25)",
-  "setTimeout(()=>showVictoryScreen('campaign'),1900)"
+  'let campaignVictoryRevealTimer=null;','function cancelPendingVictoryReveal()',
+  "scheduleVictoryScreen('bossrush',2600)","scheduleVictoryScreen('campaign',1900)"
 ]) has(source.bossRush,contract);
+const endBossRushBlock=source.bossRush.slice(source.bossRush.indexOf('function endBossRush(victory){'),source.bossRush.indexOf('function showVictoryScreen'));
+ok(endBossRushBlock.indexOf("if(victory) state='victory';")<endBossRushBlock.indexOf('bossRushMode=false;'),'Boss Rush deve entrar em estado terminal antes de liberar o modo campanha');
+ok(!source.bossRush.includes('setTimeout(()=>showVictoryScreen('),'tela de vitória não pode ficar em timer órfão');
+has(html,"if(typeof cancelPendingVictoryReveal==='function') cancelPendingVictoryReveal();",'reset do Boss Rush deve cancelar vitória pendente');
+
+const victoryRuntime=source.bossRush.slice(
+  source.bossRush.indexOf('let campaignCompletionPending=false;'),
+  source.bossRush.indexOf('// ═══════════════════════════════════════════════════════',source.bossRush.indexOf('function completeCampaign()'))
+);
+const revealTimers=[];
+const victorySandbox={
+  console,state:'playing',bossRushMode:true,bossRushQueue:[],W:640,H:480,
+  document:{body:{classList:{remove(){}}},getElementById:id=>id==='br-hud'?{className:'visible'}:null},
+  GameSettings:{recordBossRushVictory(){}},cleanupCampaignRuntime(){},spawnLevelUpNotice(){},spawnParts(){},
+  setTimeout(fn,delay){const timer={fn,delay,cleared:false};revealTimers.push(timer);return timer;},
+  clearTimeout(timer){timer.cleared=true;},setInterval(){return null;},clearInterval(){},endGame(){}
+};
+victorySandbox.window=victorySandbox;
+vm.createContext(victorySandbox);
+vm.runInContext(victoryRuntime,victorySandbox,{filename:'boss-rush-victory-runtime.js'});
+victorySandbox.endBossRush(true);
+ok(victorySandbox.state==='victory'&&victorySandbox.bossRushMode===false,'vitória do Boss Rush não ficou terminal de forma síncrona');
+ok(revealTimers.length===1&&revealTimers[0].delay===2600,'revelação do Boss Rush perdeu atraso controlado');
+let orphanVictoryCalls=0;
+victorySandbox.showVictoryScreen=()=>{orphanVictoryCalls++;};
+victorySandbox.state='menu';
+revealTimers[0].fn();
+ok(orphanVictoryCalls===0,'timer atrasado reabriu vitória depois da troca de tela');
 has(html,"const initialArena=bossRushMode?(bossRushQueue[0]?.arena||'crypt'):'crypt';",'entrada do Boss Rush perdeu a arena do primeiro chefe');
 has(html,'if(!bossRushMode) maybeStartCampaignChapter(wave);','campanha não inicia o capítulo antes do primeiro frame');
 
