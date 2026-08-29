@@ -7,6 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>⚔️ Mago X Hordas</title>
+<link rel="icon" type="image/png" href="assets/heroes/mage/icon.png">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 :root {
@@ -5390,7 +5391,7 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
     <i style="--x:71%;--y:77%;--delay:2.1s"></i>
     <i style="--x:48%;--y:88%;--delay:1.4s"></i>
   </div>
-  <img id="deity-intro-art" class="deity-intro-art" src="" alt="">
+  <img id="deity-intro-art" class="deity-intro-art" alt="">
   <div class="deity-intro-vignette" aria-hidden="true"></div>
 
   <section class="deity-dialog-shell">
@@ -10193,6 +10194,7 @@ function goCharSelect(){
 }
 
 function resetBossRushState(clearSelection=false){
+  if(typeof cancelPendingVictoryReveal==='function') cancelPendingVictoryReveal();
   bossRushMode=false;
   bossRushQueue=[];
   bossRushCurrent=0;

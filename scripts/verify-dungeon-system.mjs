@@ -77,4 +77,15 @@ includesAll(source,[
   "Audio.playCombatMusic('dungeon')",
 ], 'recompensas, contratos e audio');
 
+const stopBlock=between('  stop(){','  _updateHUD(){','limpeza ao sair');
+includesAll(stopBlock,[
+  'this.menuOpen=false;this.equipOpen=false;this.mapOpen=false;',
+  'if(this._mapInt){clearInterval(this._mapInt);this._mapInt=null;}',
+  'this._restoreCraftPanel();',
+  "document.getElementById('dng-map-overlay')?.remove();",
+  "document.getElementById('dng-menu-overlay')?.remove();",
+  "document.getElementById('dng-merchant-overlay')?.remove();",
+  'extractionState=null;'
+], 'limpeza defensiva da Dungeon');
+
 console.log(`OK: Dungeon modular preserva geracao, 22 inimigos, 18 chefes, recompensas, progressao, controles e audio (${checks} verificacoes).`);

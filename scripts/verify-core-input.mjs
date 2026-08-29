@@ -123,10 +123,56 @@ assert(JSON.stringify(direction(-50,0))===JSON.stringify(['a']),'sensor nao mape
 assert(JSON.stringify(direction(0,-50))===JSON.stringify(['w']),'sensor nao mapeou cima');
 assert(JSON.stringify(direction(0,50))===JSON.stringify(['s']),'sensor nao mapeou baixo');
 assert(JSON.stringify(direction(40,40))===JSON.stringify(['d','s']),'sensor nao permite diagonal');
-assert(direction(5,0).length===0&&JSON.stringify(direction(7,0))===JSON.stringify(['d']),
+assert(direction(2,0).length===0&&JSON.stringify(direction(4,0))===JSON.stringify(['d']),
   'sensibilidade/zona morta do sensor voltou a ficar lenta');
-assert(sandbox.MobileTouchSensor.movementMultiplier===1.45,'boost de velocidade touch foi alterado');
+assert(sandbox.MobileTouchSensor.movementMultiplier===1.85,'boost de velocidade touch foi alterado');
 assert(sandbox.MobileTouchSensor.isMoving()===false,'sensor nao deve iniciar em estado de movimento');
+
+// Instala o sensor em um DOM mínimo e confirma que o boost existe apenas
+// enquanto o dedo está arrastando, sem acumular ou alterar a velocidade-base.
+const touchListeners=new Map();
+const makeTouchElement=id=>({
+  id,style:{removeProperty(){},setProperty(){}},
+  classList:{add(){},remove(){},contains:name=>name==='mobile-gameplay-active'},
+  setAttribute(){},appendChild(){},remove(){},
+  querySelector(){return null;},querySelectorAll(){return [];}
+});
+const legacyControls=makeTouchElement('mobile-controls');
+const touchDocument={
+  readyState:'complete',hidden:false,
+  body:{...makeTouchElement('body'),classList:{add(){},remove(){},contains:name=>name==='mobile-gameplay-active'}},
+  head:makeTouchElement('head'),documentElement:{style:{setProperty(){}}},
+  createElement:makeTouchElement,
+  getElementById:id=>id==='mobile-controls'?legacyControls:null,
+  addEventListener(type,handler,options){
+    if(!touchListeners.has(type))touchListeners.set(type,[]);
+    touchListeners.get(type).push({handler,options});
+  }
+};
+class TouchPlayer{
+  constructor(){this.speed=100;this.seenSpeed=0;}
+  update(){this.seenSpeed=this.speed;}
+}
+const touchDungeon={pSpeed:2,seenSpeed:0,_update(){this.seenSpeed=this.pSpeed;}};
+const touchSandbox={
+  console,document:touchDocument,navigator:{maxTouchPoints:5},matchMedia:()=>({matches:true}),
+  Player:TouchPlayer,DNG:touchDungeon,GameEvents:{emit(){}},addEventListener(){}
+};
+touchSandbox.window=touchSandbox;
+vm.createContext(touchSandbox);
+vm.runInContext(source,touchSandbox,{filename:'src/core/input-system.js'});
+const dragTarget={closest:()=>null,setPointerCapture(){}};
+const dragEvent=(x,y)=>({pointerId:9,pointerType:'touch',isPrimary:true,target:dragTarget,clientX:x,clientY:y,preventDefault(){}});
+touchListeners.get('pointerdown').at(-1).handler(dragEvent(100,100));
+touchListeners.get('pointermove')[0].handler(dragEvent(104,100));
+assert(touchSandbox.MobileTouchSensor.isMoving(),'arrasto acima da zona morta nao iniciou movimento');
+const touchPlayer=new TouchPlayer();
+touchPlayer.update();touchDungeon._update();
+assert(touchPlayer.seenSpeed===185&&touchPlayer.speed===100,'boost touch da campanha nao foi temporario e exato');
+assert(Math.abs(touchDungeon.seenSpeed-3.7)<1e-9&&touchDungeon.pSpeed===2,'boost touch da Dungeon nao foi temporario e exato');
+touchListeners.get('pointerup')[0].handler(dragEvent(104,100));
+touchPlayer.update();touchDungeon._update();
+assert(touchPlayer.seenSpeed===100&&touchDungeon.seenSpeed===2,'soltar o arrasto nao restaurou a velocidade normal');
 
 campaignState.d=true;
 unregisterCampaign();
@@ -154,8 +200,8 @@ includesAll(integrationSource,[
   'data-mobile-action="dash"',
   'data-mobile-action="pause"',
   "const SOURCE='mobile-sensor'",
-  'const DEAD_ZONE=6',
-  'const MOVEMENT_BOOST=1.45',
+  'const DEAD_ZONE=3',
+  'const MOVEMENT_BOOST=1.85',
   "legacy.querySelector?.('.mobile-dpad')?.remove?.()",
   "legacy.querySelector?.('[data-mobile-action=\"context\"]')?.remove?.()",
   "legacy.querySelector?.('[data-mobile-action=\"menu\"]')?.remove?.()",

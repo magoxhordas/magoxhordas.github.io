@@ -161,12 +161,27 @@ function spawnNextBossRush(){
 }
 
 let campaignCompletionPending=false;
+let campaignVictoryRevealTimer=null;
 let campaignVictoryReturnTimer=null;
 let campaignVictoryCountdownTimer=null;
+
+function cancelPendingVictoryReveal(){
+  if(campaignVictoryRevealTimer) clearTimeout(campaignVictoryRevealTimer);
+  campaignVictoryRevealTimer=null;
+}
+
+function scheduleVictoryScreen(mode,delay){
+  cancelPendingVictoryReveal();
+  campaignVictoryRevealTimer=setTimeout(()=>{
+    campaignVictoryRevealTimer=null;
+    if(state==='victory') showVictoryScreen(mode);
+  },delay);
+}
 
 function endBossRush(victory){
   if(victory&&typeof GameSettings!=='undefined'&&typeof GameSettings.recordBossRushVictory==='function') GameSettings.recordBossRushVictory(bossRushQueue);
   if(typeof cleanupCampaignRuntime==='function')cleanupCampaignRuntime('boss-rush-end');
+  if(victory) state='victory';
   bossRushMode=false;
   document.body.classList.remove('boss-rush-no-coins');
   const hud=document.getElementById('br-hud'); if(hud) hud.className='br-hud';
@@ -174,13 +189,15 @@ function endBossRush(victory){
     spawnLevelUpNotice(W/2,H/2-40,'🏆 BOSS RUSH CONCLUÍDO!',0);
     spawnParts(W/2,H/2,'#f0d080',30,120);
     spawnParts(W/2,H/2,'#ff9922',20,100);
-    setTimeout(()=>showVictoryScreen('bossrush'),2600);
+    scheduleVictoryScreen('bossrush',2600);
   } else {
+    cancelPendingVictoryReveal();
     setTimeout(()=>endGame(),0);
   }
 }
 
 function showVictoryScreen(mode='bossrush'){
+  cancelPendingVictoryReveal();
   CampProgressionSystem.endRun([player,player2]);
   runCookingBuffs=[];
   if(raf){cancelAnimationFrame(raf);raf=null;}
@@ -255,6 +272,7 @@ function showVictoryScreen(mode='bossrush'){
 }
 
 function closeVictory(dest){
+  cancelPendingVictoryReveal();
   if(campaignVictoryReturnTimer) clearTimeout(campaignVictoryReturnTimer);
   if(campaignVictoryCountdownTimer) clearInterval(campaignVictoryCountdownTimer);
   campaignVictoryReturnTimer=null;
@@ -287,7 +305,7 @@ function completeCampaign(){
   spawnParts(W/2,H/2,'#ff4a18',30,125);
   spawnLevelUpNotice(W/2,H/2-44,'👑 O BALROG CAIU!',0);
   if(typeof Audio!=='undefined') Audio.stopMusic(.9);
-  setTimeout(()=>showVictoryScreen('campaign'),1900);
+  scheduleVictoryScreen('campaign',1900);
 }
 
 // ═══════════════════════════════════════════════════════

@@ -1340,13 +1340,22 @@ const DNG={
     this.raf=requestAnimationFrame(ts=>this._loop(ts));
   },
   stop(){
-    this.running=false;this.paused=false;this.invOpen=false;
+    this.running=false;this.paused=false;this.invOpen=false;this.menuOpen=false;this.equipOpen=false;this.mapOpen=false;
     if(this.raf){cancelAnimationFrame(this.raf);this.raf=null;}
+    if(this._mapInt){clearInterval(this._mapInt);this._mapInt=null;}
+    this._restoreCraftPanel();
     document.getElementById('dng-pause-overlay')?.remove();
     document.getElementById('dng-inv-overlay')?.remove();
     document.getElementById('dng-swap-overlay')?.remove();
     document.getElementById('dng-shop-overlay')?.remove();
     document.getElementById('dng-gameover-overlay')?.remove();
+    document.getElementById('dng-menu-overlay')?.remove();
+    document.getElementById('dng-map-overlay')?.remove();
+    document.getElementById('dng-npc-overlay')?.remove();
+    document.getElementById('dng-storage-overlay')?.remove();
+    document.getElementById('dng-merchant-overlay')?.remove();
+    extractionState=null;
+    document.getElementById('extraction-overlay')?.classList.remove('open');
     const dh=document.getElementById('dungeon-hud');if(dh)dh.style.display='none';
     // Restore canvas size
     const cv=document.getElementById('canvas');
