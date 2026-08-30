@@ -30,8 +30,8 @@ function includesAll(source,needles,context){
 includesAll(combatSource,[
   'class Player',
   'class Enemy',
-  'takeDmg(a)',
-  'campaignDamageSystem.damagePlayer(this,a)',
+  'takeDmg(a,continuous)',
+  'campaignDamageSystem.damagePlayer(this,a,continuous)',
   'campaignDamageSystem.damageEnemy(this,a',
   "gameMode===1||(player.dead&&(!player2||player2.dead))",
 ],'dano, vida e morte');
@@ -150,6 +150,14 @@ if(fs.existsSync(damagePath)){
   const player={hp:100,maxHp:100,dmgReduce:.2,inv:false,dead:false,_revivesLeft:0,x:0,y:0,idx:0};
   damage.damagePlayer(player,100);
   assert(Math.abs(player.hp-38.4)<1e-9&&player.inv&&player.invT===600,'dano normal/armadura/multiplicadores do player mudaram');
+
+  const continuous={hp:100,maxHp:100,dmgReduce:.2,inv:false,dead:false,_revivesLeft:0,x:0,y:0,idx:0,chipT:0};
+  damage.damagePlayer(continuous,10,true);
+  const hpAfterTick=continuous.hp;
+  damage.damagePlayer(continuous,10,true);
+  assert(Math.abs(hpAfterTick-93.84)<1e-9&&continuous.hp===hpAfterTick&&!continuous.inv&&continuous.chipT===300,'dano continuo perdeu cadencia propria ou passou a conceder invulnerabilidade');
+  damage.damagePlayer(continuous,10);
+  assert(continuous.hp<hpAfterTick&&continuous.inv&&continuous.invT===600,'dano continuo passou a bloquear golpe direto');
 
   const dashing={...player,hp:100,inv:true,_dashActive:true};
   damage.damagePlayer(dashing,50);

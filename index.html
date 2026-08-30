@@ -12510,6 +12510,7 @@ class ArrowProj {
 }
 
 // ═══════════════════════════════════════════════════════
+const ORC_HIT_MS=520;   // 9 quadros do soco
 class BossOrc {
   constructor(wave){
     this.x=W/2; this.y=220;
@@ -12518,14 +12519,19 @@ class BossOrc {
     this.radius=34; this.xpVal=60+wave*10;
     this.dead=false; this.frameIdx=0; this.frameTick=0; this.dir='down';
     this.scale=2.2; this.type='boss_orc';
+    this.orcEscala=1.6;   // a arte nova tem 64px de quadro; 1.6 casa com o tamanho antigo
     this.phase=Math.random()*Math.PI*2;
     this.chargeTimer=0; this.chargeTarget=null; this.isCharging=false;
     this.chargeSpeed=0; this.chargeCd=4000; this.chargeCdTimer=0;
+    // Ataque basico: soco de perto. A investida cobre a distancia; o corpo
+    // a corpo antes so' tinha o dano de encostar.
+    this.hitCd=2000; this.hitTimer=1600; this.hitAnim=0; this.hitAcertou=false;
+    this.hitAlcance=this.radius+34;
     this.flashTimer=0;
   }
   update(dt,px,py){
     this.chargeCdTimer-=dt*1000;
-    if(this.chargeCdTimer<=0&&!this.isCharging){
+    if(this.chargeCdTimer<=0&&!this.isCharging&&this.hitAnim<=0){
       this.isCharging=true; this.chargeTimer=500;
       this.chargeTarget={x:px,y:py};
       this.chargeSpeed=this.speed*5;
@@ -12540,11 +12546,52 @@ class BossOrc {
       } else { this.isCharging=false; }
     } else {
       const dx=px-this.x,dy=py-this.y,d=Math.hypot(dx,dy);
-      if(d>1){this.x+=(dx/d)*this.speed*dt;this.y+=(dy/d)*this.speed*dt;}
+      if(d>1&&this.hitAnim<=0){this.x+=(dx/d)*this.speed*dt;this.y+=(dy/d)*this.speed*dt;}
+    }
+    // Ataque basico: soco. O dano sai quando o punho estende, so' em quem
+    // esta no arco da frente, e ele fica parado durante o golpe.
+    if(this.hitTimer>0) this.hitTimer-=dt*1000;
+    if(this.hitAnim>0){
+      this.hitAnim-=dt*1000;
+      const prog=1-Math.max(0,this.hitAnim)/ORC_HIT_MS;
+      if(!this.hitAcertou&&prog>=0.78){   // o punho so estende no fim
+        this.hitAcertou=true;
+        const face=this.dir==='left'?Math.PI:this.dir==='right'?0:
+                   this.dir==='up'?-Math.PI/2:Math.PI/2;
+        const alvos=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>p&&!p.dead);
+        for(const pl of alvos){
+          if(Math.hypot(pl.x-this.x,pl.y-this.y)>this.hitAlcance+pl.radius) continue;
+          // Colado no alvo nao existe 'frente': atan2 de um vetor quase
+          // nulo oscila e o arco rejeitaria quem ele esta pisando.
+          if(Math.hypot(pl.x-this.x,pl.y-this.y)>this.radius*0.7){
+            let da=Math.atan2(pl.y-this.y,pl.x-this.x)-face;
+            da=Math.atan2(Math.sin(da),Math.cos(da));
+            if(Math.abs(da)>1.1) continue;
+          }
+          pl.takeDmg(this.damage*0.75);
+        }
+        spawnParts(this.x+Math.cos(face)*26,this.y+Math.sin(face)*26,'#c8b070',9,55);
+      }
+    } else if(this.hitTimer<=0&&!this.isCharging&&
+              Math.hypot(px-this.x,py-this.y)<this.hitAlcance+18){
+      // Nao existe animacao de golpe de costas, entao com o jogador atras
+      // dele o soco simplesmente nao sai: ele continua andando ate virar.
+      const mdx=px-this.x, mdy=py-this.y;
+      const paraCima=Math.abs(mdy)>Math.abs(mdx)*1.15&&mdy<0;
+      const podeGolpear=!paraCima||(window.OrcSprites&&window.OrcSprites.temGolpe('up'));
+      if(podeGolpear){ this.hitAnim=ORC_HIT_MS; this.hitAcertou=false; this.hitTimer=this.hitCd; }
+      else this.hitTimer=260;            // tenta de novo assim que ele virar
     }
     this.x=Math.max(30,Math.min(W-30,this.x));
     this.y=Math.max(205,Math.min(H-30,this.y));
-    if(Math.abs(this.x-(this.chargeTarget?.x||0))>1) this.dir=this.x<(this.chargeTarget?.x||px)?'right':'left';
+    // Direcao pelo movimento REAL, nas 4 direcoes. Antes so' havia
+    // left/right e apenas durante a investida, entao os quadros de
+    // frente e de costas do sprite nunca eram usados.
+    if(this.hitAnim<=0){               // congela a mira durante o soco
+      const mdx=px-this.x, mdy=py-this.y;
+      if(Math.abs(mdx)>Math.abs(mdy)*1.15) this.dir=mdx<0?'left':'right';
+      else if(Math.abs(mdy)>1) this.dir=mdy<0?'up':'down';
+    }
     this.frameTick+=dt*1000;
     if(this.frameTick>150){this.frameTick=0;this.frameIdx=(this.frameIdx+1)%3;}
     if(this.flashTimer>0)this.flashTimer-=dt*1000;
@@ -12585,9 +12632,36 @@ class BossOrc {
     ctx.fillStyle=ag; ctx.fillRect(this.x-65,this.y-65,130,130);
     // Flash on hit
     if(this.flashTimer>0){ ctx.save(); ctx.globalAlpha=this.flashTimer/120*0.6; ctx.fillStyle='#ffffff'; ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
-    // Sprite
+    // Sprite — arte real em assets/bosses/orc/, com o grid antigo de reserva.
     const fi=this.frameIdx, fl=this.dir==='right';
-    drawSpriteAt(ORC_DOWN[fi%3],PAL_ORC,this.x,this.y+this.radius,fl,this.scale);
+    let desenhou=false;
+    if(window.OrcSprites){
+      // Ancora na linha da SOMBRA, nao em y+radius: o grid antigo tinha
+      // linhas transparentes na base e ficava ~11px acima da propria
+      // ancora. A arte nova encosta de verdade, entao usa o mesmo chao
+      // onde a sombra e desenhada.
+      const pes=this.y+this.radius*0.7;
+      if(this.hitAnim>0&&window.OrcSprites.temGolpe(this.dir)){
+        // o soco: os 9 quadros do ataque basico ao longo da animacao.
+        // O temGolpe protege o caso de costas: sem quadros, o desenho
+        // falharia e ele voltaria ao sprite antigo no meio da luta.
+        const p=1-Math.max(0,this.hitAnim)/ORC_HIT_MS;
+        const q=Math.min(window.OrcSprites.N_HIT-1,Math.floor(p*window.OrcSprites.N_HIT));
+        desenhou=window.OrcSprites.desenhar(ctx,this.x,pes,this.dir,'hit',q,this.orcEscala,fl);
+      }else if(this.isCharging){
+        // a investida usa os quadros do Salto Esmagador, do inicio ao fim
+        const p=1-Math.max(0,this.chargeTimer)/500;
+        const q=Math.min(window.OrcSprites.N_ATK-1,Math.floor(p*window.OrcSprites.N_ATK));
+        desenhou=window.OrcSprites.desenhar(ctx,this.x,pes,this.dir,'atk',q,this.orcEscala,fl);
+      }else{
+        const andando=(this._ultimoX!==this.x||this._ultimoY!==this.y);
+        const q=Math.floor(t/window.OrcSprites.WALK_MS);
+        desenhou=window.OrcSprites.desenhar(ctx,this.x,pes,this.dir,
+                 andando?'walk':'idle',q,this.orcEscala,fl);
+      }
+      this._ultimoX=this.x; this._ultimoY=this.y;
+    }
+    if(!desenhou) drawSpriteAt(ORC_DOWN[fi%3],PAL_ORC,this.x,this.y+this.radius,fl,this.scale);
     // Boss HP bar (wide)
     drawHPBar(this.x,this.y-this.radius*this.scale-18,this.hp/this.maxHp,80);
     // BOSS label
@@ -15334,7 +15408,7 @@ class Player {
     this.range=cd.baseRange; this.multiShot=cd.baseMulti;
     if(cid==='warrior'||cid==='viking') this.range=Math.min(this.range,125); // melee: engaja perto
     this.xp=0; this.xpToNext=20; this.level=1;
-    this.inv=false; this.invT=0;
+    this.inv=false; this.invT=0; this.chipT=0;
     this.dir='down'; this.frameIdx=0; this.frameTick=0;
     this.isCasting=false; this.castTimer=0; this.castMaxTimer=280;
     this.isMoving=false; this.lastAngle=0;
@@ -15461,6 +15535,7 @@ class Player {
     } else { this.frameIdx=0; this._walkStep=0; }
 
     if(this.inv){this.invT-=dt*1000;if(this.invT<=0)this.inv=false;}
+    if(this.chipT>0)this.chipT-=dt*1000;
     this.atkTimer-=dt*1000;
     let manualAttack=false,manualTarget=null;
     const manualMode=this.idx===0&&typeof GameSettings!=='undefined'&&!GameSettings.autoAttack;
@@ -15598,8 +15673,8 @@ class Player {
     this._arrowQueue=remaining;
   }
 
-  takeDmg(a){
-    return campaignDamageSystem.damagePlayer(this,a);
+  takeDmg(a,continuous){
+    return campaignDamageSystem.damagePlayer(this,a,continuous);
   }
 
   updateAbility(dt){
@@ -16689,6 +16764,12 @@ class HomingFireball {
 // ═══════════════════════════════════════════════════════
 
 </script>
+  <script src="src/bosses/orc-sprites.js"></script>
+  <script src="src/bosses/skelking-sprites.js"></script>
+  <script src="src/bosses/icegolem-sprites.js"></script>
+  <script src="src/bosses/balrog-sprites.js"></script>
+  <script src="src/bosses/aracne-sprites.js"></script>
+  <script src="src/bosses/sandworm-sprites.js"></script>
   <script src="src/campaign/boss-system.js"></script>
   <script>
 const enemyCollisionGrid=new SpatialHash(64);
@@ -16825,16 +16906,16 @@ function collide(){
     }
   }
   if(bossOrc&&!bossOrc.dead){
-    for(const pl of allPlayers) if(Math.hypot(pl.x-bossOrc.x,pl.y-bossOrc.y)<pl.radius+bossOrc.radius) pl.takeDmg(bossOrc.damage*0.016);
+    for(const pl of allPlayers) if(Math.hypot(pl.x-bossOrc.x,pl.y-bossOrc.y)<pl.radius+bossOrc.radius) pl.takeDmg(bossOrc.damage*0.016,true);
   }
   if(bossSkel&&!bossSkel.dead){
-    for(const pl of allPlayers) if(Math.hypot(pl.x-bossSkel.x,pl.y-bossSkel.y)<pl.radius+bossSkel.radius) pl.takeDmg(bossSkel.damage*0.016);
+    for(const pl of allPlayers) if(Math.hypot(pl.x-bossSkel.x,pl.y-bossSkel.y)<pl.radius+bossSkel.radius) pl.takeDmg(bossSkel.damage*0.016,true);
   }
   if(bossSpider&&!bossSpider.dead){
-    for(const pl of allPlayers) if(Math.hypot(pl.x-bossSpider.x,pl.y-bossSpider.y)<pl.radius+bossSpider.radius) pl.takeDmg(bossSpider.damage*0.016);
+    for(const pl of allPlayers) if(Math.hypot(pl.x-bossSpider.x,pl.y-bossSpider.y)<pl.radius+bossSpider.radius) pl.takeDmg(bossSpider.damage*0.016,true);
   }
   if(bossMajor&&!bossMajor.dead){
-    for(const pl of allPlayers) if(Math.hypot(pl.x-bossMajor.x,pl.y-bossMajor.y)<pl.radius+(bossMajor.radius||40)) pl.takeDmg((bossMajor.damage||30)*0.016);
+    for(const pl of allPlayers) if(Math.hypot(pl.x-bossMajor.x,pl.y-bossMajor.y)<pl.radius+(bossMajor.radius||40)) pl.takeDmg((bossMajor.damage||30)*0.016,true);
   }
   // Structure projectiles (BeaconArrow, BallistaBolt) hit enemies
   for(const p of projs){
@@ -19567,10 +19648,11 @@ window.axeAttack = function(){ if(DNG&&DNG.running) Audio.sfxAxe(); return _orig
 // Patch Player.takeDmg — add to prototype after class defined
 const _OrigPlayer = Player;
 const _origTakeDmg = Player.prototype.takeDmg;
-Player.prototype.takeDmg = function(a){
+Player.prototype.takeDmg = function(a,continuous){
   const wasAlive = !this.dead;
-  _origTakeDmg.call(this,a);
-  if(wasAlive && !this.inv) Audio.sfxPlayerHit();
+  const hpBefore=this.hp;
+  _origTakeDmg.call(this,a,continuous);
+  if(wasAlive&&!continuous&&this.hp<hpBefore) Audio.sfxPlayerHit();
 };
 
 // Patch gainXP for level up sound

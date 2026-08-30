@@ -761,13 +761,20 @@ function drawSkeletonKingSword(b,groundY,t){
 
 function drawSkeletonBoomerangSword(sw,t){
   if(!sw) return;
+  // Rastro em blocos para manter o mesmo pixel art do chefe.
   ctx.save();
   ctx.translate(Math.round(sw.x),Math.round(sw.y));
   ctx.rotate(sw.angle);
-  // Rastro em blocos para manter o mesmo pixel art do chefe.
   ctx.globalAlpha=0.42;
   ctx.fillStyle=sw.state==='return'?'#b74cff':'#ff3a2c';
   for(let i=1;i<=4;i++)ctx.fillRect(-8-i*11,-3+(i%2)*4,8,4);
+  ctx.restore();
+  // A espada e recortada do proprio sprite, com os 16 giros ja prontos:
+  // girar pixel art no canvas esfarela o contorno nos angulos diagonais.
+  if(window.SkelKingSprites&&window.SkelKingSprites.desenharEspada(ctx,sw.x,sw.y,sw.angle,58)) return;
+  ctx.save();
+  ctx.translate(Math.round(sw.x),Math.round(sw.y));
+  ctx.rotate(sw.angle);
   ctx.globalAlpha=1;
   ctx.scale(0.58,0.58);
   ctx.fillStyle='#0b0d10';ctx.fillRect(-9,-61,18,75);ctx.fillRect(-6,-66,12,5);
@@ -812,6 +819,7 @@ function drawSkeletonKingMagic(b,t){
 
 // BOSS: SKELETON KING (Onda 5) — Rei Cadáver
 // ═══════════════════════════════════════════════════════
+const SKING_ATK_MS=540;   // 9 quadros do golpe de espada
 class BossSkeletonKing {
   constructor(wave){
     this.x=W/2; this.y=240; this.wave=wave;
@@ -831,6 +839,10 @@ class BossSkeletonKing {
     // Phase 2 (resurrection)
     this.resurrected=false; this.phase2Triggered=false;
     this.axeAngle=0;
+    // Ataque basico: golpe de espada quando o jogador chega perto.
+    this.atkCd=2400; this.atkTimer=2000; this.atkAnim=0; this.atkHit=false;
+    this.atkAlcance=this.radius+42; this.andando=false;
+    this.skingEscala=2.9;   // quadro de 64px; equivale ao tamanho antigo
   }
   update(dt,px,py){
     // Phase 2 trigger
@@ -851,7 +863,8 @@ class BossSkeletonKing {
     const dx=px-this.x, dy=py-this.y, d=Math.hypot(dx,dy);
     if(Math.abs(dx)>Math.abs(dy)) this.dir=dx<0?'left':'right';
     else this.dir=dy<0?'up':'down';
-    if(d>1&&!this.isSpinning){ this.x+=(dx/d)*this.speed*dt; this.y+=(dy/d)*this.speed*dt; }
+    this.andando = d>1&&!this.isSpinning&&this.atkAnim<=0;
+    if(this.andando){ this.x+=(dx/d)*this.speed*dt; this.y+=(dy/d)*this.speed*dt; }
     this.x=Math.max(36,Math.min(W-36,this.x)); this.y=Math.max(205,Math.min(H-36,this.y));
     // Summoning ability
     this.summonTimer-=dt*1000;
@@ -876,6 +889,35 @@ class BossSkeletonKing {
         this._throwBoomerang(allPl);
       }
     } else { this.axeAngle+=dt*1.8; }
+    // Ataque basico: golpe de espada de perto. Nao interrompe nem e
+    // interrompido pelas outras habilidades; so sai quando ele nao esta
+    // ocupado com giro, invocacao ou ressurreicao.
+    if(this.atkTimer>0) this.atkTimer-=dt*1000;
+    if(this.atkAnim>0){
+      this.atkAnim-=dt*1000;
+      const prog=1-Math.max(0,this.atkAnim)/SKING_ATK_MS;
+      if(!this.atkHit&&prog>=0.5){          // o dano sai no meio do golpe
+        this.atkHit=true;
+        const face=this.dir==='left'?Math.PI:this.dir==='right'?0:
+                   this.dir==='up'?-Math.PI/2:Math.PI/2;
+        const alvos=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead);
+        for(const pl of alvos){
+          if(Math.hypot(pl.x-this.x,pl.y-this.y)>this.atkAlcance+pl.radius) continue;
+          // Colado no alvo nao existe 'frente': atan2 de um vetor quase
+          // nulo oscila e o arco rejeitaria quem ele esta pisando.
+          if(Math.hypot(pl.x-this.x,pl.y-this.y)>this.radius*0.7){
+            let da=Math.atan2(pl.y-this.y,pl.x-this.x)-face;
+            da=Math.atan2(Math.sin(da),Math.cos(da));
+            if(Math.abs(da)>1.15) continue;
+          }   // so acerta quem esta na frente
+          pl.takeDmg(this.damage);
+        }
+        spawnParts(this.x+Math.cos(face)*30,this.y+Math.sin(face)*30,'#ffd76a',10,60);
+      }
+    } else if(this.atkTimer<=0&&d<this.atkAlcance+22&&
+              !this.isSpinning&&!this.spinWarning&&this.summonAnim<=0&&this.resurrectAnim<=0){
+      this.atkAnim=SKING_ATK_MS; this.atkHit=false; this.atkTimer=this.atkCd;
+    }
     this.frameTick+=dt*1000; if(this.frameTick>160){this.frameTick=0;this.frameIdx=(this.frameIdx+1)%3;}
     if(this.flashTimer>0) this.flashTimer-=dt*1000;
     if(this.summonAnim>0) this.summonAnim-=dt*1000;
@@ -960,16 +1002,36 @@ class BossSkeletonKing {
       ctx.restore();
     }
     if(this.flashTimer>0){ ctx.save(); ctx.globalAlpha=this.flashTimer/800*0.7; ctx.fillStyle=this.resurrected?'#cc44ff':'#bbccff'; ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
-    // Corpo manual em alta resolução: caminhada, ataque, invocação e ressurreição.
-    let sprites=SKING_DOWN, flip=false;
-    if(this.resurrectAnim>800) sprites=SKING_FALLEN;
-    else if(this.resurrectAnim>400) sprites=SKING_KNEEL;
-    else if(this.summonAnim>0) sprites=SKING_CAST;
-    else if(this.isSpinning){ sprites=SKING_ATTACK; flip=this.dir==='left'; }
-    else if(this.dir==='up') sprites=SKING_UP;
-    else if(this.dir==='left'||this.dir==='right'){ sprites=SKING_SIDE; flip=this.dir==='left'; }
-    drawSpriteAt(sprites[this.frameIdx%3],PAL_SKELETON_KING,this.x,groundY,flip,this.scale);
-    drawSkeletonKingSword(this,groundY,t);
+    // Arte real do chefe, com o grid antigo de reserva.
+    // A arte de perfil olha para a esquerda, entao espelha quando ele vai
+    // para a direita. O giro nao usa direcao: as 8 rotacoes da arte sao o
+    // proprio ciclo do giro. A espada ja vem desenhada na mao, entao a
+    // espada solta so aparece no caminho de reserva.
+    let usouArte=false;
+    if(window.SkelKingSprites){
+      const S=window.SkelKingSprites;
+      let estado='idle', q=0, flipArte=this.dir==='right';
+      if(this.summonAnim>0||this.resurrectAnim>0) estado='cast';
+      else if(this.isSpinning){ estado='spin'; flipArte=false; q=Math.floor(t/S.SPIN_MS); }
+      else if(this.atkAnim>0){
+        estado='atk';
+        const p=1-Math.max(0,this.atkAnim)/SKING_ATK_MS;
+        q=Math.min(S.N_ATK-1,Math.floor(p*S.N_ATK));
+      }
+      else if(this.andando){ estado='walk'; q=Math.floor(t/S.WALK_MS); }
+      usouArte=S.desenhar(ctx,this.x,groundY+3,this.dir,estado,q,this.skingEscala,flipArte);
+    }
+    if(!usouArte){
+      let sprites=SKING_DOWN, flip=false;
+      if(this.resurrectAnim>800) sprites=SKING_FALLEN;
+      else if(this.resurrectAnim>400) sprites=SKING_KNEEL;
+      else if(this.summonAnim>0) sprites=SKING_CAST;
+      else if(this.isSpinning){ sprites=SKING_ATTACK; flip=this.dir==='left'; }
+      else if(this.dir==='up') sprites=SKING_UP;
+      else if(this.dir==='left'||this.dir==='right'){ sprites=SKING_SIDE; flip=this.dir==='left'; }
+      drawSpriteAt(sprites[this.frameIdx%3],PAL_SKELETON_KING,this.x,groundY,flip,this.scale);
+      drawSkeletonKingSword(this,groundY,t);
+    }
     drawSkeletonBoomerangSword(this.swordBoomerang,t);
     const spriteTop=groundY-SKING_H*Math.round(PX*this.scale);
     drawHPBar(this.x,spriteTop-15,this.hp/this.maxHp,104);
@@ -1121,7 +1183,12 @@ function drawAracneEgg(eg,t){
   ctx.restore();
 }
 function drawAracneWebCone(b,x,y,t){
-  const radius=b.webRange||300, spread=0.7;
+  // O cone nascia inteiro no primeiro quadro e ficava parado 700ms. Agora
+  // ele VARRE para fora e chega ao alcance total no instante em que prende
+  // — da para ver quanto falta em vez de so' ver a area.
+  const p=Math.max(0,Math.min(1,1-(b.coneDur||0)/700));
+  const avanco=0.28+0.72*Math.sqrt(p);
+  const radius=(b.webRange||300)*avanco, spread=0.7;
   ctx.save();
   ctx.globalAlpha=0.16; ctx.fillStyle='#bcecff';
   ctx.beginPath(); ctx.moveTo(x,y-10); ctx.arc(x,y-10,radius,b.coneAngle-spread,b.coneAngle+spread); ctx.closePath(); ctx.fill();
@@ -1169,15 +1236,75 @@ function drawAracneAncestralBoss(b,t){
   aura.addColorStop(0,'rgba(135,66,167,0.23)'); aura.addColorStop(1,'rgba(0,0,0,0)');
   ctx.fillStyle=aura; ctx.fillRect(drawX-85,drawY-85,170,170);
   if(b.isConing) drawAracneWebCone(b,drawX,drawY,t);
-  drawSpriteAt(sprites[b.frameIdx%3],PAL_ARACNE_ANCESTRAL,drawX,drawY+34,flip,b.scale);
+  // Arte real, com o grid antigo de reserva. O perfil olha para a
+  // esquerda, entao espelha quando ela vai para a direita.
+  let usouArte=false;
+  if(window.AracneSprites){
+    const S=window.AracneSprites;
+    let estado='idle', q=0, dirArte=b.dir, flipArte=b.dir==='right';
+    if(b.jumpState==='jumpWind'){
+      // Os 9 quadros da queda cobrem os dois trechos visiveis do salto:
+      // o agachamento antes de pular (0..3) e o baque ao cair (4..8).
+      estado='fall'; q=Math.min(3,Math.floor((1-b.jumpWindTimer/300)*4));
+    }else if(b.jumpState==='jumping'){
+      estado='fall'; q=4;
+    }else if(b.jumpState==='landing'){
+      estado='fall'; q=5+Math.min(3,Math.floor((1-b.jumpLandTimer/400)*4));
+    }else if(b.isConing){
+      estado='web'; q=Math.floor(t/S.WEB_MS);
+      // A teia sai na direcao da mira, e nao para onde ela anda.
+      const ca=b.coneAngle;
+      dirArte=Math.abs(Math.cos(ca))>0.45?'left':(Math.sin(ca)<0?'up':'down');
+      flipArte=(dirArte==='left')&&Math.cos(ca)>0;
+    }else if(b.eggAnim>0){
+      estado='egg'; q=Math.min(S.N_EGG-1,Math.floor((1-b.eggAnim/700)*S.N_EGG));
+    }else if(b.hitAnim>0){
+      estado='hit'; q=Math.min(S.N_HIT-1,Math.floor((1-b.hitAnim/ARACNE_HIT_MS)*S.N_HIT));
+    }else if(b.isMoving){ estado='walk'; q=Math.floor(t/S.WALK_MS); }
+    usouArte=S.desenhar(ctx,drawX,drawY+34,dirArte,estado,q,b.aracneEscala,flipArte);
+  }
+  if(!usouArte) drawSpriteAt(sprites[b.frameIdx%3],PAL_ARACNE_ANCESTRAL,drawX,drawY+34,flip,b.scale);
+  b._usouArte=usouArte;
+  // Rasgo de presas da mordida: dois riscos cruzados na direcao do golpe,
+  // com respingo de veneno. Antes a mordida so' tinha particulas.
+  if(b.hitFx>0){
+    const p=1-b.hitFx/220;
+    ctx.save();
+    ctx.translate(drawX,drawY+6); ctx.rotate(b.hitFxAng);
+    ctx.globalAlpha=(1-p)*0.9; ctx.lineCap='round';
+    ctx.strokeStyle='#f2ffd0'; ctx.lineWidth=4-2*p;
+    for(const lado of [-1,1]){
+      ctx.beginPath();
+      ctx.moveTo(16+p*10, lado*(6+p*13));
+      ctx.lineTo(40+p*22, lado*(-4+p*5));
+      ctx.stroke();
+    }
+    ctx.strokeStyle='#9be34a'; ctx.lineWidth=2;
+    for(const lado of [-1,1]){
+      ctx.beginPath();
+      ctx.moveTo(18+p*10, lado*(6+p*12));
+      ctx.lineTo(36+p*20, lado*(-3+p*5));
+      ctx.stroke();
+    }
+    ctx.fillStyle='#82ff45'; ctx.globalAlpha=(1-p)*0.75;
+    for(let i=0;i<4;i++){
+      const a=(-0.5+i*0.33), r=26+p*30;
+      ctx.fillRect(Math.round(Math.cos(a)*r)-2,Math.round(Math.sin(a)*r)-2,3,3);
+    }
+    ctx.restore();
+  }
   for(const eg of b.eggs){ if(!eg.hatched){ drawAracneEgg(eg,t); eg.drawn=true; } else eg.drawn=true; }
   if(b.flashTimer>0){ ctx.save(); ctx.globalAlpha=b.flashTimer/100*0.5; ctx.fillStyle='#b05bd0'; ctx.beginPath(); ctx.arc(drawX,drawY,b.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
-  const spriteTop=drawY+34-ARACNE_H*ps;
+  // O sprite novo e mais alto que o grid antigo: a barra acompanha, senao
+  // ela cai em cima do corpo.
+  const spriteTop=b._usouArte ? drawY+34-Math.round(33*b.aracneEscala)
+                              : drawY+34-ARACNE_H*ps;
   drawHPBar(drawX,spriteTop-15,b.hp/b.maxHp,112);
   ctx.fillStyle='#cc66ff'; ctx.font='bold 9px Courier New'; ctx.textAlign='center';
   ctx.fillText('🕷 ARACNE ANCESTRAL',drawX,spriteTop-20); ctx.textAlign='left';
 }
 
+const ARACNE_HIT_MS=480;   // 9 quadros da mordida
 class BossAracne {
   constructor(wave){
     this.x=W/2; this.y=250; this.wave=wave;
@@ -1195,19 +1322,58 @@ class BossAracne {
     this.coneCd=7000; this.coneTimer=4000;
     this.coneAngle=0; this.isConing=false; this.coneDur=0; this.webRange=300;
     this.eggs=[];
+    // Ataque basico: mordida de perto. Ela so' tinha o salto, a teia e os
+    // ovos, todos de longe ou em area; encostada nela nao acontecia nada.
+    this.hitCd=1800; this.hitTimer=1400; this.hitAnim=0; this.hitAcertou=false;
+    this.hitAlcance=this.radius+30; this.hitFx=0; this.hitFxAng=0;
+    this.eggAnim=0;              // gesto de cuspir o ovo
+    this.aracneEscala=2.9;       // quadro de 64px; proximo do tamanho antigo
+    this.isMoving=false;
   }
   update(dt,px,py){
     if(this.hp<=0){ this.dead=true; this._dropLoot(); return; }
     if(this.jumpState==='ground'){
       const dx=px-this.x, dy=py-this.y, d=Math.hypot(dx,dy);
-      if(Math.abs(dx)>Math.abs(dy)) this.dir=dx<0?'left':'right';
-      else this.dir=dy<0?'up':'down';
-      if(d>1){ this.x+=(dx/d)*this.speed*dt; this.y+=(dy/d)*this.speed*dt; }
+      if(this.hitAnim<=0){        // congela a mira durante a mordida
+        if(Math.abs(dx)>Math.abs(dy)) this.dir=dx<0?'left':'right';
+        else this.dir=dy<0?'up':'down';
+      }
+      this.isMoving=d>1&&this.hitAnim<=0;
+      if(this.isMoving){ this.x+=(dx/d)*this.speed*dt; this.y+=(dy/d)*this.speed*dt; }
       this.x=Math.max(40,Math.min(W-40,this.x)); this.y=Math.max(205,Math.min(H-40,this.y));
+      // Mordida: o dano sai no meio do golpe, so' em quem esta no arco da
+      // frente. Nao sai durante o salto, a teia ou o cuspe.
+      if(this.hitTimer>0) this.hitTimer-=dt*1000;
+      if(this.hitAnim>0){
+        this.hitAnim-=dt*1000;
+        if(!this.hitAcertou&&1-Math.max(0,this.hitAnim)/ARACNE_HIT_MS>=0.6){
+          this.hitAcertou=true;
+          const face=this.dir==='left'?Math.PI:this.dir==='right'?0:
+                     this.dir==='up'?-Math.PI/2:Math.PI/2;
+          const alvos=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>p&&!p.dead);
+          for(const pl of alvos){
+            if(Math.hypot(pl.x-this.x,pl.y-this.y)>this.hitAlcance+pl.radius) continue;
+            // Colado no alvo nao existe 'frente': atan2 de um vetor quase
+            // nulo oscila e o arco rejeitaria quem ele esta pisando.
+            if(Math.hypot(pl.x-this.x,pl.y-this.y)>this.radius*0.7){
+              let da=Math.atan2(pl.y-this.y,pl.x-this.x)-face;
+              da=Math.atan2(Math.sin(da),Math.cos(da));
+              if(Math.abs(da)>1.15) continue;
+            }
+            pl.takeDmg(this.damage*0.6);
+          }
+          spawnParts(this.x+Math.cos(face)*26,this.y+Math.sin(face)*26,'#e6dcc0',10,52);
+          this.hitFx=220; this.hitFxAng=face;   // rasgo de presas, no draw
+        }
+      } else if(this.hitTimer<=0&&d<this.hitAlcance+18&&!this.isConing){
+        this.hitAnim=ARACNE_HIT_MS; this.hitAcertou=false; this.hitTimer=this.hitCd;
+      }
     }
+    if(this.eggAnim>0) this.eggAnim-=dt*1000;
+    if(this.hitFx>0) this.hitFx-=dt*1000;
     // Eggs
     this.eggTimer-=dt*1000;
-    if(this.eggTimer<=0){ this.eggTimer=this.eggCd; this._spawnEggs(px,py); }
+    if(this.eggTimer<=0){ this.eggTimer=this.eggCd; this.eggAnim=700; this._spawnEggs(px,py); }
     // Update eggs
     for(const eg of this.eggs){
       eg.timer-=dt*1000;
@@ -1549,34 +1715,124 @@ const FROST_GIANT_CAST=[makeFrostGiantFront(0,true),makeFrostGiantFront(1,true),
 function drawFrostGiantBoss(b,t){
   const x=b.x,y=b.y,bob=Math.sin(t*0.0035+b.phase)*2;
   // Avisos e raios ativos da erupção.
-  for(const il of b.iceLines){
+  for(let li=0;li<b.iceLines.length;li++){
+    const il=b.iceLines[li];
+    const dx=il.x2-il.x1, dy=il.y2-il.y1, len=Math.hypot(dx,dy)||1;
+    const ux=dx/len, uy=dy/len, nx=-uy, ny=ux;   // ao longo e perpendicular
     if(il.active){
-      ctx.save(); ctx.globalAlpha=Math.max(0,Math.min(1,(il.life+800)/1600));
-      ctx.shadowBlur=20; ctx.shadowColor='#4ee9ff'; ctx.strokeStyle='#bcefff'; ctx.lineWidth=7;
+      const vida=Math.max(0,Math.min(1,(il.life+800)/2400));
+      const morrendo=Math.max(0,Math.min(1,(il.life+800)/700));
+      ctx.save();
+      // A fenda no chao: escura por baixo, para os picos parecerem sair dela
+      ctx.globalAlpha=0.55*morrendo;
+      ctx.strokeStyle='#0d2b3a'; ctx.lineWidth=11; ctx.lineCap='round';
       ctx.beginPath(); ctx.moveTo(il.x1,il.y1); ctx.lineTo(il.x2,il.y2); ctx.stroke();
-      ctx.shadowBlur=0; ctx.strokeStyle='#23bce8'; ctx.lineWidth=3; ctx.stroke();
-      const dx=il.x2-il.x1,dy=il.y2-il.y1,len=Math.hypot(dx,dy)||1;
-      for(let d=45;d<len;d+=62){
-        const px=il.x1+dx*d/len,py=il.y1+dy*d/len;
-        ctx.fillStyle='#ecfbff';ctx.fillRect(Math.round(px-3),Math.round(py-8),6,16);
-        ctx.fillStyle='#23bce8';ctx.fillRect(Math.round(px-6),Math.round(py-3),12,6);
+      ctx.globalAlpha=0.85*morrendo;
+      ctx.strokeStyle='#23bce8'; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.moveTo(il.x1,il.y1); ctx.lineTo(il.x2,il.y2); ctx.stroke();
+      // Picos: brotam em sequencia, do chefe para fora, e nao todos de uma vez
+      for(let d=38, k=0; d<len; d+=44, k++){
+        const atraso=d/len*0.45;                       // os de longe saem depois
+        const cresc=Math.max(0,Math.min(1,((1-vida)-atraso)/0.28));
+        if(cresc<=0) continue;
+        const px=il.x1+ux*d, py=il.y1+uy*d;
+        // altura e inclinacao fixas por pico (nao tremem entre quadros)
+        const semente=(li*31+k*17)%7;
+        const alt=(20+semente*3)*cresc*morrendo;
+        const larg=5+(semente%3);
+        const incl=((semente%5)-2)*0.13;
+        ctx.globalAlpha=0.9*morrendo;
+        // sombra do pico no chao
+        ctx.fillStyle='rgba(0,0,0,0.3)';
+        ctx.beginPath(); ctx.ellipse(px,py+2,larg*1.6,larg*0.6,0,0,Math.PI*2); ctx.fill();
+        // o cristal: um triangulo com aresta clara de um lado
+        const tx=px+incl*alt, ty=py-alt;
+        ctx.fillStyle='#1a86b8';
+        ctx.beginPath();
+        ctx.moveTo(px-larg,py+2); ctx.lineTo(tx,ty); ctx.lineTo(px+larg,py+2); ctx.closePath(); ctx.fill();
+        ctx.fillStyle='#8fe3ff';
+        ctx.beginPath();
+        ctx.moveTo(px-larg,py+2); ctx.lineTo(tx,ty); ctx.lineTo(px-larg*0.15,py+2); ctx.closePath(); ctx.fill();
+        ctx.fillStyle='#ecfbff';
+        ctx.fillRect(Math.round(tx-1),Math.round(ty),2,Math.max(2,Math.round(alt*0.3)));
+        // lascas saltando no instante em que o pico rompe
+        if(cresc<0.5){
+          ctx.globalAlpha=(1-cresc*2)*0.8*morrendo; ctx.fillStyle='#d8f4ff';
+          for(let f=0;f<3;f++){
+            const a=(semente+f)*2.1, r=6+cresc*22;
+            ctx.fillRect(Math.round(px+Math.cos(a)*r)-1,Math.round(py-4+Math.sin(a)*r*0.5)-1,3,3);
+          }
+        }
       }
       ctx.restore();
     }else{
-      const blink=0.45+0.35*Math.sin(t*0.009);
-      ctx.save();ctx.globalAlpha=blink;ctx.setLineDash([10,8]);ctx.strokeStyle='#ffb52e';ctx.lineWidth=3;
-      ctx.beginPath();ctx.moveTo(il.x1,il.y1);ctx.lineTo(il.x2,il.y2);ctx.stroke();ctx.restore();
+      // Aviso: a fenda vai se abrindo e o brilho carrega ate a erupcao
+      const carga=Math.max(0,Math.min(1,1-(il.life-il.warnTime)/600));
+      ctx.save();
+      ctx.globalAlpha=0.30+0.25*Math.sin(t*0.012);
+      ctx.strokeStyle='#ffb52e'; ctx.lineWidth=2; ctx.setLineDash([9,7]);
+      ctx.beginPath(); ctx.moveTo(il.x1,il.y1); ctx.lineTo(il.x2,il.y2); ctx.stroke();
+      ctx.setLineDash([]);
+      // a parte ja carregada fica solida e larga, lendo como contagem
+      ctx.globalAlpha=0.5+0.3*carga;
+      ctx.strokeStyle='#ffd98a'; ctx.lineWidth=2+3*carga; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(il.x1,il.y1);
+      ctx.lineTo(il.x1+ux*len*carga, il.y1+uy*len*carga); ctx.stroke();
+      // pequenas fissuras perpendiculares, como o chao trincando
+      ctx.globalAlpha=0.35*carga; ctx.lineWidth=1.5; ctx.strokeStyle='#ffe9bd';
+      for(let d=40;d<len*carga;d+=52){
+        const px=il.x1+ux*d, py=il.y1+uy*d, r=4+((d/52|0)%3)*3;
+        ctx.beginPath(); ctx.moveTo(px-nx*r,py-ny*r); ctx.lineTo(px+nx*r,py+ny*r); ctx.stroke();
+      }
+      ctx.restore();
     }
   }
   // Nevasca com vento horizontal e flocos pixelados.
   if(b.blizzardActive){
-    ctx.save();ctx.globalAlpha=0.12;ctx.fillStyle='#bcefff';ctx.fillRect(0,0,W,H);
-    for(let i=0;i<45;i++){
-      const sx=((i*97+t*0.22*b.blizzardDir)% (W+160))-80;
-      const sy=190+(i*53%Math.max(1,H-205));
-      ctx.globalAlpha=0.25+(i%4)*0.12;ctx.fillStyle=i%3===0?'#ffffff':'#72e8ff';
-      ctx.fillRect(Math.round(sx),Math.round(sy),i%5===0?8:4,3);
-      ctx.fillRect(Math.round(sx+2),Math.round(sy-2),3,7);
+    ctx.save();
+    ctx.globalAlpha=0.10;ctx.fillStyle='#bcefff';ctx.fillRect(0,0,W,H);
+    // Tres camadas com velocidades diferentes dao profundidade; antes era
+    // uma so, e a nevasca parecia um papel de parede deslizando.
+    const CAMADAS=[{n:26,v:0.10,tam:2,a:0.18},{n:22,v:0.20,tam:3,a:0.30},{n:14,v:0.34,tam:5,a:0.5}];
+    for(let c=0;c<CAMADAS.length;c++){
+      const L=CAMADAS[c];
+      ctx.fillStyle=c===2?'#ffffff':'#a9e9ff';
+      for(let i=0;i<L.n;i++){
+        const semente=i*97+c*311;
+        const sx=((semente+t*L.v*b.blizzardDir)%(W+160))-80;
+        const sy=195+((semente*53)%Math.max(1,H-210))+Math.sin(t*0.004+i)*3*c;
+        ctx.globalAlpha=L.a;
+        ctx.fillRect(Math.round(sx),Math.round(sy),L.tam*2,L.tam);
+        if(c===2) ctx.fillRect(Math.round(sx+L.tam),Math.round(sy-L.tam),L.tam,L.tam*2);
+      }
+    }
+    // gelo tomando as bordas da tela: mostra que a nevasca esta ativa sem
+    // clarear o campo de jogo inteiro
+    if(!drawFrostGiantBoss._vinheta){
+      const g=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.34,W/2,H/2,Math.max(W,H)*0.62);
+      g.addColorStop(0,'rgba(120,225,255,0)');
+      g.addColorStop(1,'rgba(120,225,255,0.30)');
+      drawFrostGiantBoss._vinheta=g;
+    }
+    ctx.globalAlpha=0.55+0.15*Math.sin(t*0.003);
+    ctx.fillStyle=drawFrostGiantBoss._vinheta; ctx.fillRect(0,0,W,H);
+    ctx.restore();
+  }
+  // Leque de gelo do soco: abre na direcao do golpe e se apaga rapido.
+  if(b.hitFx>0){
+    const p=1-b.hitFx/260;
+    ctx.save();
+    ctx.translate(x,y+6); ctx.rotate(b.hitFxAng);
+    ctx.globalAlpha=(1-p)*0.85;
+    ctx.strokeStyle='#eafaff'; ctx.lineWidth=5-3*p; ctx.lineCap='round';
+    ctx.beginPath(); ctx.arc(0,0,34+p*46,-0.95,0.95); ctx.stroke();
+    ctx.strokeStyle='#5fd0f0'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(0,0,26+p*40,-0.75,0.75); ctx.stroke();
+    // estilhacos saindo no sentido do golpe
+    ctx.fillStyle='#d8f4ff'; ctx.globalAlpha=(1-p)*0.9;
+    for(let i=0;i<5;i++){
+      const a=-0.8+i*0.4, d=30+p*54;
+      ctx.fillRect(Math.round(Math.cos(a)*d)-2,Math.round(Math.sin(a)*d)-2,4,4);
     }
     ctx.restore();
   }
@@ -1587,37 +1843,100 @@ function drawFrostGiantBoss(b,t){
   // Escudo esférico: o segundo estágio é mais brilhante e pulsa.
   if(b.shieldActive){
     const pulse=0.82+0.18*Math.sin(t*0.006),r=b.shieldPhase==='half'?82:77;
-    ctx.save();ctx.globalAlpha=0.09;ctx.fillStyle='#72e8ff';ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
-    ctx.globalAlpha=0.58+0.22*pulse;ctx.strokeStyle=b.shieldPhase==='half'?'#ecfbff':'#72e8ff';ctx.lineWidth=b.shieldPhase==='half'?7:5;
-    ctx.shadowBlur=22;ctx.shadowColor='#4ee9ff';ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.stroke();
-    ctx.shadowBlur=0;ctx.lineWidth=1.5;ctx.globalAlpha=0.25;
-    for(let i=0;i<8;i++){const a=i*Math.PI/4;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r);ctx.stroke();}
+    const int=Math.max(0,Math.min(1,b.shieldHp/b.shieldMax));   // quanto ainda aguenta
+    ctx.save();
+    ctx.globalAlpha=0.07+0.05*int;ctx.fillStyle='#72e8ff';
+    ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+    // Facetas: a barreira e cristalina, nao uma bolha lisa. Elas escurecem
+    // conforme o escudo cede, entao da para ler a vida dele sem olhar a barra.
+    ctx.lineWidth=1.5;
+    for(let i=0;i<12;i++){
+      const a1=i*Math.PI/6, a2=a1+Math.PI/6;
+      ctx.globalAlpha=(0.10+0.22*int)*(0.6+0.4*Math.sin(t*0.004+i));
+      ctx.fillStyle=i%2?'#9fe9ff':'#5fd0f0';
+      ctx.beginPath();
+      ctx.moveTo(x+Math.cos(a1)*r,y+Math.sin(a1)*r);
+      ctx.lineTo(x+Math.cos(a2)*r,y+Math.sin(a2)*r);
+      ctx.lineTo(x,y); ctx.closePath(); ctx.fill();
+    }
+    ctx.globalAlpha=0.55+0.25*pulse;
+    ctx.strokeStyle=b.shieldPhase==='half'?'#ecfbff':'#72e8ff';
+    ctx.lineWidth=b.shieldPhase==='half'?7:5;
+    ctx.shadowBlur=22;ctx.shadowColor='#4ee9ff';
+    ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.stroke();
+    ctx.shadowBlur=0;
+    // Rachaduras: aparecem conforme o escudo cai. Angulos fixos, para elas
+    // nao dancarem entre quadros.
+    const trincas=Math.floor((1-int)*7);
+    ctx.strokeStyle='#eafaff'; ctx.lineWidth=2; ctx.globalAlpha=0.5+0.3*(1-int);
+    for(let i=0;i<trincas;i++){
+      const a=i*2.399, r0=r*0.24;
+      const bx=x+Math.cos(a)*r0, by=y+Math.sin(a)*r0;
+      ctx.beginPath(); ctx.moveTo(bx,by);
+      let cx2=bx, cy2=by;
+      for(let seg=0;seg<3;seg++){
+        const da=a+((i+seg)%3-1)*0.22, passo=(r-r0)/3;
+        cx2+=Math.cos(da)*passo; cy2+=Math.sin(da)*passo;
+        ctx.lineTo(cx2,cy2);
+      }
+      ctx.stroke();
+    }
+    // lascas orbitando
     for(let i=0;i<5;i++){
       const a=t*0.0018+i*1.26,px=x+Math.cos(a)*(r+9),py=y+Math.sin(a)*(r+9);
-      ctx.globalAlpha=0.5;ctx.fillStyle='#bcefff';ctx.fillRect(Math.round(px-2),Math.round(py-7),4,14);ctx.fillRect(Math.round(px-7),Math.round(py-2),14,4);
+      ctx.globalAlpha=0.5;ctx.fillStyle='#bcefff';
+      ctx.fillRect(Math.round(px-2),Math.round(py-7),4,14);
+      ctx.fillRect(Math.round(px-7),Math.round(py-2),14,4);
     }
     ctx.restore();
   }
-  let sprites=b.eruptionAnim>0?FROST_GIANT_CAST:FROST_GIANT_FRONT,flip=false;
-  if(b.eruptionAnim<=0&&b.dir==='up')sprites=FROST_GIANT_BACK;
-  else if(b.eruptionAnim<=0&&(b.dir==='left'||b.dir==='right')){sprites=FROST_GIANT_SIDE;flip=b.dir==='left';}
-  drawSpriteAt(sprites[b.frameIdx%3],PAL_FROST_GIANT,x,y+42+bob,flip,b.scale);
+  // Arte real do chefe, com o grid antigo de reserva. O perfil da arte
+  // olha para a ESQUERDA, entao espelha quando ele vai para a direita —
+  // ao contrario do grid antigo, que era o inverso.
+  let usouArte=false;
+  if(window.IceGolemSprites){
+    const S=window.IceGolemSprites;
+    let estado='idle', q=0;
+    if(b.shieldAnim>0){
+      estado='shield';
+      const p=1-Math.max(0,b.shieldAnim)/700;
+      q=Math.min(S.N_SHIELD-1,Math.floor(p*S.N_SHIELD));
+    }else if(b.eruptionAnim>0){
+      estado='aura'; q=Math.floor(t/S.AURA_MS);
+    }else if(b.hitAnim>0){
+      estado='hit';
+      const p=1-Math.max(0,b.hitAnim)/GELO_HIT_MS;
+      q=Math.min(S.N_HIT-1,Math.floor(p*S.N_HIT));
+    }else if(b.isMoving){ estado='walk'; q=Math.floor(t/S.WALK_MS); }
+    usouArte=S.desenhar(ctx,x,y+42+bob,b.dir,estado,q,b.golemEscala,b.dir==='right');
+  }
+  if(!usouArte){
+    let sprites=b.eruptionAnim>0?FROST_GIANT_CAST:FROST_GIANT_FRONT,flip=false;
+    if(b.eruptionAnim<=0&&b.dir==='up')sprites=FROST_GIANT_BACK;
+    else if(b.eruptionAnim<=0&&(b.dir==='left'||b.dir==='right')){sprites=FROST_GIANT_SIDE;flip=b.dir==='left';}
+    drawSpriteAt(sprites[b.frameIdx%3],PAL_FROST_GIANT,x,y+42+bob,flip,b.scale);
+  }
+  b._usouArte=usouArte;
   // Núcleo glacial pulsante.
   const core=ctx.createRadialGradient(x,y+8+bob,1,x,y+8+bob,22);
   core.addColorStop(0,'rgba(236,251,255,0.85)');core.addColorStop(0.45,'rgba(78,233,255,0.35)');core.addColorStop(1,'rgba(0,0,0,0)');
   ctx.fillStyle=core;ctx.beginPath();ctx.arc(x,y+8+bob,22,0,Math.PI*2);ctx.fill();
   if(b.flashTimer>0){ctx.save();ctx.globalAlpha=b.flashTimer/100*0.5;ctx.fillStyle='#bcefff';ctx.beginPath();ctx.arc(x,y,b.radius,0,Math.PI*2);ctx.fill();ctx.restore();}
-  const spriteTop=y+42-FROST_GIANT_H*Math.round(PX*b.scale);
+  // O topo muda com a arte: a barra de vida acompanha, senao ela invade
+  // a cabeca do boneco novo, que e mais alto que o grid antigo.
+  const spriteTop=b._usouArte ? y+42-Math.round(42*b.golemEscala)
+                              : y+42-FROST_GIANT_H*Math.round(PX*b.scale);
   if(b.shieldActive){
-    drawHPBar(x,spriteTop-29,b.shieldHp/b.shieldMax,90);
+    drawHPBar(x,spriteTop-42,b.shieldHp/b.shieldMax,90);
     ctx.fillStyle='#72e8ff';ctx.font='7px Courier New';ctx.textAlign='center';
-    ctx.fillText(b.shieldPhase==='half'?'BARREIRA 1000':'ESCUDO 2000',x,spriteTop-33);
+    ctx.fillText(b.shieldPhase==='half'?'BARREIRA 1000':'ESCUDO 2000',x,spriteTop-46);
   }
   drawHPBar(x,spriteTop-15,b.hp/b.maxHp,112);
   ctx.fillStyle='#88ddff';ctx.font='bold 9px Courier New';ctx.textAlign='center';
-  ctx.fillText('❄ GIGANTE DE GELO',x,spriteTop-20);ctx.textAlign='left';
+  ctx.fillText('❄ GIGANTE DE GELO',x,spriteTop-24);ctx.textAlign='left';
 }
 
+const GELO_HIT_MS=560;   // 9 quadros do soco de gelo
 class BossFrostBehemoth {
   constructor(wave){
     this.x=W/2; this.y=250; this.wave=wave;
@@ -1636,6 +1955,16 @@ class BossFrostBehemoth {
     this.blizzardCd=12000; this.blizzardTimer=9000;
     this.blizzardActive=false; this.blizzardDur=0; this.blizzardDir=0;
     this.pushForce=0;
+    // Ataque basico: soco de perto. Ele so tinha erupcao, nevasca e o
+    // escudo; o corpo a corpo estava descoberto.
+    this.hitCd=2300; this.hitTimer=1900; this.hitAnim=0; this.hitAcertou=false;
+    this.hitAlcance=this.radius+40; this.hitFx=0; this.hitFxAng=0;
+    // A animacao da barreira toca quando ela se FORMA. O resto do tempo
+    // quem mostra o escudo e o circulo e a barra que o jogo ja desenha —
+    // a barreira fica de pe por minutos, e travar a pose nesse periodo
+    // deixaria o chefe deslizando parado pela arena.
+    this.shieldAnim=700;
+    this.golemEscala=3.0;   // quadro de 64px; equivale ao tamanho antigo
   }
   update(dt,px,py){
     if(this.hp<=0){ this.dead=true; this._dropLoot(); return; }
@@ -1646,8 +1975,41 @@ class BossFrostBehemoth {
     const dx=px-this.x, dy=py-this.y, d=Math.hypot(dx,dy);
     if(Math.abs(dx)>Math.abs(dy)) this.dir=dx<0?'left':'right';
     else this.dir=dy<0?'up':'down';
-    if(d>1){ this.x+=(dx/d)*this.speed*dt; this.y+=(dy/d)*this.speed*dt; }
+    this.isMoving = d>1 && this.hitAnim<=0;
+    if(this.isMoving){ this.x+=(dx/d)*this.speed*dt; this.y+=(dy/d)*this.speed*dt; }
     this.x=Math.max(48,Math.min(W-48,this.x)); this.y=Math.max(210,Math.min(H-48,this.y));
+    // Ataque basico: o dano sai quando o punho estende, perto do fim, e so
+    // em quem esta no arco da frente. Aqui ha quadros nas quatro direcoes,
+    // entao ele pode golpear de costas tambem.
+    if(this.shieldAnim>0) this.shieldAnim-=dt*1000;
+    if(this.hitFx>0) this.hitFx-=dt*1000;
+    if(this.hitTimer>0) this.hitTimer-=dt*1000;
+    if(this.hitAnim>0){
+      this.hitAnim-=dt*1000;
+      if(!this.hitAcertou&&1-Math.max(0,this.hitAnim)/GELO_HIT_MS>=0.72){
+        this.hitAcertou=true;
+        const face=this.dir==='left'?Math.PI:this.dir==='right'?0:
+                   this.dir==='up'?-Math.PI/2:Math.PI/2;
+        const alvos=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>p&&!p.dead);
+        for(const pl of alvos){
+          if(Math.hypot(pl.x-this.x,pl.y-this.y)>this.hitAlcance+pl.radius) continue;
+          // Colado no alvo nao existe 'frente': atan2 de um vetor quase
+          // nulo oscila e o arco rejeitaria quem ele esta pisando.
+          if(Math.hypot(pl.x-this.x,pl.y-this.y)>this.radius*0.7){
+            let da=Math.atan2(pl.y-this.y,pl.x-this.x)-face;
+            da=Math.atan2(Math.sin(da),Math.cos(da));
+            if(Math.abs(da)>1.1) continue;
+          }
+          pl.takeDmg(this.damage*0.7);
+          pl.frozen=true; pl.frozenTimer=600; pl.freezeFx='iceCube';
+        }
+        triggerScreenShake(6,170);
+        spawnParts(this.x+Math.cos(face)*34,this.y+Math.sin(face)*34,'#bfe9ff',12,60);
+        this.hitFx=260; this.hitFxAng=face;   // leque de gelo, desenhado no draw
+      }
+    } else if(this.hitTimer<=0&&d<this.hitAlcance+20&&this.eruptionAnim<=0&&this.shieldAnim<=0){
+      this.hitAnim=GELO_HIT_MS; this.hitAcertou=false; this.hitTimer=this.hitCd;
+    }
     // Ice spike lines
     this.iceLineTimer-=dt*1000;
     if(this.iceLineTimer<=0){ this.iceLineTimer=this.iceLineCd; this._spawnIceLines(); }
@@ -1719,6 +2081,7 @@ class BossFrostBehemoth {
       this.hp=halfHp;
       this.halfShieldTriggered=true; this.shieldPhase='half';
       this.shieldHp=1000; this.shieldMax=1000; this.shieldActive=true;
+      this.shieldAnim=700;
       spawnLevelUpNotice(this.x,this.y-65,'🛡 BARREIRA GLACIAL — 1000!',0);
       spawnParts(this.x,this.y,'#bdefff',28,95);
       triggerScreenShake(10,320);
@@ -1975,23 +2338,42 @@ function drawDevourerAcidPuddle(ap,t){
 }
 function drawDevourerSinkhole(sh,t){
   ctx.save();ctx.translate(Math.round(sh.x),Math.round(sh.y));
-  const vr=Math.min(132,(sh.range||300)*0.42),bands=[.36,.66,.86,.97,1,.97,.86,.66,.36];
-  for(let y=0;y<bands.length;y++){
-    const span=Math.round(vr*bands[y]/5)*5;
-    ctx.fillStyle=y===4?'#120803':'rgba(28,13,5,.84)';
-    ctx.fillRect(-span,-20+y*5,span*2,6);
+  const vr=Math.min(132,(sh.range||300)*0.42);
+  const forca=Math.max(0,Math.min(1,(3200-sh.timer)/1000));
+  const ACHA=0.42;                       // achatamento da perspectiva
+  // Borda: areia empilhada em volta da boca do buraco.
+  ctx.fillStyle='#d2a054';
+  ctx.beginPath();ctx.ellipse(0,2,vr*1.07,vr*ACHA*1.07,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#a97a37';
+  ctx.beginPath();ctx.ellipse(0,0,vr*1.0,vr*ACHA,0,0,Math.PI*2);ctx.fill();
+  // Funil: aneis do claro ate o preto. E' isso que faz ler como PROFUNDIDADE,
+  // no lugar das faixas horizontais de antes, que viravam um corpo.
+  const aneis=[[0.86,'#8a5d28'],[0.71,'#67411b'],[0.56,'#472c12'],
+               [0.42,'#2c1a0a'],[0.29,'#170c04'],[0.16,'#000000']];
+  for(const [f,cor] of aneis){
+    ctx.fillStyle=cor;
+    ctx.beginPath();ctx.ellipse(0,-1,vr*f,vr*ACHA*f,0,0,Math.PI*2);ctx.fill();
   }
-  for(let a=0;a<Math.PI*5.3;a+=0.16){
-    const r=5+a*(vr/17),x=Math.round(Math.cos(a+t*0.0018)*r/5)*5,y=Math.round(Math.sin(a+t*0.0018)*r*.42/5)*5;
-    ctx.fillStyle=a%0.7<0.35?'#a06b2b':'#5d3516';ctx.fillRect(x-4,y-3,9,6);
+  // Areia sendo sugada: cada risco espirala para dentro e some no centro.
+  for(let i=0;i<22;i++){
+    const fase=((t*0.0012)+i/22)%1;
+    const raio=vr*(1-fase)*0.95;
+    const ang=i*2.85+fase*3.2+t*0.0006;
+    const x=Math.cos(ang)*raio, y=Math.sin(ang)*raio*ACHA;
+    ctx.globalAlpha=Math.min(1,fase*2.2)*0.75*(1-fase*0.4);
+    ctx.fillStyle=i%3===0?'#e8bd72':'#b07f3a';
+    const tam=Math.max(2,Math.round(4*(1-fase)));
+    ctx.fillRect(Math.round(x)-tam/2,Math.round(y)-tam/2,tam,tam);
   }
-  // Espinhos de pedra que surgem no fim do redemoinho.
-  const strength=Math.max(0,Math.min(1,(3200-sh.timer)/1000));
-  for(let i=0;i<8;i++){
-    const a=i*Math.PI/4+t*0.0002,r=vr*.64+12*(i%2),x=Math.round(Math.cos(a)*r/4)*4,y=Math.round(Math.sin(a)*r*.43/4)*4;
-    const h=Math.round((8+17*strength)/4)*4;
-    ctx.fillStyle='#1c0d06';ctx.fillRect(x-7,y-h,14,h+6);
-    ctx.fillStyle='#8c5423';ctx.fillRect(x-3,y-h+4,6,h-2);
+  ctx.globalAlpha=1;
+  // Lascas de pedra na BORDA, deitadas na areia. Antes eram 8 estacas
+  // verticais no meio do buraco, que e' o que lembrava espinhos de bicho.
+  for(let i=0;i<9;i++){
+    const a=i*Math.PI*2/9+0.3, r=vr*(0.93+0.06*(i%2));
+    const x=Math.round(Math.cos(a)*r), y=Math.round(Math.sin(a)*r*ACHA);
+    const w=Math.round(7+5*forca), h=Math.round(4+3*forca);
+    ctx.fillStyle='#3a2210';ctx.fillRect(x-w/2,y-h/2,w,h);
+    ctx.fillStyle='#9c6a30';ctx.fillRect(x-w/2+1,y-h/2,w-2,Math.max(1,h-2));
   }
   ctx.restore();
 }
@@ -2022,6 +2404,51 @@ function drawDevourerBoss(b,t){
     }
     ctx.restore();
   }
+  // ── Arte real do chefe ──
+  // A arte traz o verme INTEIRO, ja segmentado, em cada quadro. Desenhar
+  // tambem a fila de segmentos daria dois corpos, entao ela fica so' no
+  // caminho de reserva, junto da cabeca antiga.
+  let usouArte=false;
+  if(window.SandwormSprites){
+    const S=window.SandwormSprites;
+    const vert=Math.abs(dirY)>Math.abs(dirX)*1.15;
+    const dirArte=vert?(dirY<0?'up':'down'):'left';
+    const flipArte=(dirArte==='left')&&dirX>0;
+    let estado='idle', q=0;
+    if(b.acidAnim>0){
+      estado='acid'; q=Math.min(S.N_ACID-1,Math.floor((1-b.acidAnim/620)*S.N_ACID));
+    }else if(diving){
+      estado='run'; q=Math.floor(t/S.RUN_MS);
+    }else if(b.hitAnim>0){
+      estado='hit'; q=Math.min(S.N_HIT-1,Math.floor((1-b.hitAnim/VERME_HIT_MS)*S.N_HIT));
+    }else if(b._ultimoX!==undefined&&(b.x!==b._ultimoX||b.y!==b._ultimoY)){
+      estado='walk'; q=Math.floor(t/S.WALK_MS);
+    }
+    // O chao dele e' quase a base do raio de colisao: em b.y+28 a barriga
+    // ficava 16px acima do proprio circulo e ele parecia pairar.
+    const chao=b.y+38;
+    ctx.save();ctx.globalAlpha=.34;ctx.fillStyle='#000';
+    ctx.beginPath();ctx.ellipse(b.x,chao-3,44,12,0,0,Math.PI*2);ctx.fill();ctx.restore();
+    // Poeira de areia: ele arrasta o corpo pelo chao, entao levanta po'
+    // atras de si enquanto anda ou mergulha.
+    if(estado==='walk'||estado==='run'){
+      const forca=estado==='run'?1.7:1;
+      ctx.save();
+      for(let i=0;i<5;i++){
+        const fase=((t*0.0016*forca)+i*0.2)%1;
+        const atras=(dirX>0?-1:1)*(18+fase*40);
+        const sobe=fase*13*forca;
+        ctx.globalAlpha=(1-fase)*0.36;
+        ctx.fillStyle=i%2?'#d9bd7a':'#ab8a4c';
+        const tam=Math.round(3+fase*5*forca);
+        ctx.fillRect(Math.round(b.x+atras-tam/2),Math.round(chao-2-sobe),tam,tam);
+      }
+      ctx.restore();
+    }
+    usouArte=S.desenhar(ctx,b.x,chao,dirArte,estado,q,b.vermeEscala,flipArte);
+    b._alturaArte=(dirArte==='up'?51:dirArte==='down'?49:44);
+  }
+  if(!usouArte){
   // Sombra acompanha todo o corpo para que nenhum segmento pareça flutuar.
   ctx.save();ctx.globalAlpha=.32;ctx.fillStyle='#000';
   for(let i=b.bodySegments.length-1;i>=0;i--){
@@ -2041,13 +2468,21 @@ function drawDevourerBoss(b,t){
   const headBob=diving?Math.sin(t*.022+b.phase)*3:Math.sin(t*.008+b.phase)*2;
   const headAngle=diving?Math.max(-.28,Math.min(.28,heading*.18)):Math.sin(t*.006+b.phase)*.045;
   drawDevourerSpriteCentered(DEVOURER_HEAD_FRAMES[frame],b.x,b.y+headBob,diving?1.45:1.5,headAngle,dirX<0);
+  }
   if(b.flashTimer>0){ctx.save();ctx.globalAlpha=b.flashTimer/100*.55;ctx.fillStyle='#fff09a';ctx.beginPath();ctx.arc(b.x,b.y,44,0,Math.PI*2);ctx.fill();ctx.restore();}
-  const spriteTop=Math.min(b.y-48,...b.bodySegments.map(seg=>seg.y-35));
+  // Com a arte nova o corpo cabe num quadro so', entao o topo sai dele; o
+  // reserva continua olhando o segmento mais alto da fila.
+  // A altura muda muito entre as vistas (o perfil tem 28..44 linhas, a de
+  // costas 51), entao o topo sai da vista em uso; com uma constante so' a
+  // barra ficava 41px no ar sobre o perfil.
+  const spriteTop=usouArte ? b.y+38-Math.round((b._alturaArte||44)*b.vermeEscala)
+                           : Math.min(b.y-48,...b.bodySegments.map(seg=>seg.y-35));
   drawHPBar(b.x,spriteTop-15,b.hp/b.maxHp,104);
   ctx.fillStyle='#ffd22b';ctx.font='bold 9px Courier New';ctx.textAlign='center';
   ctx.fillText('VERME DEVORADOR',b.x,spriteTop-20);ctx.textAlign='left';
 }
 
+const VERME_HIT_MS=520;   // 9 quadros da mordida
 class BossSandworm {
   constructor(wave){
     this.x=W/2; this.y=H/2; this.wave=wave;
@@ -2065,9 +2500,17 @@ class BossSandworm {
     this.diveVx=0; this.diveVy=0;
     this.bodySegments=[];
     for(let i=0;i<9;i++) this.bodySegments.push({x:this.x-i*20,y:this.y});
+    // Ataque basico: mordida de perto. Ele so' tinha sumidouro, acido e
+    // mergulho — tudo de longe ou em area.
+    this.hitCd=2000; this.hitTimer=1600; this.hitAnim=0; this.hitAcertou=false;
+    this.hitAlcance=this.radius+34;
+    this.acidAnim=0;             // gesto de cuspir
+    this.vermeEscala=2.6;        // quadro de 64px
   }
   update(dt,px,py){
     if(this.hp<=0){ this.dead=true; this._dropLoot(); return; }
+    // guarda onde ele estava, para o desenho saber se andou neste quadro
+    this._ultimoX=this.x; this._ultimoY=this.y;
     // Cuspe ácido não teleguiado. Ao atingir ou perder força, vira uma poça temporária.
     for(const shot of this.acidShots){
       shot.x+=shot.vx*dt;shot.y+=shot.vy*dt;shot.life-=dt*1000;
@@ -2125,7 +2568,7 @@ class BossSandworm {
       const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead);
       for(const pl of allPl){
         const sd=Math.hypot(pl.x-this.sinkhole.x,pl.y-this.sinkhole.y);
-        if(sd<this.sinkholeRange){ const ang=Math.atan2(this.sinkhole.y-pl.y,this.sinkhole.x-pl.x),knock=getCampaignShopKnockbackMultiplier(pl); pl.x+=Math.cos(ang)*this.sinkhole.power*dt*knock; pl.y+=Math.sin(ang)*this.sinkhole.power*dt*knock; if(sd<40) pl.takeDmg(this.damage*0.08); }
+        if(sd<this.sinkholeRange){ const ang=Math.atan2(this.sinkhole.y-pl.y,this.sinkhole.x-pl.x),knock=getCampaignShopKnockbackMultiplier(pl); pl.x+=Math.cos(ang)*this.sinkhole.power*dt*knock; pl.y+=Math.sin(ang)*this.sinkhole.power*dt*knock; if(sd<40) pl.takeDmg(this.damage*0.08,true); }
       }
       if(this.sinkhole.timer<=0) this.sinkhole=null;
     }
@@ -2135,16 +2578,53 @@ class BossSandworm {
     for(const ap of this.acidPuddles){
       ap.timer-=dt*1000;
       const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead);
-      for(const pl of allPl) if(Math.hypot(pl.x-ap.x,pl.y-ap.y)<ap.r+pl.radius){ pl.takeDmg(this.damage*0.012); }
+      for(const pl of allPl) if(Math.hypot(pl.x-ap.x,pl.y-ap.y)<ap.r+pl.radius){ pl.takeDmg(this.damage*0.012,true); }
     }
     this.acidPuddles=this.acidPuddles.filter(ap=>ap.timer>0);
     // Cuspe ácido adicional entre as chuvas.
+    // Ataque basico: mordida de perto. Nao sai durante o mergulho.
+    if(this.acidAnim>0) this.acidAnim-=dt*1000;
+    if(this.hitTimer>0) this.hitTimer-=dt*1000;
+    if(this.hitAnim>0){
+      this.hitAnim-=dt*1000;
+      if(!this.hitAcertou&&1-Math.max(0,this.hitAnim)/VERME_HIT_MS>=0.55){
+        this.hitAcertou=true;
+        const dxh=px-this.x, dyh=py-this.y;
+        const face=Math.abs(dxh)>Math.abs(dyh)?(dxh<0?Math.PI:0):(dyh<0?-Math.PI/2:Math.PI/2);
+        const alvos=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>p&&!p.dead);
+        for(const pl of alvos){
+          if(Math.hypot(pl.x-this.x,pl.y-this.y)>this.hitAlcance+pl.radius) continue;
+          // Colado no alvo nao existe 'frente': atan2 de um vetor quase
+          // nulo oscila e o arco rejeitaria quem ele esta pisando.
+          if(Math.hypot(pl.x-this.x,pl.y-this.y)>this.radius*0.7){
+            let da=Math.atan2(pl.y-this.y,pl.x-this.x)-face;
+            da=Math.atan2(Math.sin(da),Math.cos(da));
+            if(Math.abs(da)>1.15) continue;
+          }
+          pl.takeDmg(this.damage*0.6);
+        }
+        triggerScreenShake(6,160);
+        spawnParts(this.x+Math.cos(face)*30,this.y+Math.sin(face)*30,'#d8c27a',12,58);
+      }
+    } else if(this.hitTimer<=0&&this.diveState==='ground'&&
+              Math.hypot(px-this.x,py-this.y)<this.hitAlcance+18){
+      this.hitAnim=VERME_HIT_MS; this.hitAcertou=false; this.hitTimer=this.hitCd;
+    }
     this.acidSpitTimer-=dt*1000;
     if(this.acidSpitTimer<=0){
-      this.acidSpitTimer=this.acidSpitCd;
-      const a=Math.atan2(py-this.y,px-this.x),speed=285;
-      this.acidShots.push({x:this.x,y:this.y,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,r:10,life:2400,dead:false});
+      this.acidSpitTimer=this.acidSpitCd; this.acidAnim=620;
+      this.acidMira=Math.atan2(py-this.y,px-this.x); this.acidCuspiu=false;
       spawnLevelUpNotice(this.x,this.y-55,'CUSPE ÁCIDO!',0);
+    }
+    // O jato so' parte quando a boca abre na arte. Antes ele saia no
+    // primeiro quadro, do centro do corpo, e o projetil partia sozinho
+    // enquanto o verme ainda estava fechando a mandibula.
+    if(this.acidAnim>0&&!this.acidCuspiu&&1-this.acidAnim/620>=0.55){
+      this.acidCuspiu=true;
+      const a=this.acidMira,speed=285;
+      const bx=this.x+Math.cos(a)*34, by=this.y-8+Math.sin(a)*20;
+      this.acidShots.push({x:bx,y:by,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,r:10,life:2400,dead:false});
+      spawnParts(bx,by,'#91d51c',10,50);
     }
     // Triple dive
     this.diveTimer-=dt*1000;
@@ -2307,6 +2787,7 @@ class BossSandworm {
 // ═══════════════════════════════════════════════════════
 // BOSS: BALROG (Onda 25) — Arauto das Cinzas
 // ═══════════════════════════════════════════════════════
+const BALROG_HIT_MS=520;   // 9 quadros da chicotada curta
 class BossBalrog {
   constructor(wave){
     this.x=W/2; this.y=260; this.wave=wave;
@@ -2317,11 +2798,18 @@ class BossBalrog {
     this.scale=3; this.phase=Math.random()*Math.PI*2;
     this.flashTimer=0; this.type='boss_balrog';
     this.whipCd=5000; this.whipTimer=3000; this.whipAnim=0; this.whipSide=1;
+    this.whipAcertou=false;
     this.meteorCd=10000; this.meteorTimer=6000; this.meteors=[];
     this.phase2=false; this.fireTrail=[];
     this.wingAnim=0; this.roarTimer=0;
     this.isMoving=false; this.facing=1; this.facingY=1;
     this.moveDx=0; this.moveDy=0;
+    // Ataque basico: chicotada curta em volta. O CHICOTE INFERNAL varre
+    // meia tela a cada 5s; de perto ele nao tinha nada.
+    this.hitCd=2100; this.hitTimer=1700; this.hitAnim=0; this.hitAcertou=false;
+    this.hitAlcance=this.radius+40;
+    this.lavaAnim=0;             // gesto de chamar os meteoros
+    this.balrogEscala=3.2;       // quadro de 64px; equivale ao tamanho antigo
   }
   update(dt,px,py){
     if(this.hp<=0){ this.dead=true; this._dropLoot(); return; }
@@ -2331,9 +2819,9 @@ class BossBalrog {
     }
     // Move
     const dx=px-this.x, dy=py-this.y, d=Math.hypot(dx,dy);
-    this.isMoving=d>3;
+    this.isMoving=d>3&&this.hitAnim<=0;
     this.moveDx=dx; this.moveDy=dy;
-    if(d>1){
+    if(d>1&&this.hitAnim<=0){
       this.x+=(dx/d)*this.speed*dt; this.y+=(dy/d)*this.speed*dt;
       if(Math.abs(dx)>2)this.facing=dx<0?-1:1;
       if(Math.abs(dy)>2)this.facingY=dy<0?-1:1;
@@ -2341,17 +2829,68 @@ class BossBalrog {
     this.x=Math.max(50,Math.min(W-50,this.x)); this.y=Math.max(215,Math.min(H-50,this.y));
     // Fire trail in phase 2
     if(this.phase2){ this.fireTrail.push({x:this.x,y:this.y,timer:3000}); }
-    for(const ft of this.fireTrail){ ft.timer-=dt*1000; const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead); for(const pl of allPl) if(Math.hypot(pl.x-ft.x,pl.y-ft.y)<28) pl.takeDmg(this.damage*0.012); }
+    for(const ft of this.fireTrail){ ft.timer-=dt*1000; const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead); for(const pl of allPl) if(Math.hypot(pl.x-ft.x,pl.y-ft.y)<28) pl.takeDmg(this.damage*0.012,true); }
     this.fireTrail=this.fireTrail.filter(ft=>ft.timer>0);
     // Whip attack
     this.whipTimer-=dt*1000;
-    if(this.whipTimer<=0){ this.whipTimer=this.whipCd; this.whipAnim=600; this.whipSide=px<this.x?1:-1; const sweepX=this.x+this.whipSide*W*0.5; const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead); for(const pl of allPl){ if((this.whipSide===1&&pl.x>this.x-50)||(this.whipSide===-1&&pl.x<this.x+50)) { if(Math.abs(pl.y-this.y)<110) pl.takeDmg(this.damage*1.5); } } spawnLevelUpNotice(this.x,this.y-60,'🔥 CHICOTE INFERNAL!',0); spawnParts(this.x+this.whipSide*150,this.y,'#ff4400',15,70); }
-    if(this.whipAnim>0) this.whipAnim-=dt*1000;
+    if(this.whipTimer<=0){ this.whipTimer=this.whipCd; this.whipAnim=600;
+      // O lado estava invertido: com o jogador a esquerda ele escolhia 1,
+      // e o dano de whipSide===1 atinge quem esta a DIREITA. Media 0 de
+      // dano a 200px dos dois lados; so' acertava por acidente quem
+      // estivesse a menos de 50px.
+      this.whipSide=px<this.x?-1:1; this.whipAcertou=false;
+      spawnLevelUpNotice(this.x,this.y-60,'🔥 CHICOTE INFERNAL!',0); }
+    if(this.whipAnim>0){
+      this.whipAnim-=dt*1000;
+      // O dano sai no ESTALO, nao no primeiro quadro. Antes ele acertava
+      // junto com o aviso: a arte real arma o arco por ~430ms antes de
+      // esticar, entao o jogador levava o golpe sem ver de onde veio.
+      if(!this.whipAcertou&&1-Math.max(0,this.whipAnim)/600>=0.72){
+        this.whipAcertou=true;
+        const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead);
+        for(const pl of allPl){
+          if((this.whipSide===1&&pl.x>this.x-50)||(this.whipSide===-1&&pl.x<this.x+50)){
+            if(Math.abs(pl.y-this.y)<110) pl.takeDmg(this.damage*1.5);
+          }
+        }
+        spawnParts(this.x+this.whipSide*150,this.y,'#ff4400',15,70);
+        triggerScreenShake(9,220);
+      }
+    }
     // Meteor
     this.meteorTimer-=dt*1000;
-    if(this.meteorTimer<=0){ this.meteorTimer=this.meteorCd; spawnLevelUpNotice(this.x,this.y-60,'☄ METEORO!',0); for(let i=0;i<5;i++) this.meteors.push({x:80+Math.random()*(W-160),y:230+Math.random()*(H-270),warnTimer:2000,active:false}); }
+    if(this.meteorTimer<=0){ this.meteorTimer=this.meteorCd; this.lavaAnim=900; spawnLevelUpNotice(this.x,this.y-60,'☄ METEORO!',0); for(let i=0;i<5;i++) this.meteors.push({x:80+Math.random()*(W-160),y:230+Math.random()*(H-270),warnTimer:2000,active:false}); }
     for(const m of this.meteors){ m.warnTimer-=dt*1000; if(m.warnTimer<=0&&!m.active){ m.active=true; spawnParts(m.x,m.y,'#ff4400',20,80); const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead); for(const pl of allPl) if(Math.hypot(pl.x-m.x,pl.y-m.y)<70) pl.takeDmg(this.damage*1.8); } }
     this.meteors=this.meteors.filter(m=>!(m.active&&m.warnTimer<-500));
+    // Ataque basico: chicotada curta. O dano sai perto do fim, so' em quem
+    // esta no arco da frente, e ele fica parado durante o golpe.
+    if(this.lavaAnim>0) this.lavaAnim-=dt*1000;
+    if(this.hitTimer>0) this.hitTimer-=dt*1000;
+    if(this.hitAnim>0){
+      this.hitAnim-=dt*1000;
+      if(!this.hitAcertou&&1-Math.max(0,this.hitAnim)/BALROG_HIT_MS>=0.7){
+        this.hitAcertou=true;
+        const vert=Math.abs(this.moveDy)>Math.abs(this.moveDx)*1.15;
+        const face=vert?((this.facingY||1)<0?-Math.PI/2:Math.PI/2)
+                       :((this.facing||1)<0?Math.PI:0);
+        const alvos=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>p&&!p.dead);
+        for(const pl of alvos){
+          if(Math.hypot(pl.x-this.x,pl.y-this.y)>this.hitAlcance+pl.radius) continue;
+          // Colado no alvo nao existe 'frente': atan2 de um vetor quase
+          // nulo oscila e o arco rejeitaria quem ele esta pisando.
+          if(Math.hypot(pl.x-this.x,pl.y-this.y)>this.radius*0.7){
+            let da=Math.atan2(pl.y-this.y,pl.x-this.x)-face;
+            da=Math.atan2(Math.sin(da),Math.cos(da));
+            if(Math.abs(da)>1.15) continue;
+          }
+          pl.takeDmg(this.damage*0.55);
+        }
+        triggerScreenShake(7,180);
+        spawnParts(this.x+Math.cos(face)*36,this.y+Math.sin(face)*36,'#ff7a1a',13,65);
+      }
+    } else if(this.hitTimer<=0&&d<this.hitAlcance+20&&this.whipAnim<=0&&this.lavaAnim<=0&&this.roarTimer<=0){
+      this.hitAnim=BALROG_HIT_MS; this.hitAcertou=false; this.hitTimer=this.hitCd;
+    }
     this.wingAnim+=dt*3; if(this.roarTimer>0) this.roarTimer-=dt*1000;
     this.frameTick+=dt*1000; if(this.frameTick>150){this.frameTick=0;this.frameIdx=(this.frameIdx+1)%3;}
     if(this.flashTimer>0) this.flashTimer-=dt*1000;
@@ -2416,6 +2955,37 @@ class BossBalrog {
     const bodyY=y-20;
     const scB=this.radius/50;
     const pxB=3;
+    // Estado da arte real, escolhido antes dos efeitos de fundo.
+    let arteEstado=null, arteQ=0, arteDir='down', arteFlip=false;
+    if(window.BalrogSprites){
+      const S=window.BalrogSprites;
+      const vert=Math.abs(this.moveDy)>Math.abs(this.moveDx)*1.15;
+      arteDir=vert?((this.facingY||1)<0?'up':'down'):'left';
+      arteFlip=(arteDir==='left')&&(this.facing||1)>0;
+      if(this.roarTimer>0){
+        arteEstado='aura'; arteFlip=false;
+        arteQ=Math.min(S.N_AURA-1,Math.floor((1-this.roarTimer/800)*S.N_AURA));
+      }else if(this.lavaAnim>0){
+        arteEstado='lava'; arteFlip=false;
+        arteQ=Math.min(S.N_LAVA-1,Math.floor((1-this.lavaAnim/900)*S.N_LAVA));
+      }else if(this.whipAnim>0){
+        // Os quadros do chicote sao vista de FRENTE, com o laco girando em
+        // volta; o que muda com o espelho e' para que lado ele estala. Sem
+        // espelhar, o estalo sai para a DIREITA (medi o centro da chama
+        // contra o centro do corpo: quadros 5..8 ficam a direita), entao
+        // whipSide -1, que atinge quem esta a esquerda, e' que precisa
+        // espelhar.
+        arteEstado='whip'; arteDir='left'; arteFlip=this.whipSide<0;
+        arteQ=Math.min(S.N_WHIP-1,Math.floor((1-this.whipAnim/600)*S.N_WHIP));
+      }else if(this.hitAnim>0){
+        // A chicotada curta usa a vista de frente, o golpe em arco.
+        arteEstado='whip'; arteDir='down'; arteFlip=false;
+        arteQ=Math.min(S.N_WHIP-1,Math.floor((1-this.hitAnim/BALROG_HIT_MS)*S.N_WHIP));
+      }else if(this.isMoving){
+        arteEstado=this.phase2?'run':'walk';
+        arteQ=Math.floor(t/(this.phase2?S.RUN_MS:S.WALK_MS));
+      }else arteEstado='idle';
+    }
     let frameB=BALROG_BODY[0],flipB=false;
     if(this.whipAnim>0){
       frameB=BALROG_BODY[2];
@@ -2437,38 +3007,62 @@ class BossBalrog {
       for(let s=0;s<4;s++)ctx.fillRect(x+trailDir*(42+s*13),y-22+s*7,22-s*3,4);
       ctx.restore();
     }
-    drawBossGrid(frameB, PAL_BOSS_BALROG, x, bodyY, pxB, flipB);
-    // Chamas subindo da juba
+    // Arte real, com o grid antigo de reserva.
+    let usouArte=false;
+    if(arteEstado&&window.BalrogSprites){
+      // A pasta nao tem caminhada nem corrida de COSTAS, so' a pose parada.
+      // Sem isso ele atravessaria a arena congelado; o balanco curto, no
+      // ritmo do passo, devolve o peso da caminhada.
+      const semQuadros=(arteEstado==='walk'||arteEstado==='run')&&arteDir==='up';
+      const passo=semQuadros
+        ? Math.abs(Math.sin(t/(this.phase2?95:150)*Math.PI))*4
+        : 0;
+      usouArte=window.BalrogSprites.desenhar(ctx,x,y+29-passo,arteDir,arteEstado,arteQ,
+                                             this.balrogEscala,arteFlip);
+    }
+    if(!usouArte) drawBossGrid(frameB, PAL_BOSS_BALROG, x, bodyY, pxB, flipB);
+    // Chamas da juba e brasas dos punhos. As alturas vinham do grid
+    // antigo, que era mais baixo: com a arte nova elas apareciam no peito
+    // em vez da cabeca. Agora saem das proporcoes do sprite em uso.
+    const topoArte=usouArte ? y+29-Math.round(44*this.balrogEscala) : bodyY-18*pxB;
+    const espalha=usouArte ? 22 : 8*pxB*0.55;
+    const punhoY=usouArte ? y+29-Math.round(44*this.balrogEscala*0.45) : bodyY+8*pxB;
+    const punhoX=usouArte ? 44 : 17*pxB;
     for(let f3=0;f3<7;f3++){
       const fp=((t*0.0009)+f3*0.14)%1;
-      const fx3=x+((f3*17)%29-14)*pxB*0.55+Math.sin(t*0.006+f3*2)*3;
+      const fx3=x+(((f3*17)%29-14)/14)*espalha+Math.sin(t*0.006+f3*2)*3;
       ctx.globalAlpha=(1-fp)*0.6;
       ctx.fillStyle=f3%3===0?'#ffd21a':f3%3===1?'#ff7a1a':'#e03010';
-      const fs=(2.6+ (1-fp)*2.6)*scB;
-      ctx.fillRect(fx3-fs/2, bodyY-18*pxB-fp*24, fs, fs);
+      const fs=(2.6+(1-fp)*2.6)*scB;
+      ctx.fillRect(fx3-fs/2, topoArte+8-fp*26, fs, fs);
     }
     ctx.globalAlpha=1;
-    // Brasas caindo dos punhos
     for(let f4=0;f4<3;f4++){
       const fp=((t*0.0007)+f4*0.33)%1;
       ctx.globalAlpha=(1-fp)*0.5;
       ctx.fillStyle='#ff9a20';
-      ctx.fillRect(x+(f4%2?17:-17)*pxB-1, bodyY+8*pxB+fp*18, 3, 3);
+      ctx.fillRect(x+(f4%2?punhoX:-punhoX)-1, punhoY+fp*18, 3, 3);
     }
     ctx.globalAlpha=1;
     // ── Whip animation ──
     if(this.whipAnim>0){
-      const wp=this.whipAnim/600;
-      ctx.save(); ctx.globalAlpha=wp*0.9;
+      // O traco corria ao contrario da arte: nascia esticado e recolhia,
+      // enquanto o sprite arma o arco e so' depois estala. Agora ele
+      // acompanha — cresce ate o fim do golpe, que e' quando o dano sai.
+      const wp=1-this.whipAnim/600;                 // 0 armando, 1 estalado
+      const alc=Math.min(1,wp/0.72);                // estica ate 72% e segura
+      const some=Math.min(1,(1-wp)/0.28);           // apaga no rabo da animacao
+      ctx.save(); ctx.globalAlpha=some*0.9;
       ctx.strokeStyle='#ff4400'; ctx.lineWidth=6;
       ctx.shadowBlur=24; ctx.shadowColor='#ff2200';
-      const wx=x+this.whipSide*W*0.55*wp;
-      const wy=y+Math.sin(wp*Math.PI)*50;
+      const wx=x+this.whipSide*W*0.55*alc;
+      const wy=y+Math.sin((1-alc)*Math.PI)*50;
       ctx.beginPath(); ctx.moveTo(x,y-5);
-      ctx.quadraticCurveTo(x+this.whipSide*160*wp,y-20,wx,wy);
+      // a barriga da curva some conforme ele estica: de chicote enrolado
+      // para linha reta
+      ctx.quadraticCurveTo(x+this.whipSide*160*alc,y-20-(1-alc)*46,wx,wy);
       ctx.stroke();
-      // Whip tip fire
-      ctx.fillStyle='#ffcc00'; ctx.beginPath(); ctx.arc(wx,wy,5*wp,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#ffcc00'; ctx.beginPath(); ctx.arc(wx,wy,5*alc+2,0,Math.PI*2); ctx.fill();
       ctx.shadowBlur=0; ctx.restore();
     }
 
@@ -2504,6 +3098,7 @@ class BossBrute {
     this.radius=42; this.xpVal=150+wave*22;
     this.dead=false; this.frameIdx=0; this.frameTick=0; this.dir='down';
     this.scale=3.0; this.phase=Math.random()*Math.PI*2; this.flashTimer=0;
+    this.bruteEscala=2.1;   // quadro de 64px; maior que o BossOrc, que usa 1.6
     this.type='boss_brute';
     this.rockCd=4200; this.rockTimer=2600; this.rocks=[];
     this.rockWind=0; this.rockThrowAnim=0; this.rockAim={x:this.x,y:this.y};
@@ -2511,6 +3106,10 @@ class BossBrute {
     this.leapTarget={x:0,y:0}; this.leapWind=0; this.leapAir=0;
     this.leapChain=0; this.leapPebbles=[];
     this.enraged=false; this.impactTimer=0;
+    // Ataque basico: soco de perto, o mesmo do Orc. A pedra cobre a
+    // distancia e o salto cobre o meio; o corpo a corpo estava descoberto.
+    this.hitCd=2200; this.hitTimer=1800; this.hitAnim=0; this.hitAcertou=false;
+    this.hitAlcance=this.radius+38;
   }
   takeDmg(a){ this.hp-=a; this.flashTimer=100; spawnParts(this.x,this.y,'#7ab048',4,35); }
   update(dt,px,py){
@@ -2542,7 +3141,7 @@ class BossBrute {
       this.leapTimer-=ms;
       if(this.leapTimer<=0){
         this.leapChain=3;
-        this.leapState='wind'; this.leapWind=700; this.leapTarget={x:px,y:py};
+        this.leapState='wind'; this.leapWind=this.leapWindMax=700; this.leapTarget={x:px,y:py};
         spawnLevelUpNotice(this.x,this.y-58,'💥 SALTO TRIPLO!',0);
       }
     } else if(this.leapState==='wind'){
@@ -2566,7 +3165,7 @@ class BossBrute {
         for(const pl of allP){ if(Math.hypot(pl.x-this.x,pl.y-this.y)<hitRadius) pl.takeDmg(this.damage*hitMult); }
         this.leapChain--;
         if(this.leapChain>0){
-          this.leapState='wind'; this.leapWind=280; this.leapTarget={x:px,y:py};
+          this.leapState='wind'; this.leapWind=this.leapWindMax=280; this.leapTarget={x:px,y:py};
         }else{
           this.leapState='ground'; this.leapTimer=this.leapCd;
         }
@@ -2577,8 +3176,42 @@ class BossBrute {
       this.moveDx=dx;this.moveDy=dy;
       if(Math.abs(dx)>2)this.facing=dx<0?-1:1;
       if(Math.abs(dy)>2)this.facingY=dy<0?-1:1;
-      this.isMoving=d>34&&this.rockWind<=0&&this.leapState==='ground';
+      this.isMoving=d>34&&this.rockWind<=0&&this.leapState==='ground'&&this.hitAnim<=0;
       if(this.isMoving){this.x+=dx/d*this.speed*dt;this.y+=dy/d*this.speed*dt;}
+      // Soco: o dano sai quando o punho estende, no fim da animacao, e so
+      // em quem esta no arco da frente. De costas nao ha animacao, entao
+      // ele espera o jogador sair de tras dele.
+      if(this.hitTimer>0) this.hitTimer-=ms;
+      if(this.hitAnim>0){
+        this.hitAnim-=ms;
+        if(!this.hitAcertou&&1-Math.max(0,this.hitAnim)/ORC_HIT_MS>=0.78){
+          this.hitAcertou=true;
+          const olhaCima=Math.abs(this.moveDy)>Math.abs(this.moveDx)*1.15&&(this.facingY||1)<0;
+          const face=olhaCima?-Math.PI/2:
+                     (Math.abs(this.moveDx)>Math.abs(this.moveDy)*1.15
+                        ? ((this.facing||1)<0?Math.PI:0) : Math.PI/2);
+          const alvos=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>p&&!p.dead);
+          for(const pl of alvos){
+            if(Math.hypot(pl.x-this.x,pl.y-this.y)>this.hitAlcance+pl.radius) continue;
+            // Colado no alvo nao existe 'frente': atan2 de um vetor quase
+            // nulo oscila e o arco rejeitaria quem ele esta pisando.
+            if(Math.hypot(pl.x-this.x,pl.y-this.y)>this.radius*0.7){
+              let da=Math.atan2(pl.y-this.y,pl.x-this.x)-face;
+              da=Math.atan2(Math.sin(da),Math.cos(da));
+              if(Math.abs(da)>1.1) continue;
+            }
+            pl.takeDmg(this.damage*0.6);
+          }
+          triggerScreenShake(7,180);
+          spawnParts(this.x+Math.cos(face)*32,this.y+Math.sin(face)*32,'#c8b070',11,60);
+        }
+      } else if(this.hitTimer<=0&&d<this.hitAlcance+20&&
+                this.rockWind<=0&&this.rockThrowAnim<=0&&this.leapState==='ground'&&this.impactTimer<=0){
+        const paraCima=Math.abs(dy)>Math.abs(dx)*1.15&&dy<0;
+        const podeGolpear=!paraCima||(window.OrcSprites&&window.OrcSprites.temGolpe('up'));
+        if(podeGolpear){ this.hitAnim=ORC_HIT_MS; this.hitAcertou=false; this.hitTimer=this.hitCd; }
+        else this.hitTimer=260;
+      }
 
       // O arremesso possui preparação visível: ergue, mira e só então lança.
       if(this.rockWind>0){
@@ -2597,7 +3230,7 @@ class BossBrute {
             });
           }
           this.rockThrowAnim=320;
-          spawnParts(this.x,this.y-26,'#8a7a5a',12,42);
+          spawnParts(this.x,this.y-26,'#5a5c6e',12,42);
         }
       }else{
         this.rockTimer-=ms;
@@ -2613,7 +3246,7 @@ class BossBrute {
       rk.x+=rk.vx*dt*60; rk.y+=rk.vy*dt*60; rk.life-=ms; rk.rot+=dt*7;
       const allP=[player,...(gameMode===2&&player2?[player2]:[])].filter(p=>p&&!p.dead);
       for(const pl of allP){
-        if(Math.hypot(pl.x-rk.x,pl.y-rk.y)<pl.radius+rk.r){ pl.takeDmg(this.damage*(rk.damageMult||0.8)); rk.life=0; spawnParts(rk.x,rk.y,'#8a7a5a',12,55); }
+        if(Math.hypot(pl.x-rk.x,pl.y-rk.y)<pl.radius+rk.r){ pl.takeDmg(this.damage*(rk.damageMult||0.8)); rk.life=0; spawnParts(rk.x,rk.y,'#5a5c6e',14,55); }
       }
     }
     this.rocks=this.rocks.filter(r=>r.life>0);
@@ -2668,7 +3301,55 @@ class BossBrute {
       for(let i=0;i<9;i++){const a=i*Math.PI*2/9;ctx.fillRect(this.x+Math.cos(a)*(25+p*60)-3,groundY-Math.sin(a)*(8+p*25)-3,6,6);}
       ctx.restore();
     }
-    if(this.flashTimer>0){
+    // ── Arte real do Orc, com o grid antigo de reserva ──
+    // O Brutamontes tem os DOIS ataques da pasta: Salto Esmagador e
+    // arremesso de pedra. O estado escolhe o conjunto de quadros.
+    let usouArte=false;
+    if(window.OrcSprites&&this.flashTimer<=0){
+      const NA=window.OrcSprites.N_ATK;
+      let estado='idle', q=0, dirArte='down', flipArte=false;
+      if(this.rockWind>0||this.rockThrowAnim>0){
+        // 650ms erguendo + 320ms arremessando: percorre os 9 quadros
+        const prog=this.rockWind>0 ? (1-this.rockWind/650)*0.6
+                                   : 0.6+(1-this.rockThrowAnim/320)*0.4;
+        estado='rock'; q=Math.min(NA-1,Math.floor(prog*NA));
+        dirArte=Math.abs(this.rockAim.x-this.x)>Math.abs(this.rockAim.y-this.y)?'side':
+                (this.rockAim.y<this.y?'up':'down');
+        flipArte=(dirArte==='side')&&this.rockAim.x>this.x;
+      }else if(this.leapState==='wind'||this.impactTimer>0){
+        // O jogo esconde o chefe enquanto ele voa (o estado 'air' sai do draw
+        // mais acima). Entao os 9 quadros do salto se dividem nas duas metades
+        // que aparecem de fato: a preparacao (0..4) e o baque depois de cair
+        // (5..8). Antes o trecho do impacto nunca era visto.
+        estado='atk';
+        if(this.leapState==='wind'){
+          const dur=this.leapWindMax||700;
+          q=Math.min(4,Math.floor((1-Math.max(0,this.leapWind)/dur)*5));
+        }else{
+          q=5+Math.min(3,Math.floor((1-this.impactTimer/650)*4));
+        }
+        dirArte=Math.abs(this.moveDx||0)>Math.abs(this.moveDy||0)?'side':
+                ((this.facingY||1)<0?'up':'down');
+        flipArte=(dirArte==='side')&&(this.facing||1)>0;
+      }else{
+        const vertical=Math.abs(this.moveDy||0)>Math.abs(this.moveDx||0)*1.15;
+        dirArte=vertical?((this.facingY||1)<0?'up':'down'):'side';
+        flipArte=(dirArte==='side')&&(this.facing||1)>0;
+        if(this.hitAnim>0&&window.OrcSprites.temGolpe(dirArte)){
+          estado='hit';
+          const p=1-Math.max(0,this.hitAnim)/ORC_HIT_MS;
+          q=Math.min(window.OrcSprites.N_HIT-1,Math.floor(p*window.OrcSprites.N_HIT));
+        }else{
+          estado=this.isMoving?'walk':'idle';
+          q=Math.floor(t/window.OrcSprites.WALK_MS);
+        }
+      }
+      usouArte=window.OrcSprites.desenhar(ctx,this.x,groundY,dirArte,estado,q,
+                                          this.bruteEscala,flipArte);
+    }
+    if(usouArte){
+      /* arte nova ja desenhada */
+    } else if(this.flashTimer>0){
       ctx.save(); ctx.globalAlpha=0.85;
       drawBossGrid(frame, Object.fromEntries(Object.keys(PAL_BOSS_BRUTE).map(k=>[k,'#ffffff'])), this.x, cy, pxs,flip);
       ctx.restore();
@@ -2685,14 +3366,30 @@ class BossBrute {
       ctx.save();
       const va=Math.atan2(rk.vy,rk.vx);
       const rr=rk.r||11;
-      ctx.globalAlpha=.28;ctx.fillStyle='#a8a59b';
+      // rastro no tom claro da pedra
+      ctx.globalAlpha=.28;ctx.fillStyle='#919aa3';
       for(let i=1;i<=5;i++)ctx.fillRect(rk.x-Math.cos(va)*i*(rr*.8)-rr*.3,rk.y-Math.sin(va)*i*(rr*.8)-rr*.22,rr*.6,rr*.44);
-      ctx.globalAlpha=1;ctx.translate(rk.x,rk.y);ctx.rotate(rk.rot);
-      ctx.fillStyle='#171815';ctx.fillRect(-rr,-rr*.82,rr*2,rr*1.64);
-      ctx.fillStyle='#4d4a43';ctx.fillRect(-rr*.82,-rr*.7,rr*1.64,rr*1.4);
-      ctx.fillStyle='#79776f';ctx.fillRect(-rr*.62,-rr*.54,rr*1.08,rr*.98);
-      ctx.fillStyle='#a8a59b';ctx.fillRect(-rr*.48,-rr*.45,rr*.58,rr*.46);
-      ctx.fillStyle='#312f2a';ctx.fillRect(rr*.22,rr*.18,rr*.42,rr*.3);
+      ctx.globalAlpha=1;ctx.translate(rk.x,rk.y);
+      const arte=window.OrcSprites&&window.OrcSprites.pedra();
+      if(arte){
+        // A pedra e' recortada do quadro em que o chefe a segura, entao o
+        // projetil e o sprite sao literalmente a mesma pedra. Os giros ja
+        // vem prontos na tira: girar aqui no canvas esfarelava o contorno
+        // nos angulos diagonais.
+        const NP=window.OrcSprites.N_PEDRA, LP=window.OrcSprites.PEDRA_LADO;
+        let q=Math.floor(rk.rot/(Math.PI*2/NP))%NP; if(q<0) q+=NP;
+        ctx.imageSmoothingEnabled=false;
+        const lado=Math.round(rr*3);
+        ctx.drawImage(arte,q*LP,0,LP,LP,-lado>>1,-lado>>1,lado,lado);
+      }else{
+        // reserva, enquanto a arte nao carregou
+        ctx.rotate(rk.rot);
+        ctx.fillStyle='#02030d';ctx.fillRect(-rr,-rr*.82,rr*2,rr*1.64);
+        ctx.fillStyle='#3d3a51';ctx.fillRect(-rr*.82,-rr*.7,rr*1.64,rr*1.4);
+        ctx.fillStyle='#525366';ctx.fillRect(-rr*.62,-rr*.54,rr*1.08,rr*.98);
+        ctx.fillStyle='#919aa3';ctx.fillRect(-rr*.48,-rr*.45,rr*.58,rr*.46);
+        ctx.fillStyle='#2e2b40';ctx.fillRect(rr*.22,rr*.18,rr*.42,rr*.3);
+      }
       ctx.restore();
     }
     for(const pb of this.leapPebbles){

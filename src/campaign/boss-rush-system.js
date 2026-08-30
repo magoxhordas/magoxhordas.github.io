@@ -11,7 +11,18 @@ let bossRushQueue=[];
 let bossRushCurrent=0;
 let bossRushSelected=[];
 
+const BOSS_RUSH_ART={
+  skeleton_king:{path:'assets/bosses/skelking/icon.png',color:'#aabbff'},
+  aracne:{path:'assets/bosses/aracne/icon.png',color:'#aa66dd'},
+  frost:{path:'assets/bosses/icegolem/icon.png',color:'#88ccee'},
+  sandworm:{path:'assets/bosses/sandworm/icon.png',color:'#ffd22b'},
+  balrog:{path:'assets/bosses/balrog/icon.png',color:'#cc4400'},
+  brute:{path:'assets/bosses/orc/icon.png',color:'#8fbf4a'},
+};
+
 function bossRushPixelIcon(b,size=46){
+  const art=BOSS_RUSH_ART[b.id];
+  if(art&&!b.petId)return codexArtIconHtml(art.path,size,'br-boss-art',art.color);
   if(b.petId)return gamePetIconHtml(b.petId,size);
   let data=null;
   if(b.id==='skeleton_king'&&typeof SKING_DOWN!=='undefined'&&typeof PAL_SKELETON_KING!=='undefined')data={spr:SKING_DOWN[0],pal:PAL_SKELETON_KING};
