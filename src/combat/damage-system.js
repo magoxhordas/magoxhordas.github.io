@@ -38,9 +38,15 @@
         (1-Math.min(difficulty.playerArmorCap,(player.dmgReduce||0)+getWeaponShieldReduction(player)+getCampProgressionDamageReduction(player)));
     }
 
-    function damagePlayer(player,amount){
-      if(player.inv||player.dead){
-        if(player.inv&&player._dashActive)notifyBlessingDashAvoid(player);
+    function damagePlayer(player,amount,continuous){
+      if(player.dead)return;
+      // Contact, trails and puddles use their own short cadence instead of
+      // granting the full invulnerability window that protects big attacks.
+      if(continuous){
+        if(player.inv||(player.chipT||0)>0)return;
+        player.chipT=300;
+      }else if(player.inv){
+        if(player._dashActive)notifyBlessingDashAvoid(player);
         return;
       }
       if(shouldBlessingDodge(player))return;
@@ -48,8 +54,10 @@
       if(shouldCampaignShopBlock(player))return;
       const reduced=calculatePlayerDamage(player,amount);
       player.hp-=reduced;
-      player.inv=true;
-      player.invT=600;
+      if(!continuous){
+        player.inv=true;
+        player.invT=600;
+      }
       weaponShieldCounter(player);
       notifyBlessingDamageTaken(player,reduced);
       notifyCampaignShopDamageTaken(player,reduced);

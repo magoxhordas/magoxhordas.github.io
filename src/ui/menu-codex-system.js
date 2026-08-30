@@ -1599,17 +1599,18 @@ function renderCollClasses(grid){
 // ── BOSSES ──
 function renderCollBosses(grid){
   const BOSS_DATA=[
-    {id:'skeleton_king',icon:'💀',name:'Rei Cadáver',      wave:5,  biome:'Castelo', color:'#ece4cc',hp:1100,dmg:43,desc:'Invoca esqueletos. Após o Giro Mortal, lança a espada em linha reta e ela retorna como bumerangue.', spr:()=>SKING_DOWN[0], pal:()=>PAL_SKELETON_KING},
-    {id:'aracne',       icon:'🕷️',name:'Aracne Ancestral', wave:10, biome:'Floresta',color:'#aa66dd',hp:2100,dmg:60,desc:'Se o primeiro Salto Predatório errar, salta novamente. A teia ampliada desacelera por 2,5s.', spr:()=>ARACNE_FRONT[0], pal:()=>PAL_ARACNE_ANCESTRAL},
-    {id:'frost',        icon:'❄️',name:'Gigante de Gelo',  wave:15, biome:'Neve',    color:'#88ccee',hp:3650,dmg:98,desc:'Escudo 2000/1000 e +18 HP/s. Erupção: 60% do dano + 1s de gelo. Fim da nevasca: 0,6s.', spr:()=>FROST_GIANT_FRONT[0], pal:()=>PAL_FROST_GIANT},
-    {id:'sandworm',     icon:'🪱',name:'Verme Devorador',  wave:20, biome:'Deserto', color:'#ffd22b',hp:5800,dmg:122,desc:'Sumidouro ampliado, chuva e cuspe ácido. Mergulho a cada 7s, causando 50% do dano base.', spr:()=>DEVOURER_ICON[0], pal:()=>PAL_DEVOURER},
-    {id:'balrog',       icon:'🔥',name:'Balrog',           wave:25, biome:'Vulcão',  color:'#cc4400',hp:3000,dmg:60,desc:'Chicotadas de fogo, saltos sísmicos e convoca rios de lava. Chefe final épico.', spr:()=>BALROG_BODY[0], pal:()=>PAL_BOSS_BALROG},
-    {id:'brute',        icon:'🗿',name:'Brutamontes da Guerra', wave:30, biome:'Todos', color:'#4a7a28',hp:3500,dmg:65,desc:'Arremessa pedras giratórias, Salto Esmagador em área marcada e entra em FÚRIA abaixo de 40% de vida (+55% velocidade).', spr:()=>BRUTE_BODY[0], pal:()=>PAL_BOSS_BRUTE},
+    {id:'skeleton_king',icon:'💀',name:'Rei Cadáver',      wave:5,  biome:'Castelo', color:'#ece4cc',hp:1100,dmg:43,desc:'Invoca esqueletos. Após o Giro Mortal, lança a espada em linha reta e ela retorna como bumerangue.', art:'assets/bosses/skelking/icon.png'},
+    {id:'aracne',       icon:'🕷️',name:'Aracne Ancestral', wave:10, biome:'Floresta',color:'#aa66dd',hp:2100,dmg:60,desc:'Mordida de perto, cuspe de ovos e teia em cone. Se o primeiro Salto Predatório errar, salta novamente. A teia ampliada desacelera por 2,5s.', art:'assets/bosses/aracne/icon.png'},
+    {id:'frost',        icon:'❄️',name:'Gigante de Gelo',  wave:15, biome:'Neve',    color:'#88ccee',hp:3650,dmg:98,desc:'Escudo 2000/1000 e +18 HP/s. Erupção: 60% do dano + 1s de gelo. Soco congela por 0,6s. Fim da nevasca: 0,6s.', art:'assets/bosses/icegolem/icon.png'},
+    {id:'sandworm',     icon:'🪱',name:'Verme Devorador',  wave:20, biome:'Deserto', color:'#ffd22b',hp:5800,dmg:122,desc:'Mordida de perto, sumidouro ampliado, chuva e cuspe ácido. Mergulho a cada 7s, causando 50% do dano base.', art:'assets/bosses/sandworm/icon.png'},
+    {id:'balrog',       icon:'🔥',name:'Balrog',           wave:25, biome:'Vulcão',  color:'#cc4400',hp:3000,dmg:60,desc:'Chicote Infernal em meia tela, chicotada curta de perto e chuva de meteoros. Abaixo de 30% entra em FÚRIA: dobra a velocidade e deixa rastro de fogo.', art:'assets/bosses/balrog/icon.png'},
+    {id:'brute',        icon:'🗿',name:'Brutamontes da Guerra', wave:30, biome:'Todos', color:'#4a7a28',hp:3500,dmg:65,desc:'Arremessa pedras giratórias, Salto Esmagador em área marcada, soco de perto e entra em FÚRIA abaixo de 40% de vida (+55% velocidade).', art:'assets/bosses/orc/icon.png'},
   ];
   const maxWave=SaveSystem.readNumber('mvh_max_wave',0);
   BOSS_DATA.forEach(b=>{
     const unlocked=maxWave>=b.wave;
-    const bIcon=b.spr?{spr:b.spr(),pal:b.pal()}:collGameIcon('skull');
+    const bIcon=b.art?{artPath:b.art,color:b.color}
+                     :b.spr?{spr:b.spr(),pal:b.pal()}:collGameIcon('skull');
     grid.appendChild(collCard(bIcon,b.name,'Onda '+b.wave,!unlocked,unlocked?()=>{
       const det=document.getElementById('coll-detail');det.className='coll-detail visible';
       det.innerHTML=`
