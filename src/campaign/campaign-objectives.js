@@ -42,6 +42,28 @@
   const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
   const distance=(a,b)=>Math.hypot((a?.x||0)-(b?.x||0),(a?.y||0)-(b?.y||0));
   const alive=list=>(list||[]).filter(item=>item&&!item.dead);
+  const ALTAR_KINDS=Object.freeze(['bone_altar','dark_altar','demon_altar']);
+
+  /* As artes importadas retornavam antes da antiga barra generica, entao os
+     altares pareciam indestrutiveis. Esta rotina fica separada do desenho do
+     sprite para poder ser chamada tanto antes dos retornos das artes quanto
+     no caminho procedural. Altares mostram tambem o valor exato: cada um tem
+     sua propria vida, e o jogador enxerga qual esta mais perto de cair. */
+  function drawTargetHealth(ctx,target,x,barY){
+    if(!target?.damageable||!(target.maxHp>1))return;
+    const pct=clamp(target.hp/target.maxHp,0,1),altar=ALTAR_KINDS.includes(target.kind);
+    const width=Math.max(altar?50:34,target.radius*(altar?2.5:2));
+    if(altar){
+      const atual=Math.max(0,Math.ceil(target.hp)),maximo=Math.max(1,Math.ceil(target.maxHp));
+      ctx.fillStyle='rgba(8,5,11,.86)';ctx.fillRect(x-width/2-2,barY-13,width+4,21);
+      ctx.font='bold 8px monospace';ctx.textAlign='center';ctx.textBaseline='top';
+      ctx.fillStyle='#160d19';ctx.fillText(`${atual}/${maximo}`,x+1,barY-11);
+      ctx.fillStyle='#f4e8ff';ctx.fillText(`${atual}/${maximo}`,x,barY-12);
+    }
+    ctx.fillStyle='#120a0b';ctx.fillRect(x-width/2-1,barY-1,width+2,7);
+    ctx.fillStyle='#5a1417';ctx.fillRect(x-width/2,barY,width,5);
+    ctx.fillStyle=pct>.5?'#73c65f':pct>.25?'#dbb64a':'#e04b4b';ctx.fillRect(x-width/2,barY,width*pct,5);
+  }
   const OBJECTIVE_WAVES=Object.freeze({
     2:Object.freeze({id:'bone_altars',title:'Altares de Ossos',required:true}),
     3:Object.freeze({id:'dark_choice',title:'O Preço da Escuridão',required:true}),
@@ -207,11 +229,11 @@
       }else if(definition.id==='brute'){
         // O Brutamontes de verdade, e nao um alvo de objetivo: e' a mesma
         // classe da onda 30, com a vida reduzida ao nivel do mini-chefe que
-        // ele substituiu (620 aqui, contra 1800+onda*190 la'). Assim ele
+        // ele substituiu (850 aqui, contra 1800+onda*190 la'). Assim ele
         // chega com os golpes proprios — Salto Esmagador, pedra e furia —
         // e todo o maquinario de chefe do jogo (colisao, dano, desenho,
         // musica) ja' cuida dele sem precisar de nada novo.
-        const vida=Math.round(620*hpScale);
+        const vida=Math.round(850*hpScale);
         current.data.bruto=deps.spawnMiniboss?.(vida,14+Number(deps.getWave()||4)*1.6)||null;
         current.data.brutoVida=vida;
         // Se a classe nao existir, o objetivo se completa em vez de travar a onda.
@@ -694,12 +716,28 @@
       if(target.flashTimer>0){ctx.shadowBlur=18;ctx.shadowColor='#fff';}
       ctx.globalAlpha=.30;ctx.fillStyle='#000';ctx.beginPath();ctx.ellipse(x,y+15,target.radius*1.05,target.radius*.34,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
       if(target.kind==='bone_altar'){
-        if(desenharObjeto(ctx,'altar_ossos',x,y+14,50)){
-          // a chama da arte e' fixa; o brilho pulsante fica por conta do jogo
-          const g=ctx.createRadialGradient(x,y-14,1,x,y-14,22+pulse*6);
+        const altarBob=Math.sin(time*.0042+target.phase)*1.5;
+        if(desenharObjeto(ctx,'altar_ossos',x,y+14+altarBob,50)){
+          // A arte guarda a silhueta; a chama viva e as almas ficam por cima.
+          const g=ctx.createRadialGradient(x,y-14+altarBob,1,x,y-14+altarBob,22+pulse*6);
           g.addColorStop(0,`rgba(206,142,232,${.22+pulse*.16})`);
           g.addColorStop(1,'rgba(60,10,80,0)');
           ctx.fillStyle=g;ctx.fillRect(x-30,y-40,60,44);
+          const chamaH=12+pulse*6;
+          ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=.38+pulse*.22;
+          ctx.fillStyle='#b85ee8';ctx.beginPath();ctx.moveTo(x-8,y-9+altarBob);
+          ctx.quadraticCurveTo(x-12,y-20-chamaH*.35+altarBob,x-2,y-18-chamaH+altarBob);
+          ctx.quadraticCurveTo(x+2,y-10-chamaH*.5+altarBob,x+8,y-9+altarBob);ctx.closePath();ctx.fill();
+          ctx.fillStyle='#efd1ff';ctx.beginPath();ctx.moveTo(x-3,y-9+altarBob);
+          ctx.quadraticCurveTo(x-4,y-17-chamaH*.3+altarBob,x+1,y-17-chamaH*.62+altarBob);
+          ctx.quadraticCurveTo(x+5,y-12-chamaH*.2+altarBob,x+3,y-9+altarBob);ctx.closePath();ctx.fill();
+          ctx.restore();
+          for(let i=0;i<4;i++){
+            const ciclo=(time*.035+i*17+target.phase*13)%46,fa=(1-ciclo/46)*(.35+pulse*.25);
+            const sx=x-12+i*8+Math.sin(time*.003+i+target.phase)*3,sy=y-12-ciclo*.72;
+            ctx.globalAlpha=fa;ctx.fillStyle=i%2?'#f1c9ff':'#a855d6';ctx.fillRect(Math.round(sx),Math.round(sy),2,2);
+          }
+          ctx.globalAlpha=1;drawTargetHealth(ctx,target,x,y-55);
           ctx.restore();return;
         }
         // base em dois degraus, com o topo mais claro para dar volume
@@ -733,11 +771,20 @@
       }else if(target.kind==='dark_altar'||target.kind==='demon_altar'){
         // So' o Sombrio tem arte: o Demoniaco (onda 23, vulcao) continua
         // desenhado a mao, porque nao veio objeto infernal no pacote.
-        if(target.kind==='dark_altar'&&desenharObjeto(ctx,'obelisco',x,y+16,40)){
-          const g=ctx.createRadialGradient(x,y-16,1,x,y-16,26+pulse*7);
+        const altarBob=Math.sin(time*.0036+target.phase)*1.25;
+        if(target.kind==='dark_altar'&&desenharObjeto(ctx,'obelisco',x,y+16+altarBob,40)){
+          const g=ctx.createRadialGradient(x,y-16+altarBob,1,x,y-16+altarBob,26+pulse*7);
           g.addColorStop(0,`rgba(190,120,235,${.26+pulse*.18})`);
           g.addColorStop(1,'rgba(40,10,60,0)');
           ctx.fillStyle=g;ctx.fillRect(x-34,y-46,68,54);
+          ctx.globalAlpha=.30+pulse*.30;ctx.strokeStyle='#d8a5ff';ctx.lineWidth=1.5;
+          ctx.beginPath();ctx.ellipse(x,y+9,15+pulse*6,4+pulse*2,0,0,Math.PI*2);ctx.stroke();
+          for(let i=0;i<4;i++){
+            const ciclo=(time*.028+i*21+target.phase*9)%54,fa=(1-ciclo/54)*(.45+pulse*.2);
+            const sx=x-13+i*9+Math.sin(time*.0025+i)*2,sy=y+4-ciclo*.82;
+            ctx.globalAlpha=fa;ctx.fillStyle=i%2?'#e9c9ff':'#8e46c1';ctx.fillRect(Math.round(sx),Math.round(sy),2,2);
+          }
+          ctx.globalAlpha=1;drawTargetHealth(ctx,target,x,y-59);
           ctx.restore();return;
         }
         const inf=target.kind==='demon_altar';
@@ -913,7 +960,7 @@
       }else if(target.kind==='infernal_fissure'){
         const glow=ctx.createRadialGradient(x,y,0,x,y,38);glow.addColorStop(0,`rgba(255,70,20,${.45+pulse*.25})`);glow.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=glow;ctx.fillRect(x-40,y-40,80,80);ctx.strokeStyle='#ff5a20';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(x-22,y-12);ctx.lineTo(x-7,y-2);ctx.lineTo(x-15,y+14);ctx.lineTo(x+5,y+4);ctx.lineTo(x+20,y+17);ctx.stroke();ctx.strokeStyle='#ffd15c';ctx.lineWidth=2;ctx.stroke();
       }
-      if(target.damageable&&target.maxHp>1){const pct=clamp(target.hp/target.maxHp,0,1),width=Math.max(34,target.radius*2);ctx.fillStyle='#120a0b';ctx.fillRect(x-width/2-1,y-target.radius-16,width+2,7);ctx.fillStyle='#5a1417';ctx.fillRect(x-width/2,y-target.radius-15,width,5);ctx.fillStyle=pct>.5?'#73c65f':pct>.25?'#dbb64a':'#e04b4b';ctx.fillRect(x-width/2,y-target.radius-15,width*pct,5);}
+      drawTargetHealth(ctx,target,x,y-target.radius-15);
       ctx.restore();
     }
 
