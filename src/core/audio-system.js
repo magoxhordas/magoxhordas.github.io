@@ -82,8 +82,13 @@ const Audio = (function(){
     if(!ctx||dur<=0) return null;
     const o = ctx.createOscillator();
     const g = ctx.createGain();
-    o.type = type; o.frequency.value = freq;
-    const safeVol = Math.max(0, Math.min(1, vol));
+    // A frequencia ganha a MESMA guarda que o volume ja' tinha logo abaixo.
+    // Sem ela, um freq nao-finito derruba o quadro inteiro com
+    // "The provided float value is non-finite" — visto uma vez numa corrida
+    // longa, na virada de bioma.
+    const safeFreq = Number.isFinite(freq) ? Math.max(1, Math.min(20000, freq)) : 440;
+    o.type = type; o.frequency.value = safeFreq;
+    const safeVol = Number.isFinite(vol) ? Math.max(0, Math.min(1, vol)) : 0;
     g.gain.setValueAtTime(0, t);
     g.gain.linearRampToValueAtTime(safeVol, t+Math.max(0.001,atk));
     g.gain.setValueAtTime(safeVol, t+Math.max(atk+0.001, dur-rel));
@@ -124,6 +129,7 @@ const Audio = (function(){
 
   function stopMusic(fade=1.0){
     if(!ctx) return;
+    if(!Number.isFinite(Number(fade))) fade=1.0;   // idem: nao derruba por argumento ruim
     _killAll();
     // Fade out musicGain
     const now=ctx.currentTime;
@@ -1238,9 +1244,12 @@ const Audio = (function(){
     return true;
   }
 
-  function setMusicVol(v){ musicVol=v; if(musicGain){ musicGain.gain.cancelScheduledValues(ctx.currentTime); musicGain.gain.setValueAtTime(v,ctx.currentTime); } }
-  function setSfxVol(v){ sfxVol=v; if(sfxGain) sfxGain.gain.value=v; }
-  function setAttackVol(v){ attackVol=v; if(attackGain) attackGain.gain.value=attackEnabled?v:0; }
+  // Estes tres recebem valor vindo das configuracoes, que vem do disco.
+  // Um numero invalido aqui nao deve derrubar o audio: vira 0.
+  function volSeguro(v){ return Number.isFinite(Number(v)) ? Math.max(0,Math.min(1,Number(v))) : 0; }
+  function setMusicVol(v){ musicVol=volSeguro(v); if(musicGain){ musicGain.gain.cancelScheduledValues(ctx.currentTime); musicGain.gain.setValueAtTime(musicVol,ctx.currentTime); } }
+  function setSfxVol(v){ sfxVol=volSeguro(v); if(sfxGain) sfxGain.gain.value=sfxVol; }
+  function setAttackVol(v){ attackVol=volSeguro(v); if(attackGain) attackGain.gain.value=attackEnabled?attackVol:0; }
   function setAttackEnabled(v){ attackEnabled=!!v; if(attackGain) attackGain.gain.value=attackEnabled?attackVol:0; }
   function toggle(){ enabled=!enabled; if(!enabled) stopMusic(0.2); return enabled; }
 
