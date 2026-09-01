@@ -12,6 +12,7 @@
     style.id=STYLE_ID;
     style.textContent=`
       #${ROOT_ID}{position:fixed;inset:0;z-index:85;pointer-events:none;font-family:"Courier New",monospace;color:#f7edcf}
+      #${ROOT_ID}.suspended{display:none!important}
       /* Canto superior DIREITO, alinhado com a borda direita do #ui-top e logo
          abaixo dele. Antes ficava centralizado no topo, por cima da barra de
          vida/onda/tempo. Como virou coluna e nao faixa, e' mais estreito. */
@@ -60,6 +61,7 @@
     let prompt=null,promptKey=null,promptText=null,actionButton=null,choiceLayer=null;
     let actionStart=options.onActionStart||(()=>{}),actionEnd=options.onActionEnd||(()=>{});
     let choiceToken=0;
+    let suspended=false;
 
     function ensure(){
       if(!doc||!doc.body)return false;
@@ -79,6 +81,8 @@
           <div id="campaign-choice-card"><div id="campaign-choice-kicker">DECISÃO COMPARTILHADA</div><h2 id="campaign-choice-title"></h2><p id="campaign-choice-body"></p><div id="campaign-choice-options"></div></div>
         </div>`;
       doc.body.appendChild(root);
+      root.classList.toggle('suspended',suspended);
+      root.setAttribute('aria-hidden',suspended?'true':'false');
       panel=root.querySelector('#campaign-objective-panel');kicker=root.querySelector('#campaign-objective-kicker');
       title=root.querySelector('#campaign-objective-title');detail=root.querySelector('#campaign-objective-detail');
       track=root.querySelector('#campaign-objective-track');fill=root.querySelector('#campaign-objective-fill');
@@ -95,6 +99,17 @@
     }
 
     function setActionHandlers(start,end){actionStart=start||(()=>{});actionEnd=end||(()=>{});}
+
+    /* A pausa e' uma tela de navegacao, nao parte da arena. O estado do HUD
+       continua sendo atualizado por baixo para voltar correto ao retomar,
+       mas nenhum painel, prompt ou botao da missao pode atravessar a pausa. */
+    function setSuspended(value){
+      suspended=!!value;
+      if(!ensure())return;
+      root.classList.toggle('suspended',suspended);
+      root.setAttribute('aria-hidden',suspended?'true':'false');
+      if(suspended)actionButton.classList.remove('pressed');
+    }
 
     function setHud(view){
       if(!ensure())return;
@@ -148,9 +163,9 @@
       choiceToken++;choiceLayer.classList.remove('visible');choiceLayer.setAttribute('aria-hidden','true');
     }
 
-    function reset(){if(!ensure())return;setHud(null);setAction(null);hideChoice();}
+    function reset(){if(!ensure())return;setHud(null);setAction(null);hideChoice();setSuspended(false);}
 
-    return Object.freeze({setHud,setAction,showChoice,hideChoice,reset,setActionHandlers});
+    return Object.freeze({setHud,setAction,showChoice,hideChoice,reset,setActionHandlers,setSuspended});
   }
 
   global.CampaignObjectiveUI=Object.freeze({create});
