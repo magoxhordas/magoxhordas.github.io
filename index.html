@@ -4495,6 +4495,73 @@ body.campaign-hud-active .wslot .wname { display:none; }
 }
 
 /* ══════════════════════════════════════════════════════════════
+   CELULAR: a HUD nao pode roubar a area de jogo
+   As regras moveis existiam desde antes, mas usavam seletores sem a
+   classe body.campaign-hud-active e perdiam por especificidade. Aqui
+   elas valem de fato.
+   ══════════════════════════════════════════════════════════════ */
+/* #hud-bottom NAO pode encolher: ele tem transform, o que o torna o bloco
+   de referencia dos filhos position:fixed. Com height:auto o painel de
+   recursos do Necromante, ancorado em bottom:104px, ia parar 113px ACIMA
+   da tela — some por completo no celular deitado. */
+
+/* Em pe': ha' rodape sobrando, entao o painel continua visivel — mas
+   centralizado ele batia no botao DASH (painel x 106..270, Dash x
+   217..365). Ancora na esquerda, longe dos dois botoes. */
+@media (max-width:720px) and (orientation:portrait) {
+  body.campaign-hud-active #weapon-slots-wrap {
+    left:max(6px,var(--safe-left,0px));
+    right:auto;
+    transform:scale(.58);
+    transform-origin:bottom left;
+  }
+}
+
+/* Deitado: a altura nao da' para o painel, que acabava sobre o campo de
+   jogo. Fica escondido, como o bloco de 1023px ja mandava antes de perder
+   por especificidade. */
+@media (orientation:landscape) and (max-height:540px) and (max-width:1023px) {
+  body.campaign-hud-active #weapon-slots-wrap { display:none!important; }
+}
+
+/* Celular deitado: o painel do Necromante vai para a margem vazia da
+   esquerda, em coluna, em vez de cobrir o topo do campo. */
+@media (orientation:landscape) and (max-height:540px) and (max-width:1023px) {
+  body.campaign-hud-active #necromancer-resource-hud {
+    left:0;
+    transform:none;
+    bottom:auto;
+    top:26px;
+    max-width:158px;
+    flex-direction:column;
+    align-items:flex-start;
+    gap:3px;
+    padding:6px 8px;
+    font-size:10px;
+    letter-spacing:.4px;
+  }
+  body.campaign-hud-active #necromancer-resource-hud .necro-resource b { font-size:12px; }
+  /* A linha de ajuda e' longa demais para a coluna estreita. */
+  body.campaign-hud-active #necromancer-resource-hud .necro-resource-guide { display:none; }
+}
+
+/* Celular deitado: a barra de topo precisa ser fina para nao comer o jogo. */
+@media (orientation:landscape) and (max-height:540px) and (max-width:1023px) {
+  body.campaign-hud-active #ui-top {
+    top:max(4px,var(--safe-top));
+    width:min(86vw,660px);
+    min-height:0;
+    padding:3px 12px;
+    border-radius:4px;
+  }
+  body.campaign-hud-active #ui-top .stat-box,
+  body.campaign-hud-active #ui-top .campaign-health-stat { padding:1px 6px; }
+  body.campaign-hud-active #ui-top .stat-label { font-size:8px; }
+  body.campaign-hud-active #ui-top .stat-value { font-size:13px; }
+  body.campaign-hud-active .campaign-health-track { height:7px; padding:1px; }
+}
+
+/* ══════════════════════════════════════════════════════════════
    ABERTURAS DOS CAPÍTULOS DA CAMPANHA
    A tela ocupa o viewport inteiro e suspende toda a HUD por 6s.
    ══════════════════════════════════════════════════════════════ */
@@ -10198,6 +10265,7 @@ function resetBossRushState(clearSelection=false){
   bossRushMode=false;
   bossRushQueue=[];
   bossRushCurrent=0;
+  bossRushPendingAt=0;   // nao deixa a entrada de um chefe pendente atravessar para a proxima partida
   if(clearSelection) bossRushSelected=[];
   document.body.classList.remove('boss-rush-no-coins');
   const hud=document.getElementById('br-hud');
@@ -15512,6 +15580,9 @@ class Player {
       this.slowTimer-=dt*1000;
       if(this.slowTimer<=0) this.slowed=false;
     }
+    // Veneno do Escorpiao. Corre no relogio do JOGO, junto da lentidao: com
+    // prazo em Date.now() ele expirava sozinho com o jogo pausado.
+    if(this.venenoT>0) this.venenoT-=dt*1000;
     const objectiveMove=typeof campaignObjectives!=='undefined'?campaignObjectives.movementMultiplier(this):1;
     const moveMult=(this.webbed?0.32:(this.slowed?0.55:1))*CampProgressionSystem.movementMultiplier(this)*objectiveMove;
     this.x+=dx*this.speed*moveMult*dt; this.y+=dy*this.speed*moveMult*dt;
@@ -15809,6 +15880,49 @@ function clampCampaignEntity(entity,padding=0){
   <script>
 // ENEMY BASE + TYPES
 // ═══════════════════════════════════════════════════════
+/* Atributos dos inimigos por onda. Isto vivia DENTRO do construtor de
+   Enemy, e por isso o Codex nao tinha como ler: ele guardava uma copia a
+   mao, que envelheceu — 15 dos 16 inimigos anunciavam vida e dano que o
+   jogo nao entregava (o Ent prometia 98 de vida na onda 1 e chegava com
+   200). Agora e' uma fonte so'.
+   Os valores aqui sao os CRUS, antes dos multiplicadores de dificuldade e
+   do reforco de onda tardia, que o construtor aplica em seguida. */
+function statsInimigo(wave,type){
+  return {
+    // ── Bioma 1: Castelo ──
+    runner_goblin:    {hp:18+wave*5,  spd:90+wave*5,  dmg:5+wave*0.8,  r:11, xp:3,  sc:0.9},
+    shield_orc:       {hp:100+wave*16,spd:32+wave*2,  dmg:16+wave*1.5, r:18, xp:11, sc:1.2, shield:true},
+    archer_skeleton:  {hp:22+wave*4,  spd:38+wave*2,  dmg:10+wave*1.5, r:12, xp:5,  sc:0.95, archer:true},
+    // ── Bioma 2: Floresta ──
+    spitting_spider:  {hp:28+wave*5,  spd:50+wave*3,  dmg:0,           r:12, xp:4,  sc:0.9,  spitter:true},
+    corrupt_ent:      {hp:180+wave*20,spd:20+wave,    dmg:20+wave*2.2, r:22, xp:17, sc:1.4,  ent:true},
+    hungry_wolf:      {hp:40+wave*7,  spd:35,         dmg:15+wave*1.5, r:13, xp:6,  sc:1.0,  wolf:true},
+    shroom:           {hp:50+wave*8,  spd:26+wave,    dmg:12+wave*1.2, r:13, xp:6,  sc:1.05, spitter:true, shroom:true},
+    // ── Bioma 3: Neve ──
+    ice_zombie:       {hp:65+wave*9,  spd:35+wave*2,  dmg:10+wave*1.5, r:14, xp:7,  sc:1.0,  iceTouch:true},
+    crystal_golem:    {hp:150+wave*19,spd:28+wave,    dmg:20+wave*2.2, r:20, xp:20, sc:1.5,  crystalSplit:true},
+    wind_specter:     {hp:45+wave*7,  spd:55+wave*3,  dmg:8+wave,      r:13, xp:8,  sc:0.95, specter:true},
+    // ── Bioma 4: Deserto ──
+    sand_worm_small:  {hp:50+wave*8,  spd:0,          dmg:16+wave*2.5, r:14, xp:7,  sc:1.1,  burrower:true},
+    cultist:          {hp:35+wave*6,  spd:40+wave*2,  dmg:14+wave*1.5, r:12, xp:6,  sc:0.95, cultist:true},
+    obsidian_scorpion:{hp:60+wave*10, spd:62+wave*4,  dmg:11+wave*1.5, r:14, xp:8,  sc:1.1,  poison:true},
+    // ── Bioma 5: Vulcão ──
+    fire_imp:         {hp:20+wave*3,  spd:75+wave*5,  dmg:14+wave*1.6, r:11, xp:6,  sc:0.9,  kamikaze:true},
+    demon_knight:     {hp:110+wave*15,spd:50+wave*2.5,dmg:20+wave*2,   r:17, xp:15, sc:1.3,  immune:true},
+    lava_bat:         {hp:28+wave*4,  spd:60+wave*3,  dmg:10+wave*1.5, r:11, xp:5,  sc:0.9,  flyer:true},
+    // ── Legacy (fallback) ──
+    goblin:    {hp:28+wave*7,  spd:50+wave*3,  dmg:7+wave*0.8, r:13, xp:3, sc:1.0},
+    orc:       {hp:75+wave*16, spd:36+wave*2,  dmg:15+wave*1.8,r:17, xp:8, sc:1.2},
+    skeleton:  {hp:22+wave*4,  spd:55+wave*4,  dmg:5+wave*0.8, r:12, xp:4, sc:0.95},
+    troll:     {hp:150+wave*22,spd:26+wave*1.5,dmg:22+wave*2.2,r:22, xp:18,sc:1.5},
+    spider:    {hp:18+wave*3,  spd:70+wave*5,  dmg:4+wave*0.7, r:11, xp:2, sc:0.85},
+    snow_tiger:{hp:50+wave*10, spd:65+wave*4,  dmg:12+wave*1.8,r:15, xp:6, sc:1.1},
+    snow_zombie:{hp:65+wave*9, spd:32+wave*2,  dmg:10+wave*1.5,r:14, xp:7, sc:1.0},
+    ice_golem: {hp:180+wave*24,spd:20+wave,    dmg:24+wave*2.2,r:24, xp:22,sc:1.6},
+    }[type]||{hp:30,spd:50,dmg:8,r:13,xp:3,sc:1.0};
+}
+window.statsInimigo=statsInimigo;
+
 class Enemy {
   constructor(x,y,wave,type){
     this.x=x; this.y=y;
@@ -15816,41 +15930,11 @@ class Enemy {
     this.dead=false;
     this.frameIdx=0; this.frameTick=0;
     this.dir='down';
+    this.golpeAnim=0;   // so' para a animacao; nao mexe em dano nem cadencia
 
     // Stats per type
     const d=DIFF[difficulty];
-    const cfg={
-      // ── Bioma 1: Castelo ──
-      runner_goblin:    {hp:18+wave*5,  spd:90+wave*5,  dmg:5+wave*0.8,  r:11, xp:3,  sc:0.9},
-      shield_orc:       {hp:100+wave*16,spd:32+wave*2,  dmg:16+wave*1.5, r:18, xp:11, sc:1.2, shield:true},
-      archer_skeleton:  {hp:22+wave*4,  spd:38+wave*2,  dmg:10+wave*1.5, r:12, xp:5,  sc:0.95, archer:true},
-      // ── Bioma 2: Floresta ──
-      spitting_spider:  {hp:28+wave*5,  spd:50+wave*3,  dmg:0,           r:12, xp:4,  sc:0.9,  spitter:true},
-      corrupt_ent:      {hp:180+wave*20,spd:20+wave,    dmg:20+wave*2.2, r:22, xp:17, sc:1.4,  ent:true},
-      hungry_wolf:      {hp:40+wave*7,  spd:35,         dmg:15+wave*1.5, r:13, xp:6,  sc:1.0,  wolf:true},
-      shroom:           {hp:50+wave*8,  spd:26+wave,    dmg:12+wave*1.2, r:13, xp:6,  sc:1.05, spitter:true, shroom:true},
-      // ── Bioma 3: Neve ──
-      ice_zombie:       {hp:65+wave*9,  spd:35+wave*2,  dmg:10+wave*1.5, r:14, xp:7,  sc:1.0,  iceTouch:true},
-      crystal_golem:    {hp:150+wave*19,spd:28+wave,    dmg:20+wave*2.2, r:20, xp:20, sc:1.5,  crystalSplit:true},
-      wind_specter:     {hp:45+wave*7,  spd:55+wave*3,  dmg:8+wave,      r:13, xp:8,  sc:0.95, specter:true},
-      // ── Bioma 4: Deserto ──
-      sand_worm_small:  {hp:50+wave*8,  spd:0,          dmg:16+wave*2.5, r:14, xp:7,  sc:1.1,  burrower:true},
-      cultist:          {hp:35+wave*6,  spd:40+wave*2,  dmg:14+wave*1.5, r:12, xp:6,  sc:0.95, cultist:true},
-      obsidian_scorpion:{hp:60+wave*10, spd:62+wave*4,  dmg:11+wave*1.5, r:14, xp:8,  sc:1.1,  poison:true},
-      // ── Bioma 5: Vulcão ──
-      fire_imp:         {hp:20+wave*3,  spd:75+wave*5,  dmg:14+wave*1.6, r:11, xp:6,  sc:0.9,  kamikaze:true},
-      demon_knight:     {hp:110+wave*15,spd:50+wave*2.5,dmg:20+wave*2,   r:17, xp:15, sc:1.3,  immune:true},
-      lava_bat:         {hp:28+wave*4,  spd:60+wave*3,  dmg:10+wave*1.5, r:11, xp:5,  sc:0.9,  flyer:true},
-      // ── Legacy (fallback) ──
-      goblin:    {hp:28+wave*7,  spd:50+wave*3,  dmg:7+wave*0.8, r:13, xp:3, sc:1.0},
-      orc:       {hp:75+wave*16, spd:36+wave*2,  dmg:15+wave*1.8,r:17, xp:8, sc:1.2},
-      skeleton:  {hp:22+wave*4,  spd:55+wave*4,  dmg:5+wave*0.8, r:12, xp:4, sc:0.95},
-      troll:     {hp:150+wave*22,spd:26+wave*1.5,dmg:22+wave*2.2,r:22, xp:18,sc:1.5},
-      spider:    {hp:18+wave*3,  spd:70+wave*5,  dmg:4+wave*0.7, r:11, xp:2, sc:0.85},
-      snow_tiger:{hp:50+wave*10, spd:65+wave*4,  dmg:12+wave*1.8,r:15, xp:6, sc:1.1},
-      snow_zombie:{hp:65+wave*9, spd:32+wave*2,  dmg:10+wave*1.5,r:14, xp:7, sc:1.0},
-      ice_golem: {hp:180+wave*24,spd:20+wave,    dmg:24+wave*2.2,r:24, xp:22,sc:1.6},
-    }[type]||{hp:30,spd:50,dmg:8,r:13,xp:3,sc:1.0};
+    const cfg=statsInimigo(wave,type);
 
     // Fewer late-wave enemies, but each one scales enough to remain a threat.
     const campaignLate=(typeof bossRushMode!=='undefined'&&bossRushMode)?0:Math.max(0,wave-5);
@@ -15880,6 +15964,23 @@ class Enemy {
 
   update(dt,px,py){
     NecromancerSystem.updateTargetEffects(this,dt);
+    // Contador da animacao de golpe. Fica no TOPO porque nem todo inimigo
+    // chega no trecho de perseguicao — o arqueiro recua em vez de avancar,
+    // e com o contador la embaixo ele travava em 520 e nunca soltava a
+    // flecha.
+    if(this.golpeAnim>0) this.golpeAnim-=dt*1000;
+    // A direcao tambem: ela era definida so' no fim, depois de 8 ramos que
+    // saem com return antes de chegar la. O arqueiro ficava travado em
+    // 'down' e atirava de costas para o alvo. Aponta para o jogador, que e'
+    // para onde ele encara mesmo quando recua.
+    // Congela durante o golpe: com o jogador circulando em volta, a mira
+    // trocava 13 vezes no meio de uma animacao de 460ms e o sprite ficava
+    // espelhando e piscando.
+    if(this.golpeAnim<=0){
+      const vx=px-this.x, vy=py-this.y;
+      if(Math.abs(vx)>Math.abs(vy)) this.dir=vx>0?'right':'left';
+      else if(Math.abs(vy)>1) this.dir=vy>0?'down':'up';
+    }
     // Specter phase (invulnerable)
     if(this.isSpecter){
       this.phaseTimer-=dt*1000;
@@ -15895,6 +15996,9 @@ class Enemy {
       if(this.burrowState==='surface'){
         if(this.burrowTimer<=0){
           this.burrowState='burrowing'; this.burrowTimer=800;
+          // afundar e emergir tem desenhos proprios; esta bandeira diz qual
+          this.emergindo=false;
+          this.golpeAnim=window.InimigosNormais?window.InimigosNormais.duracaoGolpe('sand_worm_small'):800;
           spawnParts(this.x,this.y,'#c8a860',6,30);
         }
       } else if(this.burrowState==='burrowing'){
@@ -15904,6 +16008,8 @@ class Enemy {
           if(allPl.length){ const tpl=allPl[Math.floor(Math.random()*allPl.length)]; this.targetPx=tpl.x; this.targetPy=Math.max(210,Math.min(H-20,tpl.y)); }
           this.x=this.targetPx; this.y=this.targetPy;
           this.burrowState='emerging'; this.burrowTimer=600;
+          this.emergindo=true;
+          this.golpeAnim=window.InimigosNormais?window.InimigosNormais.duracaoGolpe('sand_worm_small'):800;
           spawnParts(this.x,this.y,'#c8a860',10,45);
         }
         return; // underground, no movement
@@ -15926,6 +16032,7 @@ class Enemy {
           const spd=Math.min(480, 360+wave*6); // cap to prevent instakill
           this.wolfDashVx=Math.cos(ang)*spd; this.wolfDashVy=Math.sin(ang)*spd;
           this.wolfDashTimer=360;
+          this.golpeAnim=window.InimigosNormais?window.InimigosNormais.duracaoGolpe('hungry_wolf'):520;
           spawnParts(this.x,this.y,'#aa6622',5,40);
         }
       } else if(this.wolfState==='dashing'){
@@ -15942,10 +16049,17 @@ class Enemy {
     if(this.isArcher){
       this.shotTimer-=dt*1000;
       if(this.shotTimer<=0){
-        this.shotTimer=this.shotCd;
-        const ang=Math.atan2(py-this.y,px-this.x);
-        projs.push(new EnemyProj(this.x,this.y,ang,this.damage*0.7,'#d4d0a0'));
-        spawnParts(this.x,this.y,'#d4d0a0',3,25);
+        // So' arma o arco aqui; a flecha parte quando ele SOLTA, logo abaixo.
+        this.shotTimer=this.shotCd; this.golpeAnim=520;
+        this.miraFlecha=Math.atan2(py-this.y,px-this.x); this.soltou=false;
+      }
+      if(this.golpeAnim>0&&!this.soltou&&1-this.golpeAnim/520>=0.7){
+        this.soltou=true;
+        const ang=this.miraFlecha;
+        // sai da altura do arco, e nao do centro do corpo
+        const bx=this.x+Math.cos(ang)*10, by=this.y-4+Math.sin(ang)*8;
+        projs.push(new EnemyProj(bx,by,ang,this.damage*0.7,'#d4d0a0','flecha'));
+        spawnParts(bx,by,'#e8e2c0',4,30);
       }
       // Slowly drift away from player
       const dx=px-this.x, dy=py-this.y, d=Math.hypot(dx,dy);
@@ -15957,9 +16071,15 @@ class Enemy {
     // Spitting spider — shoots web slow projectiles
     if(this.isSpitter){
       this.shotTimer-=dt*1000;
+      const durCuspe=window.InimigosNormais?window.InimigosNormais.duracaoGolpe(this.type):560;
       if(this.shotTimer<=0){
-        this.shotTimer=this.shotCd;
-        const ang=Math.atan2(py-this.y,px-this.x);
+        // So' arma o bote aqui; o projetil parte quando ele CUSPE, logo abaixo.
+        this.shotTimer=this.shotCd; this.golpeAnim=durCuspe;
+        this.miraCuspe=Math.atan2(py-this.y,px-this.x); this.cuspiu=false;
+      }
+      if(this.golpeAnim>0&&!this.cuspiu&&1-this.golpeAnim/durCuspe>=0.6){
+        this.cuspiu=true;
+        const ang=this.miraCuspe;
         if(this.isShroom){
           projs.push(new AcidShotProj(this.x,this.y,ang,Math.max(6,this.damage*0.75)));
           spawnParts(this.x,this.y,'#42f044',5,28);
@@ -15981,14 +16101,19 @@ class Enemy {
     }
     // Cultist — fire homing ball
     if(this.isCultist){
+      const durConj=window.InimigosNormais?window.InimigosNormais.duracaoGolpe('cultist'):560;
       this.shotTimer-=dt*1000;
       if(this.shotTimer<=0){
-        this.shotTimer=this.shotCd;
+        // So' comeca a conjurar aqui; a bola parte quando ele SOLTA, abaixo.
+        this.shotTimer=this.shotCd; this.golpeAnim=durConj; this.conjurou=false;
+      }
+      if(this.golpeAnim>0&&!this.conjurou&&1-this.golpeAnim/durConj>=0.6){
+        this.conjurou=true;
         const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead);
         if(allPl.length){
           const tgt=allPl.reduce((a,b)=>Math.hypot(b.x-this.x,b.y-this.y)<Math.hypot(a.x-this.x,a.y-this.y)?b:a);
-          projs.push(new HomingFireball(this.x,this.y,tgt,this.damage*0.8));
-          spawnParts(this.x,this.y,'#ff6600',4,30);
+          projs.push(new HomingFireball(this.x,this.y-6,tgt,this.damage*0.8));
+          spawnParts(this.x,this.y-6,'#ff6600',4,30);
         }
       }
     }
@@ -15996,10 +16121,15 @@ class Enemy {
     if(this.isFlyer){
       this.floatPhase+=dt*2.2;
       this.y+=Math.sin(this.floatPhase)*0.4;
+      const durBote=window.InimigosNormais?window.InimigosNormais.duracaoGolpe('lava_bat'):520;
       this.shotTimer-=dt*1000;
       if(this.shotTimer<=0){
-        this.shotTimer=this.shotCd;
-        const ang=Math.atan2(py-this.y,px-this.x);
+        this.shotTimer=this.shotCd; this.golpeAnim=durBote;
+        this.miraBote=Math.atan2(py-this.y,px-this.x); this.cuspiuBote=false;
+      }
+      if(this.golpeAnim>0&&!this.cuspiuBote&&1-this.golpeAnim/durBote>=0.6){
+        this.cuspiuBote=true;
+        const ang=this.miraBote;
         [-0.4,0,0.4].forEach(spread=>projs.push(new EnemyProj(this.x,this.y,ang+spread,this.damage*0.5,'#ff6600')));
         spawnParts(this.x,this.y,'#ff6600',3,25);
       }
@@ -16009,6 +16139,8 @@ class Enemy {
       const dx=px-this.x, dy=py-this.y, d=Math.hypot(dx,dy);
       if(d<40 && this.fuseTimer<0){
         this.fuseTimer=350;
+        // a animacao de auto-destruicao corre junto com o pavio
+        this.golpeAnim=window.InimigosNormais?window.InimigosNormais.duracaoGolpe('fire_imp'):350;
         spawnLevelUpNotice(this.x,this.y-20,'💥',0);
       }
       if(this.fuseTimer>0){
@@ -16032,8 +16164,16 @@ class Enemy {
 
     const dx=px-this.x, dy=py-this.y, d=Math.hypot(dx,dy);
     if(d>1){this.x+=(dx/d)*this.speed*speedMult*dt; this.y+=(dy/d)*this.speed*speedMult*dt;}
-    if(Math.abs(dx)>Math.abs(dy)) this.dir=dx>0?'right':'left';
-    else this.dir=dy>0?'down':'up';
+    if(this.golpeAnim<=0){
+      if(Math.abs(dx)>Math.abs(dy)) this.dir=dx>0?'right':'left';
+      else this.dir=dy>0?'down':'up';
+    }
+    // Animacao de golpe: eles batem quando chegam junto. E' so' o gesto —
+    // o dano continua sendo o de encostar, como sempre foi.
+    if(this.golpeAnim<=0&&Math.hypot(dx,dy)<this.radius+22&&
+       window.InimigosNormais&&window.InimigosNormais.golpeDeContato(this.type)){
+      this.golpeAnim=window.InimigosNormais.duracaoGolpe(this.type);
+    }
     this.frameTick+=dt*1000;
     if(this.frameTick>200){this.frameTick=0;this.frameIdx=(this.frameIdx+1)%3;}
     // Hard arena boundary — ALL enemies must stay inside playable area
@@ -16114,8 +16254,14 @@ class Enemy {
 
   draw(t){
     const fi=this.frameIdx, fl=this.dir==='right', sc=this.scale;
-    // Burrower underground = invisible
-    if(this.isBurrower && this.burrowState==='burrowing') return;
+    // Enterrado = invisivel. So' que a animacao de AFUNDAR corre DENTRO
+    // deste mesmo estado, e este return a engolia no primeiro quadro: o
+    // verme piscava para fora da tela em vez de submergir. Fica visivel
+    // enquanto ela roda, e some quando ela acaba. So' vale quando ha arte
+    // de verdade — o desenho de reserva nao tem essa animacao.
+    if(this.isBurrower && this.burrowState==='burrowing'
+       && !(this.golpeAnim>0 && window.InimigosNormais
+            && window.InimigosNormais.suporta(this.type))) return;
     // Specter transparency
     if(this.isSpecter && this.phased){ ctx.save(); ctx.globalAlpha=0.28; }
     // Shadow
@@ -16137,8 +16283,11 @@ class Enemy {
       fire_imp:'#ff4400', demon_knight:'#880022', lava_bat:'#ff6600',
     }[this.type]||'#fff';
     ctx.fillStyle=dotCol; ctx.fillRect(this.x-2,this.y-this.radius-20,4,4);
-    // Shield indicator
-    if(this.hasShield){
+    // Indicador de escudo: um arco fixo do lado esquerdo. Ele existia para o
+    // sprite antigo, desenhado a mao. A arte real do orc ja' traz o escudo
+    // pintado — e do outro lado —, entao o arco virava um SEGUNDO escudo,
+    // apontando para o lado contrario. Fica so' para quem ainda nao tem arte.
+    if(this.hasShield&&!(window.InimigosNormais&&window.InimigosNormais.suporta(this.type))){
       ctx.save(); ctx.globalAlpha=0.8; ctx.strokeStyle='#4488ff'; ctx.lineWidth=2;
       ctx.beginPath(); ctx.arc(this.x,this.y,this.radius+4,Math.PI*0.7,Math.PI*1.3); ctx.stroke();
       ctx.restore();
@@ -16166,6 +16315,27 @@ class Enemy {
   }
 
   _drawSprite(t, fi, fl, sc){
+    // Arte real dos inimigos da primeira fase, com o grid antigo de
+    // reserva. Ela ja traz o escudo do orc e o arco do esqueleto, que
+    // abaixo sao desenhados a mao por cima — por isso o return.
+    if(window.InimigosNormais&&window.InimigosNormais.suporta(this.type)){
+      const I=window.InimigosNormais;
+      let estado='idle', q=0;
+      if(this.golpeAnim>0){
+        // cada inimigo declara a propria duracao no modulo
+        estado=this.emergindo?'surge':'hit';
+        q=I.quadroGolpe(this.type,this.golpeAnim,estado);
+      }else if(this._andouX!==undefined&&(this._andouX!==this.x||this._andouY!==this.y)){
+        // O quadro anda pela DISTANCIA percorrida, e nao pelo relogio. Com
+        // um ritmo fixo o esqueleto (38 px/s) ciclava as pernas quase 3x
+        // mais rapido do que o corpo avancava, e o pe deslizava — e' isso
+        // que dava a sensacao de caminhada dura.
+        this._passo=(this._passo||0)+Math.hypot(this.x-this._andouX,this.y-this._andouY);
+        estado='walk'; q=Math.floor(this._passo/I.PX_POR_QUADRO);
+      }
+      this._andouX=this.x; this._andouY=this.y;
+      if(I.desenhar(ctx,this.type,this.x,this.y+this.radius,this.dir,estado,q,fl,this.scale)) return;
+    }
     switch(this.type){
       // ── Bioma 1 ──
       case 'runner_goblin':
@@ -16700,55 +16870,176 @@ function applyClassHitEffect(proj, enemy){
 // ENEMY PROJECTILES (new types)
 // ═══════════════════════════════════════════════════════
 class EnemyProj {
-  constructor(x,y,angle,dmg,color){ this.x=x; this.y=y; this.dmg=dmg; this.color=color||'#ff8800'; this.dead=false; this.born=Date.now(); this.life=1800; this.radius=6; const spd=280; this.vx=Math.cos(angle)*spd; this.vy=Math.sin(angle)*spd; this.trail=[]; }
+  constructor(x,y,angle,dmg,color,tipo){ this.x=x; this.y=y; this.dmg=dmg; this.color=color||'#ff8800'; this.tipo=tipo||'bola'; this.dead=false; this.born=Date.now(); this.life=1800; this.radius=6; const spd=this.tipo==='flecha'?420:280; this.vx=Math.cos(angle)*spd; this.vy=Math.sin(angle)*spd; this.trail=[]; }
   update(dt){ this.trail.push({x:this.x,y:this.y}); if(this.trail.length>8) this.trail.shift(); this.x+=this.vx*dt; this.y+=this.vy*dt; if(Date.now()-this.born>this.life||this.x<0||this.x>W||this.y<0||this.y>H) this.dead=true; }
-  draw(){ for(let i=0;i<this.trail.length;i++){ const a=i/this.trail.length; ctx.globalAlpha=a*0.4; ctx.fillStyle=this.color; ctx.fillRect(this.trail[i].x-2,this.trail[i].y-2,4,4); } ctx.globalAlpha=1; const g=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,10); g.addColorStop(0,this.color+'cc'); g.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=g; ctx.fillRect(this.x-10,this.y-10,20,20); }
+  draw(){
+    if(this.tipo==='flecha'){ this._desenharFlecha(); return; }
+    for(let i=0;i<this.trail.length;i++){ const a=i/this.trail.length; ctx.globalAlpha=a*0.4; ctx.fillStyle=this.color; ctx.fillRect(this.trail[i].x-2,this.trail[i].y-2,4,4); }
+    ctx.globalAlpha=1; const g=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,10); g.addColorStop(0,this.color+'cc'); g.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=g; ctx.fillRect(this.x-10,this.y-10,20,20);
+  }
+  // Flecha de verdade: haste, ponta e penas, virada na direcao do voo.
+  // Antes ela era o mesmo borrao luminoso dos outros projeteis.
+  _desenharFlecha(){
+    const a=Math.atan2(this.vy,this.vx);
+    // esteira: risquinhos ao longo do rastro, sumindo para tras
+    ctx.save(); ctx.lineCap='butt';
+    for(let i=0;i<this.trail.length;i++){
+      const f=i/this.trail.length;
+      ctx.globalAlpha=f*0.30;
+      ctx.strokeStyle='#efe8c4'; ctx.lineWidth=1+f;
+      const p=this.trail[i];
+      ctx.beginPath();
+      ctx.moveTo(p.x-Math.cos(a)*4,p.y-Math.sin(a)*4);
+      ctx.lineTo(p.x+Math.cos(a)*4,p.y+Math.sin(a)*4);
+      ctx.stroke();
+    }
+    ctx.restore();
+    ctx.save(); ctx.translate(Math.round(this.x),Math.round(this.y)); ctx.rotate(a);
+    // contorno escuro, para ela nao sumir em fundo claro
+    ctx.fillStyle='#241d10'; ctx.fillRect(-11,-2,22,4);
+    ctx.fillStyle='#8a6a38'; ctx.fillRect(-10,-1,17,2);
+    ctx.fillStyle='#241d10';
+    ctx.beginPath(); ctx.moveTo(12,0); ctx.lineTo(6,-4); ctx.lineTo(6,4); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#d9d4bb';
+    ctx.beginPath(); ctx.moveTo(11,0); ctx.lineTo(6.5,-2.6); ctx.lineTo(6.5,2.6); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#241d10'; ctx.fillRect(-11,-4,5,8);
+    ctx.fillStyle='#c9c3a6'; ctx.fillRect(-10,-3,3,3); ctx.fillRect(-10,1,3,3);
+    ctx.restore();
+  }
   hitPlayer(pl){ const d=Math.hypot(pl.x-this.x,pl.y-this.y); if(d<pl.radius+this.radius){ pl.takeDmg(this.dmg); this.dead=true; return true; } return false; }
 }
 
 class WebShotProj {
-  constructor(x,y,angle){ this.x=x; this.y=y; this.dead=false; this.born=Date.now(); this.life=2200; this.radius=8; const spd=160; this.vx=Math.cos(angle)*spd; this.vy=Math.sin(angle)*spd; this.trail=[]; }
-  update(dt){ this.trail.push({x:this.x,y:this.y}); if(this.trail.length>10) this.trail.shift(); this.x+=this.vx*dt; this.y+=this.vy*dt; if(Date.now()-this.born>this.life||this.x<0||this.x>W||this.y<0||this.y>H) this.dead=true; }
+  constructor(x,y,angle){
+    this.x=x; this.y=y; this.dead=false; this.born=Date.now(); this.life=2200; this.radius=8;
+    const spd=160; this.vx=Math.cos(angle)*spd; this.vy=Math.sin(angle)*spd; this.trail=[];
+    // Giro proprio e raios irregulares, sorteados por tiro: sem isso todo
+    // projetil saia identico e a roda simetrica parecia um icone, e nao um
+    // bolo de teia voando.
+    this.giro=Math.random()*Math.PI*2;
+    this.giroVel=(Math.random()<.5?-1:1)*(2.2+Math.random()*1.9);
+    this.raios=[]; for(let i=0;i<7;i++) this.raios.push(0.70+Math.random()*0.46);
+  }
+  update(dt){
+    this.trail.push({x:this.x,y:this.y}); if(this.trail.length>10) this.trail.shift();
+    this.giro+=this.giroVel*dt;
+    this.x+=this.vx*dt; this.y+=this.vy*dt;
+    if(Date.now()-this.born>this.life||this.x<0||this.x>W||this.y<0||this.y>H) this.dead=true;
+  }
   draw(){
-    ctx.save();
-    ctx.lineCap='round';
-    if(this.trail.length>1){
-      ctx.strokeStyle='rgba(210,230,220,0.38)'; ctx.lineWidth=1;
-      ctx.beginPath(); ctx.moveTo(this.trail[0].x,this.trail[0].y);
-      for(let i=1;i<this.trail.length;i++) ctx.lineTo(this.trail[i].x,this.trail[i].y);
+    const n=this.raios.length, R=this.radius;
+    ctx.save(); ctx.lineCap='round'; ctx.lineJoin='round';
+    // Dois fios soltos arrastando atras, ondulando fora do eixo do voo.
+    if(this.trail.length>2){
+      const nx=-this.vy, ny=this.vx, m=Math.hypot(nx,ny)||1;
+      for(let f=0;f<2;f++){
+        ctx.strokeStyle=f?'rgba(198,224,214,0.20)':'rgba(226,243,237,0.34)';
+        ctx.lineWidth=f?0.8:1.1;
+        ctx.beginPath();
+        for(let i=0;i<this.trail.length;i++){
+          const p=this.trail[i], k=i/this.trail.length;
+          const onda=Math.sin(k*6.2+this.giro*1.6+f*2.1)*(1-k)*3.4;
+          const px=p.x+nx/m*onda, py=p.y+ny/m*onda;
+          if(i) ctx.lineTo(px,py); else ctx.moveTo(px,py);
+        }
+        ctx.stroke();
+      }
+    }
+    ctx.translate(this.x,this.y); ctx.rotate(this.giro);
+    const pt=(i,k)=>{ const a=i*Math.PI*2/n, r=R*this.raios[i%n]*k; return [Math.cos(a)*r,Math.sin(a)*r]; };
+    ctx.strokeStyle='rgba(236,248,243,0.90)'; ctx.lineWidth=1.15;
+    for(let i=0;i<n;i++){ const p=pt(i,1); ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(p[0],p[1]); ctx.stroke(); }
+    // Os fios em volta cedem PARA DENTRO entre um raio e outro, como teia de verdade.
+    for(const k of [0.5,1]){
+      ctx.strokeStyle=k<1?'rgba(224,241,235,0.60)':'rgba(241,252,247,0.92)';
+      ctx.lineWidth=k<1?0.9:1.2;
+      ctx.beginPath();
+      for(let i=0;i<=n;i++){
+        const a=pt(i,k), b=pt(i+1,k);
+        if(!i) ctx.moveTo(a[0],a[1]);
+        ctx.quadraticCurveTo((a[0]+b[0])*0.41,(a[1]+b[1])*0.41,b[0],b[1]);
+      }
       ctx.stroke();
     }
-    ctx.translate(this.x,this.y);
-    ctx.strokeStyle='rgba(238,248,244,0.95)'; ctx.lineWidth=1.35;
-    for(let i=0;i<8;i++){
-      const a=i*Math.PI/4;
-      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(a)*this.radius,Math.sin(a)*this.radius); ctx.stroke();
-    }
-    ctx.beginPath(); ctx.arc(0,0,this.radius*0.48,0,Math.PI*2); ctx.stroke();
-    ctx.beginPath(); ctx.arc(0,0,this.radius,0,Math.PI*2); ctx.stroke();
-    ctx.fillStyle='#e8f4ee'; ctx.beginPath(); ctx.arc(0,0,2.2,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#eef8f3'; ctx.beginPath(); ctx.arc(0,0,1.9,0,Math.PI*2); ctx.fill();
     ctx.restore();
   }
   hitPlayer(pl){ const d=Math.hypot(pl.x-this.x,pl.y-this.y); if(d<pl.radius+this.radius){ pl.webbed=true; pl.webbedTimer=Math.max(pl.webbedTimer||0,3200); pl.slowed=true; pl.slowTimer=Math.max(pl.slowTimer||0,3200); this.dead=true; spawnParts(this.x,this.y,'#dceee6',9,32); return true; } return false; }
 }
 
 class AcidShotProj {
-  constructor(x,y,angle,dmg){ this.x=x; this.y=y; this.dmg=dmg; this.dead=false; this.born=Date.now(); this.life=2200; this.radius=7; const spd=195; this.vx=Math.cos(angle)*spd; this.vy=Math.sin(angle)*spd; this.trail=[]; }
-  update(dt){ this.trail.push({x:this.x,y:this.y}); if(this.trail.length>9) this.trail.shift(); this.x+=this.vx*dt; this.y+=this.vy*dt; if(Date.now()-this.born>this.life||this.x<0||this.x>W||this.y<0||this.y>H) this.dead=true; }
+  constructor(x,y,angle,dmg){
+    this.x=x; this.y=y; this.dmg=dmg; this.dead=false; this.born=Date.now(); this.life=2200; this.radius=7;
+    const spd=195; this.vx=Math.cos(angle)*spd; this.vy=Math.sin(angle)*spd; this.trail=[];
+    this.onda=Math.random()*Math.PI*2;   // deforma a gota, para nao ser um circulo parado
+    this.pingos=[]; this.pingoT=70;      // gotas que se soltam pelo caminho
+  }
+  update(dt){
+    this.trail.push({x:this.x,y:this.y}); if(this.trail.length>9) this.trail.shift();
+    this.onda+=dt*8.5;
+    this.pingoT-=dt*1000;
+    if(this.pingoT<=0){
+      this.pingoT=95+Math.random()*80;
+      this.pingos.push({x:this.x,y:this.y,vx:(Math.random()-.5)*26,vy:14+Math.random()*22,t:360,t0:360});
+    }
+    for(const g of this.pingos){ g.t-=dt*1000; g.x+=g.vx*dt; g.y+=g.vy*dt; g.vy+=110*dt; }
+    if(this.pingos.length) this.pingos=this.pingos.filter(g=>g.t>0);
+    this.x+=this.vx*dt; this.y+=this.vy*dt;
+    if(Date.now()-this.born>this.life||this.x<0||this.x>W||this.y<0||this.y>H) this.dead=true;
+  }
   draw(){
     ctx.save();
-    for(let i=0;i<this.trail.length;i++){
-      const a=(i+1)/this.trail.length;
-      ctx.globalAlpha=a*0.55; ctx.fillStyle=i%2?'#4cff38':'#16a83a';
-      const r=1.5+a*2.5; ctx.beginPath(); ctx.arc(this.trail[i].x,this.trail[i].y,r,0,Math.PI*2); ctx.fill();
+    // pingos que se soltaram e estao caindo
+    for(const g of this.pingos){
+      const k=Math.max(0,g.t/g.t0);
+      ctx.globalAlpha=k*0.85; ctx.fillStyle='#54d637';
+      ctx.beginPath(); ctx.ellipse(g.x,g.y,0.8+1.5*k,1.1+2.2*k,0,0,Math.PI*2); ctx.fill();
     }
-    ctx.globalAlpha=1;
-    const g=ctx.createRadialGradient(this.x-2,this.y-2,1,this.x,this.y,12);
-    g.addColorStop(0,'rgba(220,255,80,1)'); g.addColorStop(0.35,'rgba(68,255,48,0.95)');
-    g.addColorStop(0.7,'rgba(10,150,45,0.75)'); g.addColorStop(1,'rgba(0,50,10,0)');
-    ctx.fillStyle=g; ctx.fillRect(this.x-12,this.y-12,24,24);
-    ctx.fillStyle='#8cff44'; ctx.beginPath(); ctx.arc(this.x,this.y,5.5,0,Math.PI*2); ctx.fill();
-    ctx.fillStyle='#d8ff62'; ctx.beginPath(); ctx.arc(this.x-2,this.y-2,2,0,Math.PI*2); ctx.fill();
+    // Rastro: um borrao AFILADO, e nao uma fila de bolinhas iguais — com
+    // circulos separados o projetil parecia uma lagarta.
+    if(this.trail.length>2){
+      const nx=-this.vy, ny=this.vx, m=Math.hypot(nx,ny)||1;
+      ctx.globalAlpha=0.42; ctx.fillStyle='#2aa832';
+      ctx.beginPath();
+      for(let i=0;i<this.trail.length;i++){
+        const p=this.trail[i], k=(i+1)/this.trail.length, e=2.6*k*k;
+        if(i) ctx.lineTo(p.x+nx/m*e,p.y+ny/m*e); else ctx.moveTo(p.x+nx/m*e,p.y+ny/m*e);
+      }
+      for(let i=this.trail.length-1;i>=0;i--){
+        const p=this.trail[i], k=(i+1)/this.trail.length, e=2.6*k*k;
+        ctx.lineTo(p.x-nx/m*e,p.y-ny/m*e);
+      }
+      ctx.closePath(); ctx.fill();
+      ctx.globalAlpha=1;
+    }
+    // brilho de fundo, discreto: e' contorno, nao clarao
+    const halo=ctx.createRadialGradient(this.x,this.y,1,this.x,this.y,10);
+    halo.addColorStop(0,'rgba(120,255,70,0.26)'); halo.addColorStop(1,'rgba(0,60,10,0)');
+    ctx.fillStyle=halo; ctx.fillRect(this.x-10,this.y-10,20,20);
+    // corpo: gota alongada na direcao do voo, com a cauda atras
+    ctx.translate(this.x,this.y); ctx.rotate(Math.atan2(this.vy,this.vx));
+    const w=1+Math.sin(this.onda)*0.10, h=1-Math.sin(this.onda)*0.10;
+    ctx.fillStyle='#2f9c2a';
+    ctx.beginPath();
+    ctx.moveTo(6.6*w,0);
+    ctx.quadraticCurveTo(2.2*w,5.0*h,-7.4*w,1.5*h);
+    ctx.quadraticCurveTo(-4.0*w,0,-7.4*w,-1.5*h);
+    ctx.quadraticCurveTo(2.2*w,-5.0*h,6.6*w,0);
+    ctx.fill();
+    // nucleo mais claro, deixando a casca escura aparecer como contorno
+    ctx.fillStyle='#57cf34';
+    ctx.beginPath(); ctx.ellipse(0.6,0,3.7*w,2.9*h,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#7bf24d';
+    ctx.beginPath(); ctx.ellipse(1.1,-0.3,2.5*w,1.9*h,0,0,Math.PI*2); ctx.fill();
+    // bolhas por dentro, girando devagar
+    ctx.fillStyle='rgba(24,110,28,0.75)';
+    for(let i=0;i<3;i++){
+      const a=this.onda*0.55+i*2.1;
+      ctx.beginPath(); ctx.arc(Math.cos(a)*2.2,Math.sin(a)*1.5,0.9+0.4*Math.sin(a*1.7),0,Math.PI*2); ctx.fill();
+    }
+    // brilho que corre na superficie
+    ctx.fillStyle='rgba(226,255,140,0.95)';
+    ctx.beginPath(); ctx.ellipse(2.4+Math.sin(this.onda)*0.7,-1.5,1.5,1.0,-0.5,0,Math.PI*2); ctx.fill();
     ctx.restore();
   }
   hitPlayer(pl){ const d=Math.hypot(pl.x-this.x,pl.y-this.y); if(d<pl.radius+this.radius){ pl.takeDmg(this.dmg); this.dead=true; spawnParts(this.x,this.y,'#42f044',9,38); return true; } return false; }
@@ -16770,6 +17061,7 @@ class HomingFireball {
   <script src="src/bosses/balrog-sprites.js"></script>
   <script src="src/bosses/aracne-sprites.js"></script>
   <script src="src/bosses/sandworm-sprites.js"></script>
+  <script src="src/enemies/normais-sprites.js"></script>
   <script src="src/campaign/boss-system.js"></script>
   <script>
 const enemyCollisionGrid=new SpatialHash(64);
@@ -16836,7 +17128,7 @@ function collide(){
         if(p.isCampaignWeaponProj){
           p.weapon.damageDone=(p.weapon.damageDone||0)+finalDmg;p.hitTargets.add(e);
           applyClassHitEffect({owner:p.owner,dmg:finalDmg,weapon:p.weapon},e);
-          if(p.opts.slow){applyWeaponSlow(e,p.opts.slow.pct,p.opts.slow.duration,p.owner);if(p.opts.iceHits){e.weaponIceHits=(e.weaponIceHits||0)+1;if(e.weaponIceHits>=p.opts.iceHits){e.weaponIceHits=0;e.frozen=true;e.frozenTimer=p.owner.classId==='archer'?700:800;e._lastWeaponOwner=p.owner;}}}
+          if(p.opts.slow){applyWeaponSlow(e,p.opts.slow.pct,p.opts.slow.duration,p.owner);if(p.opts.iceHits){e.weaponIceHits=(e.weaponIceHits||0)+1;if(e.weaponIceHits>=p.opts.iceHits&&!e.freezeImmune){e.weaponIceHits=0;e.frozen=true;e.frozenTimer=p.owner.classId==='archer'?700:800;e._lastWeaponOwner=p.owner;}}}
           if(p.opts.poison)applyWeaponPoison(e,p.owner,p.weapon,p.opts.poison.dps,p.opts.poison.duration,p.opts.poison.maxStacks);
           if(p.opts.burn)applyWeaponBurn(e,p.owner,p.weapon,p.opts.burn.dps,p.opts.burn.duration);
           if(p.opts.explode)weaponBurst(p.owner,enemies,e.x,e.y,p.opts.explode,p.weapon,p.dmg*(p.opts.explodeMult||.35),p.color);
@@ -16894,9 +17186,33 @@ function collide(){
   // Enemies vs players — with iceBarrier slow-on-contact
   for(const e of enemies){
     if(e.dead) continue;
+    // Espectro em fase: o jogo ja' o torna INVULNERAVEL enquanto ele esta
+    // assim (ver damage-system) e o desenha a 28% de opacidade, que le como
+    // intangivel. Mas o contato continuava machucando: por 1 segundo a cada
+    // 3 ele batia sem poder ser revidado. As duas metades da mecanica
+    // discordavam; atravessar agora vale para os dois lados.
+    if(e.isSpecter&&e.phased) continue;
     for(const pl of allPlayers){
       if(Math.hypot(pl.x-e.x,pl.y-e.y)<pl.radius+e.radius){
         pl.takeDmg(e.damage);
+        // Veneno do Escorpiao Obsidiana. A bandeira poison/isScorpion existia
+        // na configuracao dele e nao era lida em lugar nenhum: ele picava como
+        // um inimigo comum. Renova a cada picada e continua fora de contato.
+        if(e.isScorpion&&!pl.dead){
+          pl.venenoT=Math.max(pl.venenoT||0,3000);
+          if(Math.random()<0.10) spawnParts(pl.x,pl.y-6,'#7ee06a',2,26);
+        }
+        // Toque de Gelo do Zumbi. A bandeira iceTouch existia na configuracao
+        // dele desde sempre e nao era lida em lugar nenhum — o zumbi batia
+        // como um inimigo comum. O congelamento renova a cada toque: 1,1s,
+        // mais curto que os 3,2s da teia da aranha, que e' a assinatura dela,
+        // e que os 2,5s do golpe do chefe de gelo. 'slowed' deixa o jogador a
+        // 55% da velocidade.
+        if(e.iceTouch&&!pl.dead){
+          pl.slowed=true;
+          pl.slowTimer=Math.max(pl.slowTimer||0,1100);
+          if(Math.random()<0.12) spawnParts(pl.x,pl.y-6,'#bfe9ff',2,26);
+        }
         // iceBarrier: slow attacker on contact
         if(pl.iceBarrier && !e.frozen){
           e.slowed=true; e.slowTimer=Math.max(e.slowTimer||0, 1800);
@@ -16974,13 +17290,28 @@ function collide(){
       }
     }
   }
+  // Veneno em curso, do Escorpiao. Corre longe dele tambem: quem foi picado
+  // leva dano ate' o efeito passar. Quem desconta o tempo e' o Player.update,
+  // no relogio do jogo; aqui so' o dano. A dose por toque e' 2*0.3 porque o
+  // jogo admite um toque continuo a cada 300ms (chipT) — da' 2 por segundo,
+  // abaixo dos 3 da poca do Ent, que e' objetivo de onda.
+  for(const pl of allPlayers){
+    if(!(pl.venenoT>0)) continue;
+    pl.takeDmg(2*0.3,true);
+    if(Math.random()<0.06) spawnParts(pl.x,pl.y-8,'#8ae874',1,22);
+  }
   // Web/toxic puddles — slow or poison players standing in them
   for(const wp of webPuddles){
     for(const pl of allPlayers){
       if(Math.hypot(pl.x-wp.x,pl.y-wp.y)<pl.radius+wp.r*0.5){
         if(wp.toxic){
-          // Poison DoT — 3 damage per second
-          pl.takeDmg(3*0.016);
+          // Veneno da poca do Ent. Faltava o sinalizador de dano CONTINUO: sem
+          // ele cada gota de 0,048 acionava os 600ms de invencibilidade e a
+          // seguinte era bloqueada — medido, o jogador parado dentro da poca
+          // por 2,5s levava 0 de dano. Com o sinalizador o jogo admite um
+          // toque a cada 300ms (chipT), entao a dose por toque e' 3*0.3 para
+          // dar os 3 por segundo que esta escrito aqui desde sempre.
+          pl.takeDmg(3*0.3,true);
         } else {
           pl.webbed=true; pl.webbedTimer=Math.max(pl.webbedTimer||0, 1200);
         }
@@ -17535,21 +17866,70 @@ class WebPuddle {
     this.x=x; this.y=y;
     this.r=40; this.life=6000; this.timer=this.life;
     this.toxic=false; // if true: poison visual, different color
+    // Contorno irregular sorteado uma vez, para a poca ficar PARADA. O
+    // desenho antigo usava elipse perfeita e bolhas que orbitavam o centro,
+    // o que fazia a poca inteira parecer estar girando.
+    this.borda=[]; for(let i=0;i<11;i++) this.borda.push(0.80+Math.random()*0.34);
+    this.bolhas=[];
+    this.bolhaT=120;
   }
-  update(dt){ this.timer-=dt*1000; }
+  update(dt){
+    this.timer-=dt*1000;
+    if(!this.toxic) return;
+    // bolhas nascem paradas, crescem e estouram no lugar
+    this.bolhaT-=dt*1000;
+    if(this.bolhaT<=0&&this.timer>600&&this.bolhas.length<7){
+      this.bolhaT=150+Math.random()*220;
+      const a=Math.random()*Math.PI*2, d=Math.sqrt(Math.random())*0.78;
+      this.bolhas.push({x:Math.cos(a)*this.r*d, y:Math.sin(a)*this.r*0.58*d,
+        t:0, dur:520+Math.random()*380, rMax:1.8+Math.random()*3.0});
+    }
+    for(const b of this.bolhas) b.t+=dt*1000;
+    if(this.bolhas.length) this.bolhas=this.bolhas.filter(b=>b.t<b.dur);
+  }
   draw(){
     const alpha=Math.max(0,(this.timer/this.life)*0.55);
     ctx.globalAlpha=alpha;
     if(this.toxic){
-      // Green poison pool
-      const g=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,this.r);
-      g.addColorStop(0,'rgba(60,200,40,0.7)'); g.addColorStop(0.6,'rgba(30,140,20,0.4)'); g.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.fillStyle=g; ctx.beginPath(); ctx.ellipse(this.x,this.y,this.r,this.r*0.6,0,0,Math.PI*2); ctx.fill();
-      // Bubbles
-      for(let i=0;i<4;i++){
-        const bx=this.x+Math.sin(i*1.6+this.timer*0.002)*this.r*0.5;
-        const by=this.y+Math.cos(i*1.6+this.timer*0.002)*this.r*0.3;
-        ctx.fillStyle='rgba(80,220,60,0.6)'; ctx.beginPath(); ctx.arc(bx,by,3+i,0,Math.PI*2); ctx.fill();
+      const n=this.borda.length;
+      // Contorno irregular mas REDONDO: ligar os pontos com retas dava um
+      // poligono pontudo, que parecia uma folha e nao liquido. As curvas
+      // passam pelos meios dos segmentos, entao a borda fica organica.
+      const pto=i=>{ const a=i*Math.PI*2/n, r=this.r*this.borda[((i%n)+n)%n];
+        return [this.x+Math.cos(a)*r, this.y+Math.sin(a)*r*0.58]; };
+      const contorno=()=>{
+        ctx.beginPath();
+        let a=pto(0), b=pto(1);
+        ctx.moveTo((a[0]+b[0])/2,(a[1]+b[1])/2);
+        for(let i=1;i<=n;i++){
+          a=pto(i); b=pto(i+1);
+          ctx.quadraticCurveTo(a[0],a[1],(a[0]+b[0])/2,(a[1]+b[1])/2);
+        }
+        ctx.closePath();
+      };
+      // Mais translucida: e' uma poca no chao, o piso tem de aparecer por baixo.
+      const g=ctx.createRadialGradient(this.x,this.y-this.r*0.10,2,this.x,this.y,this.r);
+      g.addColorStop(0,'rgba(104,214,74,0.46)');
+      g.addColorStop(0.55,'rgba(44,138,34,0.34)');
+      g.addColorStop(1,'rgba(16,70,20,0.10)');
+      ctx.fillStyle=g; contorno(); ctx.fill();
+      ctx.strokeStyle='rgba(158,255,116,0.30)'; ctx.lineWidth=1.2; contorno(); ctx.stroke();
+      // bolhas: crescem no lugar e estouram deixando um anel
+      for(const b of this.bolhas){
+        const k=b.t/b.dur, bx=this.x+b.x, by=this.y+b.y;
+        if(k<0.78){
+          const r=b.rMax*Math.min(1,k/0.78);
+          ctx.fillStyle='rgba(126,238,86,0.62)';
+          ctx.beginPath(); ctx.arc(bx,by,r,0,Math.PI*2); ctx.fill();
+          ctx.fillStyle='rgba(214,255,170,0.75)';
+          ctx.beginPath(); ctx.arc(bx-r*0.3,by-r*0.35,Math.max(0.5,r*0.3),0,Math.PI*2); ctx.fill();
+        } else {
+          const e=(k-0.78)/0.22;
+          ctx.globalAlpha=alpha*(1-e);
+          ctx.strokeStyle='rgba(178,255,132,0.8)'; ctx.lineWidth=1;
+          ctx.beginPath(); ctx.arc(bx,by,b.rMax*(1+e*1.6),0,Math.PI*2); ctx.stroke();
+          ctx.globalAlpha=alpha;
+        }
       }
     } else {
       // Web puddle
@@ -18130,6 +18510,9 @@ function loop(ts){
 
   if(state==='playing'){
     try {
+    // Modo Chefao: cobra o proximo chefe se a hora dele chegou. Fica aqui, no
+    // laco, porque um setTimeout era perdido quando o jogador pausava.
+    if(bossRushMode) bossRushCobrarProximo();
     removeCampaignRandomObjects();
     campaignObjectives.update(dt);
     campaignEvents.update(dt);
@@ -18179,7 +18562,18 @@ function loop(ts){
     if(!campaignBossWave&&!campaignEventActive&&!campaignObjectives.controlsWaveTimer()) waveTimer-=dt*1000;
     // In boss rush: end wave only when boss is dead (handled in bossMajor death trigger)
     // Regular mode: end by timer
-    if(!bossRushMode && !wildPetFight && !campaignBossWave && !campaignEventActive && waveTimer<=0){ endWave(); return; }
+    if(!bossRushMode && !wildPetFight && !campaignBossWave && !campaignEventActive && waveTimer<=0){
+      // O 'return' so' vale se a onda encerrou. Antes ele era incondicional:
+      // quando endWave() saia por uma guarda — objetivo da onda ainda por
+      // cumprir, ou evento aberto — este return abortava TODA a atualizacao
+      // a cada quadro, e o DESENHO fica depois daqui. Os inimigos seguiam
+      // andando na memoria e a tela congelava no ultimo quadro. Travado
+      // assim, o objetivo nunca era cumprido: nao tinha volta.
+      if(endWave()) return;
+      // Objetivo pendente: segura o relogio no zero em vez de deixar correr
+      // para o negativo enquanto o jogador termina o que falta.
+      waveTimer=0;
+    }
     // In boss rush: keep waveTimer from going negative (it's set to 999999, just reset it)
     if(bossRushMode && waveTimer<0) waveTimer=999999;
     if(!campaignEventActive&&campaignObjectives.allowNormalSpawns())spawnTimer-=dt*1000;
@@ -18209,14 +18603,13 @@ function loop(ts){
       if(bossRushMode){
         spawnParts(W/2,H/2,'#ffcc44',20,120);
         spawnLevelUpNotice(W/2,H/2-40,'🏆 BOSS DERROTADO!',0);
-        setTimeout(()=>{ if(bossRushMode&&state==='playing') spawnNextBossRush(); },2000);
+        bossRushAgendarProximo(2000);
       }else if(defeatedBossWave===25){
         completeCampaign();
         return;
       }else if(wave>=5&&wave%5===0){
         // Boss waves have no timer: defeating the boss is the only victory condition.
-        endWave();
-        return;
+        if(endWave()) return;
       }
     }
     updateUI();
@@ -18473,7 +18866,7 @@ function beginGame(){
   // Boss rush: spawn first boss after a short delay (so loop is running)
   if(bossRushMode){
     bossRushCurrent=0;
-    setTimeout(()=>{ if(bossRushMode&&state==='playing') spawnNextBossRush(); }, 450);
+    bossRushAgendarProximo(450);
   }
 }
 

@@ -10,10 +10,17 @@
     if(!HORTA||!Array.isArray(SEMENTES)||!S||typeof px!=='function'||typeof dentro!=='function')
       throw new TypeError('CampFarmingSystem.create recebeu dependencias invalidas.');
 
+    // A cabana e' desenhada por cima do canto inferior esquerdo da horta: os
+    // canteiros da primeira coluna, linhas 1 a 3, ficam atras do telhado, e o
+    // bloco de colisao da cabana cobre essa faixa inteira — o jogador nunca
+    // pisaria neles. Ficam de fora da grade: sobram 13, todos sobre terra
+    // visivel e todos alcancaveis.
+    const OCULTOS_PELA_CABANA = (c,r) => c===0 && r>=1;
     const CANTEIROS = (()=>{
       const out=[], cw=HORTA.fw/HORTA.cols, ch=HORTA.fh/HORTA.linhas;
       let n=0;
       for(let r=0;r<HORTA.linhas;r++) for(let c=0;c<HORTA.cols;c++){
+        if(OCULTOS_PELA_CABANA(c,r)) continue;
         out.push({fx:HORTA.fx+c*cw, fy:HORTA.fy+r*ch, fw:cw, fh:ch, idx:n++});
       }
       return out;

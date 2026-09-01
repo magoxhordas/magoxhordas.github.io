@@ -132,8 +132,8 @@ const targets=[
   ['oficina',.218,.900,82], ['santuario',.690,.760,86], ['fogueira',.525,.548,70],
   ['portal',.497,.825,90], ['lago',.678,.248,62], ['arqueiro',.452,.560,58],
 ];
-const horta={fx:.3020,fy:.1080,fw:.2500,fh:.2520,cols:5,linhas:3};
-assert(layoutSource.includes('fx:.3020, fy:.1080, fw:.2500, fh:.2520, cols:5, linhas:3')&&
+const horta={fx:.2025,fy:.1352,fw:.2336,fh:.2410,cols:4,linhas:4};
+assert(layoutSource.includes('fx:.2025, fy:.1352, fw:.2336, fh:.2410, cols:4, linhas:4')&&
   html.includes('const HORTA=window.CampLayoutData.HORTA;'),
   'horta 5x3 acessivel nao esta configurada');
 assert(!camp.includes('const HORTA = {fx:.3020'),'configuracao da horta voltou para o index');
@@ -144,7 +144,10 @@ assert(html.includes('const SEMENTES=window.CampFarmingData.SEMENTES;')&&
 assert(layoutSource.includes('const LUZES_ACAMPAMENTO = [')&&
   html.includes('LUZES_ACAMPAMENTO:window.CampLayoutData.LUZES_ACAMPAMENTO')&&
   html.includes('const ARQ=window.CampLayoutData.ARQ;'),'CampV2 nao esta consumindo os dados de layout extraidos');
+// A cabana cobre a primeira coluna a partir da linha 1: esses canteiros
+// ficam fora da grade (ver OCULTOS_PELA_CABANA em camp/farming-system.js).
 for(let r=0;r<horta.linhas;r++)for(let c=0;c<horta.cols;c++){
+  if(c===0&&r>=1) continue;
   targets.push([`canteiro ${r*horta.cols+c+1}`,
     horta.fx+(c+.5)*horta.fw/horta.cols,
     horta.fy+(r+.5)*horta.fh/horta.linhas,26]);

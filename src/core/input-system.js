@@ -218,6 +218,12 @@
       if(knobEl)knobEl.style.transform='translate(-50%,-50%)';
     }
 
+    // Reposiciona so' o circulo, sem mexer no estado de ativacao.
+    function recenterVisual(x,y){
+      if(!sensorEl)return;
+      sensorEl.style.left=`${x}px`;sensorEl.style.top=`${y}px`;
+    }
+
     function moveVisual(dx,dy){
       if(!knobEl)return;
       const distance=Math.hypot(dx,dy)||1;
@@ -247,7 +253,19 @@
     function onPointerMove(event){
       if(event.pointerId!==pointerId)return;
       event.preventDefault?.();
-      const dx=(Number(event.clientX)||0)-startX,dy=(Number(event.clientY)||0)-startY;
+      const px=Number(event.clientX)||0, py=Number(event.clientY)||0;
+      let dx=px-startX, dy=py-startY;
+      // O centro segue o dedo quando ele passa do raio. Sem isso o centro
+      // ficava cravado no ponto do primeiro toque: depois de um arrasto longo
+      // era preciso desfazer o arrasto inteiro para inverter a direcao, e o
+      // controle parecia preso. Assim, virar custa a zona morta e mais nada.
+      const distancia=Math.hypot(dx,dy);
+      if(distancia>VISUAL_RADIUS){
+        const sobra=(distancia-VISUAL_RADIUS)/distancia;
+        startX+=dx*sobra; startY+=dy*sobra;
+        dx=px-startX; dy=py-startY;
+        recenterVisual(startX,startY);
+      }
       syncDirection(directionForDelta(dx,dy));
       moveVisual(dx,dy);
     }

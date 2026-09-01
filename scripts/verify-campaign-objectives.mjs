@@ -19,8 +19,9 @@ const sandbox={console,Math,Date,performance:{now:()=>1000}};sandbox.window=sand
 vm.createContext(sandbox);vm.runInContext(source,sandbox,{filename:'campaign-objectives.js'});
 const {CampaignObjectives}=sandbox;
 ok(CampaignObjectives,'módulo CampaignObjectives não foi publicado');
-ok(Object.keys(CampaignObjectives.OBJECTIVE_WAVES).join(',')==='2,3,4,7,8,9,12,13,14,17,18,19,22,23,24','mapa canônico de objetivos foi alterado');
-for(const wave of [2,3,4,7,9,13,14,17,22,24])ok(CampaignObjectives.OBJECTIVE_WAVES[wave].required,`onda ${wave} deveria bloquear conclusão`);
+// A onda 14 saiu do mapa quando o Portao Congelado foi removido do jogo.
+ok(Object.keys(CampaignObjectives.OBJECTIVE_WAVES).join(',')==='2,3,4,7,8,9,12,13,17,18,19,22,23,24','mapa canônico de objetivos foi alterado');
+for(const wave of [2,3,4,7,9,13,17,22,24])ok(CampaignObjectives.OBJECTIVE_WAVES[wave].required,`onda ${wave} deveria bloquear conclusão`);
 for(const wave of [8,12,18,19,23])ok(!CampaignObjectives.OBJECTIVE_WAVES[wave].required,`onda ${wave} deveria permanecer opcional/ambiental`);
 
 function harness(){
@@ -97,11 +98,9 @@ ok(h.system.canEndWave(13),'três fogueiras não concluíram a onda 13');
 close(h.system.movementMultiplier(h.players[0]),1.08,.0001,'Bênção do Fogo não aumentou velocidade');
 close(h.system.modifyOutgoingDamage(h.players[0],{frozen:true},100),126.5,.001,'Bênção do Fogo não combinou com o bônus da run');
 
-h.setWave(14);h.system.startWave(14);const gate=h.system.getCombatTargets()[0];
-ok(gate.width<=100,'Portão Congelado virou uma parede gigante');
-gate._lastDamageOwner=h.players[0];gate.takeDmg(gate.maxHp*.30);gate.takeDmg(gate.maxHp*.30);gate.takeDmg(gate.maxHp*.30);
-ok(h.spawned.filter(enemy=>enemy.campaignObjectiveSource==='frozen_gate').length===8,'portão não disparou hordas limitadas em 75/50/25%');
-gate.takeDmg(99999);ok(h.system.canEndWave(14),'portão destruído não liberou a onda');
+// O Portao Congelado foi removido do jogo: a onda 14 nao tem mais objetivo.
+h.setWave(14);h.system.startWave(14);
+ok(h.system.canEndWave(14),'onda 14 deveria estar livre depois da remocao do Portao');
 
 h.setWave(17);h.system.startWave(17);
 for(const [x,y] of CampaignObjectives.POSITIONS.obelisks){h.players[0].x=x;h.players[0].y=y;ok(h.system.handleActionDown(0),'obelisco não ativou');}

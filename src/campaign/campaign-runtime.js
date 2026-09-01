@@ -56,6 +56,25 @@ const campaignObjectives=CampaignObjectives.create({
   showChoice:openCampaignSharedChoice,
   hideChoice:()=>campaignObjectiveUI.hideChoice(),
   setHud:view=>campaignObjectiveUI.setHud(view),
+  // Lista de herois jogaveis e o desenho de um deles, para o sobrevivente da
+  // onda 8 e o aliado da tempestade usarem a arte de verdade.
+  heroisDisponiveis:()=>{
+    try{ return Object.values(CLASS_DEFS).map(def=>({id:def.id,nome:def.name})); }
+    catch(_){ return []; }
+  },
+  desenharHeroi:(ctx2,classId,x,pesY,dir,estado,progresso)=>{
+    try{
+      const im=(typeof heroImg==='function')?heroImg(classId,dir||'down',progresso||0,estado||'idle'):null;
+      if(!im)return false;
+      const conf=(typeof HERO_IMG_SETS!=='undefined')?HERO_IMG_SETS[classId]:null;
+      const quadro=(conf&&conf.frame)||48, pe=(conf&&conf.feet)||quadro-6, k=1.15;
+      const lado=Math.round(quadro*k);
+      ctx2.save(); ctx2.imageSmoothingEnabled=false;
+      ctx2.drawImage(im,Math.round(x-lado/2),Math.round(pesY-pe*k),lado,lado);
+      ctx2.restore();
+      return true;
+    }catch(_){ return false; }
+  },
   setAction:view=>campaignObjectiveUI.setAction(view),
   now:()=>performance.now(),
 });

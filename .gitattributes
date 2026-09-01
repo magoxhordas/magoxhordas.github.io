@@ -1,0 +1,7 @@
+# O index.html precisa ficar com LF: os scripts verify-*.mjs casam
+# trechos de varias linhas usando \n e quebram se virar CRLF.
+*.html text eol=lf
+*.mjs  text eol=lf
+*.js   text eol=lf
+*.json text eol=lf
+.gitattributes text eol=lf

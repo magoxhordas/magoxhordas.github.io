@@ -234,8 +234,14 @@ const GameSettings = (function(){
   }
   function getRenderScale(displayWidth){
     if(data.renderScale!=='auto') return Math.max(1,Math.min(2,Number(data.renderScale)||2));
-    const density=Math.ceil(window.devicePixelRatio||1);
-    return Math.max(1,Math.min(2,Math.max(density,Math.round((displayWidth||960)/640))));
+    // Quanto a tela REALMENTE mostra: a largura exibida vezes a densidade,
+    // sobre a largura logica de 640. A conta antiga olhava so' para a
+    // densidade e pedia escala 2 em qualquer celular, desenhando 1280x960
+    // para um canvas de 363 pixels de CSS. Em DPR 3 o resultado e' o mesmo;
+    // em DPR 2 o buffer cai para 640x480, um quarto dos pixels por quadro.
+    const density=Math.max(1,Number(window.devicePixelRatio)||1);
+    const necessario=(Number(displayWidth)||960)*density/640;
+    return Math.max(1,Math.min(2,Math.round(necessario)));
   }
 
   function getDisplaySize(maxWidth,maxHeight){

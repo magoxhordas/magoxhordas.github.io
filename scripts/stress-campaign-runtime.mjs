@@ -47,7 +47,7 @@ function runCampaign(runIndex){
     }else if(id==='dark_choice'){
       objectives.update(8.1);players[0].x=320;players[0].y=270;objectives.handleActionDown(0);
       choice.options[runIndex%2].onChoose();
-    }else if(id==='corpse_knight'||id==='hunter_spider'||id==='frozen_gate')damageAll();
+    }else if(id==='corpse_knight'||id==='hunter_spider')damageAll();
     else if(id==='webbed_survivor'){
       damageAll();enemies.length=0;objectives.update(22.1);
     }else if(id==='freezing_cold')objectives.update(8);

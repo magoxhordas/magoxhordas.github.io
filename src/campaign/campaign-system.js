@@ -242,12 +242,15 @@ class LavaRock {
   }
 }
 
+// Devolve true so' quando a onda REALMENTE terminou. As guardas abaixo
+// devolvem false, e quem chama precisa seguir com a atualizacao normal —
+// era exatamente ai que o jogo travava (veja o comentario no laco).
 function endWave(){
-  if(state==='endwave'||state==='shop'||state==='temple') return;
-  if(bossRushMode) return;
-  if(typeof campaignEvents!=='undefined'&&campaignEvents.isActive()) return;
-  if(wave>=5&&wave%5===0&&bossMajor&&!bossMajor.dead) return;
-  if(typeof campaignObjectives!=='undefined'&&!campaignObjectives.canEndWave(wave)) return;
+  if(state==='endwave'||state==='shop'||state==='temple') return false;
+  if(bossRushMode) return false;
+  if(typeof campaignEvents!=='undefined'&&campaignEvents.isActive()) return false;
+  if(wave>=5&&wave%5===0&&bossMajor&&!bossMajor.dead) return false;
+  if(typeof campaignObjectives!=='undefined'&&!campaignObjectives.canEndWave(wave)) return false;
   if(typeof campaignObjectives!=='undefined')campaignObjectives.onWaveEnd(wave);
   state='endwave';
   totalWavesSurvived++;
@@ -306,4 +309,5 @@ function endWave(){
     if(typeof campaignEvents!=='undefined'&&campaignEvents.tryStartAfterWave(wave,continueBetweenWaves))return;
     continueBetweenWaves();
   }, totalDelay);
+  return true;
 }
