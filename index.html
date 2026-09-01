@@ -10423,7 +10423,17 @@ function goMainMenu(){
   showScreen('main-menu');
 }
 function closeGame(){ window.close(); window.location.href='about:blank'; }
-function resumeGame(){ hideAllScreens(); lastTs=null; state='playing'; if(!raf) raf=requestAnimationFrame(loop); }
+function setCampaignOverlaySuspended(suspended){
+  window.campaignObjectiveUI?.setSuspended?.(!!suspended);
+}
+function pauseGame(){
+  if(state!=='playing')return false;
+  state='paused';
+  setCampaignOverlaySuspended(true);
+  showScreen('pause-menu');
+  return true;
+}
+function resumeGame(){ state='playing';setCampaignOverlaySuspended(false);hideAllScreens();lastTs=null;if(!raf)raf=requestAnimationFrame(loop); }
 
 // ── Rarity system (defined below) ──
 
@@ -19091,7 +19101,7 @@ function campaignKeyDown(e){
   }
   if(actionPressed('pause',e.key==='Escape')){
     e.preventDefault();
-    if(state==='playing'){ state='paused'; showScreen('pause-menu'); }
+    if(state==='playing'){ pauseGame(); }
     else if(state==='paused'){ resumeGame(); }
   }
   if(actionPressed('inventory',e.key==='i'||e.key==='I')) toggleInventory();
@@ -19251,8 +19261,7 @@ GameRuntime.onSuspend(()=>{
   campaignClock.reset();
   lastTs=null;
   if(state==='playing'){
-    state='paused';
-    showScreen('pause-menu');
+    pauseGame();
   }
 });
 
@@ -20437,7 +20446,7 @@ window.visualViewport?.addEventListener('resize',scheduleResponsiveLayout,{passi
       } else if(action==='pause'){
         if(dungeonActive()&&typeof DNG._togglePause==='function') DNG._togglePause();
         else if(typeof state!=='undefined'&&state==='playing'){
-          state='paused'; showScreen('pause-menu');
+          pauseGame();
         } else if(typeof state!=='undefined'&&state==='paused'&&typeof resumeGame==='function'){
           resumeGame();
         }

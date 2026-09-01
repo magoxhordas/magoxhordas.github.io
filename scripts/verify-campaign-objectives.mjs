@@ -146,6 +146,7 @@ for(const file of ['src/campaign/campaign-ui.js','src/campaign/campaign-objectiv
 }
 const uiSource=read('src/campaign/campaign-ui.js');
 for(const contract of ['@media (max-width:800px)','#campaign-action-button','pointerdown','pointerup','campaign-objective-meters'])ok(uiSource.includes(contract),`HUD móvel perdeu contrato: ${contract}`);
+for(const contract of ['#${ROOT_ID}.suspended','function setSuspended(value)','root.classList.toggle(\'suspended\',suspended)','setActionHandlers,setSuspended'])ok(uiSource.includes(contract),`pausa não protege o HUD de missão: ${contract}`);
 for(const contract of ['function drawTargetHealth(','`${atual}/${maximo}`','const altarBob=','globalCompositeOperation=\'lighter\'','ctx.ellipse(x,y+9,15+pulse*6'])ok(source.includes(contract),`visual/vida dos altares perdeu contrato: ${contract}`);
 ok(html.indexOf('src/campaign/campaign-objectives.js')<html.indexOf('src/campaign/campaign-runtime.js'),'runtime carrega antes dos objetivos');
 for(const contract of [

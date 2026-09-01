@@ -40,6 +40,14 @@ includesAll(menu,[
   'const CODEX_DEITY_ART=Object.freeze({',
 ], 'menu, selecao, Códex e paineis');
 
+includesAll(html,[
+  'function setCampaignOverlaySuspended(suspended)',
+  'function pauseGame()',
+  'setCampaignOverlaySuspended(true);',
+  'setCampaignOverlaySuspended(false);',
+], 'pausa e HUD de missão');
+assert((html.match(/pauseGame\(\);/g)||[]).length>=3,'teclado, suspensão e controle móvel não compartilham a pausa protegida');
+
 for(const screen of [
   'main-menu','play-menu','pause-menu','shop','gameover','char-select','temple-screen',
   'hub-screen','collection-screen','bossrush-screen','dungeon-screen','settings-screen'
