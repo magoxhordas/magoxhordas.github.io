@@ -59,6 +59,10 @@ h.setWave(2);ok(h.system.startWave(2),'onda 2 não iniciou');
 let targets=h.system.getCombatTargets();
 ok(targets.length===3,'onda 2 deve criar três altares');
 ok(targets.every(target=>target.objectiveTarget&&target.noNecroRewards),'estruturas devem bloquear almas/cadáveres');
+ok(targets.every(target=>target.hp===150&&target.maxHp===150),'cada altar deve começar com sua própria vida completa');
+targets[0].takeDmg(40);
+close(targets[0].hp,110,.001,'dano não reduziu a vida individual do primeiro altar');
+ok(targets.slice(1).every(target=>target.hp===150),'dano em um altar vazou para os demais');
 close(h.system.enemySpeedMultiplier(),1.10,.0001,'altares não aplicaram velocidade compartilhada');
 ok(!h.system.canEndWave(2),'onda 2 terminou antes dos altares');
 targets.forEach(target=>target.takeDmg(99999));
@@ -77,7 +81,7 @@ ok(h.system.canEndWave(3),'escolha sombria não concluiu objetivo');
 h.setWave(4);h.system.startWave(4);
 const bruto=h.getMiniboss();
 ok(bruto&&!bruto.dead,'onda 4 não criou o Brutamontes');
-close(bruto.maxHp,620,.001,'Brutamontes não veio com a vida reduzida da onda 4');
+close(bruto.maxHp,850,.001,'Brutamontes não veio com a vida reforçada da onda 4');
 ok(h.system.getCombatTargets().length===0,'Brutamontes não deve virar alvo de objetivo: ele é o chefe do jogo');
 h.system.update(.1);
 ok(!h.system.canEndWave(4),'onda 4 liberou antes de o Brutamontes morrer');
@@ -142,6 +146,7 @@ for(const file of ['src/campaign/campaign-ui.js','src/campaign/campaign-objectiv
 }
 const uiSource=read('src/campaign/campaign-ui.js');
 for(const contract of ['@media (max-width:800px)','#campaign-action-button','pointerdown','pointerup','campaign-objective-meters'])ok(uiSource.includes(contract),`HUD móvel perdeu contrato: ${contract}`);
+for(const contract of ['function drawTargetHealth(','`${atual}/${maximo}`','const altarBob=','globalCompositeOperation=\'lighter\'','ctx.ellipse(x,y+9,15+pulse*6'])ok(source.includes(contract),`visual/vida dos altares perdeu contrato: ${contract}`);
 ok(html.indexOf('src/campaign/campaign-objectives.js')<html.indexOf('src/campaign/campaign-runtime.js'),'runtime carrega antes dos objetivos');
 for(const contract of [
   "...(typeof campaignObjectiveTargets==='function'?campaignObjectiveTargets():[])",
