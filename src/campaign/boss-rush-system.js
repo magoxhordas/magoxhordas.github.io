@@ -9,6 +9,20 @@ const {BOSS_RUSH_LIST,PET_BOSS_RUSH_LIST,BOSS_RUSH_ARENA_NAMES}=window.MagoCampa
 let bossRushMode=false;
 let bossRushQueue=[];
 let bossRushCurrent=0;
+// Instante (Date.now) em que o proximo chefe deve entrar na arena. Zero =
+// nada pendente. Substitui um setTimeout que era descartado se o jogador
+// estivesse pausado quando ele vencia — ver bossRushCobrarProximo().
+let bossRushPendingAt=0;
+function bossRushAgendarProximo(atrasoMs){ bossRushPendingAt=Date.now()+atrasoMs; }
+// Chamada pelo laco a cada quadro de jogo. Como o laco nao roda pausado, a
+// cobranca simplesmente espera o jogador voltar.
+function bossRushCobrarProximo(){
+  if(!bossRushMode||!bossRushPendingAt||Date.now()<bossRushPendingAt) return;
+  if((typeof bossMajor!=='undefined'&&bossMajor&&!bossMajor.dead)||
+     (typeof petBoss!=='undefined'&&petBoss&&!petBoss.dead)) return;
+  bossRushPendingAt=0;
+  spawnNextBossRush();
+}
 let bossRushSelected=[];
 
 const BOSS_RUSH_ART={
@@ -102,6 +116,7 @@ function startBossRush(){
   const allBosses=[...BOSS_RUSH_LIST,...PET_BOSS_RUSH_LIST];
   bossRushQueue=allBosses.filter(b=>bossRushSelected.includes(b.id));
   bossRushCurrent=0;
+  bossRushPendingAt=0;
   _selMode=1; _selDiff='medium';
   charSelectStep=1; buildCharSelectUI(1);
   showScreen('char-select');

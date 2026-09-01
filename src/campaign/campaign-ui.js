@@ -12,7 +12,10 @@
     style.id=STYLE_ID;
     style.textContent=`
       #${ROOT_ID}{position:fixed;inset:0;z-index:85;pointer-events:none;font-family:"Courier New",monospace;color:#f7edcf}
-      #campaign-objective-panel{position:absolute;left:50%;top:76px;transform:translateX(-50%);width:min(430px,calc(100vw - 24px));padding:9px 13px 10px;background:linear-gradient(180deg,rgba(17,13,24,.94),rgba(8,7,13,.9));border:2px solid #8e7544;box-shadow:0 0 0 2px #21182a,0 7px 24px rgba(0,0,0,.55);display:none}
+      /* Canto superior DIREITO, alinhado com a borda direita do #ui-top e logo
+         abaixo dele. Antes ficava centralizado no topo, por cima da barra de
+         vida/onda/tempo. Como virou coluna e nao faixa, e' mais estreito. */
+      #campaign-objective-panel{position:absolute;right:max(22px,calc((100vw - 1120px)/2));top:108px;width:min(268px,calc(100vw - 24px));padding:8px 11px 9px;background:linear-gradient(180deg,rgba(17,13,24,.94),rgba(8,7,13,.9));border:2px solid #8e7544;box-shadow:0 0 0 2px #21182a,0 7px 24px rgba(0,0,0,.55);display:none}
       #campaign-objective-panel.visible{display:block}
       #campaign-objective-kicker{font-size:9px;letter-spacing:2.2px;color:#d8ad55;text-transform:uppercase}
       #campaign-objective-title{margin-top:2px;font-size:15px;font-weight:900;letter-spacing:.5px;text-shadow:0 2px #000}
@@ -45,7 +48,7 @@
       .campaign-choice-option-detail{display:block;margin-top:5px;font-size:10px;line-height:1.35;color:#bdb3a0}
       .campaign-choice-option.costly .campaign-choice-option-title{color:#ef9c73}
       @media (pointer:fine) and (min-width:801px){#campaign-action-button{display:none!important}}
-      @media (max-width:800px){#campaign-objective-panel{top:54px;width:min(390px,calc(100vw - 16px));padding:7px 10px}#campaign-objective-title{font-size:12px}#campaign-objective-detail{font-size:9px}#campaign-interact-prompt{bottom:82px;font-size:9px}#campaign-choice-title{font-size:18px}#campaign-choice-card{padding:14px}.campaign-choice-option{min-height:72px}}
+      @media (max-width:800px){#campaign-objective-panel{right:max(8px,var(--safe-right,0px));top:74px;width:min(212px,calc(100vw - 16px));padding:6px 8px}#campaign-objective-title{font-size:12px}#campaign-objective-detail{font-size:9px}#campaign-interact-prompt{bottom:82px;font-size:9px}#campaign-choice-title{font-size:18px}#campaign-choice-card{padding:14px}.campaign-choice-option{min-height:72px}}
       body.campaign-chapter-active #${ROOT_ID},body:not(.campaign-hud-active) #${ROOT_ID}{display:none!important}
     `;
     doc.head.appendChild(style);

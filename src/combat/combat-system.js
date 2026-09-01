@@ -50,16 +50,19 @@
       applyShopHitEffects(owner,enemy,proj.dmg||0);
       notifyBlessingHit(owner,enemy,proj.dmg||0,proj.weapon||null);
       if(cid==='mage'){
+        // Este caminho mexia em slowed/frozen direto, sem passar pelo
+        // applySlow — e por isso ignorava as duas imunidades do Cavaleiro
+        // Demonio, que a configuracao dele declara desde sempre.
         if(enemy.frozen)return;
-        if(enemy.slowed){
+        if(enemy.slowed&&!enemy.freezeImmune){
           enemy.frozen=true;
           enemy.frozenTimer=2000;
           enemy.slowed=false;
           spawnParts(enemy.x,enemy.y,'#aaeeff',8,50);
-        }else{
+        }else if(!enemy.slowImmune){
           enemy.slowed=true;
           enemy.slowTimer=owner.slowDur*(1+(getShopEffect(owner).elementDuration||0));
-          if(owner.instantFreeze){
+          if(owner.instantFreeze&&!enemy.freezeImmune){
             enemy.frozen=true;
             enemy.frozenTimer=2000;
           }

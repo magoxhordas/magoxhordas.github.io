@@ -1501,43 +1501,69 @@ function renderCollItems(grid){
 
 // ── BESTIÁRIO ──
 const BESTIARY=[
-  {id:'runner_goblin',  icon:'👺',name:'Goblin Corredor',   biome:'Castelo', color:'#3db830',hp:30,hpGrow:8,  dmg:6, dmgGrow:0.8, spr:()=>GOB_DOWN[0], pal:()=>PAL_GOBLIN},
-  {id:'shield_orc',     icon:'🛡️',name:'Orc Escudeiro',     biome:'Castelo', color:'#4a8c30',hp:55,hpGrow:12, dmg:10,dmgGrow:1.2, spr:()=>ORC_DOWN[0], pal:()=>PAL_ORC},
-  {id:'archer_skeleton',icon:'💀',name:'Esqueleto Arqueiro', biome:'Castelo', color:'#ece4cc',hp:25,hpGrow:6,  dmg:8, dmgGrow:1.0, spr:()=>SKL_DOWN[0], pal:()=>PAL_SKELETON},
-  {id:'spitting_spider',icon:'🕷️',name:'Aranha Cuspidora',  biome:'Floresta',color:'#888858',hp:35,hpGrow:9,  dmg:7, dmgGrow:0.9, spr:()=>SPD[0], pal:()=>PAL_SPIDER},
-  {id:'corrupt_ent',    icon:'🌳',name:'Ent Corrompido',     biome:'Floresta',color:'#4a8228',hp:80,hpGrow:18, dmg:12,dmgGrow:1.5, spr:()=>ENT_SPR[0], pal:()=>PAL_ENT},
-  {id:'hungry_wolf',    icon:'🐺',name:'Lobo Faminto',       biome:'Floresta',color:'#888070',hp:40,hpGrow:10, dmg:14,dmgGrow:1.8, spr:()=>WOLF_SPR[0], pal:()=>PAL_WOLF},
-  {id:'shroom',         icon:'🍄',name:'Cogumelo Esporo',    biome:'Floresta',color:'#cc2a24',hp:50,hpGrow:8,  dmg:12,dmgGrow:1.2, spr:()=>SHROOM_SPR[0], pal:()=>PAL_SHROOM},
-  {id:'ice_zombie',     icon:'🧟',name:'Zumbi de Gelo',      biome:'Neve',    color:'#9abcbc',hp:45,hpGrow:10, dmg:8, dmgGrow:1.0, spr:()=>SNOW_ZOMBIE[0], pal:()=>PAL_SNOW_ZOMBIE},
-  {id:'crystal_golem',  icon:'💎',name:'Golem de Cristal',   biome:'Neve',    color:'#a8d8f8',hp:100,hpGrow:22,dmg:15,dmgGrow:2.0, spr:()=>ICE_GOLEM[0], pal:()=>PAL_ICE_GOLEM},
-  {id:'wind_specter',   icon:'👻',name:'Espectro dos Ventos',biome:'Neve',    color:'#9898cc',hp:30,hpGrow:7,  dmg:10,dmgGrow:1.2, spr:()=>SPECTER_SPR[0], pal:()=>PAL_SPECTER},
-  {id:'sand_worm_small',icon:'🪱',name:'Verme de Areia',     biome:'Deserto', color:'#d4a830',hp:60,hpGrow:14, dmg:12,dmgGrow:1.5, spr:()=>WORM_SPR[0], pal:()=>PAL_WORM},
-  {id:'cultist',        icon:'🧙',name:'Cultista',           biome:'Deserto', color:'#cc3300',hp:35,hpGrow:8,  dmg:18,dmgGrow:2.2, spr:()=>CULTIST_SPR[0], pal:()=>PAL_CULTIST},
-  {id:'obsidian_scorpion',icon:'🦂',name:'Escorpião Obsidiana',biome:'Deserto',color:'#c8742c',hp:50,hpGrow:11,dmg:16,dmgGrow:2.0, spr:()=>SCORPION_SPR[0], pal:()=>PAL_SCORPION},
-  {id:'fire_imp',       icon:'😈',name:'Diabrete de Fogo',   biome:'Vulcão',  color:'#cc2200',hp:30,hpGrow:7,  dmg:20,dmgGrow:2.5, spr:()=>IMP_SPR[0], pal:()=>PAL_IMP},
-  {id:'demon_knight',   icon:'⚔️',name:'Cavaleiro Demônio',  biome:'Vulcão',  color:'#880030',hp:90,hpGrow:20, dmg:22,dmgGrow:2.8, spr:()=>DKNIGHT_SPR[0], pal:()=>PAL_DKNIGHT},
-  {id:'lava_bat',       icon:'🦇',name:'Morcego de Lava',    biome:'Vulcão',  color:'#cc3800',hp:25,hpGrow:6,  dmg:12,dmgGrow:1.4, spr:()=>LAVABAT_SPR[0], pal:()=>PAL_LAVABAT},
+  {id:'runner_goblin',  icon:'👺',name:'Goblin Corredor',   biome:'Castelo', color:'#3db830',hp:30,hpGrow:8,  dmg:6, dmgGrow:0.8, spr:()=>GOB_DOWN[0], pal:()=>PAL_GOBLIN, art:'assets/enemies/goblin/codex.png'},
+  {id:'shield_orc',     icon:'🛡️',name:'Orc Escudeiro',     biome:'Castelo', color:'#4a8c30',hp:55,hpGrow:12, dmg:10,dmgGrow:1.2, spr:()=>ORC_DOWN[0], pal:()=>PAL_ORC, art:'assets/enemies/shieldorc/codex.png'},
+  {id:'archer_skeleton',icon:'💀',name:'Esqueleto Arqueiro', biome:'Castelo', color:'#ece4cc',hp:25,hpGrow:6,  dmg:8, dmgGrow:1.0, spr:()=>SKL_DOWN[0], pal:()=>PAL_SKELETON, art:'assets/enemies/skelarcher/codex.png'},
+  {id:'spitting_spider',icon:'🕷️',name:'Aranha Cuspidora',  biome:'Floresta',color:'#888858',hp:35,hpGrow:9,  dmg:7, dmgGrow:0.9, spr:()=>SPD[0], pal:()=>PAL_SPIDER, art:'assets/enemies/spider2/codex.png'},
+  {id:'corrupt_ent',    icon:'🌳',name:'Ent Corrompido',     biome:'Floresta',color:'#4a8228',hp:80,hpGrow:18, dmg:12,dmgGrow:1.5, spr:()=>ENT_SPR[0], pal:()=>PAL_ENT, art:'assets/enemies/ent/codex.png'},
+  {id:'hungry_wolf',    icon:'🐺',name:'Lobo Faminto',       biome:'Floresta',color:'#888070',hp:40,hpGrow:10, dmg:14,dmgGrow:1.8, spr:()=>WOLF_SPR[0], pal:()=>PAL_WOLF, art:'assets/enemies/wolf/codex.png'},
+  {id:'shroom',         icon:'🍄',name:'Cogumelo Esporo',    biome:'Floresta',color:'#cc2a24',hp:50,hpGrow:8,  dmg:12,dmgGrow:1.2, spr:()=>SHROOM_SPR[0], pal:()=>PAL_SHROOM, art:'assets/enemies/shroom/codex.png'},
+  {id:'ice_zombie',     icon:'🧟',name:'Zumbi de Gelo',      biome:'Neve',    color:'#9abcbc',hp:45,hpGrow:10, dmg:8, dmgGrow:1.0, spr:()=>SNOW_ZOMBIE[0], pal:()=>PAL_SNOW_ZOMBIE, art:'assets/enemies/icezombie/codex.png'},
+  {id:'crystal_golem',  icon:'💎',name:'Golem de Cristal',   biome:'Neve',    color:'#a8d8f8',hp:100,hpGrow:22,dmg:15,dmgGrow:2.0, spr:()=>ICE_GOLEM[0], pal:()=>PAL_ICE_GOLEM, art:'assets/enemies/crystalgolem/codex.png'},
+  {id:'wind_specter',   icon:'👻',name:'Espectro dos Ventos',biome:'Neve',    color:'#9898cc',hp:30,hpGrow:7,  dmg:10,dmgGrow:1.2, spr:()=>SPECTER_SPR[0], pal:()=>PAL_SPECTER, art:'assets/enemies/windspecter/codex.png'},
+  {id:'sand_worm_small',icon:'🪱',name:'Verme de Areia',     biome:'Deserto', color:'#d4a830',hp:60,hpGrow:14, dmg:12,dmgGrow:1.5, spr:()=>WORM_SPR[0], pal:()=>PAL_WORM, art:'assets/enemies/sandworm2/codex.png'},
+  {id:'cultist',        icon:'🧙',name:'Cultista',           biome:'Deserto', color:'#cc3300',hp:35,hpGrow:8,  dmg:18,dmgGrow:2.2, spr:()=>CULTIST_SPR[0], pal:()=>PAL_CULTIST, art:'assets/enemies/cultist/codex.png'},
+  {id:'obsidian_scorpion',icon:'🦂',name:'Escorpião Obsidiana',biome:'Deserto',color:'#c8742c',hp:50,hpGrow:11,dmg:16,dmgGrow:2.0, spr:()=>SCORPION_SPR[0], pal:()=>PAL_SCORPION, art:'assets/enemies/scorpion/codex.png'},
+  {id:'fire_imp',       icon:'😈',name:'Diabrete de Fogo',   biome:'Vulcão',  color:'#cc2200',hp:30,hpGrow:7,  dmg:20,dmgGrow:2.5, spr:()=>IMP_SPR[0], pal:()=>PAL_IMP, art:'assets/enemies/fireimp/codex.png'},
+  {id:'demon_knight',   icon:'⚔️',name:'Cavaleiro Demônio',  biome:'Vulcão',  color:'#880030',hp:90,hpGrow:20, dmg:22,dmgGrow:2.8, spr:()=>DKNIGHT_SPR[0], pal:()=>PAL_DKNIGHT, art:'assets/enemies/demonknight/codex.png'},
+  {id:'lava_bat',       icon:'🦇',name:'Morcego de Lava',    biome:'Vulcão',  color:'#cc3800',hp:25,hpGrow:6,  dmg:12,dmgGrow:1.4, spr:()=>LAVABAT_SPR[0], pal:()=>PAL_LAVABAT, art:'assets/enemies/lavabat/codex.png'},
 ];
 function renderCollEnemies(grid){
   BESTIARY.forEach(e=>{
     const killed=(defeatedEnemies[e.id]||0)>0;
-    const eIcon=e.spr?{spr:e.spr(),pal:e.pal()}:collGameIcon('skull');
+    // A arte real dos inimigos, a mesma que o jogo desenha. O Codex mostrava
+    // o desenho procedural antigo, que virou reserva para quem nao tem arte.
+    const eIcon=e.art?{artPath:e.art,color:e.color}
+                :e.spr?{spr:e.spr(),pal:e.pal()}:collGameIcon('skull');
     grid.appendChild(collCard(eIcon,e.name,killed?e.biome+' × '+(defeatedEnemies[e.id]):'???',!killed,killed?()=>showCollEnemyDetail(e):null,null,e.color));
   });
 }
-function showCollEnemyDetail(e){
+/* Vida e dano vem de statsInimigo(), a mesma tabela que o jogo usa para
+   criar o inimigo. Os campos hp/hpGrow/dmg/dmgGrow das entradas abaixo eram
+   uma copia a mao e sairam de sincronia: 15 dos 16 anunciavam numero que o
+   jogo nao entregava. Ficam como reserva, para o caso de a tabela nao estar
+   carregada (o Codex tambem abre pelo menu, antes de comecar a partida). */
+function statsCodex(e){
+  if(typeof statsInimigo!=='function') return e;
+  const a=statsInimigo(1,e.id), b=statsInimigo(2,e.id);
+  if(!a||!b) return e;
+  // Arredonda: 24.4-22.2 da' 2.1999999999999993 em ponto flutuante, e isso
+  // ia parar na tela como "+2.1999999999999993 dano por onda".
+  const r=v=>Math.round(v*100)/100;
+  const hpGrow=r(b.hp-a.hp), dmgGrow=r(b.dmg-a.dmg);
+  return {...e, hp:r(a.hp-hpGrow), hpGrow, dmg:r(a.dmg-dmgGrow), dmgGrow};
+}
+function showCollEnemyDetail(e0){
+  const e=statsCodex(e0);
   const det=document.getElementById('coll-detail'); det.className='coll-detail visible';
-  const enemyIcon=e.spr?{spr:e.spr(),pal:e.pal()}:collGameIcon('skull');
+  const enemyIcon=e.art?{artPath:e.art,color:e.color}
+                  :e.spr?{spr:e.spr(),pal:e.pal()}:collGameIcon('skull');
   const kills=defeatedEnemies[e.id]||0;
   const hpMax=e.hp+25*e.hpGrow;
   const hpBars=Array.from({length:25},(_,i)=>{const hp=Math.round(e.hp+(i+1)*e.hpGrow);const pct=Math.min(100,Math.round(hp/hpMax*100));return `<div class="coll-chart-bar" style="height:${pct}%;background:${e.color}bb" title="Onda ${i+1}: ${hp} HP"></div>`;}).join('');
+  // A Aranha Cuspidora nao causa dano nenhum: sem dano de contato, e a teia
+  // dela so' reduz velocidade. Sem esta guarda o grafico dividia 0 por 0 e
+  // saia com height:NaN%.
   const dmgMax=e.dmg+25*e.dmgGrow;
-  const dmgBars=Array.from({length:25},(_,i)=>{const dmg=Math.round((e.dmg+(i+1)*e.dmgGrow)*10)/10;const pct=Math.min(100,Math.round(dmg/dmgMax*100));return `<div class="coll-chart-bar" style="height:${pct}%;background:#cc444488" title="Onda ${i+1}: ${dmg} dmg"></div>`;}).join('');
+  const semDano=!(dmgMax>0);
+  const dmgBars=semDano?'':Array.from({length:25},(_,i)=>{const dmg=Math.round((e.dmg+(i+1)*e.dmgGrow)*10)/10;const pct=Math.min(100,Math.round(dmg/dmgMax*100));return `<div class="coll-chart-bar" style="height:${pct}%;background:#cc444488" title="Onda ${i+1}: ${dmg} dmg"></div>`;}).join('');
   det.innerHTML=`<div class="coll-det-header"><div class="coll-det-icon">${collIconHtml(enemyIcon,54)}</div><div class="coll-det-info"><div class="coll-det-name">${e.name}</div><div class="coll-det-type">${e.biome}</div><div class="coll-det-kills">${kills} eliminados</div></div></div>`
-    +`<div class="coll-det-stats">${collStatBar('Vida onda 1',e.hp,300,'#44cc66')}${collStatBar('Dano onda 1',e.dmg,50,'#ff5555')}</div>`
+    +`<div class="coll-det-stats">${collStatBar('Vida onda 1',Math.round(e.hp+e.hpGrow),300,'#44cc66')}${collStatBar('Dano onda 1',Math.round((e.dmg+e.dmgGrow)*10)/10,50,'#ff5555')}</div>`
     +`<div style="font-size:12px;color:#8a6830;margin-top:2px;">+${e.hpGrow} HP / +${e.dmgGrow} dano por onda</div>`
     +`<div class="coll-chart-wrap"><div class="coll-chart-title">VIDA POR ONDA (1-25)</div><div class="coll-chart">${hpBars}</div><div class="coll-chart-labels"><span>1</span><span>5</span><span>10</span><span>15</span><span>20</span><span>25</span></div></div>`
-    +`<div class="coll-chart-wrap"><div class="coll-chart-title">DANO POR ONDA (1-25)</div><div class="coll-chart">${dmgBars}</div><div class="coll-chart-labels"><span>1</span><span>5</span><span>10</span><span>15</span><span>20</span><span>25</span></div></div>`;
+    +(semDano
+      ?`<div class="coll-chart-wrap"><div class="coll-chart-title">DANO POR ONDA (1-25)</div><div style="font-size:12px;color:#8a6830;padding:6px 2px;">Não causa dano direto — atrapalha em vez de ferir.</div></div>`
+      :`<div class="coll-chart-wrap"><div class="coll-chart-title">DANO POR ONDA (1-25)</div><div class="coll-chart">${dmgBars}</div><div class="coll-chart-labels"><span>1</span><span>5</span><span>10</span><span>15</span><span>20</span><span>25</span></div></div>`);
 }
 
 // ── CLASSES ──

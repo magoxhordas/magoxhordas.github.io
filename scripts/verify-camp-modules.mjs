@@ -46,7 +46,9 @@ assert(JSON.stringify(sandbox.CampCollisionMap.FOOTPRINT)===JSON.stringify([[-8,
   'footprint do personagem foi alterado');
 
 const {HORTA,LUZES_ACAMPAMENTO,ARQ}=sandbox.CampLayoutData;
-assert(HORTA.fx===.3020&&HORTA.fy===.1080&&HORTA.fw===.2500&&HORTA.fh===.2520&&HORTA.cols===5&&HORTA.linhas===3,
+// Valores medidos em assets/camp/camp_bg.png: canteiros em x 293..631,
+// y 147..409, grade 4x4. Ver o comentario em src/camp/layout-data.js.
+assert(HORTA.fx===.2025&&HORTA.fy===.1352&&HORTA.fw===.2336&&HORTA.fh===.2410&&HORTA.cols===4&&HORTA.linhas===4,
   'layout da horta foi alterado');
 assert(LUZES_ACAMPAMENTO.length===13,'quantidade de luzes do acampamento foi alterada');
 assert(ARQ.fx===.452&&ARQ.fy===.560,'posicao do arqueiro foi alterada');
@@ -152,7 +154,7 @@ const farmDentro=(x,y,r)=>{const b=farmPx(r);return x>=b.x&&x<=b.x+b.w&&y>=b.y&&
 const farmingSystem=sandbox.CampFarmingSystem.create({
   HORTA,SEMENTES:farm.SEMENTES,NOME_SEM:farm.NOME_SEM,ACAO:farm.ACAO,S:farmState,px:farmPx,dentro:farmDentro
 });
-assert(farmingSystem.CANTEIROS.length===15,'farming-system nao criou os 15 canteiros');
+assert(farmingSystem.CANTEIROS.length===13,'farming-system nao criou os 13 canteiros');
 assert(farmingSystem.CANTEIROS.every((k,i)=>k.idx===i),'indices dos canteiros foram alterados');
 const firstPlot=farmingSystem.CANTEIROS[0], firstBox=farmPx(firstPlot);
 assert(farmingSystem.canteiroEm(firstBox.x+firstBox.w/2,firstBox.y+firstBox.h/2-6)===firstPlot,'deteccao do canteiro foi alterada');

@@ -2,8 +2,12 @@
 (function(global){
   'use strict';
 
+  // Medida na propria arte (assets/camp/camp_bg.png, 1447x1087): os
+  // canteiros desenhados ocupam x 293..631 e y 147..409, em 4 colunas por
+  // 4 linhas. Os valores antigos (x 437..799, 5x3) jogavam metade da grade
+  // na grama a direita da horta.
   const HORTA=Object.freeze({
-    fx:.3020, fy:.1080, fw:.2500, fh:.2520, cols:5, linhas:3
+    fx:.2025, fy:.1352, fw:.2336, fh:.2410, cols:4, linhas:4
   });
 
   // Mesmos pontos de luz usados pelo desenho do acampamento.

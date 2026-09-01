@@ -148,7 +148,7 @@ const farming=campSandbox.CampFarmingSystem.create({
   ACAO:campSandbox.CampFarmingData.ACAO,
   S:farmState,px,dentro,
 });
-assert(farming.CANTEIROS.length===15,'quantidade de canteiros foi alterada');
+assert(farming.CANTEIROS.length===13,'quantidade de canteiros foi alterada');
 campSandbox.farmCells[0].state='plowed';
 farming.usarCanteiro(farming.CANTEIROS[0]);
 assert(campSandbox.farmCells[0].state==='planted'&&campSandbox.farmCells[0].seed==='semente_trigo','contrato de plantio foi alterado');

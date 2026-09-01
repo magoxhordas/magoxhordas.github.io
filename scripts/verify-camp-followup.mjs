@@ -62,7 +62,7 @@ activePetId=null;
 petSystem.atualizarPet(.016);
 ok(petState.pet.id==='zefiro','fallback para o primeiro pet capturado foi alterado');
 
-const HORTA={fx:.302,fy:.108,fw:.25,fh:.252,cols:5,linhas:3};
+const HORTA={fx:.2025,fy:.1352,fw:.2336,fh:.2410,cols:4,linhas:4};
 sandbox.globalInventory={semente_tomate:2,semente_trigo:1};
 sandbox.selectedSeed=null;
 sandbox.activeTool=null;

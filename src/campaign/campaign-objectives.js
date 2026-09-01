@@ -14,7 +14,6 @@
     9:Object.freeze({id:'hunter_spider',title:'Aranha Caçadora',required:true}),
     12:Object.freeze({id:'freezing_cold',title:'Frio Crescente',required:false}),
     13:Object.freeze({id:'lost_fires',title:'Fogueiras Perdidas',required:true}),
-    14:Object.freeze({id:'frozen_gate',title:'Portão Congelado',required:true}),
     17:Object.freeze({id:'ancient_obelisks',title:'Obeliscos Ancestrais',required:true}),
     18:Object.freeze({id:'sandstorm',title:'Tempestade de Areia',required:false}),
     19:Object.freeze({id:'tremors',title:'Tremores do Devorador',required:false}),
@@ -83,9 +82,13 @@
     let lastActionSignature='';
     let stormCanvas=null,stormCtx=null;
 
-    function blankBuffs(){return {darkChoice:null,demonPower:0,skeletonKingDamage:0,aracneHpMult:1,aracneCooldownMult:1,fireBlessing:false};}
+    function blankBuffs(){return {darkChoice:null,demonPower:0,skeletonKingDamage:0,aracneHpMult:1,aracneCooldownMult:1,fireBlessing:false,heroiResgatado:null};}
     function blankState(){return {wave:0,id:null,title:'',required:false,complete:true,targets:[],elapsed:0,data:{},active:false};}
     function players(){return alive(deps.getPlayers());}
+    function herois(){try{return deps.heroisDisponiveis?.()||[];}catch(_){return [];}}
+    function desenharHeroi(ctx,cls,x,pesY,dir,estado,p){
+      try{return !!deps.desenharHeroi?.(ctx,cls,x,pesY,dir,estado,p);}catch(_){return false;}
+    }
     function enemies(){return alive(deps.getEnemies());}
     function validCampaign(){return !deps.isBossRush()&&!deps.isDungeon()&&deps.isCampaignActive();}
     function makeTarget(config){
@@ -173,8 +176,13 @@
         current.data.spawnTimer=1900;
         POSITIONS.spiderNests.forEach(([x,y],index)=>makeTarget({kind:'spider_nest',label:`Ninho ${index+1}`,x,y,hp:Math.round(180*hpScale),radius:22,hitColor:'#d9e4d6',onDestroyed:onMandatoryStructureDestroyed}));
       }else if(definition.id==='webbed_survivor'){
+        // Quem esta' no casulo e' um dos herois do jogo, sorteado na hora — e o
+        // titulo da missao passa a dizer QUEM e'.
+        const lista=herois();
+        current.data.heroi=lista.length?lista[Math.floor(Math.random()*lista.length)]:{id:'mage',nome:'Sobrevivente'};
+        current.title=`Sobrevivente: ${current.data.heroi.nome}`;
         const survivor=makeTarget({kind:'survivor_web',label:'Casulo',x:320,y:270,hp:Math.round(145*hpScale),radius:20,hitColor:'#e4eee6',optional:true,
-          interactive:true,interactionText:'Libertar sobrevivente',onDepleted:target=>{startSurvivorDefense(target);return true;}});
+          interactive:true,interactionText:`Libertar ${current.data.heroi.nome}`,onDepleted:target=>{startSurvivorDefense(target);return true;}});
         current.data.survivor=survivor;current.data.stage='web';current.data.defenseMs=22000;
       }else if(definition.id==='hunter_spider'){
         const hunter=makeTarget({kind:'hunter_spider',label:'Aranha Caçadora',x:320,y:238,hp:Math.round(520*hpScale),radius:23,hitColor:'#d7eee3',
@@ -187,15 +195,20 @@
       }else if(definition.id==='lost_fires'){
         current.data.lit=0;
         POSITIONS.frostFires.forEach(([x,y],index)=>makeTarget({kind:'fire',label:`Fogueira ${index+1}`,x,y,radius:20,damageable:false,autoTarget:false,lit:false,interactive:true,holdMs:1750,interactionText:'Acender fogueira'}));
-      }else if(definition.id==='frozen_gate'){
-        current.data.thresholds=new Set();
-        makeTarget({kind:'frozen_gate',label:'Portão Congelado',x:320,y:250,hp:Math.round(900*hpScale),radius:42,width:96,hitColor:'#a9efff',
-          onDamage:onGateDamaged,onDestroyed:()=>complete('PORTÃO ROMPIDO')});
       }else if(definition.id==='ancient_obelisks'){
         current.data.activated=0;
         POSITIONS.obelisks.forEach(([x,y],index)=>makeTarget({kind:'obelisk',label:`Obelisco ${index+1}`,x,y,radius:20,damageable:false,autoTarget:false,interactive:true,activated:false,interactionText:'Ativar obelisco'}));
       }else if(definition.id==='sandstorm'){
         current.data.gust=0;
+        // O heroi salvo na onda 8 volta para lutar do seu lado. Ele nao pode
+        // morrer: e' recompensa, nao mais um objeto para o jogador defender.
+        const salvo=buffs.heroiResgatado;
+        if(salvo){
+          current.data.aliado=makeTarget({kind:'hero_ally',label:salvo.nome,x:320,y:330,radius:14,
+            damageable:false,autoTarget:false,interactive:false,heroi:salvo,
+            golpeT:900,passo:0,olhando:'down',atacando:0,customUpdate:updateHeroAlly});
+          deps.spawnNotice(320,196,`${salvo.nome.toUpperCase()} VEIO AJUDAR`,0);
+        }
       }else if(definition.id==='tremors'){
         current.data.nextTremor=4200;current.data.tremor=null;
       }else if(definition.id==='infernal_fissures'){
@@ -306,10 +319,41 @@
     function startSurvivorDefense(target){
       if(current.data.stage!=='web')return;
       current.data.stage='defend';current.data.remaining=current.data.defenseMs;
-      target.kind='survivor';target.label='Sobrevivente';target.damageable=false;target.autoTarget=false;target.interactive=false;
+      target.kind='survivor';target.label=current.data.heroi?.nome||'Sobrevivente';target.heroi=current.data.heroi;
+      target.damageable=false;target.autoTarget=false;target.interactive=false;
       target._destroyed=false;target.dead=false;target.hp=120;target.maxHp=120;target.radius=15;
       runtime.parts(target.x,target.y,'#e8eee6',18,65);deps.spawnNotice(target.x,target.y-34,'DEFENDA O SOBREVIVENTE!',0);
     }
+    /* O resgatado: anda atras do jogador mais proximo e bate em quem chega
+       perto. Nao leva dano — ele e' recompensa pelo resgate, e nao um novo
+       objeto de escolta. */
+    function updateHeroAlly(target,dt){
+      const alvoJogador=players().sort((a,b)=>distance(a,target)-distance(b,target))[0];
+      if(alvoJogador){
+        const dx=alvoJogador.x-target.x,dy=alvoJogador.y-target.y,d=Math.hypot(dx,dy);
+        if(d>52){
+          const v=132*dt;target.x+=dx/d*v;target.y+=dy/d*v;
+          target.passo+=Math.hypot(dx/d*v,dy/d*v);
+          target.olhando=Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up');
+          target.andando=true;
+        } else target.andando=false;
+      }
+      target.x=clamp(target.x,30,610);target.y=clamp(target.y,208,452);
+      if(target.atacando>0)target.atacando-=dt*1000;
+      target.golpeT-=dt*1000;
+      if(target.golpeT<=0){
+        const perto=enemies().filter(e=>distance(e,target)<74)
+          .sort((a,b)=>distance(a,target)-distance(b,target))[0];
+        if(perto){
+          target.golpeT=900;target.atacando=340;
+          const dx=perto.x-target.x,dy=perto.y-target.y;
+          target.olhando=Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up');
+          perto.takeDmg?.(16+(Number(deps.getWave())||18)*1.6);
+          runtime.parts(perto.x,perto.y,'#ffe6a8',5,34);
+        } else target.golpeT=280;
+      }
+    }
+
     function updateSurvivor(dt){
       const target=current.data.survivor;if(!target||current.data.stage!=='defend')return;
       current.data.remaining-=dt*1000;
@@ -323,22 +367,15 @@
       if(target.hp<=0){target.dead=true;current.data.stage='failed';deps.spawnNotice(target.x,target.y-32,'O SOBREVIVENTE CAIU',0);complete();}
       else if(current.data.remaining<=0){
         current.data.stage='success';target.dead=true;
+        // Fica guardado para a run inteira: este heroi reaparece na Tempestade
+        // de Areia (onda 18) lutando do seu lado.
+        buffs.heroiResgatado=current.data.heroi||null;
         for(const pl of players()){pl.hp=Math.min(pl.maxHp,pl.hp+pl.maxHp*.22);pl.gainXP?.(12);}
-        deps.addCoins(12);deps.addCampResource('madeira',2);deps.spawnNotice(target.x,target.y-32,'RESGATE CONCLUÍDO · SUPRIMENTOS RECEBIDOS',0);complete();
+        deps.addCoins(12);deps.addCampResource('madeira',2);
+        deps.spawnNotice(target.x,target.y-32,`${(current.data.heroi?.nome||'SOBREVIVENTE').toUpperCase()} RESGATADO · ELE VOLTARÁ`,0);complete();
       }
     }
 
-    function onGateDamaged(target,before,after){
-      const beforePct=before/target.maxHp,afterPct=Math.max(0,after/target.maxHp);
-      for(const threshold of [.75,.50,.25]){
-        if(beforePct>threshold&&afterPct<=threshold&&!current.data.thresholds.has(threshold)){
-          current.data.thresholds.add(threshold);deps.spawnNotice(target.x,target.y-48,`PORTÃO ${Math.round(threshold*100)}%`,0);
-          const count=threshold===.75?2:threshold===.5?3:4;
-          const allowed=Math.min(count,Math.max(0,8-objectiveSpawns('frozen_gate').length));
-          for(let index=0;index<allowed;index++)spawnObjectiveEnemy(index===allowed-1?'crystal_golem':'ice_zombie',target.x+(index-(allowed-1)/2)*34,target.y+55+index%2*18,'frozen_gate');
-        }
-      }
-    }
 
     function activateObelisk(target){
       if(target.activated)return;target.activated=true;target.interactive=false;current.data.activated++;
@@ -555,14 +592,18 @@
       if(current.id==='spider_nests')return {...base,detail:`Destrua os ninhos · ${living.length}/4 restantes · teia −15%`,progress:(4-living.length)/4};
       if(current.id==='webbed_survivor'){
         const target=current.data.survivor;
-        if(current.data.stage==='web')return {...base,detail:'Opcional: destrua ou interaja com o casulo.'};
+        if(current.data.stage==='web')return {...base,detail:`Opcional: liberte ${current.data.heroi?.nome||'o sobrevivente'} do casulo.`};
         if(current.data.stage==='defend')return {...base,detail:`Defenda o sobrevivente · ${Math.ceil(current.data.remaining/1000)}s`,progress:1-current.data.remaining/current.data.defenseMs,meters:[{label:'VIDA NPC',value:target.hp/target.maxHp,text:`${Math.ceil(target.hp)}/${target.maxHp}`,danger:target.hp/target.maxHp<.3}]};
       }
       if(current.id==='freezing_cold')return {...base,detail:'Fique perto das três fogueiras para reduzir o congelamento.',meters:players().map(pl=>{const meter=current.data.meters.get(pl)||{value:0,debuff:false};return {label:`P${Number(pl.idx||0)+1} FRIO`,value:meter.value/100,text:`${Math.round(meter.value)}%`,danger:meter.debuff};})};
       if(current.id==='lost_fires')return {...base,detail:`Segure a interação para acender · ${current.data.lit}/3`,progress:current.data.lit/3};
-      if(current.id==='frozen_gate'){const gate=living[0];return {...base,detail:'Rompa o portão; reforços surgem em 75%, 50% e 25%.',progress:gate?1-gate.hp/gate.maxHp:1};}
       if(current.id==='ancient_obelisks')return {...base,detail:current.data.activated<4?`Ative os obeliscos · ${current.data.activated}/4 · cada um chama uma emboscada`:'Abra o baú ancestral.',progress:current.data.activated/4};
-      if(current.id==='sandstorm')return {...base,detail:'Permaneça perto do outro herói. Inimigos emergem sob marcas de areia.'};
+      if(current.id==='sandstorm'){
+        const salvo=current.data.aliado?.heroi;
+        return {...base,detail:salvo
+          ? `${salvo.nome} luta ao seu lado e abre a névoa. Inimigos emergem sob marcas de areia.`
+          : 'Permaneça perto do outro herói. Inimigos emergem sob marcas de areia.'};
+      }
       if(current.id==='tremors')return {...base,detail:'Saia da faixa marcada antes da passagem do Devorador.'};
       if(current.id==='infernal_fissures')return {...base,detail:`Sele as fissuras · ${living.length}/3 restantes`,progress:(3-living.length)/3};
       if(current.id==='demon_altar')return {...base,detail:'Opcional: decida entre destruir e usar o altar.'};
@@ -588,15 +629,118 @@
       if(target.flashTimer>0){ctx.shadowBlur=18;ctx.shadowColor='#fff';}
       ctx.globalAlpha=.30;ctx.fillStyle='#000';ctx.beginPath();ctx.ellipse(x,y+15,target.radius*1.05,target.radius*.34,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
       if(target.kind==='bone_altar'){
-        ctx.fillStyle='#302b31';ctx.fillRect(x-17,y+3,34,9);ctx.fillStyle='#6e6260';ctx.fillRect(x-13,y-4,26,10);
-        ctx.strokeStyle='#d6cfbd';ctx.lineWidth=4;for(const side of [-1,1]){ctx.beginPath();ctx.moveTo(x+side*9,y);ctx.lineTo(x+side*14,y-25);ctx.stroke();ctx.beginPath();ctx.arc(x+side*14,y-27,4,0,Math.PI*2);ctx.stroke();}
-        ctx.fillStyle=`rgba(158,65,181,${.25+pulse*.22})`;ctx.beginPath();ctx.arc(x,y-11,12+pulse*3,0,Math.PI*2);ctx.fill();
+        // base em dois degraus, com o topo mais claro para dar volume
+        ctx.fillStyle='#221d24';ctx.fillRect(x-19,y+6,38,8);
+        ctx.fillStyle='#39323c';ctx.fillRect(x-17,y+1,34,7);
+        ctx.fillStyle='#544a56';ctx.fillRect(x-14,y-5,28,8);
+        ctx.fillStyle='#6f6470';ctx.fillRect(x-14,y-5,28,3);
+        ctx.fillStyle='#2a242c';ctx.fillRect(x-9,y-2,4,4);ctx.fillRect(x+6,y-1,3,3);   // lascas
+        // pilares de osso saindo da base, com cranio no topo
+        for(const lado of [-1,1]){
+          ctx.fillStyle='#cfc7b2';ctx.fillRect(x+lado*11-2,y-24,4,20);
+          ctx.fillStyle='#a89f8b';ctx.fillRect(x+lado*11-2,y-24,2,20);
+          ctx.fillStyle='#e2dac4';ctx.fillRect(x+lado*11-4,y-30,8,7);
+          ctx.fillStyle='#3a3129';ctx.fillRect(x+lado*11-3,y-28,2,2);ctx.fillRect(x+lado*11+1,y-28,2,2);
+          ctx.fillStyle='#c6bda6';ctx.fillRect(x+lado*11-3,y-22,6,2);
+        }
+        // chama de alma saindo de DENTRO da pedra
+        const alt=9+pulse*4;
+        const g=ctx.createRadialGradient(x,y-9,1,x,y-9,20+pulse*5);
+        g.addColorStop(0,`rgba(214,150,238,${.55+pulse*.25})`);
+        g.addColorStop(.5,`rgba(140,52,168,${.30+pulse*.15})`);
+        g.addColorStop(1,'rgba(60,10,80,0)');
+        ctx.fillStyle=g;ctx.fillRect(x-26,y-34,52,44);
+        ctx.fillStyle=`rgba(178,86,206,${.75+pulse*.2})`;
+        ctx.fillRect(x-4,y-6-alt,8,alt);
+        ctx.fillStyle=`rgba(232,178,250,${.8+pulse*.2})`;
+        ctx.fillRect(x-2,y-4-alt,4,alt-2);
+        // runas na pedra
+        ctx.fillStyle=`rgba(206,142,232,${.4+pulse*.35})`;
+        ctx.fillRect(x-11,y-3,3,1);ctx.fillRect(x-2,y-3,4,1);ctx.fillRect(x+8,y-3,3,1);
       }else if(target.kind==='dark_altar'||target.kind==='demon_altar'){
-        const infernal=target.kind==='demon_altar';ctx.fillStyle=infernal?'#42130f':'#24152e';ctx.fillRect(x-21,y+2,42,11);ctx.fillStyle=infernal?'#7a2718':'#57336b';ctx.fillRect(x-16,y-6,32,10);
-        ctx.strokeStyle=infernal?'#ff5a2e':'#ba69db';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y-13,10+pulse*3,0,Math.PI*2);ctx.stroke();ctx.fillStyle=infernal?'#ff8b3d':'#d898ec';ctx.fillRect(x-3,y-17,6,9);
+        const inf=target.kind==='demon_altar';
+        const esc=inf?'#2d0d09':'#180d20', med=inf?'#5c1c12':'#3b2350',
+              cla=inf?'#8d3520':'#5d3a78', luz=inf?'#ff6a30':'#c47ce4', luz2=inf?'#ffc06a':'#ecb6ff';
+        // plinto em degraus
+        ctx.fillStyle=esc;ctx.fillRect(x-22,y+6,44,9);
+        ctx.fillStyle=med;ctx.fillRect(x-19,y+1,38,7);
+        ctx.fillStyle=cla;ctx.fillRect(x-19,y+1,38,3);
+        // coluna com entalhe
+        ctx.fillStyle=med;ctx.fillRect(x-11,y-12,22,14);
+        ctx.fillStyle=cla;ctx.fillRect(x-11,y-12,22,3);
+        ctx.fillStyle=esc;ctx.fillRect(x-7,y-9,14,8);
+        ctx.fillStyle=`rgba(${inf?'255,120,60':'190,120,235'},${.35+pulse*.35})`;
+        ctx.fillRect(x-5,y-7,10,1);ctx.fillRect(x-5,y-4,10,1);
+        // tigela e a chama nascendo dentro dela
+        ctx.fillStyle=cla;ctx.fillRect(x-9,y-16,18,5);
+        ctx.fillStyle=esc;ctx.fillRect(x-7,y-15,14,3);
+        const g=ctx.createRadialGradient(x,y-20,1,x,y-20,24+pulse*6);
+        g.addColorStop(0,`rgba(${inf?'255,150,70':'205,140,240'},${.6+pulse*.25})`);
+        g.addColorStop(1,`rgba(${inf?'90,20,0':'40,10,60'},0)`);
+        ctx.fillStyle=g;ctx.fillRect(x-30,y-46,60,42);
+        const h=11+pulse*5;
+        ctx.fillStyle=luz;ctx.fillRect(x-4,y-16-h,8,h);
+        ctx.fillStyle=luz2;ctx.fillRect(x-2,y-14-h,4,h-3);
+        // fagulhas subindo
+        for(let i=0;i<3;i++){
+          const fy=y-20-((time*.05+i*23)%30), fa=1-((time*.05+i*23)%30)/30;
+          ctx.globalAlpha=fa*.7;ctx.fillStyle=luz2;
+          ctx.fillRect(x-6+i*5+Math.sin(time*.004+i)*2,fy,2,2);
+        }
+        ctx.globalAlpha=1;
       }else if(target.kind==='corpse_knight'){
-        const ang=target.facingAngle||0;ctx.fillStyle='#342b38';ctx.fillRect(x-11,y-19,22,34);ctx.fillStyle='#9f404a';ctx.fillRect(x-8,y-15,16,24);ctx.fillStyle='#d5c3a6';ctx.fillRect(x-6,y-26,12,10);
-        ctx.save();ctx.translate(x+Math.cos(ang)*18,y+Math.sin(ang)*18);ctx.rotate(ang);ctx.fillStyle='#6a5f6c';ctx.fillRect(-4,-17,8,34);ctx.fillStyle='#a79ba9';ctx.fillRect(-2,-14,4,28);ctx.restore();
+        const ang=target.facingAngle||0;
+        const bob=Math.sin(time*.0032+target.phase)*1.4;           // respiro
+        const balanco=Math.sin(time*.0026+target.phase)*2.2;       // capa
+        ctx.save();ctx.translate(0,bob);
+        // capa esfarrapada, atras de tudo
+        ctx.fillStyle='#4b1620';
+        ctx.beginPath();ctx.moveTo(x-12,y-22);ctx.lineTo(x+12,y-22);
+        ctx.lineTo(x+13+balanco,y+12);ctx.lineTo(x+7+balanco,y+7);ctx.lineTo(x+3+balanco,y+15);
+        ctx.lineTo(x-2+balanco,y+6);ctx.lineTo(x-7+balanco,y+14);ctx.lineTo(x-13+balanco,y+11);
+        ctx.closePath();ctx.fill();
+        ctx.fillStyle='#33101a';ctx.fillRect(x-12,y-22,24,5);
+        // pernas: grevas escuras com joelheira
+        ctx.fillStyle='#2b2530';ctx.fillRect(x-8,y+2,6,15);ctx.fillRect(x+2,y+2,6,15);
+        ctx.fillStyle='#4a4152';ctx.fillRect(x-8,y+2,6,4);ctx.fillRect(x+2,y+2,6,4);
+        ctx.fillStyle='#171319';ctx.fillRect(x-9,y+15,8,4);ctx.fillRect(x+1,y+15,8,4);
+        // peitoral rompido, com costelas aparecendo
+        ctx.fillStyle='#3a3040';ctx.fillRect(x-10,y-18,20,21);
+        ctx.fillStyle='#0f0b12';ctx.fillRect(x-5,y-13,10,12);          // buraco na armadura
+        ctx.fillStyle='#cbbda2';
+        for(let i=0;i<3;i++){ctx.fillRect(x-4,y-12+i*4,8,2);}          // costelas
+        ctx.fillStyle='#8e2f3c';ctx.fillRect(x-10,y-18,20,4);          // tabardo
+        ctx.fillStyle='#b8434f';ctx.fillRect(x-2,y-18,4,20);
+        // ombreiras com espinho
+        for(const lado of [-1,1]){
+          ctx.fillStyle='#544a5e';ctx.fillRect(x+lado*13-4,y-20,8,8);
+          ctx.fillStyle='#6d6178';ctx.fillRect(x+lado*13-4,y-20,8,3);
+          ctx.fillStyle='#8f8399';ctx.beginPath();ctx.moveTo(x+lado*15,y-20);
+          ctx.lineTo(x+lado*19,y-27);ctx.lineTo(x+lado*12,y-21);ctx.closePath();ctx.fill();
+        }
+        // elmo com chifres e olhos acesos
+        ctx.fillStyle='#4a4152';ctx.fillRect(x-8,y-31,16,13);
+        ctx.fillStyle='#2b2530';ctx.fillRect(x-8,y-24,16,4);            // viseira
+        ctx.fillStyle='#635871';ctx.fillRect(x-8,y-31,16,3);
+        for(const lado of [-1,1]){
+          ctx.fillStyle='#8d8296';ctx.beginPath();ctx.moveTo(x+lado*7,y-30);
+          ctx.lineTo(x+lado*14,y-38);ctx.lineTo(x+lado*8,y-27);ctx.closePath();ctx.fill();
+        }
+        const brilho=.55+.45*Math.sin(time*.006+target.phase);
+        ctx.fillStyle=`rgba(255,86,60,${brilho})`;
+        ctx.fillRect(x-6,y-24,4,3);ctx.fillRect(x+2,y-24,4,3);
+        ctx.globalAlpha=.35*brilho;ctx.fillStyle='#ff5a3c';
+        ctx.fillRect(x-7,y-25,6,5);ctx.fillRect(x+1,y-25,6,5);ctx.globalAlpha=1;
+        // espada: lamina, guarda e cabo, girando com a investida
+        ctx.save();ctx.translate(x+Math.cos(ang)*19,y+Math.sin(ang)*19);ctx.rotate(ang+Math.PI/2);
+        ctx.fillStyle='#1d1a22';ctx.fillRect(-4,-20,8,40);             // contorno
+        ctx.fillStyle='#7b7286';ctx.fillRect(-3,-19,6,32);             // lamina
+        ctx.fillStyle='#bdb2c8';ctx.fillRect(-1,-18,2,30);             // fio
+        ctx.fillStyle='#8e2f3c';ctx.fillRect(-9,11,18,4);              // guarda
+        ctx.fillStyle='#3a3040';ctx.fillRect(-2,15,4,8);               // cabo
+        ctx.fillStyle='#d8a349';ctx.fillRect(-3,22,6,3);               // pomo
+        ctx.restore();
+        ctx.restore();
         if(target.combatState==='charge_wind'){ctx.globalAlpha=.65;ctx.strokeStyle='#e74e4e';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(target.chargeX,target.chargeY);ctx.stroke();ctx.globalAlpha=1;}
         if(target.boneWave){const r=target.boneWave.phase==='telegraph'?48:38+(1-target.boneWave.timer/520)*105;ctx.strokeStyle='#ded2bc';ctx.lineWidth=target.boneWave.phase==='telegraph'?2:5;ctx.globalAlpha=.65;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;}
       }else if(target.kind==='spider_nest'){
@@ -604,8 +748,19 @@
         ctx.fillStyle='#5b594b';ctx.beginPath();ctx.ellipse(x,y,22,14,0,0,Math.PI*2);ctx.fill();for(let i=0;i<5;i++){ctx.fillStyle=i%2?'#dfe6d9':'#aaa994';ctx.beginPath();ctx.arc(x-12+i*6,y-4+(i%2)*7,5,0,Math.PI*2);ctx.fill();}
       }else if(target.kind==='survivor_web'){
         ctx.strokeStyle='#e0ebe4';ctx.lineWidth=2;for(let i=0;i<7;i++){const a=i*Math.PI/7;ctx.beginPath();ctx.ellipse(x,y,21-i*2,28-i*2,a,0,Math.PI*2);ctx.stroke();}ctx.fillStyle='#865b47';ctx.fillRect(x-5,y-8,10,21);ctx.fillStyle='#d7b08a';ctx.fillRect(x-4,y-15,8,8);
-      }else if(target.kind==='survivor'){
-        ctx.fillStyle='#77533d';ctx.fillRect(x-6,y-10,12,24);ctx.fillStyle='#d8b08a';ctx.fillRect(x-5,y-18,10,9);ctx.fillStyle='#e8d378';ctx.fillRect(x-7,y+9,5,9);ctx.fillRect(x+2,y+9,5,9);
+      }else if(target.kind==='survivor'||target.kind==='hero_ally'){
+        const aliado=target.kind==='hero_ally';
+        const lado=aliado?(target.olhando==='left'||target.olhando==='right'?'side':(target.olhando==='up'?'up':'down')):'down';
+        const estado=aliado?(target.atacando>0?'atk':(target.andando?'walk':'idle')):'idle';
+        const prog=target.atacando>0?1-target.atacando/340:0;
+        ctx.save();
+        if(aliado&&target.olhando==='right'){ctx.translate(x*2,0);ctx.scale(-1,1);}
+        const px=(aliado&&target.olhando==='right')?x:x;
+        if(!desenharHeroi(ctx,target.heroi?.id||'mage',px,y+13,lado,estado,prog)){
+          ctx.fillStyle='#77533d';ctx.fillRect(x-6,y-10,12,24);ctx.fillStyle='#d8b08a';ctx.fillRect(x-5,y-18,10,9);ctx.fillStyle='#e8d378';ctx.fillRect(x-7,y+9,5,9);ctx.fillRect(x+2,y+9,5,9);
+        }
+        ctx.restore();
+        if(aliado){ctx.globalAlpha=.5+.2*Math.sin(time*.005);ctx.strokeStyle='#ffdf9a';ctx.lineWidth=1.4;ctx.beginPath();ctx.ellipse(x,y+14,15,6,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;}
       }else if(target.kind==='hunter_spider'){
         ctx.globalAlpha=target.combatState==='phase_wind'?.42:1;ctx.fillStyle='#262231';ctx.beginPath();ctx.ellipse(x,y,20,15,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#805296';ctx.beginPath();ctx.arc(x,y-6,11,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#d8e8df';ctx.lineWidth=3;for(let i=0;i<4;i++){const sy=-9+i*6;ctx.beginPath();ctx.moveTo(x-12,y+sy);ctx.lineTo(x-28,y+sy+(i-1.5)*4);ctx.moveTo(x+12,y+sy);ctx.lineTo(x+28,y+sy+(i-1.5)*4);ctx.stroke();}ctx.globalAlpha=1;
         if(target.combatState==='phase_wind'){ctx.strokeStyle='#f0f6f0';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,32+pulse*8,0,Math.PI*2);ctx.stroke();}
@@ -613,12 +768,50 @@
         ctx.fillStyle='#474d58';ctx.fillRect(x-13,y+6,26,6);ctx.fillStyle='#657181';ctx.fillRect(x-9,y+2,18,5);
         if(target.lit){ctx.fillStyle='#4fd5ff';ctx.fillRect(x-7,y-9,14,13);ctx.fillStyle='#c9f8ff';ctx.fillRect(x-4,y-17,8,13);ctx.fillStyle='#fff';ctx.fillRect(x-2,y-20,4,8);const glow=ctx.createRadialGradient(x,y-10,0,x,y-10,42);glow.addColorStop(0,'rgba(105,220,255,.30)');glow.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=glow;ctx.fillRect(x-44,y-54,88,88);}else{ctx.fillStyle='#263341';ctx.fillRect(x-6,y-5,12,8);}
         if(target.holdProgress>0&&!target.lit){ctx.strokeStyle='#d7f7ff';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y-10,28,-Math.PI/2,-Math.PI/2+Math.PI*2*clamp(target.holdProgress/target.holdMs,0,1));ctx.stroke();}
-      }else if(target.kind==='frozen_gate'){
-        ctx.fillStyle='#263a4b';ctx.fillRect(x-target.width/2,y-26,target.width,54);ctx.fillStyle='#5ca2c1';ctx.fillRect(x-target.width/2+7,y-21,target.width-14,45);ctx.fillStyle='#b9efff';for(let i=0;i<6;i++)ctx.fillRect(x-target.width/2+10+i*15,y-18+(i%2)*8,8,34);ctx.strokeStyle='#e9fbff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-25,y-22);ctx.lineTo(x-8,y+5);ctx.lineTo(x-18,y+25);ctx.moveTo(x+22,y-20);ctx.lineTo(x+7,y+8);ctx.lineTo(x+19,y+25);ctx.stroke();
       }else if(target.kind==='obelisk'){
-        ctx.fillStyle=target.activated?'#75522b':'#282832';ctx.beginPath();ctx.moveTo(x,y-31);ctx.lineTo(x+13,y+14);ctx.lineTo(x-13,y+14);ctx.closePath();ctx.fill();ctx.strokeStyle=target.activated?'#ffc95e':'#706a80';ctx.lineWidth=2;ctx.stroke();ctx.fillStyle=target.activated?'#ffe493':'#514b5f';ctx.fillRect(x-3,y-12,6,12);
+        const on=target.activated;
+        // plinto
+        ctx.fillStyle='#231f28';ctx.fillRect(x-15,y+10,30,7);
+        ctx.fillStyle=on?'#5a4326':'#332e3c';ctx.fillRect(x-13,y+5,26,6);
+        ctx.fillStyle=on?'#7d5f33':'#413b4c';ctx.fillRect(x-13,y+5,26,2);
+        // monolito afunilado, com face iluminada e face na sombra
+        ctx.fillStyle=on?'#6b4d28':'#2b2733';
+        ctx.beginPath();ctx.moveTo(x,y-33);ctx.lineTo(x+11,y+6);ctx.lineTo(x-11,y+6);ctx.closePath();ctx.fill();
+        ctx.fillStyle=on?'#8a6533':'#3a3547';
+        ctx.beginPath();ctx.moveTo(x,y-33);ctx.lineTo(x+11,y+6);ctx.lineTo(x+2,y+6);ctx.lineTo(x,y-33);ctx.closePath();ctx.fill();
+        // faixas entalhadas
+        ctx.fillStyle=on?'#4b3419':'#1e1a26';
+        for(let i=0;i<3;i++){const yy=y-18+i*10,w=5+i*3;ctx.fillRect(x-w,yy,w*2,2);}
+        // glifo central
+        const b=on?(.6+pulse*.4):.16;
+        ctx.fillStyle=on?`rgba(255,214,122,${b})`:'#4b4557';
+        ctx.fillRect(x-3,y-14,6,3);ctx.fillRect(x-1,y-11,2,9);ctx.fillRect(x-4,y-4,8,2);
+        if(on){
+          const g=ctx.createRadialGradient(x,y-12,1,x,y-12,30+pulse*8);
+          g.addColorStop(0,`rgba(255,198,92,${.35+pulse*.2})`);g.addColorStop(1,'rgba(90,50,0,0)');
+          ctx.fillStyle=g;ctx.fillRect(x-38,y-46,76,60);
+        }
       }else if(target.kind==='ancient_chest'){
-        ctx.fillStyle='#3c2419';ctx.fillRect(x-23,y-8,46,25);ctx.fillStyle='#9a692d';ctx.fillRect(x-20,y-15,40,28);ctx.fillStyle='#e4b95f';ctx.fillRect(x-3,y-4,6,12);ctx.strokeStyle='#ffd97a';ctx.lineWidth=2;ctx.strokeRect(x-20,y-15,40,28);
+        // corpo
+        ctx.fillStyle='#2a1810';ctx.fillRect(x-22,y-4,44,21);
+        ctx.fillStyle='#6d4823';ctx.fillRect(x-21,y-3,42,19);
+        ctx.fillStyle='#8a5c2d';ctx.fillRect(x-21,y-3,42,4);
+        // tampa abaulada
+        ctx.fillStyle='#7d5527';ctx.fillRect(x-21,y-16,42,13);
+        ctx.fillStyle='#9c6c33';ctx.fillRect(x-19,y-18,38,4);
+        ctx.fillStyle='#5a3a1c';ctx.fillRect(x-21,y-5,42,2);
+        // cintas de metal
+        ctx.fillStyle='#3f3a33';
+        for(const off of [-14,14]){ctx.fillRect(x+off-2,y-18,4,35);}
+        ctx.fillStyle='#5d564c';
+        for(const off of [-14,14]){ctx.fillRect(x+off-2,y-18,2,35);}
+        // fechadura com brilho
+        ctx.fillStyle='#3a3229';ctx.fillRect(x-5,y-8,10,11);
+        ctx.fillStyle=`rgba(240,198,102,${.7+pulse*.3})`;ctx.fillRect(x-4,y-7,8,9);
+        ctx.fillStyle='#2a1c0c';ctx.fillRect(x-1,y-4,2,4);
+        const g=ctx.createRadialGradient(x,y-4,1,x,y-4,26+pulse*6);
+        g.addColorStop(0,`rgba(255,206,110,${.22+pulse*.16})`);g.addColorStop(1,'rgba(80,50,0,0)');
+        ctx.fillStyle=g;ctx.fillRect(x-32,y-32,64,52);
       }else if(target.kind==='infernal_fissure'){
         const glow=ctx.createRadialGradient(x,y,0,x,y,38);glow.addColorStop(0,`rgba(255,70,20,${.45+pulse*.25})`);glow.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=glow;ctx.fillRect(x-40,y-40,80,80);ctx.strokeStyle='#ff5a20';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(x-22,y-12);ctx.lineTo(x-7,y-2);ctx.lineTo(x-15,y+14);ctx.lineTo(x+5,y+4);ctx.lineTo(x+20,y+17);ctx.stroke();ctx.strokeStyle='#ffd15c';ctx.lineWidth=2;ctx.stroke();
       }
@@ -643,9 +836,14 @@
       if(stormCanvas.width!==width||stormCanvas.height!==height){stormCanvas.width=width;stormCanvas.height=height;}
       stormCtx.clearRect(0,0,width,height);stormCtx.fillStyle=`rgba(186,126,54,${.28+.05*Math.sin(time*.0017)})`;stormCtx.fillRect(0,0,width,height);
       stormCtx.globalCompositeOperation='destination-out';
-      for(const pl of players()){
-        const radius=gameCoopVisibilityRadius(pl);const gradient=stormCtx.createRadialGradient(pl.x,pl.y,20,pl.x,pl.y,radius);
-        gradient.addColorStop(0,'rgba(0,0,0,1)');gradient.addColorStop(.62,'rgba(0,0,0,.86)');gradient.addColorStop(1,'rgba(0,0,0,0)');stormCtx.fillStyle=gradient;stormCtx.fillRect(pl.x-radius,pl.y-radius,radius*2,radius*2);
+      // O resgatado abre um circulo proprio: e' o sentido de 'permaneca perto
+      // do outro heroi' valendo tambem para quem joga sozinho.
+      const focos=players().map(pl=>({x:pl.x,y:pl.y,r:gameCoopVisibilityRadius(pl)}));
+      const aliado=current.data.aliado;
+      if(aliado&&!aliado.dead)focos.push({x:aliado.x,y:aliado.y,r:96});
+      for(const foco of focos){
+        const radius=foco.r;const gradient=stormCtx.createRadialGradient(foco.x,foco.y,20,foco.x,foco.y,radius);
+        gradient.addColorStop(0,'rgba(0,0,0,1)');gradient.addColorStop(.62,'rgba(0,0,0,.86)');gradient.addColorStop(1,'rgba(0,0,0,0)');stormCtx.fillStyle=gradient;stormCtx.fillRect(foco.x-radius,foco.y-radius,radius*2,radius*2);
       }
       stormCtx.globalCompositeOperation='source-over';ctx.drawImage(stormCanvas,0,0);
     }
