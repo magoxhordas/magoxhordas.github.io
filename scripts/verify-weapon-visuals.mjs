@@ -53,13 +53,18 @@ const requiredSnippets=[
   'function markEnemyWeaponStatus(',
   'return campaignStatusEffects.markEnemy(target,source,duration);',
   "markEnemyWeaponStatus(target,weapon);",
-  'drawEnemyStatusFx(bossOrc,t)',
-  'drawEnemyStatusFx(bossSkel,t)',
-  'drawEnemyStatusFx(bossSpider,t)',
-  'drawEnemyStatusFx(bossMajor,t)',
   'drawEnemyStatusFx(petBoss,t)'
 ];
 for(const snippet of requiredSnippets)assert(pageSource.includes(snippet),`Integração ausente: ${snippet}`);
+
+// Os quatro chefes principais passam por desenharChefe(), que silencia o
+// rotulo flutuante quando o painel do topo cobre aquele chefe. O efeito
+// elemental continua obrigatorio — o que se verifica e' que cada um chega
+// la' e que o helper de fato aplica o efeito, e nao o texto da chamada.
+assert(/function desenharChefe\(chefe,t\)\{[\s\S]*?drawEnemyStatusFx\(chefe,t\);/.test(pageSource),
+  'desenharChefe() deve aplicar drawEnemyStatusFx no chefe');
+for(const boss of ['bossOrc','bossSkel','bossSpider','bossMajor'])
+  assert(pageSource.includes(`desenharChefe(${boss},t)`),`Integração ausente: ${boss} não passa por desenharChefe`);
 for(const snippet of [
   "markEnemy(target,'ice',duration);",
   "markEnemy(target,'poison',duration);",

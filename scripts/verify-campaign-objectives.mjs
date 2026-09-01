@@ -39,8 +39,19 @@ function harness(){
     setWaveTimer:value=>{waveTimer=value;},requestWaveEnd:()=>{requestedEnds++;},
     showChoice:value=>{choice=value;},hideChoice:()=>{choice=null;},setHud:value=>{hud=value;},setAction:value=>{action=value;},now:()=>1000,
   };
+  // O mini-chefe da onda 4 agora e' o Brutamontes de verdade, que vive fora
+  // do modulo (bossMajor, no index.html). Aqui ele e' um boneco: o que se
+  // verifica e' que o objetivo o cria com a vida certa e so' libera a onda
+  // quando ele morre.
+  let miniboss=null;
+  deps.spawnMiniboss=(vida,dano)=>{
+    miniboss={hp:vida,maxHp:vida,damage:dano,dead:false,
+              takeDmg(a){this.hp-=a;if(this.hp<=0)this.dead=true;}};
+    return miniboss;
+  };
+  deps.getMiniboss=()=>miniboss;
   const system=CampaignObjectives.create(deps);
-  return {system,players,enemies,spawned,setWave:value=>{currentWave=value;},get choice(){return choice;},get hud(){return hud;},get action(){return action;},get waveTimer(){return waveTimer;},get requestedEnds(){return requestedEnds;},get coins(){return coins;},get xp(){return xp;}};
+  return {system,players,enemies,spawned,setWave:value=>{currentWave=value;},get choice(){return choice;},get hud(){return hud;},get action(){return action;},get waveTimer(){return waveTimer;},get requestedEnds(){return requestedEnds;},get coins(){return coins;},get xp(){return xp;},getMiniboss:()=>miniboss};
 }
 
 const h=harness();
@@ -63,14 +74,15 @@ close(h.players[0].maxHp,90,.001,'absorção não reduziu vida máxima');
 close(h.system.modifyOutgoingDamage(h.players[0],{},100),115,.001,'absorção não aumentou dano');
 ok(h.system.canEndWave(3),'escolha sombria não concluiu objetivo');
 
-h.setWave(4);h.system.startWave(4);targets=h.system.getCombatTargets();
-ok(targets.length===1&&targets[0].kind==='corpse_knight','onda 4 não criou o miniboss correto');
-const knight=targets[0],beforeKnight=knight.hp;
-h.players[0].x=knight.x;h.players[0].y=knight.y+80;knight._lastDamageOwner=h.players[0];knight.takeDmg(100);
-close(beforeKnight-knight.hp,35,.001,'escudo frontal não reduziu o golpe');
-h.players[0].y=knight.y-80;knight._lastDamageOwner=h.players[0];const afterFront=knight.hp;knight.takeDmg(100);
-close(afterFront-knight.hp,100,.001,'ataque pelas costas foi reduzido indevidamente');
-knight.takeDmg(99999);ok(h.system.canEndWave(4),'Cavaleiro Cadáver não liberou a onda');
+h.setWave(4);h.system.startWave(4);
+const bruto=h.getMiniboss();
+ok(bruto&&!bruto.dead,'onda 4 não criou o Brutamontes');
+close(bruto.maxHp,620,.001,'Brutamontes não veio com a vida reduzida da onda 4');
+ok(h.system.getCombatTargets().length===0,'Brutamontes não deve virar alvo de objetivo: ele é o chefe do jogo');
+h.system.update(.1);
+ok(!h.system.canEndWave(4),'onda 4 liberou antes de o Brutamontes morrer');
+bruto.takeDmg(99999);h.system.update(.1);
+ok(h.system.canEndWave(4),'Brutamontes morto não liberou a onda');
 
 h.setWave(7);h.system.startWave(7);targets=h.system.getCombatTargets();
 ok(targets.length===4,'onda 7 deve criar quatro ninhos');targets.forEach(target=>target.takeDmg(99999));

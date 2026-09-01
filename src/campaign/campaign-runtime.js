@@ -75,6 +75,20 @@ const campaignObjectives=CampaignObjectives.create({
       return true;
     }catch(_){ return false; }
   },
+  // O Brutamontes da onda 4 e' o chefe de verdade com a vida reduzida.
+  // Estes dois ficam aqui, e nao no modulo de objetivos, porque bossMajor e
+  // todo o maquinario de chefe (colisao, dano, desenho, musica) vivem no
+  // index.html.
+  spawnMiniboss:(vida,dano)=>{
+    if(typeof BossBrute!=='function')return null;
+    bossMajor=new BossBrute(wave);
+    bossMajor.hp=bossMajor.maxHp=Math.max(1,Math.round(vida));
+    bossMajor.damage=dano;
+    bossWarning=1800;
+    if(typeof Audio!=='undefined'){Audio.playBossMusic('brute');Audio.playBossSpawn();}
+    return bossMajor;
+  },
+  getMiniboss:()=>bossMajor,
   setAction:view=>campaignObjectiveUI.setAction(view),
   now:()=>performance.now(),
 });

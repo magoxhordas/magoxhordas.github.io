@@ -51,7 +51,15 @@ const expected = {
   lava_bat:            ['lavabat',      48, 9, 9, 0],
 };
 
-assert(Object.keys(api.DEFS).length === Object.keys(expected).length,
+// Tipos legados ainda criados pelos objetivos de onda. Eles reutilizam a
+// arte dos inimigos principais e, por isso, nao acrescentam PNGs nem cards
+// ao Codex; a verificacao separada impede que voltem ao desenho procedural.
+const objectiveAliases = {
+  skeleton: ['skelarcher', 40, 6, 0],
+  spider:   ['spider2',    48, 9, 0],
+};
+
+assert(Object.keys(api.DEFS).length === Object.keys(expected).length + Object.keys(objectiveAliases).length,
   `Quantidade inesperada de inimigos no modulo: ${Object.keys(api.DEFS).length}`);
 
 let checkedPngs = 0;
@@ -89,6 +97,16 @@ for (const [type, [folder, frameSize, walkCount, hitCount, surgeCount]] of Objec
   assert(api.suporta(type), `API nao reconhece ${type}`);
 }
 
+for (const [type, [folder, frameSize, walkCount, hitCount]] of Object.entries(objectiveAliases)) {
+  const def = api.DEFS[type];
+  assert(def, `Alias de objetivo ausente: ${type}`);
+  assert(def.pasta === folder, `Pasta incorreta para o alias ${type}: ${def.pasta}`);
+  assert(def.quadro === frameSize, `Tamanho de quadro incorreto para o alias ${type}: ${def.quadro}`);
+  assert(def.nWalk === walkCount && def.nHit === hitCount,
+    `Contagem de quadros incorreta para o alias ${type}`);
+  assert(api.suporta(type), `API nao reconhece o alias de objetivo ${type}`);
+}
+
 const enemyScript = '<script src="src/enemies/normais-sprites.js"></script>';
 const bossScript = '<script src="src/campaign/boss-system.js"></script>';
 assert(index.includes(enemyScript), 'index.html nao carrega o modulo de inimigos normais');
@@ -97,4 +115,4 @@ assert(index.includes('const I=window.InimigosNormais') && index.includes('I.des
   'Renderizador principal nao usa a arte real dos inimigos');
 assert(index.includes('window.statsInimigo=statsInimigo'), 'Stats compartilhados entre jogo e Codex nao foram publicados');
 
-console.log(`OK: ${Object.keys(expected).length} inimigos normais, ${checkedPngs} PNGs, animacoes e retratos do Codex validados.`);
+console.log(`OK: ${Object.keys(expected).length} inimigos normais, ${Object.keys(objectiveAliases).length} aliases de objetivo, ${checkedPngs} PNGs, animacoes e retratos do Codex validados.`);

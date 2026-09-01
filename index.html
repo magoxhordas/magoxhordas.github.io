@@ -15859,6 +15859,62 @@ const CAMPAIGN_ARENA_BOUNDS=Object.freeze({
   castle: {left:38,right:38,top:205,bottom:24},
 });
 
+/* Nenhum chefe divide o mesmo lugar com o heroi. Sem isto o mago entrava
+   POR DENTRO do desenho do chefe e a briga virava dois sprites empilhados,
+   sem dar para ver quem estava onde.
+   Empurra so' o jogador, nunca o chefe: varios deles tem posicao encenada
+   (salto, investida, arena) que seria quebrada se fossem deslocados.
+   A distancia e' o raio de acerto do chefe mais o do heroi — no maximo 66px,
+   contra um alcance corpo a corpo de 92 a 130px, entao guerreiro e viking
+   continuam alcancando. */
+const _pontoSeparacao={x:0,y:0,radius:0};
+function separarDosCorpos(){
+  const chefes=[bossOrc,bossSkel,bossSpider,bossMajor,petBoss];
+  // Altares, fogueiras, ninhos, obeliscos e baus tambem barram o heroi: sao
+  // objetos de pedra, e atravessa-los denunciava que nao eram nada alem de
+  // desenho. A lista vem do modulo de objetivos, que sabe quais sao solidos
+  // — a fissura e o casulo do sobrevivente, por exemplo, ficam de fora.
+  const solidos=(typeof campaignObjectives!=='undefined'&&campaignObjectives.getSolidTargets)
+    ?campaignObjectives.getSolidTargets():[];
+  const corpos=solidos.length?chefes.concat(solidos):chefes;
+  for(const pl of [player,player2]){
+    if(!pl||pl.dead)continue;
+    for(const chefe of corpos){
+      if(!chefe||chefe.dead)continue;
+      const minimo=(Number(chefe.radius)||0)+(Number(pl.radius)||0);
+      if(!(minimo>0))continue;
+      let dx=pl.x-chefe.x, dy=pl.y-chefe.y;
+      const d=Math.hypot(dx,dy);
+      if(d>=minimo)continue;
+      // exatamente no centro: nao ha direcao, entao escolhe uma
+      if(d<0.001){ dx=0; dy=1; }
+      const ang0=Math.atan2(dy,dx);
+      // A saida reta nem sempre serve: quando o chefe prende o heroi contra a
+      // parede, ela cai fora da arena e o limite devolve o heroi para dentro
+      // do corpo dele (foi o que aconteceu com o Brutamontes no fundo da
+      // cripta: sobravam 26px de um minimo de 58). Entao, se o ponto reto for
+      // corrigido pelo limite, contorna — procura em volta do chefe o ponto
+      // mais proximo daquela direcao que caiba inteiro na arena.
+      let achouX=null, achouY=null;
+      for(let passo=0;passo<=12&&achouX===null;passo++){
+        for(const lado of (passo===0?[0]:[1,-1])){
+          const ang=ang0+lado*passo*(Math.PI/12);
+          const px=chefe.x+Math.cos(ang)*minimo, py=chefe.y+Math.sin(ang)*minimo;
+          _pontoSeparacao.x=px; _pontoSeparacao.y=py; _pontoSeparacao.radius=pl.radius;
+          clampCampaignEntity(_pontoSeparacao);
+          if(Math.abs(_pontoSeparacao.x-px)<0.01&&Math.abs(_pontoSeparacao.y-py)<0.01){
+            achouX=px; achouY=py; break;
+          }
+        }
+      }
+      // Toda a volta bloqueada (arena apertada demais): fica com a saida reta.
+      if(achouX===null){ achouX=chefe.x+Math.cos(ang0)*minimo; achouY=chefe.y+Math.sin(ang0)*minimo; }
+      pl.x=achouX; pl.y=achouY;
+      clampCampaignEntity(pl);
+    }
+  }
+}
+
 function clampCampaignEntity(entity,padding=0){
   if(!entity) return entity;
   const bounds=CAMPAIGN_ARENA_BOUNDS[currentArena]||CAMPAIGN_ARENA_BOUNDS.castle;
@@ -16130,7 +16186,7 @@ class Enemy {
       if(this.golpeAnim>0&&!this.cuspiuBote&&1-this.golpeAnim/durBote>=0.6){
         this.cuspiuBote=true;
         const ang=this.miraBote;
-        [-0.4,0,0.4].forEach(spread=>projs.push(new EnemyProj(this.x,this.y,ang+spread,this.damage*0.5,'#ff6600')));
+        [-0.4,0,0.4].forEach(spread=>projs.push(new EnemyProj(this.x,this.y,ang+spread,this.damage*0.5,'#ff6600','lava')));
         spawnParts(this.x,this.y,'#ff6600',3,25);
       }
     }
@@ -16752,7 +16808,23 @@ function releaseDeadParts(){
 // ═══════════════════════════════════════════════════════
 // HP BAR
 // ═══════════════════════════════════════════════════════
+/* Ligada enquanto um chefe COBERTO pelo painel do topo se desenha. Os
+   desenhos sao sequenciais, entao basta liga-la em volta da chamada: nada
+   mais roda no meio. Serve para o chefe nao repetir sobre a propria cabeca
+   a vida, o escudo e o nome que o painel ja' mostra. */
+let bossHudCobrindo=false;
+
+/* Desenha um chefe silenciando o proprio rotulo dele quando o painel do
+   topo ja' cuida disso. */
+function desenharChefe(chefe,t){
+  const cobre=(typeof BossHUD!=='undefined')&&BossHUD.cobre(chefe);
+  if(cobre) bossHudCobrindo=true;
+  try{ chefe.draw(t); } finally { bossHudCobrindo=false; }
+  drawEnemyStatusFx(chefe,t);
+}
+
 function drawHPBar(x,y,pct,w){
+  if(bossHudCobrindo) return;
   ctx.fillStyle='#0a0a0a';ctx.fillRect(x-w/2-1,y-1,w+2,7);
   ctx.fillStyle='#550000';ctx.fillRect(x-w/2,y,w,5);
   ctx.fillStyle=pct>0.5?'#22dd44':pct>0.25?'#ddcc00':'#ff3333';
@@ -16874,9 +16946,40 @@ class EnemyProj {
   update(dt){ this.trail.push({x:this.x,y:this.y}); if(this.trail.length>8) this.trail.shift(); this.x+=this.vx*dt; this.y+=this.vy*dt; if(Date.now()-this.born>this.life||this.x<0||this.x>W||this.y<0||this.y>H) this.dead=true; }
   draw(){
     if(this.tipo==='flecha'){ this._desenharFlecha(); return; }
+    if(this.tipo==='lava'){ this._desenharLava(); return; }
     for(let i=0;i<this.trail.length;i++){ const a=i/this.trail.length; ctx.globalAlpha=a*0.4; ctx.fillStyle=this.color; ctx.fillRect(this.trail[i].x-2,this.trail[i].y-2,4,4); }
     ctx.globalAlpha=1; const g=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,10); g.addColorStop(0,this.color+'cc'); g.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=g; ctx.fillRect(this.x-10,this.y-10,20,20);
   }
+  // Cuspe do Morcego de Lava: uma gota de rocha derretida, com crosta
+  // escura por fora e a racha incandescente dentro. Antes era o mesmo
+  // borrao laranja de todo projetil, e nada dizia que era lava.
+  _desenharLava(){
+    const t=Date.now();
+    // rastro de brasas esfriando: amarelo perto, vermelho escuro atras
+    for(let i=0;i<this.trail.length;i++){
+      const f=i/this.trail.length, p=this.trail[i];
+      ctx.globalAlpha=f*0.7;
+      ctx.fillStyle=f>0.66?'#ffcf5a':(f>0.33?'#ff6a10':'#7d1c02');
+      const sz=Math.max(1,Math.round(1+f*3));
+      ctx.fillRect(Math.round(p.x-sz/2),Math.round(p.y-sz/2),sz,sz);
+    }
+    ctx.globalAlpha=1;
+    const g=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,12);
+    g.addColorStop(0,'rgba(255,150,40,0.55)');
+    g.addColorStop(1,'rgba(90,20,0,0)');
+    ctx.fillStyle=g; ctx.fillRect(this.x-12,this.y-12,24,24);
+    ctx.save(); ctx.translate(this.x,this.y); ctx.rotate(Math.atan2(this.vy,this.vx));
+    ctx.fillStyle='#3a1405'; ctx.fillRect(-5,-4,11,8);   // crosta ja' fria
+    ctx.fillStyle='#c2380a'; ctx.fillRect(-4,-3,9,6);
+    ctx.fillStyle='#ff7a14'; ctx.fillRect(-3,-2,7,4);
+    ctx.globalAlpha=0.6+0.4*Math.sin(t*0.03+this.born);
+    ctx.fillStyle='#ffd76a'; ctx.fillRect(-1,-1,4,2);    // a racha que brilha
+    ctx.globalAlpha=1;
+    ctx.fillStyle='#e0530c';
+    ctx.fillRect(-7,-1+Math.round(Math.sin(t*0.02)*1),3,2);   // pingo escorrendo
+    ctx.restore();
+  }
+
   // Flecha de verdade: haste, ponta e penas, virada na direcao do voo.
   // Antes ela era o mesmo borrao luminoso dos outros projeteis.
   _desenharFlecha(){
@@ -17048,7 +17151,51 @@ class AcidShotProj {
 class HomingFireball {
   constructor(x,y,target,dmg){ this.x=x; this.y=y; this.target=target; this.dmg=dmg; this.dead=false; this.born=Date.now(); this.life=3000; this.radius=8; this.speed=190; const ang=Math.atan2(target.y-y,target.x-x); this.vx=Math.cos(ang)*this.speed; this.vy=Math.sin(ang)*this.speed; this.angle=ang; this.trail=[]; }
   update(dt){ this.trail.push({x:this.x,y:this.y}); if(this.trail.length>12) this.trail.shift(); if(this.target&&!this.target.dead){ const des=Math.atan2(this.target.y-this.y,this.target.x-this.x); let diff=des-this.angle; while(diff>Math.PI)diff-=Math.PI*2; while(diff<-Math.PI)diff+=Math.PI*2; this.angle+=diff*0.08; this.vx=Math.cos(this.angle)*this.speed; this.vy=Math.sin(this.angle)*this.speed; } this.x+=this.vx*dt; this.y+=this.vy*dt; if(Date.now()-this.born>this.life||this.x<-20||this.x>W+20||this.y<-20||this.y>H+20) this.dead=true; }
-  draw(){ for(let i=0;i<this.trail.length;i++){ const a=i/this.trail.length; ctx.globalAlpha=a*0.5; ctx.fillStyle=`hsl(${30+20*a},100%,50%)`; const sz=Math.max(2,a*8); ctx.fillRect(this.trail[i].x-sz/2,this.trail[i].y-sz/2,sz,sz); } ctx.globalAlpha=1; const g=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,14); g.addColorStop(0,'rgba(255,200,50,0.95)'); g.addColorStop(0.5,'rgba(255,80,0,0.6)'); g.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=g; ctx.fillRect(this.x-15,this.y-15,30,30); }
+  // A bola do Cultista era um borrao radial laranja com um rastro de
+  // quadradinhos — o mesmo desenho de qualquer outro projetil do jogo.
+  // Agora tem fumaca soprando para tras, brasas no rastro, linguas de fogo
+  // inclinadas contra o voo e um nucleo com casca, miolo e ponto branco.
+  draw(){
+    const t=Date.now();
+    const ang=Math.atan2(this.vy,this.vx);
+    // fumaca: a mais velha e' maior e mais apagada
+    for(let i=0;i<this.trail.length;i++){
+      const f=i/this.trail.length, p=this.trail[i];
+      ctx.globalAlpha=f*0.24;
+      ctx.fillStyle='#2a2118';
+      const sz=Math.round(3+(1-f)*4);
+      ctx.fillRect(Math.round(p.x-sz/2),Math.round(p.y-sz/2),sz,sz);
+    }
+    // brasas: acesas perto da bola, apagando para tras
+    for(let i=0;i<this.trail.length;i+=2){
+      const f=i/this.trail.length, p=this.trail[i];
+      ctx.globalAlpha=f*0.85;
+      ctx.fillStyle=f>0.62?'#ffd36a':(f>0.32?'#ff8a1e':'#c23a06');
+      const sz=Math.max(1,Math.round(f*3));
+      ctx.fillRect(Math.round(p.x+Math.sin(t*0.02+i)*2-sz/2),Math.round(p.y-sz/2),sz,sz);
+    }
+    ctx.globalAlpha=1;
+    const pulso=0.85+0.15*Math.sin(t*0.018);
+    const g=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,17*pulso);
+    g.addColorStop(0,'rgba(255,190,60,0.55)');
+    g.addColorStop(0.45,'rgba(255,90,10,0.30)');
+    g.addColorStop(1,'rgba(120,20,0,0)');
+    ctx.fillStyle=g; ctx.fillRect(this.x-18,this.y-18,36,36);
+    ctx.save(); ctx.translate(this.x,this.y); ctx.rotate(ang);
+    // linguas de fogo, deitadas para tras pelo proprio voo
+    for(let i=0;i<3;i++){
+      const fase=t*0.016+i*2.1, comp=6+Math.sin(fase)*3;
+      ctx.globalAlpha=0.55+0.25*Math.sin(fase*1.3);
+      ctx.fillStyle=i===1?'#ff9a20':'#e8560c';
+      ctx.fillRect(-4-comp,Math.round((i-1)*3.2)-1,comp,2);
+    }
+    ctx.globalAlpha=1;
+    ctx.fillStyle='#e0510a'; ctx.fillRect(-6,-5,12,10);
+    ctx.fillStyle='#ff8c18'; ctx.fillRect(-5,-4,10,8);
+    ctx.fillStyle='#ffc84a'; ctx.fillRect(-3,-3,6,6);
+    ctx.fillStyle='#fff3c0'; ctx.fillRect(-2,-2,3,3);
+    ctx.restore();
+  }
   hitPlayer(pl){ const d=Math.hypot(pl.x-this.x,pl.y-this.y); if(d<pl.radius+this.radius){ pl.takeDmg(this.dmg); this.dead=true; spawnParts(this.x,this.y,'#ff6600',8,50); return true; } return false; }
 }
 
@@ -18155,6 +18302,20 @@ function drawTempleCampfire(){
   c.fillStyle='#1a1418'; c.fillRect(50,8,390,10);
   c.fillStyle='#221a1c'; c.fillRect(52,8,386,4);
 
+  // ── Altar dos deuses ──
+  // Fica ATRAS da fogueira: e' o altar que da' a bencao, e o fogo arde
+  // diante dele. Desenhado antes para o fogo passar por cima.
+  // Recuado e um pouco menor: sentado na linha do fundo, com o fogo bem
+  // a' frente. Colado na fogueira, as chamas engoliam quase o altar inteiro.
+  const ax=CW/2, ay=CH-106;
+  if(typeof CampaignObjectives!=='undefined'&&CampaignObjectives.desenharObjeto){
+    CampaignObjectives.desenharObjeto(c,'santuario',ax,ay,54);
+    const halo=c.createRadialGradient(ax,ay-40,2,ax,ay-40,48);
+    halo.addColorStop(0,'rgba(255,232,150,0.20)');
+    halo.addColorStop(1,'rgba(255,200,80,0)');
+    c.fillStyle=halo;c.fillRect(ax-54,ay-90,108,100);
+  }
+
   // ── Campfire ──
   const cx=CW/2, cy=CH-85;
   // Log pile
@@ -18257,6 +18418,7 @@ function templeChoose(choice){
   <script src="src/campaign/chapter-data.js"></script>
   <script src="src/campaign/campaign-system.js"></script>
   <script src="src/ui/campaign-overlays.js"></script>
+  <script src="src/ui/boss-hud.js"></script>
   <script>
 // GAME LOOP
 // ═══════════════════════════════════════════════════════
@@ -18592,6 +18754,9 @@ function loop(ts){
     if(!campaignEventActive)updateCampaignBiomeAndBoss(wildPetFight);
     // Update bossMajor
     if(bossMajor&&!bossMajor.dead){ bossMajor.update(dt,player.x,player.y); clampCampaignEntity(bossMajor,bossMajor.radius||40); }
+    // Depois de TODOS os chefes se moverem. Colocado antes, nao adiantava:
+    // eles perseguem o jogador e voltavam a pisar em cima no mesmo quadro.
+    separarDosCorpos();
     if(bossMajor&&bossMajor.dead){
       const defeatedBossWave=wave;
       bossMajor=null;
@@ -18643,10 +18808,10 @@ function loop(ts){
   const ents=[
     ...coins.map(c=>({y:c.y,fn:()=>c.draw(t)})),
     ...enemies.map(e=>({y:e.y,fn:()=>{ e.draw(t); drawEnemyStatusFx(e,t); }})),
-    ...(bossOrc&&!bossOrc.dead?[{y:bossOrc.y,fn:()=>{bossOrc.draw(t);drawEnemyStatusFx(bossOrc,t);}}]:[]),
-    ...(bossSkel&&!bossSkel.dead?[{y:bossSkel.y,fn:()=>{bossSkel.draw(t);drawEnemyStatusFx(bossSkel,t);}}]:[]),
-    ...(bossSpider&&!bossSpider.dead?[{y:bossSpider.y,fn:()=>{bossSpider.draw(t);drawEnemyStatusFx(bossSpider,t);}}]:[]),
-    ...(bossMajor&&!bossMajor.dead?[{y:bossMajor.y,fn:()=>{bossMajor.draw(t);drawEnemyStatusFx(bossMajor,t);}}]:[]),
+    ...(bossOrc&&!bossOrc.dead?[{y:bossOrc.y,fn:()=>{desenharChefe(bossOrc,t);}}]:[]),
+    ...(bossSkel&&!bossSkel.dead?[{y:bossSkel.y,fn:()=>{desenharChefe(bossSkel,t);}}]:[]),
+    ...(bossSpider&&!bossSpider.dead?[{y:bossSpider.y,fn:()=>{desenharChefe(bossSpider,t);}}]:[]),
+    ...(bossMajor&&!bossMajor.dead?[{y:bossMajor.y,fn:()=>{desenharChefe(bossMajor,t);}}]:[]),
     ...structures.map(s=>({y:s.y,fn:()=>s.draw(t)})),
     {y:player.y,fn:()=>player.draw(t)},
     ...(gameMode===2&&player2?[{y:player2.y,fn:()=>player2.draw(t)}]:[]),
@@ -18657,6 +18822,13 @@ function loop(ts){
   for(const m of meleeAnims) m.draw(t);
   for(const p of parts) p.draw();
   campaignObjectives.drawOverlay(ctx,t,W,H);
+  // Painel do chefe: um so', no alto. Vem depois do mundo para nada passar
+  // por cima dele, e antes dos avisos de onda, que precisam ficar acima.
+  if(typeof BossHUD!=='undefined'){
+    for(const chefe of [bossMajor,bossOrc,bossSkel,bossSpider,petBoss]){
+      if(chefe&&!chefe.dead&&BossHUD.desenhar(ctx,chefe))break;
+    }
+  }
   drawAbilityHUD(t);
   drawWaveAnnounce(t);
   drawWaveCountdown(t,dt);

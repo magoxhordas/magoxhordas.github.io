@@ -1036,7 +1036,7 @@ class BossSkeletonKing {
     const spriteTop=groundY-SKING_H*Math.round(PX*this.scale);
     drawHPBar(this.x,spriteTop-15,this.hp/this.maxHp,104);
     ctx.fillStyle=this.resurrected?'#cc44ff':'#aabbff'; ctx.font='bold 9px Courier New'; ctx.textAlign='center';
-    ctx.fillText(this.resurrected?'💀 REI CADÁVER [RESSURRETO]':'💀 REI CADÁVER',this.x,spriteTop-20); ctx.textAlign='left';
+    if(typeof BossHUD!=='undefined') BossHUD.ancorar(this,this.x,spriteTop-20); if(typeof bossHudCobrindo==='undefined'||!bossHudCobrindo) ctx.fillText(this.resurrected?'💀 REI CADÁVER [RESSURRETO]':'💀 REI CADÁVER',this.x,spriteTop-20); ctx.textAlign='left';
   }
 }
 
@@ -1301,7 +1301,7 @@ function drawAracneAncestralBoss(b,t){
                               : drawY+34-ARACNE_H*ps;
   drawHPBar(drawX,spriteTop-15,b.hp/b.maxHp,112);
   ctx.fillStyle='#cc66ff'; ctx.font='bold 9px Courier New'; ctx.textAlign='center';
-  ctx.fillText('🕷 ARACNE ANCESTRAL',drawX,spriteTop-20); ctx.textAlign='left';
+  if(typeof BossHUD!=='undefined') BossHUD.ancorar(b,drawX,spriteTop-20); if(typeof bossHudCobrindo==='undefined'||!bossHudCobrindo) ctx.fillText('🕷 ARACNE ANCESTRAL',drawX,spriteTop-20); ctx.textAlign='left';
 }
 
 const ARACNE_HIT_MS=480;   // 9 quadros da mordida
@@ -1543,7 +1543,7 @@ class BossAracne {
     if(this.flashTimer>0){ ctx.save(); ctx.globalAlpha=this.flashTimer/100*0.5; ctx.fillStyle='#888840'; ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
     drawHPBar(this.x,this.y-this.radius*this.scale-20,this.hp/this.maxHp,95);
     ctx.fillStyle='#cc66ff'; ctx.font='bold 9px Courier New'; ctx.textAlign='center';
-    ctx.fillText('🕷 ARACNE ANCESTRAL',this.x,this.y-this.radius*this.scale-24); ctx.textAlign='left';
+    if(typeof BossHUD!=='undefined') BossHUD.ancorar(this,this.x,this.y-this.radius*this.scale-24); if(typeof bossHudCobrindo==='undefined'||!bossHudCobrindo) ctx.fillText('🕷 ARACNE ANCESTRAL',this.x,this.y-this.radius*this.scale-24); ctx.textAlign='left';
   }
 }
 
@@ -1929,11 +1929,11 @@ function drawFrostGiantBoss(b,t){
   if(b.shieldActive){
     drawHPBar(x,spriteTop-42,b.shieldHp/b.shieldMax,90);
     ctx.fillStyle='#72e8ff';ctx.font='7px Courier New';ctx.textAlign='center';
-    ctx.fillText(b.shieldPhase==='half'?'BARREIRA 1000':'ESCUDO 2000',x,spriteTop-46);
+    if(typeof bossHudCobrindo==='undefined'||!bossHudCobrindo) ctx.fillText(b.shieldPhase==='half'?'BARREIRA 1000':'ESCUDO 2000',x,spriteTop-46);
   }
   drawHPBar(x,spriteTop-15,b.hp/b.maxHp,112);
   ctx.fillStyle='#88ddff';ctx.font='bold 9px Courier New';ctx.textAlign='center';
-  ctx.fillText('❄ GIGANTE DE GELO',x,spriteTop-24);ctx.textAlign='left';
+  if(typeof BossHUD!=='undefined') BossHUD.ancorar(b,x,spriteTop-24); if(typeof bossHudCobrindo==='undefined'||!bossHudCobrindo) ctx.fillText('❄ GIGANTE DE GELO',x,spriteTop-24);ctx.textAlign='left';
 }
 
 const GELO_HIT_MS=560;   // 9 quadros do soco de gelo
@@ -2171,7 +2171,7 @@ class BossFrostBehemoth {
       ctx.shadowBlur=0; ctx.restore();
       drawHPBar(x,y-this.radius*this.scale/1.4-32,shPct,70);
       ctx.fillStyle='#88ddff'; ctx.font='7px Courier New'; ctx.textAlign='center';
-      ctx.fillText('ESCUDO DE GELO',x,y-this.radius*this.scale/1.4-36); ctx.textAlign='left';
+      if(typeof bossHudCobrindo==='undefined'||!bossHudCobrindo) ctx.fillText('ESCUDO DE GELO',x,y-this.radius*this.scale/1.4-36); ctx.textAlign='left';
     }
 
     // ── Corpo NOVO: sprite pixel-art (reformulado do zero) ──
@@ -2201,7 +2201,7 @@ class BossFrostBehemoth {
     if(this.flashTimer>0){ ctx.save(); ctx.globalAlpha=this.flashTimer/100*0.5; ctx.fillStyle='#aaddff'; ctx.beginPath(); ctx.arc(x,y,this.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
     drawHPBar(x,y-this.radius*this.scale/1.4-18,this.hp/this.maxHp,98);
     ctx.fillStyle='#88ddff'; ctx.font='bold 9px Courier New'; ctx.textAlign='center';
-    ctx.fillText('❄ GIGANTE DE GELO',x,y-this.radius*this.scale/1.4-22); ctx.textAlign='left';
+    if(typeof BossHUD!=='undefined') BossHUD.ancorar(this,x,y-this.radius*this.scale/1.4-22); if(typeof bossHudCobrindo==='undefined'||!bossHudCobrindo) ctx.fillText('❄ GIGANTE DE GELO',x,y-this.radius*this.scale/1.4-22); ctx.textAlign='left';
   }
 }
 
@@ -2479,7 +2479,7 @@ function drawDevourerBoss(b,t){
                            : Math.min(b.y-48,...b.bodySegments.map(seg=>seg.y-35));
   drawHPBar(b.x,spriteTop-15,b.hp/b.maxHp,104);
   ctx.fillStyle='#ffd22b';ctx.font='bold 9px Courier New';ctx.textAlign='center';
-  ctx.fillText('VERME DEVORADOR',b.x,spriteTop-20);ctx.textAlign='left';
+  if(typeof BossHUD!=='undefined') BossHUD.ancorar(b,b.x,spriteTop-20); if(typeof bossHudCobrindo==='undefined'||!bossHudCobrindo) ctx.fillText('VERME DEVORADOR',b.x,spriteTop-20);ctx.textAlign='left';
 }
 
 const VERME_HIT_MS=520;   // 9 quadros da mordida
@@ -2780,7 +2780,7 @@ class BossSandworm {
     if(this.flashTimer>0){ ctx.save(); ctx.globalAlpha=this.flashTimer/100*0.5; ctx.fillStyle='#88ff44'; ctx.beginPath(); ctx.arc(x,y,this.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
     drawHPBar(x,y-this.radius*1.8-18,this.hp/this.maxHp,100);
     ctx.fillStyle='#aeff44'; ctx.font='bold 9px Courier New'; ctx.textAlign='center';
-    ctx.fillText('🪱 VERME DEVORADOR',x,y-this.radius*1.8-22); ctx.textAlign='left';
+    if(typeof BossHUD!=='undefined') BossHUD.ancorar(this,x,y-this.radius*1.8-22); if(typeof bossHudCobrindo==='undefined'||!bossHudCobrindo) ctx.fillText('🪱 VERME DEVORADOR',x,y-this.radius*1.8-22); ctx.textAlign='left';
   }
 }
 
@@ -3083,7 +3083,8 @@ class BossBalrog {
     if(this.flashTimer>0){ ctx.save(); ctx.globalAlpha=this.flashTimer/120*0.55; ctx.fillStyle='#ff6600'; ctx.beginPath(); ctx.arc(x,y,this.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
     drawHPBar(x,y-this.radius*this.scale/2-26,this.hp/this.maxHp,104);
     ctx.fillStyle=this.phase2?'#ff2200':'#ff6600'; ctx.font='bold 9px Courier New'; ctx.textAlign='center';
-    ctx.fillText(this.phase2?'🔥 BALROG [FÚRIA DESPERTA]':'🔥 BALROG, O ARAUTO',x,y-this.radius*this.scale/2-30); ctx.textAlign='left';
+    if(typeof BossHUD!=='undefined') BossHUD.ancorar(this,x,y-this.radius*this.scale/2-30);
+    if(typeof bossHudCobrindo==='undefined'||!bossHudCobrindo) ctx.fillText(this.phase2?'🔥 BALROG [FÚRIA DESPERTA]':'🔥 BALROG, O ARAUTO',x,y-this.radius*this.scale/2-30); ctx.textAlign='left';
   }
 }
 
@@ -3359,7 +3360,7 @@ class BossBrute {
     this._drawRocks();
     drawHPBar(this.x,groundY-gh-16,this.hp/this.maxHp,100);
     ctx.fillStyle=this.enraged?'#ff5544':'#7ab048'; ctx.font='bold 9px Courier New'; ctx.textAlign='center';
-    ctx.fillText('🗿 BRUTAMONTES DA GUERRA',this.x,groundY-gh-20); ctx.textAlign='left';
+    if(typeof BossHUD!=='undefined') BossHUD.ancorar(this,this.x,groundY-gh-20); if(typeof bossHudCobrindo==='undefined'||!bossHudCobrindo) ctx.fillText('🗿 BRUTAMONTES DA GUERRA',this.x,groundY-gh-20); ctx.textAlign='left';
   }
   _drawRocks(){
     for(const rk of this.rocks){

@@ -68,6 +68,15 @@
     fire_imp:          { pasta: 'fireimp',     escala: 1.15, quadro: 48, pe: 40, nWalk: 9, nHit: 9, escBase: 0.90 },
     demon_knight:      { pasta: 'demonknight', escala: 1.45, quadro: 48, pe: 40, nWalk: 9, nHit: 9, escBase: 1.30, contato: true },
     lava_bat:          { pasta: 'lavabat',     escala: 1.10, quadro: 48, pe: 40, nWalk: 9, nHit: 9, escBase: 0.90 },
+    // ── tipos ANTIGOS, ainda usados pelos objetivos de onda ──
+    // O Altar de Ossos gera 'skeleton' e o Ninho gera 'spider' — nomes da
+    // tabela legada, que nao estavam aqui. Sem entrada, os dois caiam no
+    // desenho procedural: era a arte velha aparecendo nessas duas ondas.
+    // Reaproveitam a arte dos primos, com nHit 0 porque nenhum dos dois tem
+    // gatilho de golpe (so' correm e encostam) — assim nunca pedem uma
+    // animacao de ataque que nao combina com o que fazem.
+    skeleton:          { pasta: 'skelarcher',  escala: 1.50, quadro: 40, pe: 33, nWalk: 6, nHit: 0, escBase: 0.95 },
+    spider:            { pasta: 'spider2',     escala: 1.21, quadro: 48, pe: 40, nWalk: 9, nHit: 0, escBase: 0.85 },
   };
 
   /* Duracao da animacao de golpe, em ms. Quem chama usa isso para saber
@@ -78,6 +87,7 @@
     ice_zombie: 520, crystal_golem: 720, wind_specter: 0,
     sand_worm_small: 800, cultist: 560, obsidian_scorpion: 0,
     fire_imp: 350, demon_knight: 640, lava_bat: 520,
+    skeleton: 0, spider: 0,
   };
 
   const cache = {};

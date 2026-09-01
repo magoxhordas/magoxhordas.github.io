@@ -55,7 +55,14 @@ const GameSettings = (function(){
     const base=cloneDefaults();
     try{
       const saved=SaveSystem.readJSON(STORAGE_KEY,{});
-      return {...base,...saved,controls:{...base.controls,...(saved.controls||{})}};
+      const juntos={...base,...saved,controls:{...base.controls,...(saved.controls||{})}};
+      // O espalhamento aceita QUALQUER coisa que esteja gravada. Os campos
+      // numericos voltam ao padrao quando o que veio nao e' numero, senao um
+      // save velho ou corrompido envenena o audio inteiro.
+      for(const campo of ['musicVolume','attackSoundVolume','sfxVolume']){
+        if(campo in juntos && !Number.isFinite(Number(juntos[campo]))) juntos[campo]=base[campo];
+      }
+      return juntos;
     }catch(_){ return base; }
   }
   function loadSkinProgress(){
@@ -78,7 +85,16 @@ const GameSettings = (function(){
     clearTimeout(flashSaved._timer);
     flashSaved._timer=setTimeout(()=>{ el.textContent='ALTERAÇÕES SALVAS AUTOMATICAMENTE'; },1100);
   }
-  function clampVolume(value){ return Math.max(0,Math.min(1,Number(value)/100)); }
+  /* Math.max e Math.min PROPAGAM NaN: Math.max(0,Math.min(1,NaN)) da' NaN.
+     Entao este clamp parecia proteger e nao protegia — um volume salvo como
+     texto (ou um campo que sumiu numa versao antiga do save) atravessava
+     inteiro e chegava no Audio, que estoura com "The provided float value is
+     non-finite" e derruba applyAudio(). Reproduzido com 'alto' e undefined. */
+  function clampVolume(value,padrao=0){
+    const n=Number(value)/100;
+    if(!Number.isFinite(n)) return padrao;
+    return Math.max(0,Math.min(1,n));
+  }
   function applyAudio(){
     if(typeof Audio==='undefined') return;
     Audio.setMusicVol(data.musicEnabled?data.musicVolume:0);

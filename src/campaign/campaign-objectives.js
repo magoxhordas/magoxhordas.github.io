@@ -2,13 +2,50 @@
 (function(global){
   'use strict';
 
+  /* Arte dos objetos de cenario. Cada um e' um PNG so' (o jogo desenha
+     sempre de frente) e e' ancorado pela BASE, porque os alvos guardam a
+     posicao no CHAO. Se a imagem ainda nao carregou, quem chama volta ao
+     desenho a mao, que continua ali de reserva. */
+  const ARTE_BASE='assets/objects/';
+  const arteCache={};
+  function arteObjeto(nome){
+    // O modulo tambem roda fora do navegador (os verificadores o carregam
+    // num vm sem DOM), e la' nao existe Image. Sem arte, quem chama volta
+    // ao desenho a mao.
+    if(typeof Image!=='function')return null;
+    let im=arteCache[nome];
+    if(!im){im=new Image();im.src=ARTE_BASE+nome+'.png';arteCache[nome]=im;}
+    return (im.complete&&im.naturalWidth)?im:null;
+  }
+  /* Desenha ancorado pela base em (x, yBase). `larguraAlvo` diz quantos
+     pixels o objeto deve ocupar na tela; a altura acompanha a proporcao. */
+  function desenharObjeto(ctx,nome,x,yBase,larguraAlvo){
+    const im=arteObjeto(nome);
+    if(!im)return false;
+    const k=larguraAlvo/im.naturalWidth;
+    const w=Math.round(im.naturalWidth*k), h=Math.round(im.naturalHeight*k);
+    ctx.save();
+    ctx.imageSmoothingEnabled=false;
+    ctx.drawImage(im,Math.round(x-w/2),Math.round(yBase-h),w,h);
+    ctx.restore();
+    return true;
+  }
+  (function precarregarObjetos(){
+    for(const n of ['altar_ossos','ninho','fogueira_off','fogueira_on','obelisco','santuario'])arteObjeto(n);
+  })();
+
+  /* Objetos que o heroi NAO atravessa. Ficam de fora a fissura infernal
+     (e' uma racha no chao), o casulo do sobrevivente (que se resgata
+     chegando perto), os NPCs e a Aranha Cacadora, que anda. */
+  const SOLIDOS=Object.freeze(['bone_altar','dark_altar','demon_altar','obelisk','fire','spider_nest','ancient_chest']);
+
   const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
   const distance=(a,b)=>Math.hypot((a?.x||0)-(b?.x||0),(a?.y||0)-(b?.y||0));
   const alive=list=>(list||[]).filter(item=>item&&!item.dead);
   const OBJECTIVE_WAVES=Object.freeze({
     2:Object.freeze({id:'bone_altars',title:'Altares de Ossos',required:true}),
     3:Object.freeze({id:'dark_choice',title:'O Preço da Escuridão',required:true}),
-    4:Object.freeze({id:'corpse_knight',title:'Cavaleiro Cadáver',required:true}),
+    4:Object.freeze({id:'brute',title:'Brutamontes',required:true}),
     7:Object.freeze({id:'spider_nests',title:'Ninhos da Matriarca',required:true}),
     8:Object.freeze({id:'webbed_survivor',title:'Sobrevivente Enredado',required:false}),
     9:Object.freeze({id:'hunter_spider',title:'Aranha Caçadora',required:true}),
@@ -167,11 +204,18 @@
         POSITIONS.boneAltars.forEach(([x,y],index)=>makeTarget({kind:'bone_altar',label:`Altar ${index+1}`,x,y,hp:Math.round(150*hpScale),radius:20,hitColor:'#d9ccb2',onDestroyed:onMandatoryStructureDestroyed}));
       }else if(definition.id==='dark_choice'){
         current.data.revealAt=8000;current.data.revealed=false;
-      }else if(definition.id==='corpse_knight'){
-        const knight=makeTarget({kind:'corpse_knight',label:'Cavaleiro Cadáver',x:320,y:245,hp:Math.round(620*hpScale),radius:25,hitColor:'#ba4f55',
-          facingAngle:Math.PI/2,attackTimer:1700,boneTimer:3800,combatState:'idle',customUpdate:updateCorpseKnight,
-          adjustDamage:corpseKnightDamage,onDestroyed:()=>{buffs.skeletonKingDamage=.08;complete('RECOMPENSA: +8% DANO CONTRA O REI CADÁVER');}});
-        knight.isMiniboss=true;
+      }else if(definition.id==='brute'){
+        // O Brutamontes de verdade, e nao um alvo de objetivo: e' a mesma
+        // classe da onda 30, com a vida reduzida ao nivel do mini-chefe que
+        // ele substituiu (620 aqui, contra 1800+onda*190 la'). Assim ele
+        // chega com os golpes proprios — Salto Esmagador, pedra e furia —
+        // e todo o maquinario de chefe do jogo (colisao, dano, desenho,
+        // musica) ja' cuida dele sem precisar de nada novo.
+        const vida=Math.round(620*hpScale);
+        current.data.bruto=deps.spawnMiniboss?.(vida,14+Number(deps.getWave()||4)*1.6)||null;
+        current.data.brutoVida=vida;
+        // Se a classe nao existir, o objetivo se completa em vez de travar a onda.
+        if(!current.data.bruto)complete();
       }else if(definition.id==='spider_nests'){
         current.data.spawnTimer=1900;
         POSITIONS.spiderNests.forEach(([x,y],index)=>makeTarget({kind:'spider_nest',label:`Ninho ${index+1}`,x,y,hp:Math.round(180*hpScale),radius:22,hitColor:'#d9e4d6',onDestroyed:onMandatoryStructureDestroyed}));
@@ -447,6 +491,13 @@
 
     function updateSpawners(dt){
       const ms=dt*1000;
+      if(current.id==='brute'&&!current.complete&&current.data.bruto){
+        const vivo=deps.getMiniboss?.();
+        if(!vivo||vivo.dead||vivo!==current.data.bruto){
+          buffs.skeletonKingDamage=.08;
+          complete('RECOMPENSA: +8% DANO CONTRA O REI CADÁVER');
+        }
+      }
       if(current.id==='bone_altars'&&!current.complete){
         current.data.spawnTimer-=ms;
         if(current.data.spawnTimer<=0&&objectiveSpawns().length<6){
@@ -588,7 +639,13 @@
       const living=alive(current.targets);
       if(current.id==='bone_altars')return {...base,detail:`Destrua os altares · ${living.length}/3 restantes`,progress:(3-living.length)/3};
       if(current.id==='dark_choice')return {...base,detail:current.data.revealed?'Aproxime-se e escolha um destino compartilhado.':'O ritual está se formando...',progress:current.data.revealed?undefined:current.elapsed/current.data.revealAt};
-      if(current.id==='corpse_knight'||current.id==='hunter_spider'){const target=living[0];return {...base,detail:current.id==='corpse_knight'?'Ataque pelas costas; evite a investida e a onda de ossos.':'Observe a fase parcial, desvie e contra-ataque.',progress:target?1-target.hp/target.maxHp:1};}
+      if(current.id==='brute'){
+        const bruto=deps.getMiniboss?.();
+        const vivo=bruto&&!bruto.dead&&bruto===current.data.bruto;
+        return {...base,detail:'Desvie do Salto Esmagador e das pedras; abaixo de 40% ele entra em fúria.',
+                progress:vivo?1-bruto.hp/bruto.maxHp:1};
+      }
+      if(current.id==='hunter_spider'){const target=living[0];return {...base,detail:'Observe a fase parcial, desvie e contra-ataque.',progress:target?1-target.hp/target.maxHp:1};}
       if(current.id==='spider_nests')return {...base,detail:`Destrua os ninhos · ${living.length}/4 restantes · teia −15%`,progress:(4-living.length)/4};
       if(current.id==='webbed_survivor'){
         const target=current.data.survivor;
@@ -623,12 +680,28 @@
       return {key,text,mobileLabel:best.holdMs?'SEGURE':'INTERAGIR'};
     }
 
+    /* Os objetos de cenario que barram o heroi. O bloqueio usa o raio do
+       proprio alvo mais o do heroi (36 a 39px); a interacao alcanca
+       raio+58, entao continua dando para acender a fogueira e mexer nos
+       altares encostado neles. */
+    function getSolidTargets(){
+      return alive(current.targets).filter(target=>SOLIDOS.indexOf(target.kind)>=0);
+    }
+
     function drawTarget(ctx,time,target){
       if(!ctx||target.dead)return;const x=target.x,y=target.y,pulse=.5+.5*Math.sin(time*.006+target.phase);
       ctx.save();
       if(target.flashTimer>0){ctx.shadowBlur=18;ctx.shadowColor='#fff';}
       ctx.globalAlpha=.30;ctx.fillStyle='#000';ctx.beginPath();ctx.ellipse(x,y+15,target.radius*1.05,target.radius*.34,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
       if(target.kind==='bone_altar'){
+        if(desenharObjeto(ctx,'altar_ossos',x,y+14,50)){
+          // a chama da arte e' fixa; o brilho pulsante fica por conta do jogo
+          const g=ctx.createRadialGradient(x,y-14,1,x,y-14,22+pulse*6);
+          g.addColorStop(0,`rgba(206,142,232,${.22+pulse*.16})`);
+          g.addColorStop(1,'rgba(60,10,80,0)');
+          ctx.fillStyle=g;ctx.fillRect(x-30,y-40,60,44);
+          ctx.restore();return;
+        }
         // base em dois degraus, com o topo mais claro para dar volume
         ctx.fillStyle='#221d24';ctx.fillRect(x-19,y+6,38,8);
         ctx.fillStyle='#39323c';ctx.fillRect(x-17,y+1,34,7);
@@ -658,6 +731,15 @@
         ctx.fillStyle=`rgba(206,142,232,${.4+pulse*.35})`;
         ctx.fillRect(x-11,y-3,3,1);ctx.fillRect(x-2,y-3,4,1);ctx.fillRect(x+8,y-3,3,1);
       }else if(target.kind==='dark_altar'||target.kind==='demon_altar'){
+        // So' o Sombrio tem arte: o Demoniaco (onda 23, vulcao) continua
+        // desenhado a mao, porque nao veio objeto infernal no pacote.
+        if(target.kind==='dark_altar'&&desenharObjeto(ctx,'obelisco',x,y+16,40)){
+          const g=ctx.createRadialGradient(x,y-16,1,x,y-16,26+pulse*7);
+          g.addColorStop(0,`rgba(190,120,235,${.26+pulse*.18})`);
+          g.addColorStop(1,'rgba(40,10,60,0)');
+          ctx.fillStyle=g;ctx.fillRect(x-34,y-46,68,54);
+          ctx.restore();return;
+        }
         const inf=target.kind==='demon_altar';
         const esc=inf?'#2d0d09':'#180d20', med=inf?'#5c1c12':'#3b2350',
               cla=inf?'#8d3520':'#5d3a78', luz=inf?'#ff6a30':'#c47ce4', luz2=inf?'#ffc06a':'#ecb6ff';
@@ -744,7 +826,10 @@
         if(target.combatState==='charge_wind'){ctx.globalAlpha=.65;ctx.strokeStyle='#e74e4e';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(target.chargeX,target.chargeY);ctx.stroke();ctx.globalAlpha=1;}
         if(target.boneWave){const r=target.boneWave.phase==='telegraph'?48:38+(1-target.boneWave.timer/520)*105;ctx.strokeStyle='#ded2bc';ctx.lineWidth=target.boneWave.phase==='telegraph'?2:5;ctx.globalAlpha=.65;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;}
       }else if(target.kind==='spider_nest'){
-        ctx.strokeStyle='rgba(225,238,230,.75)';ctx.lineWidth=1;for(let i=0;i<8;i++){const a=i*Math.PI/4;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+Math.cos(a)*30,y+Math.sin(a)*21);ctx.stroke();}
+        // os fios saem por BAIXO do ninho: sao eles que amarram o objeto ao
+        // chao e explicam a lentidao de quem chega perto
+        ctx.strokeStyle='rgba(225,238,230,.75)';ctx.lineWidth=1;for(let i=0;i<8;i++){const a=i*Math.PI/4;ctx.beginPath();ctx.moveTo(x,y+6);ctx.lineTo(x+Math.cos(a)*30,y+6+Math.sin(a)*21);ctx.stroke();}
+        if(desenharObjeto(ctx,'ninho',x,y+16,48)){ctx.restore();return;}
         ctx.fillStyle='#5b594b';ctx.beginPath();ctx.ellipse(x,y,22,14,0,0,Math.PI*2);ctx.fill();for(let i=0;i<5;i++){ctx.fillStyle=i%2?'#dfe6d9':'#aaa994';ctx.beginPath();ctx.arc(x-12+i*6,y-4+(i%2)*7,5,0,Math.PI*2);ctx.fill();}
       }else if(target.kind==='survivor_web'){
         ctx.strokeStyle='#e0ebe4';ctx.lineWidth=2;for(let i=0;i<7;i++){const a=i*Math.PI/7;ctx.beginPath();ctx.ellipse(x,y,21-i*2,28-i*2,a,0,Math.PI*2);ctx.stroke();}ctx.fillStyle='#865b47';ctx.fillRect(x-5,y-8,10,21);ctx.fillStyle='#d7b08a';ctx.fillRect(x-4,y-15,8,8);
@@ -765,6 +850,19 @@
         ctx.globalAlpha=target.combatState==='phase_wind'?.42:1;ctx.fillStyle='#262231';ctx.beginPath();ctx.ellipse(x,y,20,15,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#805296';ctx.beginPath();ctx.arc(x,y-6,11,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#d8e8df';ctx.lineWidth=3;for(let i=0;i<4;i++){const sy=-9+i*6;ctx.beginPath();ctx.moveTo(x-12,y+sy);ctx.lineTo(x-28,y+sy+(i-1.5)*4);ctx.moveTo(x+12,y+sy);ctx.lineTo(x+28,y+sy+(i-1.5)*4);ctx.stroke();}ctx.globalAlpha=1;
         if(target.combatState==='phase_wind'){ctx.strokeStyle='#f0f6f0';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,32+pulse*8,0,Math.PI*2);ctx.stroke();}
       }else if(target.kind==='fire'){
+        // a arte veio em par: o mesmo braseiro apagado e aceso. As duas
+        // larguras-alvo saem do MESMO fator de escala, senao a pedra mudava
+        // de tamanho na hora de acender.
+        const arte=desenharObjeto(ctx,target.lit?'fogueira_on':'fogueira_off',x,y+14,target.lit?32:36);
+        if(arte&&target.lit){
+          const glow=ctx.createRadialGradient(x,y-12,0,x,y-12,40+pulse*8);
+          glow.addColorStop(0,`rgba(105,220,255,${.26+pulse*.14})`);glow.addColorStop(1,'rgba(0,0,0,0)');
+          ctx.fillStyle=glow;ctx.fillRect(x-46,y-56,92,90);
+        }
+        if(arte){
+          if(target.holdProgress>0&&!target.lit){ctx.strokeStyle='#d7f7ff';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y-10,28,-Math.PI/2,-Math.PI/2+Math.PI*2*clamp(target.holdProgress/target.holdMs,0,1));ctx.stroke();}
+          ctx.restore();return;
+        }
         ctx.fillStyle='#474d58';ctx.fillRect(x-13,y+6,26,6);ctx.fillStyle='#657181';ctx.fillRect(x-9,y+2,18,5);
         if(target.lit){ctx.fillStyle='#4fd5ff';ctx.fillRect(x-7,y-9,14,13);ctx.fillStyle='#c9f8ff';ctx.fillRect(x-4,y-17,8,13);ctx.fillStyle='#fff';ctx.fillRect(x-2,y-20,4,8);const glow=ctx.createRadialGradient(x,y-10,0,x,y-10,42);glow.addColorStop(0,'rgba(105,220,255,.30)');glow.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=glow;ctx.fillRect(x-44,y-54,88,88);}else{ctx.fillStyle='#263341';ctx.fillRect(x-6,y-5,12,8);}
         if(target.holdProgress>0&&!target.lit){ctx.strokeStyle='#d7f7ff';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y-10,28,-Math.PI/2,-Math.PI/2+Math.PI*2*clamp(target.holdProgress/target.holdMs,0,1));ctx.stroke();}
@@ -857,11 +955,13 @@
 
     return Object.freeze({
       resetRun,startWave,update,draw,drawOverlay,cleanup,onWaveEnd,onBossSpawn,onEnemySpawn,
-      getCombatTargets,getCurrentDefinition,canEndWave,controlsWaveTimer,allowNormalSpawns,normalSpawnCap,spawnIntervalMultiplier,
+      getCombatTargets,getSolidTargets,getCurrentDefinition,canEndWave,controlsWaveTimer,allowNormalSpawns,normalSpawnCap,spawnIntervalMultiplier,
       modifyOutgoingDamage,movementMultiplier,cooldownDurationMultiplier,cooldownRecoveryMultiplier,
       enemySpeedMultiplier,applyEnemySpeed,enemyAggroTarget,handleActionDown,handleActionUp,addTimedModifier,debugSnapshot,
     });
   }
 
-  global.CampaignObjectives=Object.freeze({create,CampaignObjectiveTarget,OBJECTIVE_WAVES,POSITIONS});
+  // desenharObjeto sai junto: o Templo Antigo tambem desenha um destes
+  // objetos (o altar dos deuses) e nao vale a pena um segundo cache de arte.
+  global.CampaignObjectives=Object.freeze({create,CampaignObjectiveTarget,OBJECTIVE_WAVES,POSITIONS,desenharObjeto});
 })(typeof window!=='undefined'?window:globalThis);
