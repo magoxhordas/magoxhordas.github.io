@@ -86,6 +86,9 @@ assert(audioAt>=0&&settingsAt>audioAt&&settingsAt<dungeonAt,'configuracoes devem
 
 assert(html.includes('<title>Mago X Hordas</title>'),'titulo da aba deve exibir o nome sem espadas');
 assert(html.includes('<link rel="icon" type="image/png" href="assets/heroes/mage/icon.png">'),'favicon do mago deve ser preservado');
+const codexBackStyle=html.match(/#collection-screen \.coll-back-btn\s*\{([^}]+)\}/)?.[1]||'';
+assert(codexBackStyle.includes('justify-content:center;')&&codexBackStyle.includes('text-align:center;'),'texto Voltar deve ser centralizado somente no botão do Códex');
+assert(/<button class="menu-btn coll-back-btn" onclick="closeCollection\(\)"[^>]*>Voltar<\/button>/.test(html),'botão Voltar perdeu o estilo dedicado ou a ação de fechar o Códex');
 
 // Executa o renderer real com progresso antigo, sem escrever em saves.
 const bossRenderer=menu.slice(menu.indexOf('function renderCollBosses(grid){'),menu.indexOf('// ── PETS ──'));

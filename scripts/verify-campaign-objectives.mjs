@@ -89,7 +89,35 @@ bruto.takeDmg(99999);h.system.update(.1);
 ok(h.system.canEndWave(4),'Brutamontes morto não liberou a onda');
 
 h.setWave(7);h.system.startWave(7);targets=h.system.getCombatTargets();
-ok(targets.length===4,'onda 7 deve criar quatro ninhos');targets.forEach(target=>target.takeDmg(99999));
+ok(targets.length===4,'onda 7 deve criar quatro ninhos');
+ok(targets.map(target=>target.artVariant).join(',')==='ninho_east,ninho_east,ninho_west,ninho_west','casulos laterais devem olhar para o centro da arena');
+ok(targets.every((target,index)=>target.x===CampaignObjectives.POSITIONS.spiderNests[index][0]&&target.y===CampaignObjectives.POSITIONS.spiderNests[index][1]&&target.radius===22&&target.maxHp===180),'troca visual alterou posições, colisão ou vida dos ninhos');
+ok(h.system.getSolidTargets().length===4,'ninhos laterais perderam a colisão');
+const nestDraws=[],nestImages=new Map();
+sandbox.Image=class {
+  set src(value){
+    this._src=value;const png=fs.readFileSync(path.join(root,value));
+    ok(png.toString('ascii',1,4)==='PNG',`arte do ninho não é PNG: ${value}`);
+    this.naturalWidth=png.readUInt32BE(16);this.naturalHeight=png.readUInt32BE(20);this.complete=true;nestImages.set(value,this);
+  }
+  get src(){return this._src;}
+};
+const nestCtx={save(){},restore(){},beginPath(){},ellipse(){},fill(){},moveTo(){},lineTo(){},stroke(){},drawImage(...args){nestDraws.push(args);}};
+targets.forEach(target=>target.draw(nestCtx,0));
+ok(nestDraws.length===4,'cada ninho deve desenhar um único sprite lateral');
+nestDraws.forEach(([image,sx,sy,sw,sh,dx,dy,dw,dh],index)=>{
+  const target=targets[index];
+  ok(image.src===`assets/objects/${target.artVariant}.png`,'renderer não usou east/west do próprio ninho');
+  ok(image.naturalWidth===48&&image.naturalHeight===48,'sprites originais dos ninhos devem permanecer intactos em 48x48');
+  ok(sx===1&&sy===12&&sw===47&&sh===27,'margem transparente do sprite lateral não foi compensada');
+  ok(dx+dw/2===target.x&&dy+dh===target.y+16&&dw===48,'ninho ficou deslocado do centro/base de colisão');
+});
+nestDraws.length=0;h.system.update(.5);targets.forEach(target=>target.draw(nestCtx,2000));
+ok(nestDraws.every(([image],index)=>image.src===`assets/objects/${targets[index].artVariant}.png`),'ninhos mudaram de direção durante a onda');
+nestImages.get('assets/objects/ninho_west.png').complete=false;nestDraws.length=0;targets[2].draw(nestCtx,2100);
+ok(nestDraws.length===1&&nestDraws[0][0].src==='assets/objects/ninho.png','arte original deve permanecer como fallback de carregamento');
+nestImages.get('assets/objects/ninho_west.png').complete=true;
+targets.forEach(target=>target.takeDmg(99999));
 close(h.system.debugSnapshot().buffs.aracneHpMult,.95,.0001,'vantagem contra Aracne não foi concedida');
 
 h.setWave(8);h.system.startWave(8);targets=h.system.getCombatTargets();
