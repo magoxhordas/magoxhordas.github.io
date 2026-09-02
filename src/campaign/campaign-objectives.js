@@ -53,6 +53,7 @@
   const alive=list=>(list||[]).filter(item=>item&&!item.dead);
   const ALTAR_KINDS=Object.freeze(['bone_altar','dark_altar','demon_altar']);
   const HUNTER_SKILLS=Object.freeze({
+    biteDamage:30,biteHpCap:.22,phaseDamage:40,phaseHpCap:.28,chargeDamage:48,chargeHpCap:.32,
     chargeWindMs:800,chargeSpeed:430,chargeDistance:270,chargeRecoverMs:1000,chargeCooldownMs:6500,
     silkWindMs:650,silkLifeMs:6000,silkCooldownMs:8500,silkLimit:3,silkRadius:30,silkRadiusY:20,silkSlow:.30,
   });
@@ -439,7 +440,7 @@
       for(const pl of candidates){
         // Varrimento do trecho percorrido evita atravessar o jogador em frames lentos.
         if(!charge.hit.has(pl)&&hunterSegmentDistance(pl,previous,target)<=target.radius*.75+(pl.radius||16)){
-          charge.hit.add(pl);deps.damagePlayer(pl,Math.min(pl.maxHp*.18,22));
+          charge.hit.add(pl);deps.damagePlayer(pl,Math.min(pl.maxHp*HUNTER_SKILLS.chargeHpCap,HUNTER_SKILLS.chargeDamage));
           runtime.parts(pl.x,pl.y,'#edc17d',8,45);
         }
       }
@@ -479,7 +480,7 @@
         if(target.stateTimer<=0){target.x=clamp(nearest.x+(Math.random()-.5)*90,42,598);target.y=clamp(nearest.y-55,215,450);target.combatState='phase_strike';target.stateTimer=500;target.phaseHit=false;runtime.parts(target.x,target.y,'#dceee6',14,65);}
       }else if(target.combatState==='phase_strike'){
         target.stateTimer-=ms;
-        if(!target.phaseHit&&distance(target,nearest)<reach+29){target.phaseHit=true;deps.damagePlayer(nearest,Math.min(nearest.maxHp*.18,15+current.wave));nearest.campaignWebTimer=Math.max(nearest.campaignWebTimer||0,2400);}
+        if(!target.phaseHit&&distance(target,nearest)<reach+29){target.phaseHit=true;deps.damagePlayer(nearest,Math.min(nearest.maxHp*HUNTER_SKILLS.phaseHpCap,HUNTER_SKILLS.phaseDamage));nearest.campaignWebTimer=Math.max(nearest.campaignWebTimer||0,2400);}
         if(target.stateTimer<=0){target.combatState='hunt';target.phaseTimer=4200;target.chargeTimer=Math.max(target.chargeTimer,1000);}
       }else{
         if(target.chargeTimer<=0&&startHunterCharge(target,nearest))return;
@@ -487,7 +488,7 @@
         const angle=Math.atan2(nearest.y-target.y,nearest.x-target.x),d=distance(target,nearest);
         if(d>reach-5){target.x+=Math.cos(angle)*94*dt;target.y+=Math.sin(angle)*94*dt;}
         target.attackTimer-=ms;
-        if(d<reach+3&&target.attackTimer<=0){target.attackTimer=950;deps.damagePlayer(nearest,Math.min(nearest.maxHp*.13,11+current.wave*.5));nearest.campaignWebTimer=Math.max(nearest.campaignWebTimer||0,1900);}
+        if(d<reach+3&&target.attackTimer<=0){target.attackTimer=950;deps.damagePlayer(nearest,Math.min(nearest.maxHp*HUNTER_SKILLS.biteHpCap,HUNTER_SKILLS.biteDamage));nearest.campaignWebTimer=Math.max(nearest.campaignWebTimer||0,1900);}
         if(target.phaseTimer<=0){target.combatState='phase_wind';target.stateTimer=680;deps.spawnNotice(target.x,target.y-32,'FASE PARCIAL',0);}
       }
       target.x=clamp(target.x,target.radius,640-target.radius);target.y=clamp(target.y,210,456);

@@ -10,16 +10,22 @@ let checks=0;
 const ok=(value,message)=>{assert.ok(value,message);checks++;};
 const equal=(actual,expected,message)=>{assert.equal(actual,expected,message);checks++;};
 const close=(actual,expected,message)=>ok(Math.abs(actual-expected)<1e-7,`${message}: ${actual} != ${expected}`);
-function harness(){
+function harness(options={}){
   const hits=[],notices=[],spriteCalls=[];
   const players=[0,1].map(idx=>({idx,x:idx?330:350,y:310,radius:16,hp:100,maxHp:100,dead:false}));
   let wave=9,bossRush=false,dungeon=false;
   const ctx={console,InimigosNormais:{desenhar(...args){spriteCalls.push(args);return true;}}};ctx.window=ctx;
   vm.createContext(ctx);vm.runInContext(source,ctx);
+  let damage=null;
+  if(options.realDamage){
+    vm.runInContext(read('src/combat/damage-system.js'),ctx);
+    damage=ctx.CampaignDamageSystem.create({getDifficulty:()=>({playerArmorCap:.5})});
+    players.forEach(pl=>{pl.dmgReduce=options.armor||0;pl.inv=false;});
+  }
   const system=ctx.CampaignObjectives.create({
     getPlayers:()=>players,getWave:()=>wave,getObjectiveHpScale:()=>1,
     isBossRush:()=>bossRush,isDungeon:()=>dungeon,
-    damagePlayer:(player,amount)=>hits.push({idx:player.idx,amount}),spawnNotice:(x,y,text)=>notices.push(text),
+    damagePlayer:(player,amount)=>{hits.push({idx:player.idx,amount});damage?.damagePlayer(player,amount);},spawnNotice:(x,y,text)=>notices.push(text),
   });
   system.startWave(9);const spider=system.getCombatTargets()[0];
   spider.x=120;spider.y=310;spider.phaseTimer=Infinity;spider.chargeTimer=Infinity;spider.silkTimer=Infinity;spider.attackTimer=Infinity;
@@ -56,9 +62,32 @@ h=harness();h.players[0].x=220;h.players[1].x=255;h.players[1].maxHp=200;
 startCharge(h);h.system.update(.8);h.system.update(.25);h.system.update(.25);
 equal(h.hits.filter(hit=>hit.idx===0).length,1,'P1 deve receber um único acerto por investida');
 equal(h.hits.filter(hit=>hit.idx===1).length,1,'P2 deve receber um único acerto por investida');
-close(h.hits.find(hit=>hit.idx===0).amount,18,'Dano deve respeitar limite de 18%');
-close(h.hits.find(hit=>hit.idx===1).amount,22,'Dano deve respeitar teto de 22');
+close(h.hits.find(hit=>hit.idx===0).amount,32,'Dano deve respeitar limite de 32%');
+close(h.hits.find(hit=>hit.idx===1).amount,48,'Dano deve respeitar teto de 48');
 h.system.update(.1);equal(h.hits.length,2,'Contato após a investida não pode repetir dano');
+
+// Integra os três ataques com a vida real do herói, armadura e invulnerabilidade.
+function hitWith(h,kind){
+  h.players[1].dead=true;h.players[0].x=145;h.players[0].y=310;
+  if(kind==='bite'){h.spider.attackTimer=0;h.system.update(0);}
+  else if(kind==='phase'){h.spider.phaseTimer=0;h.system.update(0);h.system.update(.68);h.system.update(0);}
+  else {startCharge(h);h.system.update(.8);h.system.update(.5);}
+}
+for(const [kind,base,cap] of [['bite',30,.22],['phase',40,.28],['charge',48,.32]]){
+  for(const maxHp of [80,100,250])for(const armor of [0,.5]){
+    h=harness({realDamage:true,armor});Object.assign(h.players[0],{hp:maxHp,maxHp});
+    hitWith(h,kind);
+    const raw=Math.min(base,maxHp*cap);
+    equal(h.hits.length,1,`${kind}: apenas um acerto`);
+    close(h.hits[0].amount,raw,`${kind}: dano e teto percentual`);
+    close(h.players[0].hp,maxHp-raw*(1-armor),`${kind}: armadura preservada`);
+    ok(h.players[0].inv&&h.players[0].invT===600,`${kind}: proteção após dano preservada`);
+    equal(h.spider.maxHp,2400,`${kind}: vida da aranha não pode mudar`);
+    if(kind==='bite')equal(h.spider.attackTimer,950,'Aumento de dano não pode acelerar mordidas');
+  }
+  h=harness({realDamage:true});Object.assign(h.players[0],{inv:true,_dashActive:true});
+  hitWith(h,kind);equal(h.players[0].hp,100,`${kind}: dash deve continuar evitando dano`);
+}
 
 // Destinos válidos nos cantos; sem NaN quando alvo e chefe compartilham a posição.
 for(const [x,y,px,py] of [[40,210,10,10],[600,456,640,500],[40,456,590,220],[320,300,320,300]]){
