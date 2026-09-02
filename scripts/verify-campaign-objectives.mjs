@@ -119,7 +119,12 @@ ok(doomed.dead&&doomed.hp===0&&failedRescue.system.debugSnapshot().data.stage===
 ok(failedRescue.system.canEndWave(8),'morte do sobrevivente bloqueou onda opcional');
 
 h.setWave(9);h.system.startWave(9);targets=h.system.getCombatTargets();
-ok(targets.length===1&&targets[0].kind==='hunter_spider','onda 9 não criou Aranha Caçadora');targets[0].takeDmg(99999);
+ok(targets.length===1&&targets[0].kind==='hunter_spider','onda 9 não criou Aranha Caçadora');
+ok(targets[0].radius===40&&targets[0].healthOffset===96,'porte de chefe não ajustou colisão e barra da Aranha Caçadora');
+ok(source.includes("quadro,flip,3.2)"),'Aranha Caçadora perdeu escala equivalente à Aracne');
+const hunter=targets[0];h.players[0].x=hunter.x+55;h.players[0].y=hunter.y;h.players[0].hp=100;hunter.attackTimer=0;
+h.system.update(.016);ok(h.players[0].hp<100,'mordida não acompanha o alcance do corpo maior');
+targets[0].takeDmg(99999);
 close(h.system.debugSnapshot().buffs.aracneCooldownMult,1.06,.0001,'elite não enfraqueceu recargas da Aracne');
 
 h.setWave(12);h.system.startWave(12);h.players[0].x=320;h.players[0].y=220;h.system.update(22);

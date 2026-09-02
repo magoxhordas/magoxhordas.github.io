@@ -18313,20 +18313,6 @@ function drawTempleCampfire(){
   c.fillStyle='#1a1418'; c.fillRect(50,8,390,10);
   c.fillStyle='#221a1c'; c.fillRect(52,8,386,4);
 
-  // ── Altar dos deuses ──
-  // Fica ATRAS da fogueira: e' o altar que da' a bencao, e o fogo arde
-  // diante dele. Desenhado antes para o fogo passar por cima.
-  // Recuado e um pouco menor: sentado na linha do fundo, com o fogo bem
-  // a' frente. Colado na fogueira, as chamas engoliam quase o altar inteiro.
-  const ax=CW/2, ay=CH-106;
-  if(typeof CampaignObjectives!=='undefined'&&CampaignObjectives.desenharObjeto){
-    CampaignObjectives.desenharObjeto(c,'santuario',ax,ay,54);
-    const halo=c.createRadialGradient(ax,ay-40,2,ax,ay-40,48);
-    halo.addColorStop(0,'rgba(255,232,150,0.20)');
-    halo.addColorStop(1,'rgba(255,200,80,0)');
-    c.fillStyle=halo;c.fillRect(ax-54,ay-90,108,100);
-  }
-
   // ── Campfire ──
   const cx=CW/2, cy=CH-85;
   // Log pile
