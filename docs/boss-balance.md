@@ -1,6 +1,6 @@
 # Rebalanceamento dos chefes — 02/09/2026
 
-Objetivo: prolongar os primeiros encontros, que estavam terminando cedo, sem aumentar o dano recebido pelo jogador. O reforço é concentrado nos capítulos 1 e 2; os capítulos finais mantêm seus valores e mecânicas.
+Objetivo inicial: prolongar os primeiros encontros, que estavam terminando cedo, sem aumentar o dano recebido pelo jogador. O reforço é concentrado nos capítulos 1 e 2; os capítulos finais mantêm seus valores e mecânicas. Depois desse ajuste, o dano da Aranha Caçadora recebeu um reforço específico, descrito abaixo.
 
 | Encontro | Onda | Vida-base anterior | Vida-base nova | Variação |
 | --- | ---: | ---: | ---: | ---: |
@@ -24,9 +24,19 @@ Objetivo: prolongar os primeiros encontros, que estavam terminando cedo, sem aum
 
 ## Novos golpes da Aranha Caçadora
 
-- **Investida da Caçadora:** aviso de 800 ms com corredor e direção travados; avança a 430 unidades/s, por até 270 unidades, sem sair da arena. Dano máximo de 22, limitado a 18% da vida máxima de cada herói, uma vez por investida. A colisão cobre o trecho entre frames. Recupera-se parada por 1 segundo e continua vulnerável a ataques. Recarga de 6,5 segundos, sujeita à sequência das outras habilidades.
+- **Investida da Caçadora:** aviso de 800 ms com corredor e direção travados; avança a 430 unidades/s, por até 270 unidades, sem sair da arena. Dano máximo de 48, limitado a 32% da vida máxima de cada herói antes das defesas, uma vez por investida. A colisão cobre o trecho entre frames. Recupera-se parada por 1 segundo e continua vulnerável a ataques. Recarga de 6,5 segundos, sujeita à sequência das outras habilidades.
 - **Armadilhas de Seda:** até três teias, sinalizadas por 650 ms antes de ativar, com duração ativa de 6 segundos. Reduzem a velocidade em 30% somente sobre a área, não acumulam lentidão e não causam dano. Não há uma nova leva enquanto a anterior estiver no chão. Recarga de 8,5 segundos, sujeita à sequência dos outros golpes.
-- Mordida e Fase Parcial foram preservadas; a Emboscada do Teto não foi incluída. Investida, tecelagem e Fase Parcial usam estados exclusivos; teias já ativadas permanecem no chão durante os outros golpes. Teias e avisos usam o tempo da partida, respeitam pausa e são removidos ao morrer, trocar de onda, capítulo ou modo.
+- As mecânicas da mordida e da Fase Parcial foram preservadas; a Emboscada do Teto não foi incluída. Investida, tecelagem e Fase Parcial usam estados exclusivos; teias já ativadas permanecem no chão durante os outros golpes. Teias e avisos usam o tempo da partida, respeitam pausa e são removidos ao morrer, trocar de onda, capítulo ou modo.
+
+## Reforço de dano da Caçadora
+
+| Golpe | Teto anterior | Teto novo | Limite sobre a vida máxima do herói |
+| --- | ---: | ---: | --- |
+| Mordida | 15,5 | 30 | 13% → 22% |
+| Fase Parcial | 24 | 40 | 18% → 28% |
+| Investida | 22 | 48 | 18% → 32% |
+
+O dano usa o menor valor entre o teto fixo e o limite percentual. Armadura, bênçãos, bloqueio e invulnerabilidade continuam sendo aplicados depois. Exemplo: um herói com 100 de vida máxima recebe 22/28/32 antes das defesas, ou 11/14/16 com 50% de redução. Avisos, recargas, velocidade, vida de 2.400 e teias sem dano permanecem iguais.
 
 ## Validação
 
