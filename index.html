@@ -1178,6 +1178,10 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
     linear-gradient(180deg, #04020e 0%, #070416 50%, #030210 100%);
   flex-direction:column; align-items:center; padding:14px 16px; overflow-y:auto; gap:0;
 }
+#collection-screen .coll-back-btn {
+  justify-content:center;
+  text-align:center;
+}
 .coll-title {
   font-size:30px; letter-spacing:8px; text-transform:uppercase;
   margin-bottom:3px; font-weight:900;
@@ -5550,7 +5554,7 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
       </div>
     </div>
   </div>
-  <button class="menu-btn" onclick="closeCollection()" style="margin-top:12px;max-width:220px;font-size:17px;padding:10px 24px;">Voltar</button>
+  <button class="menu-btn coll-back-btn" onclick="closeCollection()" style="margin-top:12px;max-width:220px;font-size:17px;padding:10px 24px;">Voltar</button>
 </div>
 
 <!-- ══ BOSS RUSH MODE ══ -->

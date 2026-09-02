@@ -2,11 +2,17 @@
 (function(global){
   'use strict';
 
-  /* Arte dos objetos de cenario. Cada um e' um PNG so' (o jogo desenha
-     sempre de frente) e e' ancorado pela BASE, porque os alvos guardam a
-     posicao no CHAO. Se a imagem ainda nao carregou, quem chama volta ao
+  /* Arte dos objetos de cenario, ancorada pela BASE, porque os alvos
+     guardam a posicao no CHAO. Os ninhos usam as vistas east/west.
+     Se a imagem ainda nao carregou, quem chama volta ao
      desenho a mao, que continua ali de reserva. */
   const ARTE_BASE='assets/objects/';
+  // As vistas laterais permanecem nos PNGs originais de 48x48. Ignorar a
+  // margem transparente no desenho mantém a base no chão e a largura de 48px.
+  const ARTE_RECORTES=Object.freeze({
+    ninho_east:Object.freeze({x:1,y:12,w:47,h:27}),
+    ninho_west:Object.freeze({x:1,y:12,w:47,h:27}),
+  });
   const arteCache={};
   function arteObjeto(nome){
     // O modulo tambem roda fora do navegador (os verificadores o carregam
@@ -22,16 +28,19 @@
   function desenharObjeto(ctx,nome,x,yBase,larguraAlvo){
     const im=arteObjeto(nome);
     if(!im)return false;
-    const k=larguraAlvo/im.naturalWidth;
-    const w=Math.round(im.naturalWidth*k), h=Math.round(im.naturalHeight*k);
+    const recorte=ARTE_RECORTES[nome];
+    const largura=recorte?recorte.w:im.naturalWidth,altura=recorte?recorte.h:im.naturalHeight;
+    const k=larguraAlvo/largura;
+    const w=Math.round(largura*k), h=Math.round(altura*k);
     ctx.save();
     ctx.imageSmoothingEnabled=false;
-    ctx.drawImage(im,Math.round(x-w/2),Math.round(yBase-h),w,h);
+    if(recorte)ctx.drawImage(im,recorte.x,recorte.y,recorte.w,recorte.h,Math.round(x-w/2),Math.round(yBase-h),w,h);
+    else ctx.drawImage(im,Math.round(x-w/2),Math.round(yBase-h),w,h);
     ctx.restore();
     return true;
   }
   (function precarregarObjetos(){
-    for(const n of ['altar_ossos','ninho','fogueira_off','fogueira_on','obelisco','santuario'])arteObjeto(n);
+    for(const n of ['altar_ossos','ninho','ninho_east','ninho_west','fogueira_off','fogueira_on','obelisco','santuario'])arteObjeto(n);
   })();
 
   /* Objetos que o heroi NAO atravessa. Ficam de fora a fissura infernal
@@ -241,7 +250,7 @@
         if(!current.data.bruto)complete();
       }else if(definition.id==='spider_nests'){
         current.data.spawnTimer=1900;
-        POSITIONS.spiderNests.forEach(([x,y],index)=>makeTarget({kind:'spider_nest',label:`Ninho ${index+1}`,x,y,hp:Math.round(180*hpScale),radius:22,hitColor:'#d9e4d6',onDestroyed:onMandatoryStructureDestroyed}));
+        POSITIONS.spiderNests.forEach(([x,y],index)=>makeTarget({kind:'spider_nest',label:`Ninho ${index+1}`,x,y,artVariant:x<320?'ninho_east':'ninho_west',hp:Math.round(180*hpScale),radius:22,hitColor:'#d9e4d6',onDestroyed:onMandatoryStructureDestroyed}));
       }else if(definition.id==='webbed_survivor'){
         // Quem esta' no casulo e' um dos herois do jogo, sorteado na hora — e o
         // titulo da missao passa a dizer QUEM e'.
@@ -913,7 +922,8 @@
         // os fios saem por BAIXO do ninho: sao eles que amarram o objeto ao
         // chao e explicam a lentidao de quem chega perto
         ctx.strokeStyle='rgba(225,238,230,.75)';ctx.lineWidth=1;for(let i=0;i<8;i++){const a=i*Math.PI/4;ctx.beginPath();ctx.moveTo(x,y+6);ctx.lineTo(x+Math.cos(a)*30,y+6+Math.sin(a)*21);ctx.stroke();}
-        if(desenharObjeto(ctx,'ninho',x,y+16,48)){ctx.restore();return;}
+        // Vistas laterais voltadas para o centro, fixas durante toda a onda.
+        if(desenharObjeto(ctx,target.artVariant||'ninho_east',x,y+16,48)||desenharObjeto(ctx,'ninho',x,y+16,48)){ctx.restore();return;}
         ctx.fillStyle='#5b594b';ctx.beginPath();ctx.ellipse(x,y,22,14,0,0,Math.PI*2);ctx.fill();for(let i=0;i<5;i++){ctx.fillStyle=i%2?'#dfe6d9':'#aaa994';ctx.beginPath();ctx.arc(x-12+i*6,y-4+(i%2)*7,5,0,Math.PI*2);ctx.fill();}
       }else if(target.kind==='survivor_web'){
         ctx.strokeStyle='#e0ebe4';ctx.lineWidth=2;for(let i=0;i<7;i++){const a=i*Math.PI/7;ctx.beginPath();ctx.ellipse(x,y,21-i*2,28-i*2,a,0,Math.PI*2);ctx.stroke();}ctx.fillStyle='#865b47';ctx.fillRect(x-5,y-8,10,21);ctx.fillStyle='#d7b08a';ctx.fillRect(x-4,y-15,8,8);
