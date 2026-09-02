@@ -110,7 +110,14 @@ for(const contract of [
   'getMerlinLevel:()=>Number(metaUpgrades.exp_eventos||0)',
   'getBlessingOffers:count=>typeof rollCardOffer',
   'addTimedModifier:modifier=>campaignObjectives.addTimedModifier(modifier)',
+  'drawHero:drawCampaignHero',
+  "drawObject:(ctx2,nome,x,yBase,largura)=>CampaignObjectives.desenharObjeto",
 ])ok(runtime.includes(contract),`adaptador de evento ausente: ${contract}`);
+ok(source.includes("deps.drawObject?.(ctx,'santuario'"),'Altar dos Deuses não usa a quinta arte escolhida');
+ok(source.includes("deps.drawHero?.(ctx,'necromancer'"),'Espírito Errante da quinta fase não usa o Necromante');
+ok(fs.existsSync(path.join(root,'assets/objects/santuario.png')),'arte transparente do Altar dos Deuses ausente');
+const templeScene=html.slice(html.indexOf('function drawTempleCampfire(){'),html.indexOf('function templeChoose(choice){'));
+ok(!templeScene.includes("desenharObjeto(c,'santuario'"),'altar do evento reapareceu na tela de descanso do Templo Antigo');
 ok(!source.includes('localStorage')&&!source.includes('SaveSystem'),'evento temporário não deve persistir no save');
 ok(html.includes('<script src="src/campaign/campaign-events.js"></script>'),'index não carrega campaign-events.js');
 ok(bossRush.includes("cleanupCampaignRuntime('boss-rush-start')")&&bossRush.includes("cleanupCampaignRuntime('boss-rush-end')"),'Boss Rush não limpa eventos/objetivos');

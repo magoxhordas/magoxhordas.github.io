@@ -32,6 +32,19 @@ function applyCampaignEventBlessing(card){
   return true;
 }
 
+function drawCampaignHero(ctx2,classId,x,pesY,dir='down',estado='idle',progresso=0){
+  try{
+    const im=(typeof heroImg==='function')?heroImg(classId,dir,progresso,estado):null;
+    if(!im)return false;
+    const conf=(typeof HERO_IMG_SETS!=='undefined')?HERO_IMG_SETS[classId]:null;
+    const quadro=(conf&&conf.frame)||48,pe=(conf&&conf.feet)||quadro-6,k=1.15;
+    const lado=Math.round(quadro*k);
+    ctx2.save();ctx2.imageSmoothingEnabled=false;
+    ctx2.drawImage(im,Math.round(x-lado/2),Math.round(pesY-pe*k),lado,lado);
+    ctx2.restore();return true;
+  }catch(_){return false;}
+}
+
 const campaignObjectives=CampaignObjectives.create({
   getPlayers:()=>[player,player2].filter(Boolean),
   getEnemies:()=>enemies,
@@ -62,19 +75,7 @@ const campaignObjectives=CampaignObjectives.create({
     try{ return Object.values(CLASS_DEFS).map(def=>({id:def.id,nome:def.name})); }
     catch(_){ return []; }
   },
-  desenharHeroi:(ctx2,classId,x,pesY,dir,estado,progresso)=>{
-    try{
-      const im=(typeof heroImg==='function')?heroImg(classId,dir||'down',progresso||0,estado||'idle'):null;
-      if(!im)return false;
-      const conf=(typeof HERO_IMG_SETS!=='undefined')?HERO_IMG_SETS[classId]:null;
-      const quadro=(conf&&conf.frame)||48, pe=(conf&&conf.feet)||quadro-6, k=1.15;
-      const lado=Math.round(quadro*k);
-      ctx2.save(); ctx2.imageSmoothingEnabled=false;
-      ctx2.drawImage(im,Math.round(x-lado/2),Math.round(pesY-pe*k),lado,lado);
-      ctx2.restore();
-      return true;
-    }catch(_){ return false; }
-  },
+  desenharHeroi:drawCampaignHero,
   // O Brutamontes da onda 4 e' o chefe de verdade com a vida reduzida.
   // Estes dois ficam aqui, e nao no modulo de objetivos, porque bossMajor e
   // todo o maquinario de chefe (colisao, dano, desenho, musica) vivem no
@@ -118,6 +119,8 @@ const campaignEvents=CampaignEvents.create({
   getBlessingOffers:count=>typeof rollCardOffer==='function'?rollCardOffer(count):[],
   applyBlessing:applyCampaignEventBlessing,
   addTimedModifier:modifier=>campaignObjectives.addTimedModifier(modifier),
+  drawHero:drawCampaignHero,
+  drawObject:(ctx2,nome,x,yBase,largura)=>CampaignObjectives.desenharObjeto(ctx2,nome,x,yBase,largura),
   now:()=>performance.now(),
 });
 

@@ -169,7 +169,8 @@
       for(const target of current.targets)if(target&&!target.dead){target.dead=true;target.cleanup?.(reason);}
       for(const enemy of deps.getEnemies()||[]){
         if(enemy?._campaignObjectiveBaseSpeed!=null){enemy.speed=enemy._campaignObjectiveBaseSpeed;delete enemy._campaignObjectiveBaseSpeed;}
-        delete enemy._campaignNpcAggro;delete enemy._campaignEmergingMs;
+        delete enemy._campaignNpcAggro;delete enemy._campaignNpcObjectiveId;delete enemy._campaignNpcAssigned;
+        delete enemy._objectiveNpcHit;delete enemy._campaignEmergingMs;
       }
       heldActions.clear();deps.hideChoice();deps.setHud(null);deps.setAction(null);
       lastHudSignature='';lastActionSignature='';current=blankState();
@@ -228,12 +229,12 @@
         current.data.revealAt=8000;current.data.revealed=false;
       }else if(definition.id==='brute'){
         // O Brutamontes de verdade, e nao um alvo de objetivo: e' a mesma
-        // classe da onda 30, com a vida reduzida ao nivel do mini-chefe que
-        // ele substituiu (850 aqui, contra 1800+onda*190 la'). Assim ele
+        // classe da onda 30, com a vida ajustada ao mini-chefe da onda 4
+        // (1500 aqui, contra 1800+onda*190 la'). Assim ele
         // chega com os golpes proprios — Salto Esmagador, pedra e furia —
         // e todo o maquinario de chefe do jogo (colisao, dano, desenho,
         // musica) ja' cuida dele sem precisar de nada novo.
-        const vida=Math.round(850*hpScale);
+        const vida=Math.round(1500*hpScale);
         current.data.bruto=deps.spawnMiniboss?.(vida,14+Number(deps.getWave()||4)*1.6)||null;
         current.data.brutoVida=vida;
         // Se a classe nao existir, o objetivo se completa em vez de travar a onda.
@@ -251,7 +252,7 @@
           interactive:true,interactionText:`Libertar ${current.data.heroi.nome}`,onDepleted:target=>{startSurvivorDefense(target);return true;}});
         current.data.survivor=survivor;current.data.stage='web';current.data.defenseMs=22000;
       }else if(definition.id==='hunter_spider'){
-        const hunter=makeTarget({kind:'hunter_spider',label:'Aranha Caçadora',x:320,y:238,hp:Math.round(520*hpScale),radius:23,hitColor:'#d7eee3',
+        const hunter=makeTarget({kind:'hunter_spider',label:'Aranha Caçadora',x:320,y:238,hp:Math.round(520*hpScale),radius:40,healthOffset:96,hitColor:'#d7eee3',
           attackTimer:850,phaseTimer:3000,combatState:'hunt',customUpdate:updateHunterSpider,
           onDestroyed:()=>{buffs.aracneCooldownMult=Math.max(buffs.aracneCooldownMult,1.06);complete('ARACNE ENFRAQUECIDA: RECARGAS +6%');}});
         hunter.isElite=true;
@@ -364,22 +365,26 @@
     function updateHunterSpider(target,dt){
       const ms=dt*1000,candidates=players();if(!candidates.length)return;
       const nearest=candidates.sort((a,b)=>distance(a,target)-distance(b,target))[0];
+      const reach=target.radius+(nearest.radius||16);
+      const facingDx=nearest.x-target.x,facingDy=nearest.y-target.y;
+      target.facing=Math.abs(facingDx)>Math.abs(facingDy)?(facingDx>0?'right':'left'):(facingDy>0?'down':'up');
+      target.walkFrame=((target.walkFrame||0)+dt*8)%9;
       target.phaseTimer-=ms;
       if(target.combatState==='phase_wind'){
         target.stateTimer-=ms;
         if(target.stateTimer<=0){target.x=clamp(nearest.x+(Math.random()-.5)*90,42,598);target.y=clamp(nearest.y-55,215,450);target.combatState='phase_strike';target.stateTimer=500;target.phaseHit=false;runtime.parts(target.x,target.y,'#dceee6',14,65);}
       }else if(target.combatState==='phase_strike'){
         target.stateTimer-=ms;
-        if(!target.phaseHit&&distance(target,nearest)<68){target.phaseHit=true;deps.damagePlayer(nearest,Math.min(nearest.maxHp*.18,15+current.wave));nearest.campaignWebTimer=Math.max(nearest.campaignWebTimer||0,2400);}
+        if(!target.phaseHit&&distance(target,nearest)<reach+29){target.phaseHit=true;deps.damagePlayer(nearest,Math.min(nearest.maxHp*.18,15+current.wave));nearest.campaignWebTimer=Math.max(nearest.campaignWebTimer||0,2400);}
         if(target.stateTimer<=0){target.combatState='hunt';target.phaseTimer=4200;}
       }else{
         const angle=Math.atan2(nearest.y-target.y,nearest.x-target.x),d=distance(target,nearest);
-        if(d>34){target.x+=Math.cos(angle)*94*dt;target.y+=Math.sin(angle)*94*dt;}
+        if(d>reach-5){target.x+=Math.cos(angle)*94*dt;target.y+=Math.sin(angle)*94*dt;}
         target.attackTimer-=ms;
-        if(d<42&&target.attackTimer<=0){target.attackTimer=950;deps.damagePlayer(nearest,Math.min(nearest.maxHp*.13,11+current.wave*.5));nearest.campaignWebTimer=Math.max(nearest.campaignWebTimer||0,1900);}
+        if(d<reach+3&&target.attackTimer<=0){target.attackTimer=950;deps.damagePlayer(nearest,Math.min(nearest.maxHp*.13,11+current.wave*.5));nearest.campaignWebTimer=Math.max(nearest.campaignWebTimer||0,1900);}
         if(target.phaseTimer<=0){target.combatState='phase_wind';target.stateTimer=680;deps.spawnNotice(target.x,target.y-32,'FASE PARCIAL',0);}
       }
-      target.x=clamp(target.x,38,602);target.y=clamp(target.y,210,456);
+      target.x=clamp(target.x,target.radius,640-target.radius);target.y=clamp(target.y,210,456);
     }
 
     function startSurvivorDefense(target){
@@ -387,7 +392,8 @@
       current.data.stage='defend';current.data.remaining=current.data.defenseMs;
       target.kind='survivor';target.label=current.data.heroi?.nome||'Sobrevivente';target.heroi=current.data.heroi;
       target.damageable=false;target.autoTarget=false;target.interactive=false;
-      target._destroyed=false;target.dead=false;target.hp=120;target.maxHp=120;target.radius=15;
+      target._destroyed=false;target.dead=false;target.hp=120;target.maxHp=120;target.radius=15;target.flashTimer=0;
+      current.data.survivorAggroSerial=0;
       runtime.parts(target.x,target.y,'#e8eee6',18,65);deps.spawnNotice(target.x,target.y-34,'DEFENDA O SOBREVIVENTE!',0);
     }
     /* O resgatado: anda atras do jogador mais proximo e bate em quem chega
@@ -420,18 +426,49 @@
       }
     }
 
+    function damageSurvivor(raw){
+      const target=current.data.survivor;
+      if(!validCampaign()||current.data.stage!=='defend'||!target||target.dead)return 0;
+      const amount=Number(raw);if(!Number.isFinite(amount)||amount<=0)return 0;
+      const dano=Math.min(target.hp,Math.max(2,Math.min(10,amount*.32)));
+      target.hp=Math.max(0,target.hp-dano);target.flashTimer=180;
+      runtime.parts(target.x,target.y,'#ef625c',8,38);
+      deps.spawnNotice(target.x+(Math.random()-.5)*12,target.y-48,`-${Math.ceil(dano)}`,0);
+      if(target.hp<=0){target.dead=true;current.data.stage='failed';deps.spawnNotice(target.x,target.y-32,'O SOBREVIVENTE CAIU',0);complete();}
+      return dano;
+    }
+    function hitSurvivorWithProjectile(projectile){
+      const target=current.data.survivor;
+      if(!validCampaign()||current.data.stage!=='defend'||!target||target.dead||!projectile||projectile.dead||projectile.isFriendly||!(projectile.dmg>0))return false;
+      if(distance(projectile,target)>=(projectile.radius||0)+target.radius)return false;
+      if(!damageSurvivor(projectile.dmg))return false;
+      projectile.dead=true;return true;
+    }
     function updateSurvivor(dt){
       const target=current.data.survivor;if(!target||current.data.stage!=='defend')return;
       current.data.remaining-=dt*1000;
       for(const enemy of enemies()){
-        const wantsNpc=((Math.floor(enemy.x+enemy.y)%5)<2)||distance(enemy,target)<125;
+        /* A escolha de alvo precisa ser estavel. Antes dependia de x+y em
+           TODO quadro; ao caminhar, o mesmo inimigo alternava entre heroi e
+           NPC e parecia ser puxado para perto do jogador depois de um golpe. */
+        if(enemy._campaignNpcObjectiveId!==target.id){
+          enemy._campaignNpcObjectiveId=target.id;
+          const aggroIndex=current.data.survivorAggroSerial||0;
+          current.data.survivorAggroSerial=aggroIndex+1;
+          enemy._campaignNpcAssigned=(aggroIndex%2)===0;
+          enemy._objectiveNpcHit=0;
+        }
+        const wantsNpc=!!enemy._campaignNpcAssigned;
         enemy._campaignNpcAggro=wantsNpc?target:null;
-        if(!wantsNpc||distance(enemy,target)>=enemy.radius+target.radius+3)continue;
+        if(enemy.frozen||(enemy.isSpecter&&enemy.phased)||enemy.burrowState==='burrowing'||distance(enemy,target)>=enemy.radius+target.radius+3)continue;
         enemy._objectiveNpcHit=(enemy._objectiveNpcHit||0)-dt*1000;
-        if(enemy._objectiveNpcHit<=0){enemy._objectiveNpcHit=850;target.hp-=Math.max(2,enemy.damage*.32);runtime.parts(target.x,target.y,'#d36a65',5,30);}
+        if(enemy._objectiveNpcHit<=0){
+          enemy._objectiveNpcHit=850;
+          damageSurvivor(enemy.damage);
+          if(target.dead)return;
+        }
       }
-      if(target.hp<=0){target.dead=true;current.data.stage='failed';deps.spawnNotice(target.x,target.y-32,'O SOBREVIVENTE CAIU',0);complete();}
-      else if(current.data.remaining<=0){
+      if(current.data.remaining<=0){
         current.data.stage='success';target.dead=true;
         // Fica guardado para a run inteira: este heroi reaparece na Tempestade
         // de Areia (onda 18) lutando do seu lado.
@@ -711,29 +748,29 @@
     }
 
     function drawTarget(ctx,time,target){
-      if(!ctx||target.dead)return;const x=target.x,y=target.y,pulse=.5+.5*Math.sin(time*.006+target.phase);
+      if(!ctx||target.dead)return;const x=target.x,y=target.y,pulse=['bone_altar','dark_altar'].includes(target.kind)?.5:.5+.5*Math.sin(time*.006+target.phase);
       ctx.save();
       if(target.flashTimer>0){ctx.shadowBlur=18;ctx.shadowColor='#fff';}
       ctx.globalAlpha=.30;ctx.fillStyle='#000';ctx.beginPath();ctx.ellipse(x,y+15,target.radius*1.05,target.radius*.34,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
       if(target.kind==='bone_altar'){
-        const altarBob=Math.sin(time*.0042+target.phase)*1.5;
-        if(desenharObjeto(ctx,'altar_ossos',x,y+14+altarBob,50)){
-          // A arte guarda a silhueta; a chama viva e as almas ficam por cima.
-          const g=ctx.createRadialGradient(x,y-14+altarBob,1,x,y-14+altarBob,22+pulse*6);
-          g.addColorStop(0,`rgba(206,142,232,${.22+pulse*.16})`);
+        const altarY=y+14;
+        if(desenharObjeto(ctx,'altar_ossos',x,altarY,50)){
+          // O altar fica firme no chao: sem bob e sem brilho pulsante.
+          const g=ctx.createRadialGradient(x,y-14,1,x,y-14,25);
+          g.addColorStop(0,'rgba(206,142,232,.30)');
           g.addColorStop(1,'rgba(60,10,80,0)');
           ctx.fillStyle=g;ctx.fillRect(x-30,y-40,60,44);
-          const chamaH=12+pulse*6;
-          ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=.38+pulse*.22;
-          ctx.fillStyle='#b85ee8';ctx.beginPath();ctx.moveTo(x-8,y-9+altarBob);
-          ctx.quadraticCurveTo(x-12,y-20-chamaH*.35+altarBob,x-2,y-18-chamaH+altarBob);
-          ctx.quadraticCurveTo(x+2,y-10-chamaH*.5+altarBob,x+8,y-9+altarBob);ctx.closePath();ctx.fill();
-          ctx.fillStyle='#efd1ff';ctx.beginPath();ctx.moveTo(x-3,y-9+altarBob);
-          ctx.quadraticCurveTo(x-4,y-17-chamaH*.3+altarBob,x+1,y-17-chamaH*.62+altarBob);
-          ctx.quadraticCurveTo(x+5,y-12-chamaH*.2+altarBob,x+3,y-9+altarBob);ctx.closePath();ctx.fill();
+          const chamaH=15;
+          ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=.52;
+          ctx.fillStyle='#b85ee8';ctx.beginPath();ctx.moveTo(x-8,y-9);
+          ctx.quadraticCurveTo(x-12,y-20-chamaH*.35,x-2,y-18-chamaH);
+          ctx.quadraticCurveTo(x+2,y-10-chamaH*.5,x+8,y-9);ctx.closePath();ctx.fill();
+          ctx.fillStyle='#efd1ff';ctx.beginPath();ctx.moveTo(x-3,y-9);
+          ctx.quadraticCurveTo(x-4,y-17-chamaH*.3,x+1,y-17-chamaH*.62);
+          ctx.quadraticCurveTo(x+5,y-12-chamaH*.2,x+3,y-9);ctx.closePath();ctx.fill();
           ctx.restore();
           for(let i=0;i<4;i++){
-            const ciclo=(time*.035+i*17+target.phase*13)%46,fa=(1-ciclo/46)*(.35+pulse*.25);
+            const ciclo=(time*.035+i*17+target.phase*13)%46,fa=(1-ciclo/46)*.48;
             const sx=x-12+i*8+Math.sin(time*.003+i+target.phase)*3,sy=y-12-ciclo*.72;
             ctx.globalAlpha=fa;ctx.fillStyle=i%2?'#f1c9ff':'#a855d6';ctx.fillRect(Math.round(sx),Math.round(sy),2,2);
           }
@@ -771,16 +808,16 @@
       }else if(target.kind==='dark_altar'||target.kind==='demon_altar'){
         // So' o Sombrio tem arte: o Demoniaco (onda 23, vulcao) continua
         // desenhado a mao, porque nao veio objeto infernal no pacote.
-        const altarBob=Math.sin(time*.0036+target.phase)*1.25;
-        if(target.kind==='dark_altar'&&desenharObjeto(ctx,'obelisco',x,y+16+altarBob,40)){
-          const g=ctx.createRadialGradient(x,y-16+altarBob,1,x,y-16+altarBob,26+pulse*7);
-          g.addColorStop(0,`rgba(190,120,235,${.26+pulse*.18})`);
+        const altarY=y+16;
+        if(target.kind==='dark_altar'&&desenharObjeto(ctx,'obelisco',x,altarY,40)){
+          const g=ctx.createRadialGradient(x,y-16,1,x,y-16,29);
+          g.addColorStop(0,'rgba(190,120,235,.36)');
           g.addColorStop(1,'rgba(40,10,60,0)');
           ctx.fillStyle=g;ctx.fillRect(x-34,y-46,68,54);
-          ctx.globalAlpha=.30+pulse*.30;ctx.strokeStyle='#d8a5ff';ctx.lineWidth=1.5;
-          ctx.beginPath();ctx.ellipse(x,y+9,15+pulse*6,4+pulse*2,0,0,Math.PI*2);ctx.stroke();
+          ctx.globalAlpha=.46;ctx.strokeStyle='#d8a5ff';ctx.lineWidth=1.5;
+          ctx.beginPath();ctx.ellipse(x,y+9,17,5,0,0,Math.PI*2);ctx.stroke();
           for(let i=0;i<4;i++){
-            const ciclo=(time*.028+i*21+target.phase*9)%54,fa=(1-ciclo/54)*(.45+pulse*.2);
+            const ciclo=(time*.028+i*21+target.phase*9)%54,fa=(1-ciclo/54)*.52;
             const sx=x-13+i*9+Math.sin(time*.0025+i)*2,sy=y+4-ciclo*.82;
             ctx.globalAlpha=fa;ctx.fillStyle=i%2?'#e9c9ff':'#8e46c1';ctx.fillRect(Math.round(sx),Math.round(sy),2,2);
           }
@@ -886,16 +923,36 @@
         const estado=aliado?(target.atacando>0?'atk':(target.andando?'walk':'idle')):'idle';
         const prog=target.atacando>0?1-target.atacando/340:0;
         ctx.save();
+        if(!aliado&&target.flashTimer>0){
+          ctx.translate(Math.sin(time*.12)*2.2,0);
+          ctx.filter='brightness(1.65) sepia(.8) saturate(5) hue-rotate(315deg)';
+        }
         if(aliado&&target.olhando==='right'){ctx.translate(x*2,0);ctx.scale(-1,1);}
         const px=(aliado&&target.olhando==='right')?x:x;
         if(!desenharHeroi(ctx,target.heroi?.id||'mage',px,y+13,lado,estado,prog)){
           ctx.fillStyle='#77533d';ctx.fillRect(x-6,y-10,12,24);ctx.fillStyle='#d8b08a';ctx.fillRect(x-5,y-18,10,9);ctx.fillStyle='#e8d378';ctx.fillRect(x-7,y+9,5,9);ctx.fillRect(x+2,y+9,5,9);
         }
         ctx.restore();
+        if(!aliado){
+          const vida=clamp(target.hp/target.maxHp,0,1),largura=34;
+          ctx.fillStyle='#18090b';ctx.fillRect(x-largura/2-1,y-51,largura+2,6);
+          ctx.fillStyle='#5a1417';ctx.fillRect(x-largura/2,y-50,largura,4);
+          ctx.fillStyle=vida>.3?'#70cf67':'#ef4d54';ctx.fillRect(x-largura/2,y-50,largura*vida,4);
+        }
         if(aliado){ctx.globalAlpha=.5+.2*Math.sin(time*.005);ctx.strokeStyle='#ffdf9a';ctx.lineWidth=1.4;ctx.beginPath();ctx.ellipse(x,y+14,15,6,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;}
       }else if(target.kind==='hunter_spider'){
-        ctx.globalAlpha=target.combatState==='phase_wind'?.42:1;ctx.fillStyle='#262231';ctx.beginPath();ctx.ellipse(x,y,20,15,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#805296';ctx.beginPath();ctx.arc(x,y-6,11,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#d8e8df';ctx.lineWidth=3;for(let i=0;i<4;i++){const sy=-9+i*6;ctx.beginPath();ctx.moveTo(x-12,y+sy);ctx.lineTo(x-28,y+sy+(i-1.5)*4);ctx.moveTo(x+12,y+sy);ctx.lineTo(x+28,y+sy+(i-1.5)*4);ctx.stroke();}ctx.globalAlpha=1;
-        if(target.combatState==='phase_wind'){ctx.strokeStyle='#f0f6f0';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,32+pulse*8,0,Math.PI*2);ctx.stroke();}
+        const emFase=target.combatState==='phase_wind',golpe=target.combatState==='phase_strike';
+        const dir=target.facing==='up'?'up':target.facing==='down'?'down':'side';
+        const flip=target.facing==='right';
+        const estado=golpe?'hit':emFase?'idle':'walk';
+        const quadro=golpe?Math.floor((1-target.stateTimer/500)*8):Math.floor(target.walkFrame||0);
+        ctx.globalAlpha=emFase?.48:1;
+        // Corpo visivel ~122px: o mesmo porte da Aracne (42px * 2.9).
+        // A Caçadora preserva sua arte, cujo corpo ocupa 26px no quadro.
+        const sprite=global.InimigosNormais?.desenhar?.(ctx,'spitting_spider',x,y+34,dir,estado,quadro,flip,3.2);
+        if(!sprite){ctx.fillStyle='#262231';ctx.beginPath();ctx.ellipse(x,y,50,37,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#805296';ctx.beginPath();ctx.arc(x,y-15,27,0,Math.PI*2);ctx.fill();}
+        ctx.globalAlpha=1;
+        if(target.combatState==='phase_wind'){ctx.strokeStyle='#f0f6f0';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,target.radius+9+pulse*8,0,Math.PI*2);ctx.stroke();}
       }else if(target.kind==='fire'){
         // a arte veio em par: o mesmo braseiro apagado e aceso. As duas
         // larguras-alvo saem do MESMO fator de escala, senao a pedra mudava
@@ -960,7 +1017,7 @@
       }else if(target.kind==='infernal_fissure'){
         const glow=ctx.createRadialGradient(x,y,0,x,y,38);glow.addColorStop(0,`rgba(255,70,20,${.45+pulse*.25})`);glow.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=glow;ctx.fillRect(x-40,y-40,80,80);ctx.strokeStyle='#ff5a20';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(x-22,y-12);ctx.lineTo(x-7,y-2);ctx.lineTo(x-15,y+14);ctx.lineTo(x+5,y+4);ctx.lineTo(x+20,y+17);ctx.stroke();ctx.strokeStyle='#ffd15c';ctx.lineWidth=2;ctx.stroke();
       }
-      drawTargetHealth(ctx,target,x,y-target.radius-15);
+      drawTargetHealth(ctx,target,x,y-(target.healthOffset||target.radius+15));
       ctx.restore();
     }
 
@@ -968,8 +1025,20 @@
     function drawObjectiveTelegraphs(ctx,time){
       if(current.id==='tremors'&&current.data.tremor){
         const tremor=current.data.tremor;ctx.save();
-        if(tremor.phase==='telegraph'){ctx.globalAlpha=.35+.25*Math.sin(time*.025);ctx.strokeStyle='#f2bd6a';ctx.lineWidth=3;ctx.setLineDash([9,7]);ctx.beginPath();ctx.moveTo(30,tremor.y-36);ctx.lineTo(610,tremor.y-36);ctx.lineTo(610,tremor.y+36);ctx.lineTo(30,tremor.y+36);ctx.closePath();ctx.stroke();}
-        else{const x=40+(1-tremor.timer/850)*600;ctx.globalAlpha=.75;ctx.fillStyle='#8b6338';ctx.beginPath();ctx.ellipse(x,tremor.y,58,25,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#d3a65e';ctx.fillRect(x-28,tremor.y-19,56,15);ctx.fillStyle='#5a371f';ctx.fillRect(x+22,tremor.y-14,26,9);}
+        if(tremor.phase==='telegraph'){
+          ctx.globalAlpha=.62;ctx.strokeStyle='#f2bd6a';ctx.lineWidth=2;ctx.setLineDash([8,7]);
+          ctx.beginPath();ctx.moveTo(30,tremor.y-36);ctx.lineTo(610,tremor.y-36);ctx.lineTo(610,tremor.y+36);ctx.lineTo(30,tremor.y+36);ctx.closePath();ctx.stroke();
+          ctx.setLineDash([]);ctx.strokeStyle='#8f5c32';
+          for(let x=42;x<610;x+=32){const off=Math.sin(x*.17+time*.018)*4;ctx.beginPath();ctx.moveTo(x,tremor.y+off);ctx.lineTo(x+9,tremor.y-6+off);ctx.lineTo(x+17,tremor.y+3+off);ctx.stroke();}
+        }else{
+          const x=40+(1-tremor.timer/850)*600,progresso=1-tremor.timer/850;
+          ctx.globalAlpha=.72;ctx.fillStyle='#4b2d19';ctx.beginPath();ctx.ellipse(x,tremor.y+14,42,14,0,0,Math.PI*2);ctx.fill();
+          ctx.globalAlpha=1;
+          const quadro=Math.min(8,Math.floor(progresso*9));
+          const sprite=global.InimigosNormais?.desenhar?.(ctx,'sand_worm_small',x,tremor.y+26,'side','surge',quadro,true,1.75);
+          if(!sprite){ctx.fillStyle='#8b6338';ctx.beginPath();ctx.ellipse(x,tremor.y,34,22,0,0,Math.PI*2);ctx.fill();}
+          ctx.fillStyle='#d3a65e';for(let i=0;i<5;i++){const a=i*1.37+time*.006,r=28+(i%2)*9;ctx.fillRect(x+Math.cos(a)*r-2,tremor.y+Math.sin(a)*12,4,4);}
+        }
         ctx.restore();
       }
       if(current.id==='sandstorm')for(const enemy of enemies())if(enemy._campaignEmergingMs>0){const p=1-enemy._campaignEmergingMs/700;ctx.save();ctx.globalAlpha=.75*(1-p);ctx.strokeStyle='#ffe0a0';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(enemy.x,enemy.y,18+p*26,7+p*11,0,0,Math.PI*2);ctx.stroke();ctx.restore();}
@@ -1004,11 +1073,10 @@
       resetRun,startWave,update,draw,drawOverlay,cleanup,onWaveEnd,onBossSpawn,onEnemySpawn,
       getCombatTargets,getSolidTargets,getCurrentDefinition,canEndWave,controlsWaveTimer,allowNormalSpawns,normalSpawnCap,spawnIntervalMultiplier,
       modifyOutgoingDamage,movementMultiplier,cooldownDurationMultiplier,cooldownRecoveryMultiplier,
-      enemySpeedMultiplier,applyEnemySpeed,enemyAggroTarget,handleActionDown,handleActionUp,addTimedModifier,debugSnapshot,
+      enemySpeedMultiplier,applyEnemySpeed,enemyAggroTarget,hitSurvivorWithProjectile,handleActionDown,handleActionUp,addTimedModifier,debugSnapshot,
     });
   }
 
-  // desenharObjeto sai junto: o Templo Antigo tambem desenha um destes
-  // objetos (o altar dos deuses) e nao vale a pena um segundo cache de arte.
+  // O evento Altar dos Deuses compartilha o cache de arte dos objetivos.
   global.CampaignObjectives=Object.freeze({create,CampaignObjectiveTarget,OBJECTIVE_WAVES,POSITIONS,desenharObjeto});
 })(typeof window!=='undefined'?window:globalThis);

@@ -10,6 +10,7 @@ const shopDataSource=fs.readFileSync(new URL('../src/shop/shop-data.js',import.m
 const shopSystemSource=fs.readFileSync(new URL('../src/shop/shop-system.js',import.meta.url),'utf8');
 assert.match(shopDataSource,/const CAMPAIGN_CLASS_BUFFS=/,'Os dados da loja da campanha não foram encontrados.');
 assert.match(shopSystemSource,/function buildShopPool\(/,'O sistema da loja da campanha não foi encontrado.');
+assert.ok(shopSystemSource.includes("item.consumable?'CONSUMÍVEL · PODE COMPRAR NOVAMENTE'"),'Consumível foi rotulado como bônus único.');
 
 const rarities=['common','uncommon','rare','epic','legendary'];
 const weaponDefs={};
@@ -59,6 +60,17 @@ assert.deepEqual([...categories],['weapon','classBuff','universal'],'A loja solo
 const uniqueResult=vm.runInContext(`(()=>{const bought=shopPool.find(item=>item?.isClassBuff);const key=shopItemKey(bought);shopPurchasedUnique.add(key);shopLocked=[false,false,false];shopRerollsThisVisit++;buildShopPool();return {key,repeated:shopPool.some(item=>item&&shopItemKey(item)===key)};})()`,context);
 assert.equal(uniqueResult.repeated,false,'Buff comprado reapareceu em um reroll.');
 
+const exhaustedResult=vm.runInContext(`(()=>{
+  for(const spec of CAMPAIGN_CLASS_BUFFS.mage)shopPurchasedUnique.add(shopItemKey(makeCampaignBuffOffer(spec,0)));
+  for(const spec of CAMPAIGN_UNIVERSAL_ITEMS)shopPurchasedUnique.add(spec.id);
+  shopLocked=[false,false,false];shopPool=[];shopRerollsThisVisit++;buildShopPool();
+  return shopPool.map(item=>item&&({category:item.category,consumable:!!item.consumable}));
+})()`,context);
+assert.equal(exhaustedResult.length,3,'Loja avançada perdeu slots.');
+assert.ok(exhaustedResult.every(Boolean),'Loja avançada deixou oferta vazia.');
+assert.equal(exhaustedResult.filter(item=>item.consumable).length,2,'Loja avançada deve repor os dois slots esgotados com consumíveis.');
+assert.ok(!exhaustedResult.every(item=>item.category==='weapon'),'Loja avançada degenerou para apenas armas.');
+
 const applied=vm.runInContext(`(()=>{const spec=CAMPAIGN_CLASS_BUFFS.mage.find(item=>item.id==='mage_arcane_core');applyCampaignShopItem(player,spec,'uncommon');const universal=CAMPAIGN_UNIVERSAL_ITEMS.find(item=>item.id==='universal_red_heart');applyCampaignShopItem(player,universal,'rare');applyCampaignShopItem(player,CAMPAIGN_CLASS_BUFFS.mage.find(item=>item.id==='mage_spellbook'),'common');applyCampaignShopItem(player,CAMPAIGN_UNIVERSAL_ITEMS.find(item=>item.id==='universal_agile_gloves'),'common');return {magicDamage:player.shopEffects.magicDamage,attackSpeed:player.shopEffects.attackSpeed,maxHp:player.maxHp,hp:player.hp};})()`,context);
 assert.equal(applied.magicDamage,.08,'O valor Incomum do Núcleo Arcano está incorreto.');
 assert.equal(applied.maxHp,112,'O Coração Rubro raro deve conceder 12 de vida máxima.');
@@ -74,9 +86,26 @@ assert.equal(warriorEffects.second,.9,'A defesa emergencial precisa durar quatro
 
 context.gameMode=2;
 context.player2={idx:1,classId:'warrior',hp:100,maxHp:100,speed:100,dmgReduce:0,shopEffects:{}};
-vm.runInContext(`shopLocked=[false,false,false];shopPool=[];shopRerollsThisVisit=0;buildShopPool()`,context);
+vm.runInContext(`resetShopPurchases();shopRerollsThisVisit=0;buildShopPool()`,context);
 const coop=vm.runInContext(`shopPool.map(item=>({category:item?.category,pidx:item?.pidx,classId:item?.classId}))`,context);
 assert.equal(coop.filter(item=>item.category==='universal').length,1);
 assert.ok(coop.filter(item=>item.category!=='universal').every(item=>item.pidx===0||item.pidx===1),'Ofertas de classe no cooperativo precisam indicar P1 ou P2.');
+
+const lateCoop=vm.runInContext(`(()=>{
+  for(const [pidx,classId] of [[0,'mage'],[1,'warrior']])for(const spec of CAMPAIGN_CLASS_BUFFS[classId])shopPurchasedUnique.add(shopItemKey(makeCampaignBuffOffer(spec,pidx)));
+  for(const spec of CAMPAIGN_UNIVERSAL_ITEMS)shopPurchasedUnique.add(spec.id);
+  shopLocked=[false,false,false];shopPool=[];buildShopPool();
+  const locked=shopPool[1];shopLocked[1]=true;
+  let full=true,unique=true;
+  for(let visit=0;visit<40;visit++){
+    shopRerollsThisVisit++;buildShopPool();
+    full=full&&shopPool.filter(Boolean).length===3&&shopPool.filter(item=>item?.consumable).length===2;
+    unique=unique&&new Set(shopPool.map(shopItemKey)).size===3;
+  }
+  return {full,unique,lockedPreserved:shopPool[1]===locked};
+})()`,context);
+assert.ok(lateCoop.full,'Cooperativo com buffs esgotados perdeu ofertas após rerolls.');
+assert.ok(lateCoop.unique,'Cooperativo repetiu a mesma oferta em dois slots.');
+assert.ok(lateCoop.lockedPreserved,'Reroll substituiu oferta bloqueada.');
 
 console.log('OK: 40 buffs de classe, 8 universais, 5 raridades, composição da loja e não repetição validados.');

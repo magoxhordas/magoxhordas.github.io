@@ -354,13 +354,20 @@ function buildShopPool(){
   const present=new Set(result.filter(Boolean).map(item=>item.category));
   for(let i=0;i<SHOP_OPTION_COUNT;i++){
     if(result[i]) continue;
-    const category=categories.find(cat=>!present.has(cat))||categories[i];
-    const pidx=gameMode===2&&category!=='universal'?(Math.max(1,wave)+shopRerollsThisVisit+i)%2:0;
-    const available=getClassShopItems(category,pidx)
-      .filter(item=>!shopItemAlreadyPurchased(item)&&!result.some(r=>r&&shopItemKey(r)===shopItemKey(item)))
-      .sort(()=>Math.random()-0.5);
-    result[i]=available[0]||null;
-    if(result[i])present.add(category);
+    const preferred=categories.find(cat=>!present.has(cat))||categories[i]||'universal';
+    /* Quando todos os buffs unicos de uma classe ja tinham sido comprados,
+       a busca insistia na categoria vazia em cada slot. O resultado eram
+       espacos em branco e, na pratica, apenas armas. Agora cada slot tenta
+       as demais categorias; pocoes consumiveis mantem a loja util ate o fim. */
+    const fallbackOrder=[preferred,'universal','classBuff','weapon'].filter((cat,index,list)=>list.indexOf(cat)===index);
+    for(const category of fallbackOrder){
+      const pidx=gameMode===2&&category!=='universal'?(Math.max(1,wave)+shopRerollsThisVisit+i)%2:0;
+      const available=getClassShopItems(category,pidx)
+        .filter(item=>!shopItemAlreadyPurchased(item)&&!result.some(r=>r&&shopItemKey(r)===shopItemKey(item)))
+        .sort(()=>Math.random()-0.5);
+      if(!available.length)continue;
+      result[i]=available[0];present.add(category);break;
+    }
   }
   shopPool=result;
 }
@@ -416,7 +423,7 @@ function renderShopGrid(){
           <div class="s-card-info">
             <div class="s-card-name">${item.name}${classBadge}</div>
             <div class="s-card-rarity" style="color:${rarCol}">${rarityFlavour[itemRarity]||'COMUM'}</div>
-            <div class="s-card-type">${item.wtype?`ARMA DE ${offerClass?.name.toUpperCase()||''}`:item.isClassBuff?'BUFF ÚNICO DE CLASSE':'ITEM UNIVERSAL ÚNICO'}</div>
+            <div class="s-card-type">${item.wtype?`ARMA DE ${offerClass?.name.toUpperCase()||''}`:item.consumable?'CONSUMÍVEL · PODE COMPRAR NOVAMENTE':item.isClassBuff?'BUFF ÚNICO DE CLASSE':'ITEM UNIVERSAL ÚNICO'}</div>
           </div>
           ${weaponStatsHtml}
           <div class="s-card-effect">${item.desc}</div>

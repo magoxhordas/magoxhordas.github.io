@@ -23,6 +23,7 @@
       spawnEnemy:()=>null,spawnParts:()=>{},spawnNotice:()=>{},setHud:()=>{},setAction:()=>{},showChoice:()=>{},hideChoice:()=>{},
       getCoins:()=>0,spendCoins:()=>false,addCoins:()=>{},addXp:()=>{},addCampResource:()=>{},
       getBlessingOffers:()=>[],applyBlessing:()=>false,addTimedModifier:()=>{},now:()=>Date.now(),
+      drawHero:()=>false,drawObject:()=>false,
       ...dependencies,
     };
     let active=null;
@@ -234,13 +235,23 @@
       if(node.kind==='merchant'){
         ctx.fillStyle='#5a3c2a';ctx.fillRect(x-10,y-14,20,31);ctx.fillStyle='#c49458';ctx.fillRect(x-8,y-26,16,13);ctx.fillStyle='#513b70';ctx.fillRect(x-14,y-15,28,12);ctx.fillStyle='#e4c06b';ctx.fillRect(x-18,y+7,11,12);ctx.fillRect(x+7,y+7,11,12);
       }else if(node.kind==='god_altar'){
-        ctx.fillStyle='#303442';ctx.fillRect(x-22,y+4,44,12);ctx.fillStyle='#667588';ctx.fillRect(x-15,y-5,30,11);ctx.strokeStyle='#bfe9ff';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y-18,12+pulse*3,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#fff';ctx.fillRect(x-2,y-22,4,9);
+        // A quinta arte escolhida pelo usuario ja existe recortada no pacote.
+        // O evento usa exatamente esse santuario, sem o placeholder circular.
+        const arte=deps.drawObject?.(ctx,'santuario',x,y+30,88);
+        if(!arte){ctx.fillStyle='#303442';ctx.fillRect(x-25,y+4,50,14);ctx.fillStyle='#d9c57a';ctx.fillRect(x-17,y-8,34,13);ctx.fillStyle='#fff0aa';ctx.fillRect(x-2,y-29,4,24);ctx.fillRect(x-12,y-19,24,4);}
       }else if(node.kind==='fountain'){
         ctx.fillStyle='#354d57';ctx.beginPath();ctx.ellipse(x,y+8,27,12,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#6ba9b2';ctx.beginPath();ctx.ellipse(x,y+5,21,8,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#b7fff1';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y+3);ctx.quadraticCurveTo(x+10,y-27,x,y-33);ctx.quadraticCurveTo(x-10,y-27,x,y+3);ctx.stroke();
       }else if(node.kind==='cursed_chest'||node.kind==='profaned_treasure'){
         ctx.fillStyle='#32192f';ctx.fillRect(x-24,y-10,48,28);ctx.fillStyle=node.kind==='cursed_chest'?'#7e328d':'#8a3527';ctx.fillRect(x-21,y-16,42,28);ctx.fillStyle=color;ctx.fillRect(x-3,y-4,6,12);ctx.strokeStyle=color;ctx.lineWidth=2;ctx.strokeRect(x-21,y-16,42,28);
       }else if(node.kind==='spirit'){
-        ctx.globalAlpha=.55+pulse*.25;ctx.fillStyle='#c9baff';ctx.beginPath();ctx.arc(x,y-12,12,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.moveTo(x-13,y-6);ctx.quadraticCurveTo(x-18,y+16,x-5,y+23);ctx.lineTo(x,y+14);ctx.lineTo(x+7,y+23);ctx.quadraticCurveTo(x+18,y+14,x+13,y-6);ctx.fill();ctx.fillStyle='#fff';ctx.fillRect(x-5,y-15,3,3);ctx.fillRect(x+3,y-15,3,3);ctx.globalAlpha=1;
+        const necromanteDaQuinta=deps.getArena()==='volcano'||active.wave>=21;
+        let desenhado=false;
+        if(necromanteDaQuinta){
+          ctx.save();ctx.globalAlpha=.78;ctx.filter='brightness(1.18) saturate(.78) hue-rotate(24deg)';
+          desenhado=!!deps.drawHero?.(ctx,'necromancer',x,y+23,'down','idle',0);ctx.restore();
+          if(desenhado){ctx.globalAlpha=.42;ctx.strokeStyle='#9f6cff';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y+16,18,6,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;}
+        }
+        if(!desenhado){ctx.globalAlpha=.70;ctx.fillStyle='#c9baff';ctx.beginPath();ctx.arc(x,y-12,12,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.moveTo(x-13,y-6);ctx.quadraticCurveTo(x-18,y+16,x-5,y+23);ctx.lineTo(x,y+14);ctx.lineTo(x+7,y+23);ctx.quadraticCurveTo(x+18,y+14,x+13,y-6);ctx.fill();ctx.fillStyle='#fff';ctx.fillRect(x-5,y-15,3,3);ctx.fillRect(x+3,y-15,3,3);ctx.globalAlpha=1;}
       }
       const glow=ctx.createRadialGradient(x,y,0,x,y,48);glow.addColorStop(0,`${color}44`);glow.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=glow;ctx.fillRect(x-50,y-50,100,100);ctx.restore();
     }
