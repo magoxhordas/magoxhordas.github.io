@@ -1625,13 +1625,16 @@ function renderCollClasses(grid){
 // ── BOSSES ──
 function renderCollBosses(grid){
   const BOSS_DATA=[
+    {id:'brute',        icon:'🗿',name:'Brutamontes da Guerra', wave:4, biome:'Castelo', color:'#4a7a28',hp:1500,dmg:20.4,desc:'Arremessa pedras giratórias, Salto Esmagador em área marcada, soco de perto e entra em FÚRIA abaixo de 40% de vida (+55% velocidade).', art:'assets/bosses/orc/icon.png',statsNote:'Valores base da onda 4. A vida varia com a dificuldade e o cooperativo.'},
     {id:'skeleton_king',icon:'💀',name:'Rei Cadáver',      wave:5,  biome:'Castelo', color:'#ece4cc',hp:1100,dmg:43,desc:'Invoca esqueletos. Após o Giro Mortal, lança a espada em linha reta e ela retorna como bumerangue.', art:'assets/bosses/skelking/icon.png'},
+    {id:'hunter_spider',icon:'🕷️',name:'Aranha Caçadora', wave:9, biome:'Floresta',color:'#b98bd8',hp:520,dmg:15.5,desc:'Persegue o herói e alterna mordidas com Fase Parcial, reaparecendo perto do alvo para atacar e desacelerar. Derrotá-la aumenta em 6% o tempo de recarga dos ataques de Aracne.',art:'assets/enemies/spider2/codex.png',statsNote:'Vida base: varia com a dificuldade e o cooperativo. Mordida: até 15,5 (limite de 13% da vida máxima do herói); ataque de fase: até 24 (limite de 18%).'},
     {id:'aracne',       icon:'🕷️',name:'Aracne Ancestral', wave:10, biome:'Floresta',color:'#aa66dd',hp:2100,dmg:60,desc:'Mordida de perto, cuspe de ovos e teia em cone. Se o primeiro Salto Predatório errar, salta novamente. A teia ampliada desacelera por 2,5s.', art:'assets/bosses/aracne/icon.png'},
     {id:'frost',        icon:'❄️',name:'Gigante de Gelo',  wave:15, biome:'Neve',    color:'#88ccee',hp:3650,dmg:98,desc:'Escudo 2000/1000 e +18 HP/s. Erupção: 60% do dano + 1s de gelo. Soco congela por 0,6s. Fim da nevasca: 0,6s.', art:'assets/bosses/icegolem/icon.png'},
     {id:'sandworm',     icon:'🪱',name:'Verme Devorador',  wave:20, biome:'Deserto', color:'#ffd22b',hp:5800,dmg:122,desc:'Mordida de perto, sumidouro ampliado, chuva e cuspe ácido. Mergulho a cada 7s, causando 50% do dano base.', art:'assets/bosses/sandworm/icon.png'},
     {id:'balrog',       icon:'🔥',name:'Balrog',           wave:25, biome:'Vulcão',  color:'#cc4400',hp:3000,dmg:60,desc:'Chicote Infernal em meia tela, chicotada curta de perto e chuva de meteoros. Abaixo de 30% entra em FÚRIA: dobra a velocidade e deixa rastro de fogo.', art:'assets/bosses/balrog/icon.png'},
-    {id:'brute',        icon:'🗿',name:'Brutamontes da Guerra', wave:30, biome:'Todos', color:'#4a7a28',hp:3500,dmg:65,desc:'Arremessa pedras giratórias, Salto Esmagador em área marcada, soco de perto e entra em FÚRIA abaixo de 40% de vida (+55% velocidade).', art:'assets/bosses/orc/icon.png'},
   ];
+  // A onda da campanha também revela os mini-chefes nos saves existentes;
+  // o Brutamontes não depende de uma onda 30 fora dos cinco capítulos.
   const maxWave=SaveSystem.readNumber('mvh_max_wave',0);
   BOSS_DATA.forEach(b=>{
     const unlocked=maxWave>=b.wave;
@@ -1648,6 +1651,7 @@ function renderCollBosses(grid){
           </div>
         </div>
         <div style="font-size:12px;color:#a08050;line-height:1.7;margin:8px 0;">${b.desc}</div>
+        ${b.statsNote?`<div style="font-size:12px;color:#a09060;line-height:1.6;margin:8px 0;">${b.statsNote}</div>`:''}
         <div class="coll-det-stats">
           ${collStatBar('Vida',b.hp,3000,'#44cc66')}
           ${collStatBar('Dano',b.dmg,60,'#ff5555')}
