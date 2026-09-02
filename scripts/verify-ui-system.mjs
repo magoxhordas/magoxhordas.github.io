@@ -89,6 +89,12 @@ assert(html.includes('<link rel="icon" type="image/png" href="assets/heroes/mage
 const codexBackStyle=html.match(/#collection-screen \.coll-back-btn\s*\{([^}]+)\}/)?.[1]||'';
 assert(codexBackStyle.includes('justify-content:center;')&&codexBackStyle.includes('text-align:center;'),'texto Voltar deve ser centralizado somente no botão do Códex');
 assert(/<button class="menu-btn coll-back-btn" onclick="closeCollection\(\)"[^>]*>Voltar<\/button>/.test(html),'botão Voltar perdeu o estilo dedicado ou a ação de fechar o Códex');
+const codexScreenStyle=html.match(/#collection-screen\s*\{([^}]+)\}/)?.[1]||'';
+const codexChildrenStyle=html.match(/#collection-screen > \*\s*\{([^}]+)\}/)?.[1]||'';
+const codexBodyStyle=html.match(/#collection-screen \.coll-body\s*\{([^}]+)\}/)?.[1]||'';
+assert(codexScreenStyle.includes('justify-content:flex-start;')&&codexScreenStyle.includes('overflow-y:auto;'),'Códex deve rolar desde o topo quando conteúdo e botão não cabem na tela');
+assert(codexChildrenStyle.includes('flex-shrink:0;')&&codexBodyStyle.includes('flex:0 0 auto;'),'corpo do Códex não deve encolher e deixar cartões por baixo do Voltar');
+assert(codexBodyStyle.includes('min-height:0;'),'Códex não deve reservar altura vazia nas abas curtas');
 
 // Executa o renderer real com progresso antigo, sem escrever em saves.
 const bossRenderer=menu.slice(menu.indexOf('function renderCollBosses(grid){'),menu.indexOf('// ── PETS ──'));
