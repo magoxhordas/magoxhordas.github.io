@@ -1211,6 +1211,13 @@ function gamePetIconHtml(id,size=38,extraClass=''){
   const pet=(typeof PET_SPRITES!=='undefined'&&PET_SPRITES[id])?PET_SPRITES[id]:null;
   return gamePixelIconHtml(pet?{spr:pet.idle,pal:pet.pal}:collGameIcon('paw'),size,null,extraClass);
 }
+function gamePetBossIconHtml(id,size=104){
+  if(typeof PET_DEFS==='undefined'||!PET_DEFS[id])return '';
+  const px=Math.max(20,Number(size)||104);
+  // Primeiro quadro de repouso da mesma folha 4 × 3 usada no combate.
+  // O recorte por CSS funciona antes de a imagem carregar e também via file://.
+  return `<span class="pet-wild-art" role="img" aria-label="${PET_DEFS[id].bossName}" style="--pet-wild-size:${px}px;background-image:url('assets/pets/animated-v2/${id}.png')"></span>`;
+}
 function hydrateGamePixelIcons(root=document){
   root.querySelectorAll('[data-pixel-icon]').forEach(slot=>{
     if(slot.dataset.pixelReady==='1')return;
@@ -1448,7 +1455,7 @@ function showCollWeaponDetail(w){
       ${collStatBar('Alcance',w.range,400,'#44aaff')}
       ${collStatBar('Veloc.',+(1000/w.cd).toFixed(1),2,'#44dd66','×/s')}
     </div>
-    <div style="font-size:11px;color:#5a4020;letter-spacing:2px;text-transform:uppercase;margin:10px 0 6px;">PODERES POR RARIDADE</div>
+    <h3 class="coll-det-section-title">PODERES POR RARIDADE</h3>
     ${rarRows}`;
 }
 
@@ -1460,9 +1467,9 @@ function renderCollItems(grid){
   };
   const showBuffDetail=(spec,className,color)=>{
     const icon=collItemIcon(spec,className);
-    const tiers=RARITIES.map(r=>`<div class="coll-boon-rarity" style="--rarity-color:${RARITY_COLORS[r]}"><div class="coll-boon-rarity-name">${RARITY_NAMES[r].toUpperCase()}</div><div class="coll-boon-rarity-value">${campaignShopBuffDescription(spec,r)}</div></div>`).join('');
+    const tiers=RARITIES.map(r=>`<div class="coll-weapon-tier" style="--tier-color:${RARITY_COLORS[r]}"><div class="coll-weapon-tier-name">${RARITY_NAMES[r].toUpperCase()}</div><div class="coll-weapon-power">${campaignShopBuffDescription(spec,r)}</div></div>`).join('');
     const det=document.getElementById('coll-detail');det.className='coll-detail visible';
-    det.innerHTML=`<div class="coll-det-header"><div class="coll-det-icon">${collIconHtml(icon,54)}</div><div class="coll-det-info"><div class="coll-det-name">${spec.name}</div><div class="coll-det-type">${className}</div><div class="coll-det-kills">Compra única por campanha</div></div></div><div class="coll-det-divider"></div><div class="coll-boon-rarity-grid">${tiers}</div>`;
+    det.innerHTML=`<div class="coll-det-header"><div class="coll-det-icon">${collIconHtml(icon,54)}</div><div class="coll-det-info"><div class="coll-det-name">${spec.name}</div><div class="coll-det-type">${className}</div><div class="coll-det-kills">Compra única por campanha</div></div></div><div class="coll-det-divider"></div><h3 class="coll-det-section-title">PODERES POR RARIDADE</h3>${tiers}`;
   };
   const classNames={mage:'Mago',warrior:'Guerreiro',archer:'Arqueiro',viking:'Viking',necromancer:'Necromante'};
   const classColors={mage:'#b35cff',warrior:'#f05a42',archer:'#48d878',viking:'#e7b44a',necromancer:'#70d98b'};
@@ -1625,13 +1632,29 @@ function renderCollClasses(grid){
 // ── BOSSES ──
 function renderCollBosses(grid){
   const BOSS_DATA=[
-    {id:'brute',        icon:'🗿',name:'Brutamontes da Guerra', wave:4, biome:'Castelo', color:'#4a7a28',hp:1500,dmg:20.4,desc:'Arremessa pedras giratórias, Salto Esmagador em área marcada, soco de perto e entra em FÚRIA abaixo de 40% de vida (+55% velocidade).', art:'assets/bosses/orc/icon.png',statsNote:'Valores base da onda 4. A vida varia com a dificuldade e o cooperativo.'},
-    {id:'skeleton_king',icon:'💀',name:'Rei Cadáver',      wave:5,  biome:'Castelo', color:'#ece4cc',hp:1100,dmg:43,desc:'Invoca esqueletos. Após o Giro Mortal, lança a espada em linha reta e ela retorna como bumerangue.', art:'assets/bosses/skelking/icon.png'},
-    {id:'hunter_spider',icon:'🕷️',name:'Aranha Caçadora', wave:9, biome:'Floresta',color:'#b98bd8',hp:520,dmg:15.5,desc:'Persegue o herói e alterna mordidas com Fase Parcial, reaparecendo perto do alvo para atacar e desacelerar. Derrotá-la aumenta em 6% o tempo de recarga dos ataques de Aracne.',art:'assets/enemies/spider2/codex.png',statsNote:'Vida base: varia com a dificuldade e o cooperativo. Mordida: até 15,5 (limite de 13% da vida máxima do herói); ataque de fase: até 24 (limite de 18%).'},
-    {id:'aracne',       icon:'🕷️',name:'Aracne Ancestral', wave:10, biome:'Floresta',color:'#aa66dd',hp:2100,dmg:60,desc:'Mordida de perto, cuspe de ovos e teia em cone. Se o primeiro Salto Predatório errar, salta novamente. A teia ampliada desacelera por 2,5s.', art:'assets/bosses/aracne/icon.png'},
-    {id:'frost',        icon:'❄️',name:'Gigante de Gelo',  wave:15, biome:'Neve',    color:'#88ccee',hp:3650,dmg:98,desc:'Escudo 2000/1000 e +18 HP/s. Erupção: 60% do dano + 1s de gelo. Soco congela por 0,6s. Fim da nevasca: 0,6s.', art:'assets/bosses/icegolem/icon.png'},
-    {id:'sandworm',     icon:'🪱',name:'Verme Devorador',  wave:20, biome:'Deserto', color:'#ffd22b',hp:5800,dmg:122,desc:'Mordida de perto, sumidouro ampliado, chuva e cuspe ácido. Mergulho a cada 7s, causando 50% do dano base.', art:'assets/bosses/sandworm/icon.png'},
-    {id:'balrog',       icon:'🔥',name:'Balrog',           wave:25, biome:'Vulcão',  color:'#cc4400',hp:3000,dmg:60,desc:'Chicote Infernal em meia tela, chicotada curta de perto e chuva de meteoros. Abaixo de 30% entra em FÚRIA: dobra a velocidade e deixa rastro de fogo.', art:'assets/bosses/balrog/icon.png'},
+    {id:'brute',name:'Brutamontes da Guerra',wave:4,biome:'Castelo',color:'#4a7a28',hp:1500,dmg:20.4,art:'assets/bosses/orc/icon.png',
+      story:'Antes da queda do castelo, o Brutamontes abria caminho para os exércitos do rei. Quando os portões ruíram, ele permaneceu entre os escombros, esperando uma ordem que nunca chegou. A corrupção transformou sua lealdade em fúria: agora, qualquer viajante é um invasor, e cada pedra da fortaleza se tornou uma arma.',
+      powers:[['Pedras giratórias','Prepara a mira e arremessa três pedras em leque.'],['Salto Esmagador Triplo','Encadeia três saltos sobre áreas marcadas; o último impacto é maior e mais forte.'],['Soco brutal','Golpeia quem fica perto e à sua frente.'],['Fúria de guerra','Abaixo de 40% de vida, ganha 55% de velocidade e reduz os intervalos dos arremessos e saltos.']],
+      statsNote:'Valores base da onda 4. A vida varia com a dificuldade e o cooperativo.'},
+    {id:'skeleton_king',name:'Rei Cadáver',wave:5,biome:'Castelo',color:'#ece4cc',hp:1800,dmg:43,art:'assets/bosses/skelking/icon.png',
+      story:'O último soberano do castelo jurou que a morte jamais tomaria seu trono. Para cumprir a promessa, condenou a própria guarda a uma vigília eterna. Restam ossos sob a coroa, mas a vontade de governar ainda percorre as criptas — e o rei continua convocando súditos que já não podem recusar.',
+      powers:[['Guarda dos mortos','Invoca oito esqueletos arqueiros para cercar a arena.'],['Giro Mortal e espada bumerangue','Avisa antes de girar, atinge a área próxima e lança a espada, que volta para sua mão.'],['Lâmina real','Ataca de perto com a espada.'],['Ressurreição','Ao cair pela primeira vez, retorna com 30% da vida máxima e fica 50% mais veloz.']]},
+    {id:'hunter_spider',name:'Aranha Caçadora',wave:9,biome:'Floresta',color:'#b98bd8',hp:520,dmg:15.5,art:'assets/enemies/spider2/codex.png',
+      story:'Nas trilhas onde as lanternas se apagam, a Caçadora vigia os limites do domínio de Aracne. Ela aprendeu a atravessar as frestas entre as sombras e a esperar pelo passo mais hesitante. Não guarda tesouros: guarda o caminho até sua rainha, deixando fios quase invisíveis entre as árvores.',
+      powers:[['Mordida da caçadora','Persegue o herói e ataca quando alcança sua presa.'],['Fase Parcial','Desaparece por instantes e reaparece perto do alvo para atacar e desacelerar.'],['Vínculo com Aracne','Derrotá-la aumenta em 6% o tempo de recarga dos ataques de Aracne no capítulo.']],
+      statsNote:'Vida base: varia com a dificuldade e o cooperativo. Mordida: até 15,5 (limite de 13% da vida máxima do herói); ataque de fase: até 24 (limite de 18%).'},
+    {id:'aracne',name:'Aracne Ancestral',wave:10,biome:'Floresta',color:'#aa66dd',hp:2400,dmg:60,art:'assets/bosses/aracne/icon.png',
+      story:'Aracne tecia seus primeiros ninhos quando o bosque ainda era jovem. Por séculos, suas teias protegeram as raízes mais antigas. A corrupção envenenou esse pacto e transformou abrigo em armadilha. Hoje, a floresta inteira vibra em seus fios, anunciando cada passo de quem se aproxima de sua ninhada.',
+      powers:[['Ninhada ancestral','Espalha ovos que eclodem em aranhas.'],['Salto Predatório','Salta sobre a posição marcada; se errar o primeiro ataque, tenta um segundo salto.'],['Teia cônica','Lança uma teia em cone que prende e desacelera por 2,5 segundos.'],['Mordida ancestral','Fere quem permanece perto de suas presas.']]},
+    {id:'frost',name:'Gigante de Gelo',wave:15,biome:'Neve',color:'#88ccee',hp:4075,dmg:98,art:'assets/bosses/icegolem/icon.png',
+      story:'Esculpido para guardar a fortaleza glacial, o Gigante carregava no peito a última chama de um inverno antigo. Quando seus criadores desapareceram, ele selou os salões sob camadas de gelo. O silêncio tornou-se sua única lei. Despertá-lo é fazer a própria montanha lembrar como se luta.',
+      powers:[['Barreira glacial','Começa com um escudo de 2.000 pontos e cria outro de 1.000 ao chegar à metade da vida. Enquanto protegido, recupera 18 de vida por segundo.'],['Erupção de gelo','Ergue linhas de espinhos que causam 60% do dano base e congelam por 1 segundo.'],['Punho congelante','O soco de perto congela por 0,6 segundo.'],['Nevasca','Empurra os heróis lateralmente e, ao terminar, congela por 0,6 segundo.']]},
+    {id:'sandworm',name:'Verme Devorador',wave:20,biome:'Deserto',color:'#ffd22b',hp:6300,dmg:122,art:'assets/bosses/sandworm/icon.png',
+      story:'As caravanas chamavam os tremores do deserto de passos de gigantes. Só descobriram a verdade quando uma cidade inteira desapareceu sob a areia. O Devorador percorre túneis entre ossadas de eras esquecidas, guiado pelas vibrações da superfície. As ruínas não são seu lar: são tudo o que sobrou de suas refeições.',
+      powers:[['Sumidouro','Abre uma zona de areia que puxa os heróis para o centro e machuca quem fica no núcleo.'],['Chuva e cuspe ácido','Espalha poças e dispara ácido em linha reta; o projétil também deixa uma poça ao cair.'],['Mergulho Triplo','Cruza a arena em três investidas. O ataque causa 50% do dano base e tem recarga base de 10 segundos, contada enquanto está na superfície.'],['Mordida do devorador','Ataca de perto quando está fora do mergulho.']]},
+    {id:'balrog',name:'Balrog',wave:25,biome:'Vulcão',color:'#cc4400',hp:10000,dmg:175,art:'assets/bosses/balrog/icon.png',
+      story:'Nas profundezas do vulcão, uma forja esquecida alimentava suas chamas com juramentos quebrados. Dela nasceu Balrog, carcereiro de brasas e cinzas. Por muito tempo, as correntes mantiveram sua ira sob a montanha. Agora, cada erupção anuncia sua marcha, e ele pretende transformar o reino inteiro em sua fornalha.',
+      powers:[['Chicote Infernal','Varre uma grande faixa do lado escolhido após preparar o estalo.'],['Chicotada curta','Castiga quem se aproxima pela frente.'],['Chuva de meteoros','Marca cinco pontos da arena antes de provocar os impactos.'],['Fúria desperta','Abaixo de 30% de vida, dobra a velocidade e deixa um rastro de fogo que causa dano.']]},
   ];
   // A onda da campanha também revela os mini-chefes nos saves existentes;
   // o Brutamontes não depende de uma onda 30 fora dos cinco capítulos.
@@ -1650,13 +1673,21 @@ function renderCollBosses(grid){
             <div class="coll-det-type">${b.biome} · Onda ${b.wave}</div>
           </div>
         </div>
-        <div style="font-size:12px;color:#a08050;line-height:1.7;margin:8px 0;">${b.desc}</div>
-        ${b.statsNote?`<div style="font-size:12px;color:#a09060;line-height:1.6;margin:8px 0;">${b.statsNote}</div>`:''}
+        <section class="coll-boss-story">
+          <h3 class="coll-det-section-title">HISTÓRIA</h3>
+          <p class="coll-det-copy">${b.story}</p>
+        </section>
+        <section class="coll-boss-abilities">
+          <h3 class="coll-det-section-title">PODERES E ATAQUES</h3>
+          <ul class="coll-boss-powers">${b.powers.map(([name,desc])=>`<li><strong>${name}</strong><p>${desc}</p></li>`).join('')}</ul>
+        </section>
+        <h3 class="coll-det-section-title">ATRIBUTOS BASE</h3>
         <div class="coll-det-stats">
-          ${collStatBar('Vida',b.hp,3000,'#44cc66')}
-          ${collStatBar('Dano',b.dmg,60,'#ff5555')}
+          ${collStatBar('Vida',b.hp,10000,'#44cc66')}
+          ${collStatBar('Dano',b.dmg,175,'#ff5555')}
           ${collStatBar('Onda',b.wave,25,'#ffcc44')}
         </div>
+        <p class="coll-det-copy coll-det-note">${b.statsNote||'Valores antes dos modificadores de dificuldade, raridade e progressão do capítulo. Vida, dano e escudos podem variar na partida.'}</p>
       `;
     }:null,null,b.color));
   });
@@ -1670,13 +1701,12 @@ function renderCollPets(grid){
     const petIcon=(typeof PET_IMG_SETS!=='undefined'&&PET_IMG_SETS[def.id])
       ?{artPath:'assets/pets/'+def.id+'/icon.png'}
       :((typeof PET_SPRITES!=='undefined'&&PET_SPRITES[def.id])?{spr:PET_SPRITES[def.id].idle,pal:PET_SPRITES[def.id].pal}:collGameIcon('shadow'));
-    const bossIcon=(typeof PET_SPRITES!=='undefined'&&PET_SPRITES[def.id]?.boss)?{spr:PET_SPRITES[def.id].boss,pal:PET_SPRITES[def.id].pal}:petIcon;
     grid.appendChild(collCard(petIcon,def.name,captured?'✓ Capturado':met?'Encontrado':'???',!met,met?()=>{
       const det=document.getElementById('coll-detail');det.className='coll-detail visible';
       det.innerHTML=`
         <div style="text-align:center;margin-bottom:8px;">
           <div class="pet-form-pair">
-            <div class="pet-form-preview wild"><span>FORMA SELVAGEM</span>${collIconHtml(bossIcon,78)}</div>
+            <div class="pet-form-preview wild"><span>FORMA SELVAGEM</span>${gamePetBossIconHtml(def.id,104)}</div>
             <div class="pet-transform-arrow">→</div>
             <div class="pet-form-preview tame"><span>COMPANHEIRO</span>${collIconHtml(petIcon,62)}</div>
           </div>

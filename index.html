@@ -1492,7 +1492,7 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
   background:linear-gradient(100deg,color-mix(in srgb,var(--tier-color) 10%,transparent),rgba(0,0,0,.34));
   padding:8px 9px; margin-bottom:7px;
 }
-.coll-weapon-tier-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.coll-weapon-tier-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:6px 8px; }
 .coll-weapon-tier-name { color:var(--tier-color); font-size:11px; font-weight:bold; letter-spacing:1px; }
 .coll-weapon-tier-stats { color:#aa9568; font-size:11px; white-space:nowrap; }
 .coll-weapon-power { margin-top:5px; color:#c7b483; font-size:11px; line-height:1.45; }
@@ -1534,6 +1534,7 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
     0 0 20px rgba(100,60,0,0.08);
 }
 .coll-detail.visible { display:flex; }
+.coll-detail > * { flex-shrink:0; min-width:0; }
 .coll-det-header { display:flex; align-items:flex-start; gap:14px; }
 .coll-det-icon {
   font-size:42px; flex-shrink:0; width:60px; height:60px;
@@ -1541,8 +1542,8 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
   background:rgba(0,0,0,0.4); border-radius:10px; border:1px solid rgba(200,168,75,0.2);
 }
 .coll-det-icon .coll-pixel-icon { width:54px; height:54px; }
-.coll-det-info { flex:1; }
-.coll-det-name { font-size:21px; color:#f0d080; font-weight:bold; letter-spacing:.8px; }
+.coll-det-info { flex:1; min-width:0; }
+.coll-det-name { font-size:21px; color:#f0d080; font-weight:bold; letter-spacing:.8px; overflow-wrap:anywhere; }
 .coll-det-type { font-size:11px; color:#5a4020; letter-spacing:2px; text-transform:uppercase; margin-top:3px; }
 .coll-det-kills { font-size:12px; color:#44cc66; margin-top:3px; }
 .coll-det-divider { height:1px; background:linear-gradient(90deg,transparent,rgba(200,168,75,0.2),transparent); margin:2px 0; }
@@ -1551,7 +1552,14 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 .coll-stat-label { width:70px; color:#5a4828; text-align:right; flex-shrink:0; font-size:11px; letter-spacing:.5px; text-transform:uppercase; }
 .coll-stat-bar { flex:1; height:6px; background:rgba(255,255,255,0.05); border-radius:3px; overflow:hidden; }
 .coll-stat-fill { height:100%; border-radius:3px; transition:width .4s; }
-.coll-stat-val { width:36px; color:#f0d080; font-weight:bold; font-size:12px; text-align:right; }
+.coll-stat-val { min-width:36px; flex-shrink:0; color:#f0d080; font-weight:bold; font-size:12px; text-align:right; white-space:nowrap; }
+.coll-det-section-title { margin:6px 0; font-size:11px; font-weight:normal; color:#c8a84b; letter-spacing:1.5px; line-height:1.5; }
+.coll-det-copy { margin:0; font-size:12px; color:#c7b483; line-height:1.7; overflow-wrap:anywhere; }
+.coll-det-note { font-size:11px; color:#a89a7c; }
+.coll-boss-powers { list-style:none; margin:8px 0 0; padding:0; display:grid; gap:10px; }
+.coll-boss-powers li { min-width:0; padding:9px 10px; border-left:2px solid #897142; border-radius:4px; background:rgba(200,168,75,.05); }
+.coll-boss-powers strong { display:block; font-size:12px; line-height:1.5; color:#ead19a; }
+.coll-boss-powers p { margin:5px 0 0; font-size:11px; line-height:1.6; color:#c7b483; }
 .coll-rarity-row { display:flex; gap:5px; flex-wrap:wrap; }
 .coll-rar-chip { font-size:11px; padding:3px 8px; border-radius:3px; font-weight:bold; letter-spacing:.8px; border:1px solid; background:rgba(0,0,0,0.35); }
 .coll-chart-wrap { display:flex; flex-direction:column; gap:4px; }
@@ -1699,9 +1707,12 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 /* fica no topo do card, sem cavalgar o rotulo FORMA DOMADA */
 .pet-card .pet-selected-badge { position:absolute; top:4px; right:6px; font-size:10px; font-weight:bold;
   letter-spacing:1px; color:#dd99ff; background:rgba(4,12,8,.92); border-radius:4px; padding:1px 5px; }
-.pet-form-pair { display:flex;align-items:center;justify-content:center;gap:8px;margin:2px 0 8px; }
-.pet-form-preview { min-width:92px;border:1px solid rgba(120,210,150,.22);border-radius:6px;padding:6px;background:rgba(3,12,7,.72); }
-.pet-form-preview span { display:block;font-size:8px;letter-spacing:1.2px;margin-bottom:3px;color:#7fae8c; }
+.pet-form-pair { display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:stretch;gap:6px;margin:2px 0 8px; }
+.pet-form-preview { min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;border:1px solid rgba(120,210,150,.22);border-radius:6px;padding:6px;background:rgba(3,12,7,.72); }
+.pet-form-preview > span:first-child { display:block;font-size:8px;letter-spacing:1px;line-height:1.5;margin-bottom:3px;color:#7fae8c; }
+.pet-form-preview > .codex-art-medallion { margin-block:auto; }
+.pet-form-pair .pet-transform-arrow { align-self:center; }
+.pet-wild-art { display:block;flex-shrink:0;width:var(--pet-wild-size,104px);max-width:100%;aspect-ratio:1;background-repeat:no-repeat;background-size:400% 300%;background-position:0 0;image-rendering:pixelated; }
 .pet-form-preview.wild { border-color:rgba(220,70,55,.38);box-shadow:inset 0 0 18px rgba(150,20,18,.12); }
 .pet-form-preview.wild span { color:#dc6458; }
 .pet-form-preview.tame { border-color:rgba(90,220,135,.36); }
