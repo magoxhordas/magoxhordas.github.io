@@ -81,7 +81,7 @@ ok(h.system.canEndWave(3),'escolha sombria não concluiu objetivo');
 h.setWave(4);h.system.startWave(4);
 const bruto=h.getMiniboss();
 ok(bruto&&!bruto.dead,'onda 4 não criou o Brutamontes');
-close(bruto.maxHp,850,.001,'Brutamontes não veio com a vida reforçada da onda 4');
+close(bruto.maxHp,1500,.001,'Brutamontes não veio com a vida reforçada da onda 4');
 ok(h.system.getCombatTargets().length===0,'Brutamontes não deve virar alvo de objetivo: ele é o chefe do jogo');
 h.system.update(.1);
 ok(!h.system.canEndWave(4),'onda 4 liberou antes de o Brutamontes morrer');
@@ -94,8 +94,29 @@ close(h.system.debugSnapshot().buffs.aracneHpMult,.95,.0001,'vantagem contra Ara
 
 h.setWave(8);h.system.startWave(8);targets=h.system.getCombatTargets();
 ok(targets.length===1&&targets[0].kind==='survivor_web','onda 8 não criou o casulo opcional');
-targets[0].takeDmg(99999);ok(h.system.debugSnapshot().data.stage==='defend','casulo destruído não iniciou defesa');
+const survivor=targets[0];survivor.takeDmg(99999);ok(h.system.debugSnapshot().data.stage==='defend','casulo destruído não iniciou defesa');
+const npcAttacker={type:'runner_goblin',x:survivor.x,y:survivor.y,radius:12,damage:10,speed:50,dead:false};h.enemies.push(npcAttacker);
+h.system.update(.1);ok(survivor.hp<survivor.maxHp&&survivor.flashTimer>0,'sobrevivente não recebeu/mostrou dano de contato');
+const stableAggro=npcAttacker._campaignNpcAggro;npcAttacker.x+=37;npcAttacker.y+=19;h.system.update(.1);
+ok(stableAggro===survivor&&npcAttacker._campaignNpcAggro===stableAggro,'inimigo trocou de alvo pela própria posição');
+const npcHp=survivor.hp;
+const friendlyShot={x:survivor.x,y:survivor.y,radius:5,dmg:20,isFriendly:true};
+ok(!h.system.hitSurvivorWithProjectile(friendlyShot)&&survivor.hp===npcHp,'pet causou fogo amigo no sobrevivente');
+const distantShot={x:0,y:0,radius:5,dmg:20};
+ok(!h.system.hitSurvivorWithProjectile(distantShot),'projétil distante acertou sobrevivente');
+const hostileShot={x:survivor.x,y:survivor.y,radius:5,dmg:20};
+ok(h.system.hitSurvivorWithProjectile(hostileShot)&&hostileShot.dead,'projétil hostil não foi consumido ao acertar NPC');
+close(survivor.hp,npcHp-6.4,.001,'dano à distância não reduziu vida do sobrevivente');
+ok(survivor.flashTimer>0,'dano à distância não disparou reação visual');
+ok(!h.system.hitSurvivorWithProjectile(hostileShot),'mesmo projétil acertou duas vezes');
 h.enemies.length=0;h.system.update(22.1);ok(h.system.debugSnapshot().complete,'defesa do sobrevivente não concluiu');
+ok(!h.system.hitSurvivorWithProjectile({...hostileShot,dead:false}),'sobrevivente resgatado continuou recebendo dano');
+
+const failedRescue=harness();failedRescue.setWave(8);failedRescue.system.startWave(8);
+const doomed=failedRescue.system.getCombatTargets()[0];doomed.takeDmg(9999);
+for(let i=0;i<12;i++)failedRescue.system.hitSurvivorWithProjectile({x:doomed.x,y:doomed.y,radius:5,dmg:100});
+ok(doomed.dead&&doomed.hp===0&&failedRescue.system.debugSnapshot().data.stage==='failed','sobrevivente não caiu ao perder toda a vida');
+ok(failedRescue.system.canEndWave(8),'morte do sobrevivente bloqueou onda opcional');
 
 h.setWave(9);h.system.startWave(9);targets=h.system.getCombatTargets();
 ok(targets.length===1&&targets[0].kind==='hunter_spider','onda 9 não criou Aranha Caçadora');targets[0].takeDmg(99999);
@@ -147,13 +168,16 @@ for(const file of ['src/campaign/campaign-ui.js','src/campaign/campaign-objectiv
 const uiSource=read('src/campaign/campaign-ui.js');
 for(const contract of ['@media (max-width:800px)','#campaign-action-button','pointerdown','pointerup','campaign-objective-meters'])ok(uiSource.includes(contract),`HUD móvel perdeu contrato: ${contract}`);
 for(const contract of ['#${ROOT_ID}.suspended','function setSuspended(value)','root.classList.toggle(\'suspended\',suspended)','setActionHandlers,setSuspended'])ok(uiSource.includes(contract),`pausa não protege o HUD de missão: ${contract}`);
-for(const contract of ['function drawTargetHealth(','`${atual}/${maximo}`','const altarBob=','globalCompositeOperation=\'lighter\'','ctx.ellipse(x,y+9,15+pulse*6'])ok(source.includes(contract),`visual/vida dos altares perdeu contrato: ${contract}`);
+for(const contract of ['function drawTargetHealth(','`${atual}/${maximo}`','const altarY=y+14','const altarY=y+16','globalCompositeOperation=\'lighter\'','ctx.ellipse(x,y+9,17,5'])ok(source.includes(contract),`visual/vida estável dos altares perdeu contrato: ${contract}`);
+ok(!source.includes('const altarBob='),'altares voltaram a oscilar verticalmente');
+for(const contract of ["global.InimigosNormais?.desenhar?.(ctx,'spitting_spider'","global.InimigosNormais?.desenhar?.(ctx,'sand_worm_small'",'enemy._campaignNpcObjectiveId!==target.id','target.flashTimer=180'])ok(source.includes(contract),`polimento de objetivo ausente: ${contract}`);
 ok(html.indexOf('src/campaign/campaign-objectives.js')<html.indexOf('src/campaign/campaign-runtime.js'),'runtime carrega antes dos objetivos');
 for(const contract of [
   "...(typeof campaignObjectiveTargets==='function'?campaignObjectiveTargets():[])",
   'hitCampaignObjectiveWithProjectile(p,target)',
   'campaignObjectives.applyEnemySpeed(e)',
   'campaignObjectives.enemyAggroTarget(e)',
+  'campaignObjectives.hitSurvivorWithProjectile(p)',
   'campaignObjectives.drawOverlay(ctx,t,W,H)',
   'campaignHandleActionDown(playerIndex)',
 ])ok(html.includes(contract)||runtime.includes(contract),`integração ausente: ${contract}`);

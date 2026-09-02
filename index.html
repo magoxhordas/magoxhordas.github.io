@@ -17255,6 +17255,7 @@ function collide(){
   for(const p of projs){
     if(p.dead) continue;
     if(!p.isFriendly && (p instanceof EnemyProj||p instanceof HomingFireball||p instanceof WebShotProj||p instanceof AcidShotProj)){
+      if(campaignObjectives.hitSurvivorWithProjectile(p))continue;
       const allPl=[player,...(gameMode===2&&player2?[player2]:[])].filter(pl=>!pl.dead);
       for(const pl of allPl) if(p.hitPlayer(pl)) break;
       continue;
