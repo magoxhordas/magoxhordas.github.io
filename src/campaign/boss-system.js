@@ -823,7 +823,8 @@ const SKING_ATK_MS=540;   // 9 quadros do golpe de espada
 class BossSkeletonKing {
   constructor(wave){
     this.x=W/2; this.y=240; this.wave=wave;
-    this.hp=1000+wave*160; this.maxHp=this.hp;
+    // Mais resistência no primeiro chefe; mantém o dano e a ressurreição de 30%.
+    this.hp=2200+wave*160; this.maxHp=this.hp;
     this.speed=28+wave*1.5; this.damage=28+wave*3;
     this.radius=36; this.xpVal=80+wave*15;
     this.dead=false; this.frameIdx=0; this.frameTick=0; this.dir='down';
@@ -1308,7 +1309,8 @@ const ARACNE_HIT_MS=480;   // 9 quadros da mordida
 class BossAracne {
   constructor(wave){
     this.x=W/2; this.y=250; this.wave=wave;
-    this.hp=1050+wave*135; this.maxHp=this.hp;
+    // Reforço do segundo capítulo, sem acelerar saltos, teias ou ninhadas.
+    this.hp=2250+wave*135; this.maxHp=this.hp;
     this.speed=26+wave*1.2; this.damage=30+wave*3;
     this.radius=40; this.xpVal=100+wave*18;
     this.dead=false; this.frameIdx=0; this.frameTick=0; this.dir='down';

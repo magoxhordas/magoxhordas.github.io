@@ -81,7 +81,7 @@ ok(h.system.canEndWave(3),'escolha sombria não concluiu objetivo');
 h.setWave(4);h.system.startWave(4);
 const bruto=h.getMiniboss();
 ok(bruto&&!bruto.dead,'onda 4 não criou o Brutamontes');
-close(bruto.maxHp,1500,.001,'Brutamontes não veio com a vida reforçada da onda 4');
+close(bruto.maxHp,2400,.001,'Brutamontes não veio com a vida reforçada da onda 4');
 ok(h.system.getCombatTargets().length===0,'Brutamontes não deve virar alvo de objetivo: ele é o chefe do jogo');
 h.system.update(.1);
 ok(!h.system.canEndWave(4),'onda 4 liberou antes de o Brutamontes morrer');
@@ -148,6 +148,7 @@ ok(failedRescue.system.canEndWave(8),'morte do sobrevivente bloqueou onda opcion
 
 h.setWave(9);h.system.startWave(9);targets=h.system.getCombatTargets();
 ok(targets.length===1&&targets[0].kind==='hunter_spider','onda 9 não criou Aranha Caçadora');
+close(targets[0].maxHp,2400,.001,'Aranha Caçadora deve ter 2400 de vida-base');
 ok(targets[0].radius===40&&targets[0].healthOffset===96,'porte de chefe não ajustou colisão e barra da Aranha Caçadora');
 ok(source.includes("quadro,flip,3.2)"),'Aranha Caçadora perdeu escala equivalente à Aracne');
 const hunter=targets[0];h.players[0].x=hunter.x+55;h.players[0].y=hunter.y;h.players[0].hp=100;hunter.attackTimer=0;

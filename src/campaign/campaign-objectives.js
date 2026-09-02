@@ -52,6 +52,10 @@
   const distance=(a,b)=>Math.hypot((a?.x||0)-(b?.x||0),(a?.y||0)-(b?.y||0));
   const alive=list=>(list||[]).filter(item=>item&&!item.dead);
   const ALTAR_KINDS=Object.freeze(['bone_altar','dark_altar','demon_altar']);
+  const HUNTER_SKILLS=Object.freeze({
+    chargeWindMs:800,chargeSpeed:430,chargeDistance:270,chargeRecoverMs:1000,chargeCooldownMs:6500,
+    silkWindMs:650,silkLifeMs:6000,silkCooldownMs:8500,silkLimit:3,silkRadius:30,silkRadiusY:20,silkSlow:.30,
+  });
 
   /* As artes importadas retornavam antes da antiga barra generica, entao os
      altares pareciam indestrutiveis. Esta rotina fica separada do desenho do
@@ -239,11 +243,11 @@
       }else if(definition.id==='brute'){
         // O Brutamontes de verdade, e nao um alvo de objetivo: e' a mesma
         // classe da onda 30, com a vida ajustada ao mini-chefe da onda 4
-        // (1500 aqui, contra 1800+onda*190 la'). Assim ele
+        // (2400 aqui, contra 1800+onda*190 la'). Assim ele
         // chega com os golpes proprios — Salto Esmagador, pedra e furia —
         // e todo o maquinario de chefe do jogo (colisao, dano, desenho,
         // musica) ja' cuida dele sem precisar de nada novo.
-        const vida=Math.round(1500*hpScale);
+        const vida=Math.round(2400*hpScale);
         current.data.bruto=deps.spawnMiniboss?.(vida,14+Number(deps.getWave()||4)*1.6)||null;
         current.data.brutoVida=vida;
         // Se a classe nao existir, o objetivo se completa em vez de travar a onda.
@@ -261,9 +265,10 @@
           interactive:true,interactionText:`Libertar ${current.data.heroi.nome}`,onDepleted:target=>{startSurvivorDefense(target);return true;}});
         current.data.survivor=survivor;current.data.stage='web';current.data.defenseMs=22000;
       }else if(definition.id==='hunter_spider'){
-        const hunter=makeTarget({kind:'hunter_spider',label:'Aranha Caçadora',x:320,y:238,hp:Math.round(520*hpScale),radius:40,healthOffset:96,hitColor:'#d7eee3',
-          attackTimer:850,phaseTimer:3000,combatState:'hunt',customUpdate:updateHunterSpider,
-          onDestroyed:()=>{buffs.aracneCooldownMult=Math.max(buffs.aracneCooldownMult,1.06);complete('ARACNE ENFRAQUECIDA: RECARGAS +6%');}});
+        const hunter=makeTarget({kind:'hunter_spider',label:'Aranha Caçadora',x:320,y:238,hp:Math.round(2400*hpScale),radius:40,healthOffset:96,hitColor:'#d7eee3',
+          attackTimer:850,phaseTimer:3000,chargeTimer:4800,silkTimer:1600,silkTraps:[],combatState:'hunt',customUpdate:updateHunterSpider,
+          cleanup(){cleanupHunterSpider(this);},
+          onDestroyed:target=>{cleanupHunterSpider(target);buffs.aracneCooldownMult=Math.max(buffs.aracneCooldownMult,1.06);complete('ARACNE ENFRAQUECIDA: RECARGAS +6%');}});
         hunter.isElite=true;
       }else if(definition.id==='freezing_cold'){
         current.data.fires=POSITIONS.frostFires.map(([x,y])=>makeTarget({kind:'fire',label:'Fogueira acesa',x,y,radius:20,damageable:false,autoTarget:false,lit:true}));
@@ -371,22 +376,114 @@
       }
     }
 
+    function cleanupHunterSpider(target){
+      target.silkTraps.length=0;target.charge=null;
+      for(const pl of deps.getPlayers()||[])if(pl)delete pl._campaignSilkSlow;
+    }
+
+    function updateHunterSilk(target,dt,candidates){
+      const ms=dt*1000;
+      for(const pl of deps.getPlayers()||[])if(pl)delete pl._campaignSilkSlow;
+      for(const trap of target.silkTraps){trap.armMs=Math.max(0,trap.armMs-ms);trap.lifeMs-=ms;}
+      target.silkTraps=target.silkTraps.filter(trap=>trap.lifeMs>0);
+      for(const trap of target.silkTraps){
+        if(trap.armMs>0)continue;
+        for(const pl of candidates){
+          // A colisão acompanha a elipse desenhada no chão; não causa dano nem imobiliza.
+          const rx=HUNTER_SKILLS.silkRadius+(pl.radius||16),ry=HUNTER_SKILLS.silkRadiusY+(pl.radius||16);
+          if(Math.hypot((pl.x-trap.x)/rx,(pl.y-trap.y)/ry)<=1)pl._campaignSilkSlow=HUNTER_SKILLS.silkSlow;
+        }
+      }
+    }
+
+    function startHunterSilk(target,nearest){
+      const aim=Math.atan2(nearest.y-target.y,nearest.x-target.x);
+      for(let i=0;i<HUNTER_SKILLS.silkLimit&&target.silkTraps.length<HUNTER_SKILLS.silkLimit;i++){
+        const angle=aim+i*Math.PI*2/3;
+        const trap={x:clamp(nearest.x+Math.cos(angle)*76,38,602),y:clamp(nearest.y+Math.sin(angle)*64,234,432),
+          armMs:HUNTER_SKILLS.silkWindMs,lifeMs:HUNTER_SKILLS.silkWindMs+HUNTER_SKILLS.silkLifeMs};
+        if(target.silkTraps.some(other=>distance(other,trap)<65))continue;
+        target.silkTraps.push(trap);
+      }
+      target.combatState='silk_wind';target.stateTimer=HUNTER_SKILLS.silkWindMs;
+      target.silkTimer=HUNTER_SKILLS.silkCooldownMs;
+      deps.spawnNotice(target.x,target.y-38,'ARMADILHAS DE SEDA',0);
+    }
+
+    function startHunterCharge(target,nearest){
+      const dx=nearest.x-target.x,dy=nearest.y-target.y,d=Math.hypot(dx,dy);
+      // Trava o destino ANTES do aviso; não persegue o jogador durante a arrancada.
+      const nx=d>0?dx/d:0,ny=d>0?dy/d:1,travel=Math.min(HUNTER_SKILLS.chargeDistance,Math.max(120,d+55));
+      const end={x:clamp(target.x+nx*travel,target.radius,640-target.radius),y:clamp(target.y+ny*travel,210,456)};
+      const length=distance(target,end);
+      if(length<45){target.chargeTimer=1000;return false;}
+      target.charge={start:{x:target.x,y:target.y},end,length,travelled:0,hit:new Set()};
+      target.combatState='charge_wind';target.stateTimer=HUNTER_SKILLS.chargeWindMs;
+      target.chargeTimer=HUNTER_SKILLS.chargeCooldownMs;
+      deps.spawnNotice(target.x,target.y-38,'INVESTIDA DA CAÇADORA',0);
+      return true;
+    }
+
+    function hunterSegmentDistance(pl,a,b){
+      const dx=b.x-a.x,dy=b.y-a.y,squared=dx*dx+dy*dy;
+      const p=squared?clamp(((pl.x-a.x)*dx+(pl.y-a.y)*dy)/squared,0,1):0;
+      return Math.hypot(pl.x-a.x-dx*p,pl.y-a.y-dy*p);
+    }
+
+    function updateHunterCharge(target,dt,candidates){
+      const charge=target.charge,previous={x:target.x,y:target.y};
+      charge.travelled=Math.min(charge.length,charge.travelled+HUNTER_SKILLS.chargeSpeed*dt);
+      const p=charge.travelled/charge.length;
+      target.x=charge.start.x+(charge.end.x-charge.start.x)*p;
+      target.y=charge.start.y+(charge.end.y-charge.start.y)*p;
+      for(const pl of candidates){
+        // Varrimento do trecho percorrido evita atravessar o jogador em frames lentos.
+        if(!charge.hit.has(pl)&&hunterSegmentDistance(pl,previous,target)<=target.radius*.75+(pl.radius||16)){
+          charge.hit.add(pl);deps.damagePlayer(pl,Math.min(pl.maxHp*.18,22));
+          runtime.parts(pl.x,pl.y,'#edc17d',8,45);
+        }
+      }
+      if(charge.travelled>=charge.length){
+        target.combatState='charge_recover';target.stateTimer=HUNTER_SKILLS.chargeRecoverMs;
+        target.attackTimer=Math.max(target.attackTimer,600);
+        runtime.parts(target.x,target.y,'#ae8b69',10,45);
+      }
+    }
+
     function updateHunterSpider(target,dt){
-      const ms=dt*1000,candidates=players();if(!candidates.length)return;
+      const ms=dt*1000,candidates=players();
+      updateHunterSilk(target,dt,candidates);
+      if(!candidates.length)return;
       const nearest=candidates.sort((a,b)=>distance(a,target)-distance(b,target))[0];
       const reach=target.radius+(nearest.radius||16);
       const facingDx=nearest.x-target.x,facingDy=nearest.y-target.y;
-      target.facing=Math.abs(facingDx)>Math.abs(facingDy)?(facingDx>0?'right':'left'):(facingDy>0?'down':'up');
-      target.walkFrame=((target.walkFrame||0)+dt*8)%9;
-      target.phaseTimer-=ms;
+      if(!target.combatState.startsWith('charge_'))target.facing=Math.abs(facingDx)>Math.abs(facingDy)?(facingDx>0?'right':'left'):(facingDy>0?'down':'up');
+      target.walkFrame=((target.walkFrame||0)+dt*(target.combatState==='charge_dash'?22:8))%9;
+      target.phaseTimer-=ms;target.chargeTimer-=ms;target.silkTimer-=ms;
+      if(target.combatState==='charge_wind'){
+        target.stateTimer=Math.max(0,target.stateTimer-ms);
+        if(target.stateTimer===0)target.combatState='charge_dash';
+        return;
+      }
+      if(target.combatState==='charge_dash'){updateHunterCharge(target,dt,candidates);return;}
+      if(target.combatState==='charge_recover'||target.combatState==='silk_wind'){
+        target.stateTimer=Math.max(0,target.stateTimer-ms);
+        if(target.stateTimer===0){
+          target.combatState='hunt';target.charge=null;
+          target.phaseTimer=Math.max(target.phaseTimer,1200);target.attackTimer=Math.max(target.attackTimer,500);
+        }
+        return;
+      }
       if(target.combatState==='phase_wind'){
         target.stateTimer-=ms;
         if(target.stateTimer<=0){target.x=clamp(nearest.x+(Math.random()-.5)*90,42,598);target.y=clamp(nearest.y-55,215,450);target.combatState='phase_strike';target.stateTimer=500;target.phaseHit=false;runtime.parts(target.x,target.y,'#dceee6',14,65);}
       }else if(target.combatState==='phase_strike'){
         target.stateTimer-=ms;
         if(!target.phaseHit&&distance(target,nearest)<reach+29){target.phaseHit=true;deps.damagePlayer(nearest,Math.min(nearest.maxHp*.18,15+current.wave));nearest.campaignWebTimer=Math.max(nearest.campaignWebTimer||0,2400);}
-        if(target.stateTimer<=0){target.combatState='hunt';target.phaseTimer=4200;}
+        if(target.stateTimer<=0){target.combatState='hunt';target.phaseTimer=4200;target.chargeTimer=Math.max(target.chargeTimer,1000);}
       }else{
+        if(target.chargeTimer<=0&&startHunterCharge(target,nearest))return;
+        if(target.silkTimer<=0&&target.silkTraps.length===0){startHunterSilk(target,nearest);return;}
         const angle=Math.atan2(nearest.y-target.y,nearest.x-target.x),d=distance(target,nearest);
         if(d>reach-5){target.x+=Math.cos(angle)*94*dt;target.y+=Math.sin(angle)*94*dt;}
         target.attackTimer-=ms;
@@ -530,7 +627,7 @@
         pl._campaignFrozenMeter=meter.value;pl._campaignFrozenDebuff=meter.debuff;
       }
     }
-    function clearPlayerEnvironmentFlags(){for(const pl of deps.getPlayers()||[]){delete pl._campaignFrozenMeter;delete pl._campaignFrozenDebuff;delete pl._campaignWebSlow;}}
+    function clearPlayerEnvironmentFlags(){for(const pl of deps.getPlayers()||[]){delete pl._campaignFrozenMeter;delete pl._campaignFrozenDebuff;delete pl._campaignWebSlow;delete pl._campaignSilkSlow;}}
 
     function updateTremor(dt){
       const data=current.data,ms=dt*1000;data.nextTremor-=ms;
@@ -651,7 +748,8 @@
       if(buffs.darkChoice==='purify')mult*=.95;
       if(buffs.fireBlessing&&(Number(deps.getWave())||0)<=15)mult*=1.08;
       if(pl._campaignFrozenDebuff)mult*=.80;
-      if(!pl.webbed&&((pl._campaignWebSlow||0)>0||pl.campaignWebTimer>0))mult*=.85;
+      const webSlow=Math.max(((pl._campaignWebSlow||0)>0||pl.campaignWebTimer>0)? .15:0,pl._campaignSilkSlow||0);
+      if(!pl.webbed&&webSlow>0)mult*=1-clamp(webSlow,0,.75);
       for(const modifier of modifiers)if(modifier.type==='move'&&modifierActive(modifier))mult*=1+modifier.value;
       return mult;
     }
@@ -713,7 +811,7 @@
         return {...base,detail:'Desvie do Salto Esmagador e das pedras; abaixo de 40% ele entra em fúria.',
                 progress:vivo?1-bruto.hp/bruto.maxHp:1};
       }
-      if(current.id==='hunter_spider'){const target=living[0];return {...base,detail:'Observe a fase parcial, desvie e contra-ataque.',progress:target?1-target.hp/target.maxHp:1};}
+      if(current.id==='hunter_spider'){const target=living[0];return {...base,detail:'Saia da linha da investida e evite as teias no chão.',progress:target?1-target.hp/target.maxHp:1};}
       if(current.id==='spider_nests')return {...base,detail:`Destrua os ninhos · ${living.length}/4 restantes · teia −15%`,progress:(4-living.length)/4};
       if(current.id==='webbed_survivor'){
         const target=current.data.survivor;
@@ -756,8 +854,60 @@
       return alive(current.targets).filter(target=>SOLIDOS.indexOf(target.kind)>=0);
     }
 
+    function drawHunterGround(ctx,target){
+      ctx.save();
+      for(const trap of target.silkTraps){
+        const ready=trap.armMs<=0,fade=Math.min(1,trap.lifeMs/650),rx=HUNTER_SKILLS.silkRadius,ry=HUNTER_SKILLS.silkRadiusY;
+        ctx.globalAlpha=fade*(ready?1:.45);ctx.fillStyle='rgba(14,24,33,.60)';
+        ctx.beginPath();ctx.ellipse(trap.x,trap.y,rx+3,ry+3,0,0,Math.PI*2);ctx.fill();
+        ctx.strokeStyle=ready?'#d1e7e9':'#9e99b8';ctx.lineWidth=ready?1.35:1;
+        // Fios radiais e três anéis segmentados, sem criar partículas a cada frame.
+        for(let i=0;i<8;i++){
+          const a=i*Math.PI/4;ctx.beginPath();ctx.moveTo(trap.x,trap.y);ctx.lineTo(trap.x+Math.cos(a)*rx,trap.y+Math.sin(a)*ry);ctx.stroke();
+        }
+        for(let ring=1;ring<=3;ring++){
+          const k=ring/3;ctx.beginPath();
+          for(let i=0;i<=8;i++){
+            const a=i*Math.PI/4,x=trap.x+Math.cos(a)*rx*k,y=trap.y+Math.sin(a)*ry*k;
+            if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+          }
+          ctx.stroke();
+        }
+        ctx.fillStyle=ready?'#af7acf':'#e6d5ef';ctx.fillRect(trap.x-2,trap.y-2,4,4);
+        if(!ready){
+          ctx.strokeStyle='#cda1ed';ctx.lineWidth=2;ctx.beginPath();
+          ctx.ellipse(trap.x,trap.y,rx+5,ry+5,0,-Math.PI/2,-Math.PI/2+Math.PI*2*(1-trap.armMs/HUNTER_SKILLS.silkWindMs));ctx.stroke();
+        }
+      }
+      ctx.globalAlpha=1;
+      const charge=target.charge;
+      if(charge&&(target.combatState==='charge_wind'||target.combatState==='charge_dash')){
+        const nx=(charge.end.x-charge.start.x)/charge.length,ny=(charge.end.y-charge.start.y)/charge.length;
+        const width=target.radius*.75;
+        if(target.combatState==='charge_wind'){
+          ctx.fillStyle='rgba(235,156,73,.16)';ctx.strokeStyle='#efb562';ctx.lineWidth=2;
+          ctx.beginPath();ctx.moveTo(charge.start.x-ny*width,charge.start.y+nx*width);
+          ctx.lineTo(charge.end.x-ny*width,charge.end.y+nx*width);ctx.lineTo(charge.end.x+ny*width,charge.end.y-nx*width);
+          ctx.lineTo(charge.start.x+ny*width,charge.start.y-nx*width);ctx.closePath();ctx.fill();
+          ctx.setLineDash([7,5]);ctx.stroke();ctx.setLineDash([]);
+          ctx.fillStyle='#ffe0a0';ctx.beginPath();ctx.moveTo(charge.end.x,charge.end.y);
+          ctx.lineTo(charge.end.x-nx*17-ny*10,charge.end.y-ny*17+nx*10);
+          ctx.lineTo(charge.end.x-nx*17+ny*10,charge.end.y-ny*17-nx*10);ctx.closePath();ctx.fill();
+        }else{
+          ctx.strokeStyle='#d2b294';ctx.lineWidth=2;
+          for(let i=-1;i<=1;i++){
+            const offset=i*19;ctx.globalAlpha=.3;
+            ctx.beginPath();ctx.moveTo(target.x-nx*36-ny*offset,target.y-ny*36+nx*offset);
+            ctx.lineTo(target.x-nx*70-ny*offset,target.y-ny*70+nx*offset);ctx.stroke();
+          }
+        }
+      }
+      ctx.restore();
+    }
+
     function drawTarget(ctx,time,target){
       if(!ctx||target.dead)return;const x=target.x,y=target.y,pulse=['bone_altar','dark_altar'].includes(target.kind)?.5:.5+.5*Math.sin(time*.006+target.phase);
+      if(target.kind==='hunter_spider')drawHunterGround(ctx,target);
       ctx.save();
       if(target.flashTimer>0){ctx.shadowBlur=18;ctx.shadowColor='#fff';}
       ctx.globalAlpha=.30;ctx.fillStyle='#000';ctx.beginPath();ctx.ellipse(x,y+15,target.radius*1.05,target.radius*.34,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
@@ -952,17 +1102,22 @@
         if(aliado){ctx.globalAlpha=.5+.2*Math.sin(time*.005);ctx.strokeStyle='#ffdf9a';ctx.lineWidth=1.4;ctx.beginPath();ctx.ellipse(x,y+14,15,6,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;}
       }else if(target.kind==='hunter_spider'){
         const emFase=target.combatState==='phase_wind',golpe=target.combatState==='phase_strike';
+        const prepara=target.combatState==='charge_wind',tecendo=target.combatState==='silk_wind',recupera=target.combatState==='charge_recover';
         const dir=target.facing==='up'?'up':target.facing==='down'?'down':'side';
         const flip=target.facing==='right';
-        const estado=golpe?'hit':emFase?'idle':'walk';
-        const quadro=golpe?Math.floor((1-target.stateTimer/500)*8):Math.floor(target.walkFrame||0);
+        const estado=golpe||tecendo?'hit':emFase||prepara||recupera?'idle':'walk';
+        const quadro=golpe?Math.floor((1-target.stateTimer/500)*8):tecendo?Math.floor((1-target.stateTimer/HUNTER_SKILLS.silkWindMs)*8):Math.floor(target.walkFrame||0);
         ctx.globalAlpha=emFase?.48:1;
+        ctx.save();
+        if(prepara){ctx.translate(x,y+34);ctx.scale(1,.84);ctx.translate(-x,-y-34);}
         // Corpo visivel ~122px: o mesmo porte da Aracne (42px * 2.9).
         // A Caçadora preserva sua arte, cujo corpo ocupa 26px no quadro.
         const sprite=global.InimigosNormais?.desenhar?.(ctx,'spitting_spider',x,y+34,dir,estado,quadro,flip,3.2);
         if(!sprite){ctx.fillStyle='#262231';ctx.beginPath();ctx.ellipse(x,y,50,37,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#805296';ctx.beginPath();ctx.arc(x,y-15,27,0,Math.PI*2);ctx.fill();}
+        ctx.restore();
         ctx.globalAlpha=1;
         if(target.combatState==='phase_wind'){ctx.strokeStyle='#f0f6f0';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,target.radius+9+pulse*8,0,Math.PI*2);ctx.stroke();}
+        if(recupera){ctx.fillStyle='#ffe1a4';for(let i=0;i<3;i++)ctx.fillRect(x-9+i*8,y-69,3,3);}
       }else if(target.kind==='fire'){
         // a arte veio em par: o mesmo braseiro apagado e aceso. As duas
         // larguras-alvo saem do MESMO fator de escala, senao a pedra mudava
