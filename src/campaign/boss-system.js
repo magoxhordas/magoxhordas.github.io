@@ -3308,7 +3308,12 @@ class BossBrute {
     // O Brutamontes tem os DOIS ataques da pasta: Salto Esmagador e
     // arremesso de pedra. O estado escolhe o conjunto de quadros.
     let usouArte=false;
-    if(window.OrcSprites&&this.flashTimer<=0){
+    // A arte NAO depende mais do clarao do golpe. Enquanto dependia
+    // (flashTimer<=0), levar dano pulava este bloco inteiro e o Brutamontes
+    // caia no desenho procedural antigo — era ele "voltando a sprite velha"
+    // toda vez que apanhava. Todos os outros chefes mantem a arte e so'
+    // pintam um clarao por cima; agora este faz igual, logo abaixo.
+    if(window.OrcSprites){
       const NA=window.OrcSprites.N_ATK;
       let estado='idle', q=0, dirArte='down', flipArte=false;
       if(this.rockWind>0||this.rockThrowAnim>0){
@@ -3351,7 +3356,13 @@ class BossBrute {
                                           this.bruteEscala,flipArte);
     }
     if(usouArte){
-      /* arte nova ja desenhada */
+      // clarao do golpe POR CIMA da arte, no mesmo formato dos outros chefes
+      if(this.flashTimer>0){
+        ctx.save(); ctx.globalAlpha=Math.min(1,this.flashTimer/100)*0.5;
+        ctx.fillStyle='#ffd2a6';
+        ctx.beginPath(); ctx.arc(this.x,groundY-gh*0.45,this.radius*0.95,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+      }
     } else if(this.flashTimer>0){
       ctx.save(); ctx.globalAlpha=0.85;
       drawBossGrid(frame, Object.fromEntries(Object.keys(PAL_BOSS_BRUTE).map(k=>[k,'#ffffff'])), this.x, cy, pxs,flip);
