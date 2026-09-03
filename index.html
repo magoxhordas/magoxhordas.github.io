@@ -15885,6 +15885,13 @@ class Player {
     ctx.translate(this.x, feetY); ctx.scale(sclX, sclY); ctx.translate(-this.x, -feetY);
     if(!drawHeroVisual(heroVisual, this.x, feetY+bobY, flipX))
       drawSpriteAt(sprites[fi], heroVisual.pal, this.x, feetY+bobY, flipX, 1);
+    else {
+      // guarda o quadro para os efeitos de estado tingirem ESTA silhueta
+      const _w=heroVisual.imgFrame||HERO_IMG_FRAME;
+      this._ultimoQuadroHeroi={img:heroVisual.img,w:_w,h:_w,flip:flipX,
+        dx:Math.round(this.x-_w/2),
+        dy:Math.round((feetY+bobY)-(heroVisual.imgFeet||HERO_IMG_FEET))};
+    }
     ctx.restore();
     if(this.isCasting&&typeof drawHeroSkinAttackEffect==='function'){
       const attackProgress=Math.max(0,Math.min(1,1-this.castTimer/(this.castMaxTimer||280)));
@@ -17087,7 +17094,10 @@ class EnemyProj {
     ctx.fillStyle='#c9c3a6'; ctx.fillRect(-10,-3,3,3); ctx.fillRect(-10,1,3,3);
     ctx.restore();
   }
-  hitPlayer(pl){ const d=Math.hypot(pl.x-this.x,pl.y-this.y); if(d<pl.radius+this.radius){ pl.takeDmg(this.dmg); this.dead=true; return true; } return false; }
+  hitPlayer(pl){ const d=Math.hypot(pl.x-this.x,pl.y-this.y); if(d<pl.radius+this.radius){ pl.takeDmg(this.dmg);
+    // o cuspe de lava queima; os demais projeteis simples sao so' impacto
+    marcarElemento(pl,this.tipo==='lava'?'fire':'physical',this.tipo==='lava'?900:400);
+    this.dead=true; return true; } return false; }
 }
 
 class WebShotProj {
@@ -17145,7 +17155,7 @@ class WebShotProj {
     ctx.fillStyle='#eef8f3'; ctx.beginPath(); ctx.arc(0,0,1.9,0,Math.PI*2); ctx.fill();
     ctx.restore();
   }
-  hitPlayer(pl){ const d=Math.hypot(pl.x-this.x,pl.y-this.y); if(d<pl.radius+this.radius){ pl.webbed=true; pl.webbedTimer=Math.max(pl.webbedTimer||0,3200); pl.slowed=true; pl.slowTimer=Math.max(pl.slowTimer||0,3200); this.dead=true; spawnParts(this.x,this.y,'#dceee6',9,32); return true; } return false; }
+  hitPlayer(pl){ const d=Math.hypot(pl.x-this.x,pl.y-this.y); if(d<pl.radius+this.radius){ pl.webbed=true; marcarElemento(pl,'ice',1200); pl.webbedTimer=Math.max(pl.webbedTimer||0,3200); pl.slowed=true; pl.slowTimer=Math.max(pl.slowTimer||0,3200); this.dead=true; spawnParts(this.x,this.y,'#dceee6',9,32); return true; } return false; }
 }
 
 class AcidShotProj {
@@ -17223,7 +17233,7 @@ class AcidShotProj {
     ctx.beginPath(); ctx.ellipse(2.4+Math.sin(this.onda)*0.7,-1.5,1.5,1.0,-0.5,0,Math.PI*2); ctx.fill();
     ctx.restore();
   }
-  hitPlayer(pl){ const d=Math.hypot(pl.x-this.x,pl.y-this.y); if(d<pl.radius+this.radius){ pl.takeDmg(this.dmg); this.dead=true; spawnParts(this.x,this.y,'#42f044',9,38); return true; } return false; }
+  hitPlayer(pl){ const d=Math.hypot(pl.x-this.x,pl.y-this.y); if(d<pl.radius+this.radius){ pl.takeDmg(this.dmg); marcarElemento(pl,'poison',1400); this.dead=true; spawnParts(this.x,this.y,'#42f044',9,38); return true; } return false; }
 }
 
 class HomingFireball {
@@ -17274,7 +17284,7 @@ class HomingFireball {
     ctx.fillStyle='#fff3c0'; ctx.fillRect(-2,-2,3,3);
     ctx.restore();
   }
-  hitPlayer(pl){ const d=Math.hypot(pl.x-this.x,pl.y-this.y); if(d<pl.radius+this.radius){ pl.takeDmg(this.dmg); this.dead=true; spawnParts(this.x,this.y,'#ff6600',8,50); return true; } return false; }
+  hitPlayer(pl){ const d=Math.hypot(pl.x-this.x,pl.y-this.y); if(d<pl.radius+this.radius){ pl.takeDmg(this.dmg); marcarElemento(pl,'fire',900); this.dead=true; spawnParts(this.x,this.y,'#ff6600',8,50); return true; } return false; }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -17426,6 +17436,7 @@ function collide(){
         // um inimigo comum. Renova a cada picada e continua fora de contato.
         if(e.isScorpion&&!pl.dead){
           pl.venenoT=Math.max(pl.venenoT||0,3000);
+          marcarElemento(pl,'poison',3000);
           if(Math.random()<0.10) spawnParts(pl.x,pl.y-6,'#7ee06a',2,26);
         }
         // Toque de Gelo do Zumbi. A bandeira iceTouch existia na configuracao
@@ -18488,6 +18499,43 @@ function templeChoose(choice){
 // GAME LOOP
 // ═══════════════════════════════════════════════════════
 // Elemental damage feedback shared by normal enemies and every campaign boss.
+/* Marca o elemento em QUEM QUER QUE SEJA. O campaignStatusEffects.markEnemy
+   so' atende inimigos; o jogador nunca era marcado, e por isso nunca ganhava
+   efeito visual nenhum. Aqui a marca e' a mesma estrutura (elementFx), para o
+   desenho nao precisar saber se esta olhando um heroi ou um bicho. */
+function marcarElemento(alvo,elemento,dur){
+  if(!alvo||alvo.dead)return;
+  alvo.elementFx=alvo.elementFx||{};
+  const agora=(typeof performance!=='undefined'?performance.now():Date.now());
+  const ate=agora+(dur||700);
+  alvo.elementFx[elemento]=Math.max(alvo.elementFx[elemento]||0,ate);
+}
+
+/* Tintura do HEROI. O inimigo tinge pelo modulo de sprites; o heroi tem
+   arte propria, entao precisa do seu proprio caminho — mesma tecnica:
+   source-atop num canvas auxiliar, para a cor cair so' onde ha' pixel. */
+let _auxHeroi=null,_auxHeroiCtx=null;
+function tingirHeroi(ctx2,q,cor,forca){
+  if(!q||!q.img||typeof document==='undefined')return false;
+  const w=q.w,h=q.h;
+  if(!(w>0&&h>0))return false;
+  if(!_auxHeroi){ _auxHeroi=document.createElement('canvas'); _auxHeroiCtx=_auxHeroi.getContext('2d'); }
+  if(_auxHeroi.width!==w||_auxHeroi.height!==h){ _auxHeroi.width=w; _auxHeroi.height=h; }
+  _auxHeroiCtx.clearRect(0,0,w,h);
+  _auxHeroiCtx.imageSmoothingEnabled=false;
+  _auxHeroiCtx.globalCompositeOperation='source-over';
+  _auxHeroiCtx.drawImage(q.img,0,0,w,h);
+  _auxHeroiCtx.globalCompositeOperation='source-atop';
+  _auxHeroiCtx.fillStyle=cor;
+  _auxHeroiCtx.fillRect(0,0,w,h);
+  _auxHeroiCtx.globalCompositeOperation='source-over';
+  ctx2.save(); ctx2.globalAlpha=forca; ctx2.imageSmoothingEnabled=false;
+  if(q.flip){ ctx2.translate(q.dx+w,q.dy); ctx2.scale(-1,1); ctx2.drawImage(_auxHeroi,0,0); }
+  else ctx2.drawImage(_auxHeroi,q.dx,q.dy);
+  ctx2.restore();
+  return true;
+}
+
 function drawEnemyStatusFx(e,t){
   if(!e||e.dead)return;
   const now=typeof performance!=='undefined'?performance.now():Date.now();
@@ -18496,7 +18544,8 @@ function drawEnemyStatusFx(e,t){
   const active=key=>(fx[key]||0)>now;
   const fire=active('fire')||e.weaponBurn?.timer>0;
   const ice=active('ice')||e.frozen||e.slowed;
-  const poison=active('poison')||Boolean(e.weaponPoisons?.length);
+  // venenoT e' o veneno do Escorpiao, que so' o JOGADOR carrega
+  const poison=active('poison')||Boolean(e.weaponPoisons?.length)||e.venenoT>0;
   if(!fire&&!ice&&!poison&&!active('electric')&&!active('shadow')&&!active('arcane')
      &&!active('solar')&&!active('wind')&&!active('blood')&&!active('physical'))return;
 
@@ -18517,10 +18566,13 @@ function drawEnemyStatusFx(e,t){
   const cx=e.x, cy=e.y;
   const pulso=.5+.5*Math.sin(t*.006+seed);
   const I=window.InimigosNormais;
-  const quadro=e._ultimoQuadro;
-
-  // tinge a silhueta; devolve false se este inimigo nao tem arte registrada
-  const tingir=(cor,forca)=>(I&&I.tingir)?I.tingir(ctx,quadro,cor,forca):false;
+  // Cada um registra o quadro que desenhou: o inimigo em _ultimoQuadro, o
+  // heroi em _ultimoQuadroHeroi. O desenho abaixo nao precisa saber qual e'.
+  const tingir=(cor,forca)=>{
+    if(e._ultimoQuadroHeroi) return tingirHeroi(ctx,e._ultimoQuadroHeroi,cor,forca);
+    if(I&&I.tingir&&e._ultimoQuadro) return I.tingir(ctx,e._ultimoQuadro,cor,forca);
+    return false;
+  };
   // faiscas/particulas: quadradinhas, como o resto do jogo
   const faiscas=(cor,qtd,vel,subida,espalha,tam)=>{
     ctx.fillStyle=cor;
@@ -18537,7 +18589,10 @@ function drawEnemyStatusFx(e,t){
 
   // ── GELO: o cubo, reaproveitado ──
   if(ice){
-    if(e.frozen && typeof drawFrozenPlayerCube==='function'){
+    // O heroi ja' desenha o proprio cubo no draw dele (freezeFx==='iceCube').
+    // Sem esta guarda sairiam dois cubos sobrepostos.
+    const jaTemCubo = e.freezeFx==='iceCube';
+    if(e.frozen && !jaTemCubo && typeof drawFrozenPlayerCube==='function'){
       drawFrozenPlayerCube(e,t,{meia:r*1.12, alto:r*1.7, baixo:r*0.62});
     }else{
       // so' lento, ainda nao congelado: azula o corpo, sem cubo
@@ -18820,8 +18875,11 @@ function loop(ts){
     ...(bossSpider&&!bossSpider.dead?[{y:bossSpider.y,fn:()=>{desenharChefe(bossSpider,t);}}]:[]),
     ...(bossMajor&&!bossMajor.dead?[{y:bossMajor.y,fn:()=>{desenharChefe(bossMajor,t);}}]:[]),
     ...structures.map(s=>({y:s.y,fn:()=>s.draw(t)})),
-    {y:player.y,fn:()=>player.draw(t)},
-    ...(gameMode===2&&player2?[{y:player2.y,fn:()=>player2.draw(t)}]:[]),
+    // Os efeitos de estado valem para o heroi tambem, e nao so' para os
+    // inimigos: quem esta queimando, envenenado ou congelado precisa ver
+    // isso em si mesmo.
+    {y:player.y,fn:()=>{player.draw(t); drawEnemyStatusFx(player,t);}},
+    ...(gameMode===2&&player2?[{y:player2.y,fn:()=>{player2.draw(t); drawEnemyStatusFx(player2,t);}}]:[]),
   ].sort((a,b)=>a.y-b.y);
   for(const e of ents) e.fn();
   for(const p of projs) p.draw();
