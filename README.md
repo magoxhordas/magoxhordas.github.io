@@ -11,6 +11,12 @@ Versão consolidada do jogo de ação em HTML, CSS e JavaScript.
 - acampamento, fazenda, pesca, crafting e lojas;
 - testes de integridade em `scripts/`.
 
+## Afinidade divina
+
+O sistema de bênçãos possui 15 divindades, 75 bênçãos normais e progressão por afinidade. Duas bênçãos ativam Ressonância; a terceira abre uma escolha entre duas Ascensões; a quarta evolui a escolha; e a quinta desperta a Apoteose e encerra as ofertas daquele deus. Os efeitos usam ataques automáticos, acertos, eliminações, dash, dano e ondas reais, com estado independente para P1 e P2.
+
+O catálogo fica em `src/blessings/blessing-data.js` e o motor de progressão e combate em `src/blessings/blessing-affinity-system.js`. O verificador dedicado é `scripts/verify-deity-blessings.mjs`.
+
 ## Estrutura do codigo
 
 O jogo foi modularizado de forma incremental, preservando o `index.html` como entrada oficial. Os limites dos sistemas extraídos estão documentados em [`src/README.md`](src/README.md). O [relatório final](docs/refactor-final-report.md) registra a arquitetura, compatibilidade, dívida técnica e riscos conhecidos.

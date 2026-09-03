@@ -1752,7 +1752,8 @@ function collDeityArtIcon(id){
   return art?{artPath:art.path,color:art.color}:collBlessingIcon({id:`${id}_codex`});
 }
 function renderCollBlessings(grid){
-  const deities=Array.isArray(window.DEITY_BLESSINGS_V2)?window.DEITY_BLESSINGS_V2:[];
+  const deities=Array.isArray(window.DEITY_BLESSINGS_V4)?window.DEITY_BLESSINGS_V4:
+    (Array.isArray(window.DEITY_BLESSINGS_V2)?window.DEITY_BLESSINGS_V2:[]);
   const rarities=Array.isArray(window.DEITY_BLESSING_RARITIES)?window.DEITY_BLESSING_RARITIES:[
     {id:'comum',label:'COMUM',color:'#79e89a'},
     {id:'incomum',label:'INCOMUM',color:'#43d477'},
@@ -1766,8 +1767,9 @@ function renderCollBlessings(grid){
   deities.forEach(deity=>{
     const boons=Array.isArray(deity.boons)?deity.boons:[];
     const godIcon=collDeityArtIcon(deity.id);
-    grid.appendChild(collCard(godIcon, deity.name, `${boons.length} bênçãos`, false, ()=>{
+    grid.appendChild(collCard(godIcon, deity.name, `${boons.length} bênçãos · afinidade`, false, ()=>{
       const det=document.getElementById('coll-detail');det.className='coll-detail visible';
+      const progression=deity.progression||window.MagoBlessingData?.PROGRESSION?.[deity.id];
       const boonHtml=boons.map(boon=>{
         const rarityHtml=rarities.map((rarity,index)=>{
           const value=boon.values?.[index]??0;
@@ -1788,14 +1790,36 @@ function renderCollBlessings(grid){
           <div class="coll-boon-rarity-grid">${rarityHtml}</div>
         </div>`;
       }).join('');
+      const progressionHtml=progression?`<div class="coll-det-divider"></div>
+        <div class="coll-det-section-title">PROGRESSÃO DE AFINIDADE</div>
+        <div class="coll-boon-card coll-affinity-card" style="--boon-color:${godIcon.color||'#c8a84b'}">
+          <div class="coll-boon-role">2/5 · RESSONÂNCIA</div>
+          <div class="coll-boon-name">${progression.resonance[0]}</div>
+          <div class="coll-boon-desc">${progression.resonance[1]}</div>
+        </div>
+        <div class="coll-affinity-ascensions">${progression.ascensions.map(ascension=>`<div class="coll-boon-card coll-affinity-card" style="--boon-color:${godIcon.color||'#c8a84b'}">
+          <div class="coll-boon-role">3/5 · ASCENSÃO</div>
+          <div class="coll-boon-name">${ascension[1]}</div>
+          <div class="coll-boon-desc">${ascension[2]}</div>
+        </div>`).join('')}</div>
+        <div class="coll-boon-card coll-affinity-card" style="--boon-color:${godIcon.color||'#c8a84b'}">
+          <div class="coll-boon-role">4/5 · EVOLUÇÃO</div>
+          <div class="coll-boon-name">Ascensão Evoluída</div>
+          <div class="coll-boon-desc">A Ascensão escolhida evolui automaticamente e fortalece sua mecânica.</div>
+        </div>
+        <div class="coll-boon-card coll-affinity-card coll-affinity-apotheosis" style="--boon-color:${godIcon.color||'#c8a84b'}">
+          <div class="coll-boon-role">5/5 · APOTEOSE</div>
+          <div class="coll-boon-name">${progression.apotheosis[0]}</div>
+          <div class="coll-boon-desc">${progression.apotheosis[1]}</div>
+        </div>`:'';
       det.innerHTML=`<div class="coll-det-header">
         <div class="coll-det-icon">${collIconHtml(godIcon,48)}</div>
         <div class="coll-det-info">
           <div class="coll-det-name">${deity.name}</div>
           <div class="coll-det-type">${deity.title}</div>
-          <div class="coll-det-kills">${boons.length} bênçãos · ${rarities.length} raridades</div>
+          <div class="coll-det-kills">${boons.length} bênçãos · ${progression?.ascensions?.length||0} Ascensões · 1 Apoteose</div>
         </div>
-      </div><div class="coll-det-divider"></div>${boonHtml}`;
+      </div><div class="coll-det-divider"></div>${boonHtml}${progressionHtml}`;
     }, null, godIcon.color||'#c8a84b'));
   });
 }
