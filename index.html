@@ -18486,191 +18486,112 @@ function drawEnemyStatusFx(e,t){
   if(!fire&&!ice&&!poison&&!active('electric')&&!active('shadow')&&!active('arcane')
      &&!active('solar')&&!active('wind')&&!active('blood')&&!active('physical'))return;
 
-  const r=Math.max(10,Math.min(58,e.radius||16));
-  const pulse=.5+.5*Math.sin(t*.014+e.x*.03);
-  const seed=(e.x*0.7+e.y*1.3)%6.283;   // fase propria por inimigo
-  const cx=e.x, cy=e.y;
-  const hex=v=>Math.max(0,Math.min(255,Math.round(v*255))).toString(16).padStart(2,'0');
-  ctx.save(); ctx.lineCap='round'; ctx.lineJoin='round';
+  /* Vocabulario MINIMO e igual para todos os elementos:
+       1. um traco fino de luz no chao, na cor do elemento
+       2. duas particulas pequenas, com movimento proprio de cada um
+     So' isso. A versao anterior pintava um gradiente radial sobre o CORPO
+     INTEIRO (a funcao 'banhar') e empilhava de tres a cinco camadas de
+     geometria animada por cima — labaredas curvas, cristais com contorno,
+     raios atravessando o bicho, runas orbitando. O inimigo sumia debaixo da
+     bolha colorida, que e' o oposto do que o efeito deveria fazer: avisar
+     sem tapar. Tambem custava caro, criando um gradiente por inimigo POR
+     QUADRO e usando shadowBlur, que e' a operacao mais cara do canvas.
 
-  // Banha o CORPO com a cor do elemento (nao um anel em volta)
-  const banhar=(cor,forca)=>{
-    const g=ctx.createRadialGradient(cx,cy,0,cx,cy,r*1.15);
-    g.addColorStop(0,cor+hex(forca));
-    g.addColorStop(.62,cor+hex(forca*.55));
-    g.addColorStop(1,cor+'00');
-    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(cx,cy,r*1.15,0,Math.PI*2); ctx.fill();
+     A unica excecao e' CONGELADO, que ganha uma camada por cima do corpo:
+     ali o efeito precisa dizer que o inimigo esta PARADO, e nao so' que
+     levou dano de gelo. */
+
+  const r=Math.max(10,Math.min(58,e.radius||16));
+  const seed=(e.x*0.7+e.y*1.3)%6.283;      // fase propria, para nao piscarem juntos
+  const cx=e.x, cy=e.y;
+  const pe=cy+r*0.86;                      // linha do chao do inimigo
+
+  ctx.save();
+
+  // marca no chao: uma elipse fina, discreta
+  const rastro=(cor,forca)=>{
+    ctx.globalAlpha=forca;
+    ctx.fillStyle=cor;
+    ctx.beginPath(); ctx.ellipse(cx,pe,r*0.62,r*0.17,0,0,Math.PI*2); ctx.fill();
+  };
+  // duas particulas, quadradinhas como o resto do jogo
+  const poeira=(cor,vel,subida,espalha,tam)=>{
+    ctx.fillStyle=cor;
+    for(let i=0;i<2;i++){
+      const p=((t*vel+i*0.5+seed)%1);
+      ctx.globalAlpha=(1-p)*0.75;
+      const px=cx+Math.sin(seed+i*2.6+p*3.1)*r*espalha;
+      const py=cy+r*0.2-p*r*subida;
+      ctx.fillRect(Math.round(px),Math.round(py),tam,tam);
+    }
   };
 
-  // FOGO: labaredas subindo do corpo + brasas
-  if(fire){
-    ctx.globalCompositeOperation='lighter';
-    ctx.globalAlpha=1; banhar('#ff5a10',.30+.12*pulse);
-    for(let i=0;i<5;i++){
-      const f=seed+i*1.7+t*.009;
-      const bx=cx+Math.sin(f*1.3+i)*r*.62;
-      const alt=r*(.75+.45*((Math.sin(f)+1)/2));
-      const by=cy-r*.35;
-      ctx.globalAlpha=.55+.3*((Math.sin(f*1.7)+1)/2);
-      ctx.fillStyle='#ff8a1e';
-      ctx.beginPath(); ctx.moveTo(bx-r*.19,by);
-      ctx.quadraticCurveTo(bx-r*.24,by-alt*.55,bx,by-alt);
-      ctx.quadraticCurveTo(bx+r*.24,by-alt*.55,bx+r*.19,by);
-      ctx.closePath(); ctx.fill();
-      ctx.globalAlpha=.75; ctx.fillStyle='#ffd94a';
-      ctx.beginPath(); ctx.moveTo(bx-r*.08,by);
-      ctx.quadraticCurveTo(bx-r*.10,by-alt*.42,bx,by-alt*.68);
-      ctx.quadraticCurveTo(bx+r*.10,by-alt*.42,bx+r*.08,by);
-      ctx.closePath(); ctx.fill();
-    }
-    for(let i=0;i<4;i++){
-      const p=((t*.0006+i*.27+seed)%1);
-      ctx.globalAlpha=(1-p)*.85; ctx.fillStyle=i%2?'#ffb43a':'#ff6a18';
-      ctx.fillRect(cx+Math.sin(seed+i*2.4+p*4)*r*.8, cy-r*.3-p*r*2.1, 2,2);
-    }
-    ctx.globalCompositeOperation='source-over';
+  if(fire){                                    // brasas subindo
+    rastro('#ff7a20',0.26);
+    poeira('#ffb040',0.0007,1.5,0.42,2);
   }
-
-  // GELO: crosta cobrindo o corpo + cristais
   if(ice){
     const cong=!!e.frozen;
-    ctx.globalAlpha=cong?.62:.34;
-    ctx.fillStyle=cong?'#bdf0ff':'#7cc4ee';
-    ctx.beginPath(); ctx.arc(cx,cy,r*1.02,0,Math.PI*2); ctx.fill();
-    ctx.globalAlpha=cong?.5:.3; banhar('#9fe4ff',.5);
-    ctx.globalAlpha=cong?.95:.7; ctx.fillStyle='#e8fbff'; ctx.strokeStyle='#9fdcf5'; ctx.lineWidth=1;
-    for(let i=0;i<5;i++){
-      const a=seed+i*(Math.PI*2/5), br=r*.85;
-      const px=cx+Math.cos(a)*br, py=cy+Math.sin(a)*br*.85;
-      const cmp=r*(.22+.12*((i*7%5)/5));
-      ctx.beginPath();
-      ctx.moveTo(px+Math.cos(a)*cmp,py+Math.sin(a)*cmp);
-      ctx.lineTo(px+Math.cos(a+2.4)*cmp*.45,py+Math.sin(a+2.4)*cmp*.45);
-      ctx.lineTo(px+Math.cos(a-2.4)*cmp*.45,py+Math.sin(a-2.4)*cmp*.45);
-      ctx.closePath(); ctx.fill(); ctx.stroke();
-    }
     if(cong){
-      ctx.globalAlpha=.5; ctx.strokeStyle='#ffffff'; ctx.lineWidth=1;
-      for(let i=0;i<3;i++){ const a=seed*2+i*2.1;
-        ctx.beginPath(); ctx.moveTo(cx,cy);
-        ctx.lineTo(cx+Math.cos(a)*r*.7,cy+Math.sin(a)*r*.7); ctx.stroke(); }
+      // congelado: a camada por cima diz que ele parou
+      ctx.globalAlpha=0.34; ctx.fillStyle='#bfeeff';
+      ctx.beginPath(); ctx.arc(cx,cy,r*0.95,0,Math.PI*2); ctx.fill();
+      ctx.globalAlpha=0.55; ctx.strokeStyle='#eafaff'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.arc(cx,cy,r*0.95,0,Math.PI*2); ctx.stroke();
     }
-    ctx.globalAlpha=.85; ctx.fillStyle='#ffffff';
-    for(let i=0;i<3;i++){ const f=t*.004+seed+i*2.2;
-      ctx.fillRect(cx+Math.cos(f)*r*.75, cy+Math.sin(f*1.3)*r*.7, 2,2); }
+    rastro('#7cc4ee',cong?0.34:0.22);
+    poeira('#dff4ff',0.0004,-0.5,0.5,2);       // cai devagar, em vez de subir
   }
-
-  // RAIO: arcos ATRAVESSANDO o corpo + estalo branco
-  if(active('electric')){
-    ctx.globalCompositeOperation='lighter';
-    if((Math.floor(t/110)+Math.floor(seed*10))%4===0){ ctx.globalAlpha=.5; banhar('#fdfbc8',.6); }
-    ctx.globalAlpha=.95; ctx.strokeStyle='#fff9a8'; ctx.shadowColor='#ffe94d'; ctx.shadowBlur=8; ctx.lineWidth=1.6;
-    for(let i=0;i<3;i++){
-      const a=seed+i*2.09+Math.floor(t/90)*1.1;
+  if(poison){                                  // bolhas lentas
+    rastro('#46c24d',0.24);
+    poeira('#a8f07e',0.0005,1.3,0.38,2);
+  }
+  if(active('electric')){                      // estalo curto, so' de vez em quando
+    rastro('#ffe94d',0.22);
+    if((Math.floor(t/130)+Math.floor(seed*10))%3===0){
+      ctx.globalAlpha=0.8; ctx.strokeStyle='#fff6a8'; ctx.lineWidth=1.4;
+      const a=seed+Math.floor(t/130)*1.3;
       ctx.beginPath();
-      ctx.moveTo(cx+Math.cos(a)*r*.95, cy+Math.sin(a)*r*.95);
-      for(let j=0;j<4;j++){
-        const tt=(j+1)/4;
-        ctx.lineTo(cx+Math.cos(a+Math.PI)*r*.95*tt + Math.cos(a+1.57)*((j%2?1:-1)*r*.26),
-                   cy+Math.sin(a+Math.PI)*r*.95*tt + Math.sin(a+1.57)*((j%2?1:-1)*r*.26));
-      }
+      ctx.moveTo(cx+Math.cos(a)*r*0.8, cy+Math.sin(a)*r*0.6);
+      ctx.lineTo(cx+Math.cos(a)*r*0.15-r*0.12, cy+Math.sin(a)*r*0.1);
+      ctx.lineTo(cx-Math.cos(a)*r*0.7, cy-Math.sin(a)*r*0.55);
       ctx.stroke();
     }
-    ctx.shadowBlur=0;
-    ctx.globalAlpha=.9; ctx.fillStyle='#ffffff';
-    for(let i=0;i<3;i++){ const f=t*.012+seed+i*2.4;
-      ctx.fillRect(cx+Math.cos(f)*r*1.05, cy+Math.sin(f)*r*.95, 2,2); }
-    ctx.globalCompositeOperation='source-over';
   }
-
-  // VENENO: corpo esverdeado + bolhas subindo
-  if(poison){
-    ctx.globalAlpha=.30+.10*pulse; banhar('#3fbf46',.55);
-    ctx.strokeStyle='#b6ff86'; ctx.fillStyle='rgba(140,240,110,.45)'; ctx.lineWidth=1.2;
-    for(let i=0;i<4;i++){
-      const p=((t*.0005+i*.29+seed)%1);
-      ctx.globalAlpha=(1-p)*.9;
-      ctx.beginPath();
-      ctx.arc(cx+Math.sin(seed+i*1.9)*r*.6, cy+r*.2-p*r*1.9, 1.5+i*.6, 0, Math.PI*2);
-      ctx.fill(); ctx.stroke();
+  if(active('shadow')){                        // fumaca baixa
+    rastro('#6a1fb8',0.26);
+    poeira('#a06be0',0.0004,1.1,0.34,2);
+  }
+  if(active('arcane')){                        // dois pontos orbitando
+    rastro('#a34cff',0.22);
+    ctx.fillStyle='#e0b0ff';
+    for(let i=0;i<2;i++){
+      const a=t*0.0022+i*Math.PI+seed;
+      ctx.globalAlpha=0.75;
+      ctx.fillRect(Math.round(cx+Math.cos(a)*r*0.95),Math.round(cy+Math.sin(a)*r*0.6),2,2);
     }
   }
-
-  // SOMBRA: fumaca escura saindo do corpo
-  if(active('shadow')){
-    ctx.globalAlpha=.34+.12*pulse; banhar('#6a1fb8',.6);
-    ctx.fillStyle='#2a0d4a';
-    for(let i=0;i<4;i++){
-      const p=((t*.0004+i*.31+seed)%1);
-      ctx.globalAlpha=(1-p)*.55;
-      ctx.beginPath();
-      ctx.arc(cx+Math.sin(seed*2+i*1.6+p*3)*r*.7, cy-p*r*1.7, r*.20*(1+p), 0, Math.PI*2);
-      ctx.fill();
-    }
+  if(active('solar')){                         // fagulhas rapidas
+    rastro('#ffd447',0.26);
+    poeira('#fff0a8',0.0011,1.6,0.34,2);
   }
-
-  // ARCANO: runas orbitando
-  if(active('arcane')){
-    ctx.globalAlpha=.26; banhar('#a34cff',.6);
-    ctx.globalAlpha=.9; ctx.fillStyle='#e8b6ff'; ctx.strokeStyle='#c77bff'; ctx.lineWidth=1;
-    for(let i=0;i<4;i++){
-      const a=t*.0022+i*Math.PI/2+seed, rr=r*1.1;
-      ctx.save();
-      ctx.translate(cx+Math.cos(a)*rr, cy+Math.sin(a)*rr*.72); ctx.rotate(a);
-      ctx.fillRect(-2.5,-2.5,5,5); ctx.strokeRect(-4,-4,8,8);
-      ctx.restore();
-    }
+  if(active('wind')){                          // um risco horizontal passando
+    rastro('#7fe6ff',0.20);
+    const p=((t*0.0016+seed)%1);
+    ctx.globalAlpha=Math.sin(p*Math.PI)*0.7;
+    ctx.strokeStyle='#d6faff'; ctx.lineWidth=1.2; ctx.lineCap='round';
+    const yy=cy-r*0.5+p*r*1.1, w=r*(0.3+0.5*Math.sin(p*Math.PI));
+    ctx.beginPath(); ctx.moveTo(cx-w,yy); ctx.lineTo(cx+w,yy); ctx.stroke();
   }
-
-  // SOLAR: corpo incandescente + raios curtos
-  if(active('solar')){
-    ctx.globalCompositeOperation='lighter';
-    ctx.globalAlpha=1; banhar('#ffd447',.34+.12*pulse);
-    ctx.globalAlpha=.8; ctx.strokeStyle='#fff0a8'; ctx.lineWidth=1.6;
-    for(let i=0;i<8;i++){ const a=i*Math.PI/4+t*.0012;
-      ctx.beginPath();
-      ctx.moveTo(cx+Math.cos(a)*r*1.02, cy+Math.sin(a)*r*1.02);
-      ctx.lineTo(cx+Math.cos(a)*(r*1.02+4+pulse*4), cy+Math.sin(a)*(r*1.02+4+pulse*4));
-      ctx.stroke(); }
-    ctx.globalCompositeOperation='source-over';
+  if(active('blood')){                         // gotas escorrendo
+    rastro('#c2202a',0.26);
+    poeira('#ff4450',0.0006,-0.9,0.3,2);
   }
-
-  // VENTO: rajadas cortando o corpo
-  if(active('wind')){
-    ctx.globalAlpha=.22+.10*pulse; banhar('#7fe6ff',.5);
-    ctx.strokeStyle='#d6faff'; ctx.lineCap='round';
-    for(let i=0;i<6;i++){
-      const p=((t*.0016+i*.17+seed)%1), yy=cy-r*.85+p*r*1.7;
-      const w=r*(.45+.6*Math.sin(p*Math.PI));
-      ctx.globalAlpha=Math.max(.25,Math.sin(p*Math.PI))*.9;
-      ctx.lineWidth=1.2+Math.sin(p*Math.PI)*1.4;
-      ctx.beginPath(); ctx.moveTo(cx-w,yy);
-      ctx.quadraticCurveTo(cx,yy-r*.14,cx+w,yy); ctx.stroke();
-    }
-    // folhas/poeira girando em volta
-    ctx.fillStyle='#eafdff';
-    for(let i=0;i<4;i++){ const a=t*.005+seed+i*1.57;
-      ctx.globalAlpha=.65;
-      ctx.fillRect(cx+Math.cos(a)*r*1.1, cy+Math.sin(a)*r*.8, 2,2); }
-  }
-
-  // SANGRAMENTO: gotas escorrendo
-  if(active('blood')){
-    ctx.globalAlpha=.26; banhar('#c2202a',.6);
-    ctx.fillStyle='#ff3b46';
-    for(let i=0;i<3;i++){
-      const p=((t*.0007+i*.36+seed)%1);
-      ctx.globalAlpha=(1-p)*.95;
-      ctx.beginPath(); ctx.arc(cx-r*.5+i*r*.5, cy+r*.15+p*r*1.1, 1.8+(1-p), 0, Math.PI*2); ctx.fill();
-    }
-  }
-
-  // FISICO: clarao curto de impacto
-  if(active('physical')){
-    ctx.globalAlpha=.55; ctx.strokeStyle='#fff6e2'; ctx.shadowColor='#ffffff'; ctx.shadowBlur=6; ctx.lineWidth=2.5;
+  if(active('physical')){                      // lampejo curto, sem borrao
+    ctx.globalAlpha=0.4; ctx.strokeStyle='#fff6e2'; ctx.lineWidth=2;
     ctx.beginPath();
-    ctx.moveTo(cx-r*.75,cy-r*.6); ctx.lineTo(cx+r*.65,cy+r*.5);
-    ctx.stroke(); ctx.shadowBlur=0;
+    ctx.moveTo(cx-r*0.5,cy-r*0.42); ctx.lineTo(cx+r*0.45,cy+r*0.35);
+    ctx.stroke();
   }
 
   ctx.globalAlpha=1;
