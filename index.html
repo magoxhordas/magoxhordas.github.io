@@ -17319,7 +17319,12 @@ function hitCampaignObjectiveWithProjectile(p,target){
     p.hitTargets.add(target);markEnemyWeaponStatus(target,p.weapon);
     p.weapon.damageDone=(p.weapon.damageDone||0)+damage;
     applyClassHitEffect({owner,dmg:damage,weapon:p.weapon},target);
-  }else applyClassHitEffect(p,target);
+  }else{
+    applyClassHitEffect(p,target);
+    // projetil simples tambem deixa marca: sem isto so' as armas de
+    // campanha faziam o altar reagir ao elemento.
+    markEnemyWeaponStatus(target,p.weapon||p.element||'physical');
+  }
   const canContinue=p.isCampaignWeaponProj&&p.pierce>0;
   if(canContinue)p.pierce--;else p.dead=true;
   spawnParts(target.x,target.y,p.color||'#f0d080',5,34);
@@ -18571,6 +18576,9 @@ function drawEnemyStatusFx(e,t){
   const tingir=(cor,forca)=>{
     if(e._ultimoQuadroHeroi) return tingirHeroi(ctx,e._ultimoQuadroHeroi,cor,forca);
     if(I&&I.tingir&&e._ultimoQuadro) return I.tingir(ctx,e._ultimoQuadro,cor,forca);
+    // altares, ninhos, obeliscos e fogueiras: mesma ideia, arte propria
+    if(e._ultimoObjeto&&typeof CampaignObjectives!=='undefined'&&CampaignObjectives.tingirObjeto)
+      return CampaignObjectives.tingirObjeto(ctx,e._ultimoObjeto,cor,forca);
     return false;
   };
   // faiscas/particulas: quadradinhas, como o resto do jogo
@@ -18887,6 +18895,12 @@ function loop(ts){
   for(const m of meleeAnims) m.draw(t);
   for(const p of parts) p.draw();
   campaignObjectives.drawOverlay(ctx,t,W,H);
+  // Os alvos que se destroem (altares, ninhos, obeliscos, baus) ja' eram
+  // MARCADOS com o elemento ao levar tiro; faltava desenhar. Vem depois do
+  // drawOverlay para o efeito ficar por cima do objeto.
+  if(campaignObjectives.getTodosAlvos){
+    for(const alvo of campaignObjectives.getTodosAlvos()) drawEnemyStatusFx(alvo,t);
+  }
   // Painel do chefe: um so', no alto. Vem depois do mundo para nada passar
   // por cima dele, e antes dos avisos de onda, que precisam ficar acima.
   if(typeof BossHUD!=='undefined'){

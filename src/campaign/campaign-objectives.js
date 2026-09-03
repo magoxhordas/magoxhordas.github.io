@@ -25,9 +25,37 @@
   }
   /* Desenha ancorado pela base em (x, yBase). `larguraAlvo` diz quantos
      pixels o objeto deve ocupar na tela; a altura acompanha a proporcao. */
-  function desenharObjeto(ctx,nome,x,yBase,larguraAlvo){
+  /* Tinge um objeto de cenario com a cor de um elemento, do mesmo jeito
+     que inimigos e heroi: source-atop num canvas auxiliar, para a cor cair
+     so' onde ha' pixel. */
+  let auxObj=null,auxObjCtx=null;
+  function tingirObjeto(ctx,reg,cor,forca){
+    if(!reg||typeof document==='undefined')return false;
+    const im=arteObjeto(reg.nome);
+    if(!im)return false;
+    const k=reg.largura/im.naturalWidth;
+    const w=Math.round(im.naturalWidth*k), h=Math.round(im.naturalHeight*k);
+    if(!(w>0&&h>0))return false;
+    if(!auxObj){ auxObj=document.createElement('canvas'); auxObjCtx=auxObj.getContext('2d'); }
+    if(auxObj.width!==w||auxObj.height!==h){ auxObj.width=w; auxObj.height=h; }
+    auxObjCtx.clearRect(0,0,w,h);
+    auxObjCtx.imageSmoothingEnabled=false;
+    auxObjCtx.globalCompositeOperation='source-over';
+    auxObjCtx.drawImage(im,0,0,w,h);
+    auxObjCtx.globalCompositeOperation='source-atop';
+    auxObjCtx.fillStyle=cor; auxObjCtx.fillRect(0,0,w,h);
+    auxObjCtx.globalCompositeOperation='source-over';
+    ctx.save(); ctx.globalAlpha=forca; ctx.imageSmoothingEnabled=false;
+    ctx.drawImage(auxObj,Math.round(reg.x-w/2),Math.round(reg.yBase-h));
+    ctx.restore();
+    return true;
+  }
+
+  function desenharObjeto(ctx,nome,x,yBase,larguraAlvo,dono){
     const im=arteObjeto(nome);
     if(!im)return false;
+    // guarda o que foi desenhado, para os efeitos elementais tingirem ISTO
+    if(dono) dono._ultimoObjeto={nome,x,yBase,largura:larguraAlvo};
     const recorte=ARTE_RECORTES[nome];
     const largura=recorte?recorte.w:im.naturalWidth,altura=recorte?recorte.h:im.naturalHeight;
     const k=larguraAlvo/largura;
@@ -851,6 +879,11 @@
        proprio alvo mais o do heroi (36 a 39px); a interacao alcanca
        raio+58, entao continua dando para acender a fogueira e mexer nos
        altares encostado neles. */
+    /* TODOS os alvos vivos, para o jogo desenhar os efeitos elementais em
+       cima deles: altares, ninhos, obeliscos, baus. Eles ja' eram MARCADOS
+       ao levar tiro (markEnemyWeaponStatus), so' nunca eram desenhados. */
+    function getTodosAlvos(){ return alive(current.targets); }
+
     function getSolidTargets(){
       return alive(current.targets).filter(target=>SOLIDOS.indexOf(target.kind)>=0);
     }
@@ -914,7 +947,7 @@
       ctx.globalAlpha=.30;ctx.fillStyle='#000';ctx.beginPath();ctx.ellipse(x,y+15,target.radius*1.05,target.radius*.34,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
       if(target.kind==='bone_altar'){
         const altarY=y+14;
-        if(desenharObjeto(ctx,'altar_ossos',x,altarY,50)){
+        if(desenharObjeto(ctx,'altar_ossos',x,altarY,50,target)){
           // O altar fica firme no chao: sem bob e sem brilho pulsante.
           const g=ctx.createRadialGradient(x,y-14,1,x,y-14,25);
           g.addColorStop(0,'rgba(206,142,232,.30)');
@@ -969,7 +1002,7 @@
         // So' o Sombrio tem arte: o Demoniaco (onda 23, vulcao) continua
         // desenhado a mao, porque nao veio objeto infernal no pacote.
         const altarY=y+16;
-        if(target.kind==='dark_altar'&&desenharObjeto(ctx,'obelisco',x,altarY,40)){
+        if(target.kind==='dark_altar'&&desenharObjeto(ctx,'obelisco',x,altarY,40,target)){
           const g=ctx.createRadialGradient(x,y-16,1,x,y-16,29);
           g.addColorStop(0,'rgba(190,120,235,.36)');
           g.addColorStop(1,'rgba(40,10,60,0)');
@@ -1074,7 +1107,7 @@
         // chao e explicam a lentidao de quem chega perto
         ctx.strokeStyle='rgba(225,238,230,.75)';ctx.lineWidth=1;for(let i=0;i<8;i++){const a=i*Math.PI/4;ctx.beginPath();ctx.moveTo(x,y+6);ctx.lineTo(x+Math.cos(a)*30,y+6+Math.sin(a)*21);ctx.stroke();}
         // Vistas laterais voltadas para o centro, fixas durante toda a onda.
-        if(desenharObjeto(ctx,target.artVariant||'ninho_east',x,y+16,48)||desenharObjeto(ctx,'ninho',x,y+16,48)){ctx.restore();return;}
+        if(desenharObjeto(ctx,target.artVariant||'ninho_east',x,y+16,48,target)||desenharObjeto(ctx,'ninho',x,y+16,48,target)){ctx.restore();return;}
         ctx.fillStyle='#5b594b';ctx.beginPath();ctx.ellipse(x,y,22,14,0,0,Math.PI*2);ctx.fill();for(let i=0;i<5;i++){ctx.fillStyle=i%2?'#dfe6d9':'#aaa994';ctx.beginPath();ctx.arc(x-12+i*6,y-4+(i%2)*7,5,0,Math.PI*2);ctx.fill();}
       }else if(target.kind==='survivor_web'){
         ctx.strokeStyle='#e0ebe4';ctx.lineWidth=2;for(let i=0;i<7;i++){const a=i*Math.PI/7;ctx.beginPath();ctx.ellipse(x,y,21-i*2,28-i*2,a,0,Math.PI*2);ctx.stroke();}ctx.fillStyle='#865b47';ctx.fillRect(x-5,y-8,10,21);ctx.fillStyle='#d7b08a';ctx.fillRect(x-4,y-15,8,8);
@@ -1123,7 +1156,7 @@
         // a arte veio em par: o mesmo braseiro apagado e aceso. As duas
         // larguras-alvo saem do MESMO fator de escala, senao a pedra mudava
         // de tamanho na hora de acender.
-        const arte=desenharObjeto(ctx,target.lit?'fogueira_on':'fogueira_off',x,y+14,target.lit?32:36);
+        const arte=desenharObjeto(ctx,target.lit?'fogueira_on':'fogueira_off',x,y+14,target.lit?32:36,target);
         if(arte&&target.lit){
           const glow=ctx.createRadialGradient(x,y-12,0,x,y-12,40+pulse*8);
           glow.addColorStop(0,`rgba(105,220,255,${.26+pulse*.14})`);glow.addColorStop(1,'rgba(0,0,0,0)');
@@ -1237,12 +1270,12 @@
 
     return Object.freeze({
       resetRun,startWave,update,draw,drawOverlay,cleanup,onWaveEnd,onBossSpawn,onEnemySpawn,
-      getCombatTargets,getSolidTargets,getCurrentDefinition,canEndWave,controlsWaveTimer,allowNormalSpawns,normalSpawnCap,spawnIntervalMultiplier,
+      getCombatTargets,getSolidTargets,getTodosAlvos,getCurrentDefinition,canEndWave,controlsWaveTimer,allowNormalSpawns,normalSpawnCap,spawnIntervalMultiplier,
       modifyOutgoingDamage,movementMultiplier,cooldownDurationMultiplier,cooldownRecoveryMultiplier,
       enemySpeedMultiplier,applyEnemySpeed,enemyAggroTarget,hitSurvivorWithProjectile,handleActionDown,handleActionUp,addTimedModifier,debugSnapshot,
     });
   }
 
   // O evento Altar dos Deuses compartilha o cache de arte dos objetivos.
-  global.CampaignObjectives=Object.freeze({create,CampaignObjectiveTarget,OBJECTIVE_WAVES,POSITIONS,desenharObjeto});
+  global.CampaignObjectives=Object.freeze({create,CampaignObjectiveTarget,OBJECTIVE_WAVES,POSITIONS,desenharObjeto,tingirObjeto});
 })(typeof window!=='undefined'?window:globalThis);
