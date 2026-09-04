@@ -886,6 +886,7 @@ class BossSkeletonKing {
         this.isSpinning=false;
         const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead);
         for(const pl of allPl) if(Math.hypot(pl.x-this.x,pl.y-this.y)<this.spinRadius) pl.takeDmg(this.damage*0.9);
+        if(typeof BossModifierSystem!=='undefined') BossModifierSystem.golpeForte(this,this.x,this.y,this.damage*0.9);
         spawnParts(this.x,this.y,'#aabbff',16,75);
         this._throwBoomerang(allPl);
       }
@@ -970,8 +971,8 @@ class BossSkeletonKing {
     }
     spawnParts(this.x,this.y,'#d0d0ff',12,60);
   }
-  takeDmg(a){ if(this.phase2Triggered&&!this.resurrected) return; this.hp-=a; this.flashTimer=100; spawnParts(this.x,this.y,'#d0c8e0',4,35); }
-  _dropLoot(){
+  takeDmg(a){ if(typeof BossModifierSystem!=='undefined') a=BossModifierSystem.levouDano(this,a); if(this.phase2Triggered&&!this.resurrected) return; this.hp-=a; this.flashTimer=100; spawnParts(this.x,this.y,'#d0c8e0',4,35); }
+  _dropLoot(){ if(typeof BossModifierSystem!=='undefined') BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y);
     kills+=6;
     CampProgressionSystem.awardCampaignArtifact('coroa_quebrada',this);
     for(let i=0;i<8;i++) spawnCoin(this.x+(Math.random()-0.5)*50,this.y+(Math.random()-0.5)*30,Math.floor(this.xpVal/8));
@@ -1404,6 +1405,7 @@ class BossAracne {
         this.x=Math.max(40,Math.min(W-40,this.jumpTarget.x));
         this.y=Math.max(205,Math.min(H-40,this.jumpTarget.y));
         this.jumpState='landing'; this.jumpLandTimer=400;
+        if(typeof BossModifierSystem!=='undefined') BossModifierSystem.golpeForte(this,this.jumpTarget.x,this.jumpTarget.y,this.damage);
         const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead);
         this.jumpHit=false;
         for(const pl of allPl){
@@ -1456,8 +1458,8 @@ class BossAracne {
       spawnParts(ex,ey,'#888840',5,25);
     }
   }
-  takeDmg(a){ this.hp-=a; this.flashTimer=100; spawnParts(this.x,this.y,'#888840',4,35); }
-  _dropLoot(){ kills+=8; CampProgressionSystem.awardCampaignArtifact('olho_aracne',this); for(let i=0;i<10;i++) spawnCoin(this.x+(Math.random()-0.5)*60,this.y+(Math.random()-0.5)*35,Math.floor(this.xpVal/10)); const bl=['semente_erva','semente_tomate','madeira','pedra']; for(let bi=0;bi<5;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*40,this.y,it);} showInvNotif('Aracne Ancestral derrotada!'); savePersistentData(); spawnParts(this.x,this.y,'#888840',22,90); triggerScreenShake(16,480); }
+  takeDmg(a){ if(typeof BossModifierSystem!=='undefined') a=BossModifierSystem.levouDano(this,a); this.hp-=a; this.flashTimer=100; spawnParts(this.x,this.y,'#888840',4,35); }
+  _dropLoot(){ if(typeof BossModifierSystem!=='undefined') BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y); kills+=8; CampProgressionSystem.awardCampaignArtifact('olho_aracne',this); for(let i=0;i<10;i++) spawnCoin(this.x+(Math.random()-0.5)*60,this.y+(Math.random()-0.5)*35,Math.floor(this.xpVal/10)); const bl=['semente_erva','semente_tomate','madeira','pedra']; for(let bi=0;bi<5;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*40,this.y,it);} showInvNotif('Aracne Ancestral derrotada!'); savePersistentData(); spawnParts(this.x,this.y,'#888840',22,90); triggerScreenShake(16,480); }
   draw(t){
     drawAracneAncestralBoss(this,t);
     return;
@@ -2090,7 +2092,7 @@ class BossFrostBehemoth {
     }
     this.flashTimer=100; spawnParts(this.x,this.y,'#88ccff',4,35);
   }
-  _dropLoot(){ kills+=10; CampProgressionSystem.awardCampaignArtifact('coracao_congelado',this); for(let i=0;i<12;i++) spawnCoin(this.x+(Math.random()-0.5)*70,this.y+(Math.random()-0.5)*40,Math.floor(this.xpVal/12)); const bl=['semente_erva','pedra','madeira']; for(let bi=0;bi<6;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*40,this.y,it);} showInvNotif('Gigante de Gelo derrotado! +6 itens!'); savePersistentData(); spawnParts(this.x,this.y,'#88ddff',28,100); triggerScreenShake(20,600); }
+  _dropLoot(){ if(typeof BossModifierSystem!=='undefined') BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y); kills+=10; CampProgressionSystem.awardCampaignArtifact('coracao_congelado',this); for(let i=0;i<12;i++) spawnCoin(this.x+(Math.random()-0.5)*70,this.y+(Math.random()-0.5)*40,Math.floor(this.xpVal/12)); const bl=['semente_erva','pedra','madeira']; for(let bi=0;bi<6;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*40,this.y,it);} showInvNotif('Gigante de Gelo derrotado! +6 itens!'); savePersistentData(); spawnParts(this.x,this.y,'#88ddff',28,100); triggerScreenShake(20,600); }
   draw(t){
     drawFrostGiantBoss(this,t);
     return;
@@ -2564,7 +2566,8 @@ class BossSandworm {
     this.x=Math.max(44,Math.min(W-44,this.x)); this.y=Math.max(210,Math.min(H-44,this.y));
     // Sinkhole
     this.sinkholeTimer-=dt*1000;
-    if(this.sinkholeTimer<=0){ this.sinkholeTimer=this.sinkholeCd; this.sinkhole={x:W/2,y:H/2,power:40,timer:3200,range:this.sinkholeRange}; spawnLevelUpNotice(W/2,H/2-50,'🌀 SUMIDOURO!',0); }
+    if(this.sinkholeTimer<=0){ this.sinkholeTimer=this.sinkholeCd; this.sinkhole={x:W/2,y:H/2,power:40,timer:3200,range:this.sinkholeRange};
+      if(typeof BossModifierSystem!=='undefined') BossModifierSystem.golpeForte(this,this.x,this.y,this.damage); spawnLevelUpNotice(W/2,H/2-50,'🌀 SUMIDOURO!',0); }
     if(this.sinkhole){
       this.sinkhole.timer-=dt*1000;
       const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead);
@@ -2669,8 +2672,8 @@ class BossSandworm {
     this.diveVx=Math.cos(angle)*650;this.diveVy=Math.sin(angle)*650;
     this.divePassTimer=1400;this._resetBodyTrail(angle);
   }
-  takeDmg(a){ this.hp-=a; this.flashTimer=100; spawnParts(this.x,this.y,'#c8a840',4,35); }
-  _dropLoot(){ kills+=12; CampProgressionSystem.awardCampaignArtifact('presa_fossil',this); for(let i=0;i<14;i++) spawnCoin(this.x+(Math.random()-0.5)*80,this.y+(Math.random()-0.5)*45,Math.floor(this.xpVal/14)); const bl=['semente_erva','pedra','madeira','semente_tomate']; for(let bi=0;bi<7;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*50,this.y,it);} showInvNotif('Verme Devorador derrotado! +7 itens!'); savePersistentData(); spawnParts(this.x,this.y,'#c8a840',30,110); triggerScreenShake(22,650); }
+  takeDmg(a){ if(typeof BossModifierSystem!=='undefined') a=BossModifierSystem.levouDano(this,a); this.hp-=a; this.flashTimer=100; spawnParts(this.x,this.y,'#c8a840',4,35); }
+  _dropLoot(){ if(typeof BossModifierSystem!=='undefined') BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y); kills+=12; CampProgressionSystem.awardCampaignArtifact('presa_fossil',this); for(let i=0;i<14;i++) spawnCoin(this.x+(Math.random()-0.5)*80,this.y+(Math.random()-0.5)*45,Math.floor(this.xpVal/14)); const bl=['semente_erva','pedra','madeira','semente_tomate']; for(let bi=0;bi<7;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*50,this.y,it);} showInvNotif('Verme Devorador derrotado! +7 itens!'); savePersistentData(); spawnParts(this.x,this.y,'#c8a840',30,110); triggerScreenShake(22,650); }
   draw(t){
     drawDevourerBoss(this,t);
     return;
@@ -2849,6 +2852,7 @@ class BossBalrog {
       // esticar, entao o jogador levava o golpe sem ver de onde veio.
       if(!this.whipAcertou&&1-Math.max(0,this.whipAnim)/600>=0.72){
         this.whipAcertou=true;
+        if(typeof BossModifierSystem!=='undefined') BossModifierSystem.golpeForte(this,this.x,this.y,this.damage);
         const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead);
         for(const pl of allPl){
           if((this.whipSide===1&&pl.x>this.x-50)||(this.whipSide===-1&&pl.x<this.x+50)){
@@ -2897,8 +2901,8 @@ class BossBalrog {
     this.frameTick+=dt*1000; if(this.frameTick>150){this.frameTick=0;this.frameIdx=(this.frameIdx+1)%3;}
     if(this.flashTimer>0) this.flashTimer-=dt*1000;
   }
-  takeDmg(a){ this.hp-=a; this.flashTimer=120; spawnParts(this.x,this.y,'#ff4400',5,40); }
-  _dropLoot(){ kills+=20; CampProgressionSystem.awardCampaignArtifact('nucleo_infernal',this); for(let i=0;i<18;i++) spawnCoin(this.x+(Math.random()-0.5)*100,this.y+(Math.random()-0.5)*55,Math.floor(this.xpVal/18)); const bl=['semente_erva','pedra','madeira','semente_tomate','semente_trigo']; for(let bi=0;bi<10;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*60,this.y,it);} showInvNotif('BALROG DERROTADO! +10 itens!'); savePersistentData(); spawnParts(this.x,this.y,'#ff4400',40,120); spawnParts(this.x,this.y,'#ffcc00',20,80); triggerScreenShake(28, 800); }
+  takeDmg(a){ if(typeof BossModifierSystem!=='undefined') a=BossModifierSystem.levouDano(this,a); this.hp-=a; this.flashTimer=120; spawnParts(this.x,this.y,'#ff4400',5,40); }
+  _dropLoot(){ if(typeof BossModifierSystem!=='undefined') BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y); kills+=20; CampProgressionSystem.awardCampaignArtifact('nucleo_infernal',this); for(let i=0;i<18;i++) spawnCoin(this.x+(Math.random()-0.5)*100,this.y+(Math.random()-0.5)*55,Math.floor(this.xpVal/18)); const bl=['semente_erva','pedra','madeira','semente_tomate','semente_trigo']; for(let bi=0;bi<10;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*60,this.y,it);} showInvNotif('BALROG DERROTADO! +10 itens!'); savePersistentData(); spawnParts(this.x,this.y,'#ff4400',40,120); spawnParts(this.x,this.y,'#ffcc00',20,80); triggerScreenShake(28, 800); }
   draw(t){
     const x=this.x, y=this.y;
     const glow=0.7+0.3*Math.sin(t*0.006+this.phase);
@@ -3114,7 +3118,7 @@ class BossBrute {
     this.hitCd=2200; this.hitTimer=1800; this.hitAnim=0; this.hitAcertou=false;
     this.hitAlcance=this.radius+38;
   }
-  takeDmg(a){ this.hp-=a; this.flashTimer=100; spawnParts(this.x,this.y,'#7ab048',4,35); }
+  takeDmg(a){ if(typeof BossModifierSystem!=='undefined') a=BossModifierSystem.levouDano(this,a); this.hp-=a; this.flashTimer=100; spawnParts(this.x,this.y,'#7ab048',4,35); }
   update(dt,px,py){
     if(this.hp<=0){ this.dead=true; this._dropLoot(); return; }
     const ms=dt*1000;
@@ -3166,6 +3170,7 @@ class BossBrute {
         const hitRadius=finalJump?105:90;
         const hitMult=finalJump?1.35:0.9;
         for(const pl of allP){ if(Math.hypot(pl.x-this.x,pl.y-this.y)<hitRadius) pl.takeDmg(this.damage*hitMult); }
+        if(typeof BossModifierSystem!=='undefined') BossModifierSystem.golpeForte(this,this.x,this.y,this.damage*hitMult);
         this.leapChain--;
         if(this.leapChain>0){
           this.leapState='wind'; this.leapWind=this.leapWindMax=280; this.leapTarget={x:px,y:py};
@@ -3254,7 +3259,7 @@ class BossBrute {
     }
     this.rocks=this.rocks.filter(r=>r.life>0);
   }
-  _dropLoot(){
+  _dropLoot(){ if(typeof BossModifierSystem!=='undefined') BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y);
     kills+=12; for(let i=0;i<14;i++) spawnCoin(this.x+(Math.random()-0.5)*80,this.y+(Math.random()-0.5)*45,Math.floor(this.xpVal/14));
     const bl=['semente_erva','pedra','madeira','semente_tomate'];
     for(let bi=0;bi<7;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*50,this.y,it);}

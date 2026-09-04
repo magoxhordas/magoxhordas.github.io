@@ -44,6 +44,22 @@ body {
   box-shadow:0 0 16px rgba(88,220,142,.22),inset 0 0 10px rgba(0,0,0,.72);
   color:#baf6cc;font:700 11px 'Courier New',monospace;letter-spacing:1px;max-width:min(92vw,760px);
 }
+/* ── Nível de Ameaça ── usa a mesma moldura escura e o dourado das
+   outras seções do menu; as caveiras acesas ficam em brasa. */
+.threat-row{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:8px}
+.threat-btn{width:38px;height:38px;font:bold 20px 'Courier New',monospace;color:#e8c860;
+  background:linear-gradient(180deg,#241a12,#150f0a);border:2px solid #6a4f22;border-radius:6px;
+  cursor:pointer;transition:.12s}
+.threat-btn:hover:not(:disabled){border-color:#c8a84b;color:#ffd98a;transform:translateY(-1px)}
+.threat-btn:disabled{opacity:.32;cursor:default}
+.threat-core{min-width:132px;text-align:center}
+.threat-number{font:bold 30px 'Courier New',monospace;color:#ff9a4a;text-shadow:0 0 10px rgba(255,110,30,.45);line-height:1}
+.threat-pips{margin-top:4px;letter-spacing:3px;font-size:13px}
+.threat-pip{color:#3a2e26}
+.threat-pip.on{color:#ff7a2a;text-shadow:0 0 7px rgba(255,110,30,.65)}
+.threat-detail{text-align:center;font-size:12px;color:#c8b48a;letter-spacing:.5px;margin-bottom:5px;min-height:30px}
+.threat-help{text-align:center;font-size:10px;color:#7a6a52;letter-spacing:.4px;max-width:430px;margin:0 auto;line-height:1.5}
+
 #necromancer-resource-hud .necro-resource{display:flex;align-items:center;gap:5px;white-space:nowrap}
 #necromancer-resource-hud .necro-resource b{color:#f1df9b;font-size:13px}
 #necromancer-resource-hud .necro-resource-detail{color:#d6b978;font-size:10px;letter-spacing:.3px}
@@ -5167,6 +5183,21 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
       <div class="c-name" style="color:#cc3322;">Lendário</div>
       <div class="c-desc">Hordas brutais<br><span class="c-stat pixel-inline" style="color:#ff8870;"><span class="pixel-icon-slot" data-pixel-icon="heart" data-pixel-size="16"></span> −15% vida · <span class="pixel-icon-slot" data-pixel-icon="coin" data-pixel-size="16"></span> −22% moedas</span></div>
     </div>
+  </div>
+
+  <div id="threat-block" style="display:none;margin-bottom:18px;">
+    <div class="section-title">Nível de Ameaça</div>
+    <div class="threat-row">
+      <button class="threat-btn" id="threat-minus" onclick="mudarAmeaca(-1)" aria-label="Diminuir ameaça">−</button>
+      <div class="threat-core">
+        <div class="threat-number" id="threat-value">0</div>
+        <div class="threat-pips" id="threat-pips"></div>
+      </div>
+      <button class="threat-btn" id="threat-plus" onclick="mudarAmeaca(1)" aria-label="Aumentar ameaça">+</button>
+    </div>
+    <div class="threat-detail" id="threat-detail">Chefões se comportam normalmente.</div>
+    <div class="threat-help">Chefões recebem modificadores sorteados que mudam seus ataques e a arena.
+      Quanto maior a ameaça, maiores as recompensas.</div>
   </div>
 
   <div class="pm-actions" style="display:flex;gap:12px;justify-content:center;align-items:stretch;">
@@ -10452,6 +10483,51 @@ function selectMode(n){
 function selectDiff(d){
   _selDiff=d;
   ['easy','medium','hard'].forEach(x=>document.getElementById('diff-'+x).classList.toggle('selected',x===d));
+  atualizarAmeaca();
+}
+
+/* ── NÍVEL DE AMEAÇA, no menu ──
+   Aparece so' em Guerreiro (normal) e Lendario (dificil). Em Aprendiz o
+   bloco some inteiro, em vez de ficar cinza: poluia o menu com uma opcao
+   que nunca vale ali.
+   Ao trocar de dificuldade o valor e' cortado para o teto da nova — quem
+   escolheu 6 no Lendario e volta ao Guerreiro fica com 4, nunca com um
+   estado invalido. */
+function atualizarAmeaca(){
+  const bloco=document.getElementById('threat-block');
+  if(!bloco) return;
+  const S=typeof BossModifierSystem!=='undefined'?BossModifierSystem:null;
+  const permite=S?S.dificuldadePermite(_selDiff):false;
+  bloco.style.display=permite?'':'none';
+  if(!permite){ _selThreat=0; return; }
+  _selThreat=S.ajustarNivel(_selThreat,_selDiff);
+  const teto=S.limitePara(_selDiff);
+  const nEl=document.getElementById('threat-value');
+  if(nEl) nEl.textContent=_selThreat;
+  const pips=document.getElementById('threat-pips');
+  if(pips){
+    let html='';
+    for(let i=0;i<teto;i++) html+='<span class="threat-pip'+(i<_selThreat?' on':'')+'">☠</span>';
+    pips.innerHTML=html;
+  }
+  const det=document.getElementById('threat-detail');
+  if(det){
+    const tabela=BossModifierData.CONFIG.BONUS_RECOMPENSA;
+    const bonus=Math.round((tabela[Math.min(_selThreat,tabela.length-1)]||0)*100);
+    det.innerHTML=_selThreat===0
+      ? 'Chefões se comportam normalmente.'
+      : _selThreat+' modificador'+(_selThreat>1?'es':'')+' em cada batalha contra chefão'+
+        '<br><b style="color:#ffcc55;">Recompensas de chefão: +'+bonus+'%</b>';
+  }
+  const menos=document.getElementById('threat-minus'), mais=document.getElementById('threat-plus');
+  if(menos) menos.disabled=_selThreat<=0;
+  if(mais) mais.disabled=_selThreat>=teto;
+}
+function mudarAmeaca(delta){
+  const S=typeof BossModifierSystem!=='undefined'?BossModifierSystem:null;
+  if(!S||!S.dificuldadePermite(_selDiff)) return;
+  _selThreat=S.ajustarNivel(_selThreat+delta,_selDiff);
+  atualizarAmeaca();
 }
 function goMainMenu(){
   if(raf){cancelAnimationFrame(raf);raf=null;}
@@ -15638,7 +15714,10 @@ class Player {
     // prazo em Date.now() ele expirava sozinho com o jogo pausado.
     if(this.venenoT>0) this.venenoT-=dt*1000;
     const objectiveMove=typeof campaignObjectives!=='undefined'?campaignObjectives.movementMultiplier(this):1;
-    const moveMult=(this.webbed?0.32:(this.slowed?0.55:1))*CampProgressionSystem.movementMultiplier(this)*objectiveMove;
+    // Glacial: a placa de gelo marca _ameacaLentidao a cada quadro em quem
+    // esta' em cima. Sair da placa faz o efeito acabar sozinho, sem timer.
+    const gelo=1-consumirLentidaoDeAmeaca(this);
+    const moveMult=(this.webbed?0.32:(this.slowed?0.55:1))*CampProgressionSystem.movementMultiplier(this)*objectiveMove*gelo;
     this.x+=dx*this.speed*moveMult*dt; this.y+=dy*this.speed*moveMult*dt;
     this.x=Math.max(38,Math.min(W-38,this.x));
     this.y=Math.max(205,Math.min(H-24,this.y));
@@ -15967,6 +16046,15 @@ function separarDosCorpos(){
       clampCampaignEntity(pl);
     }
   }
+}
+
+/* O Glacial marca _ameacaLentidao no jogador enquanto ele pisa na placa
+   de gelo. Zerar a cada quadro faz o efeito acabar sozinho ao sair dela,
+   sem precisar de timer proprio. */
+function consumirLentidaoDeAmeaca(pl){
+  const v=pl&&pl._ameacaLentidao;
+  if(pl) pl._ameacaLentidao=0;
+  return v||0;
 }
 
 function clampCampaignEntity(entity,padding=0){
@@ -17362,6 +17450,11 @@ function collide(){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossSpider,p.weapon||null):p.dmg;
       const before=bossSpider.hp;bossSpider.takeDmg(dmg); if(p.owner?.classId==='necromancer'){NecromancerSystem.onBossDamaged(p.owner,bossSpider,before,bossSpider.hp);NecromancerSystem.onProjectileHit(p,bossSpider,dmg);} if(p.isCampaignWeaponProj){markEnemyWeaponStatus(bossSpider,p.weapon);p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossSpider);}else applyClassHitEffect(p,bossSpider); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
     }
+    // Runas e rituais sao alvos de verdade: o tiro para neles em vez de
+    // atravessar, senao nao haveria como o jogador interrompe-los.
+    if(!p.dead&&typeof BossModifierSystem!=='undefined'&&BossModifierSystem.acertarObjetos(p.x,p.y,p.radius||4,p.dmg||10)){
+      if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true; else p.pierce--;
+    }
     if(!p.dead&&bossMajor&&!bossMajor.dead&&Math.hypot(p.x-bossMajor.x,p.y-bossMajor.y)<p.radius+(bossMajor.radius||36)){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossMajor,p.weapon||null):p.dmg;
       const before=bossMajor.hp;bossMajor.takeDmg(dmg); if(p.owner?.classId==='necromancer'){NecromancerSystem.onBossDamaged(p.owner,bossMajor,before,bossMajor.hp);NecromancerSystem.onProjectileHit(p,bossMajor,dmg);} if(p.isCampaignWeaponProj){markEnemyWeaponStatus(bossMajor,p.weapon);p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossMajor);}else applyClassHitEffect(p,bossMajor); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
@@ -17433,7 +17526,11 @@ function collide(){
     for(const pl of allPlayers) if(Math.hypot(pl.x-bossSpider.x,pl.y-bossSpider.y)<pl.radius+bossSpider.radius) pl.takeDmg(bossSpider.damage*0.016,true);
   }
   if(bossMajor&&!bossMajor.dead){
-    for(const pl of allPlayers) if(Math.hypot(pl.x-bossMajor.x,pl.y-bossMajor.y)<pl.radius+(bossMajor.radius||40)) pl.takeDmg((bossMajor.damage||30)*0.016,true);
+    for(const pl of allPlayers) if(Math.hypot(pl.x-bossMajor.x,pl.y-bossMajor.y)<pl.radius+(bossMajor.radius||40)){
+      const d=(bossMajor.damage||30)*0.016;
+      pl.takeDmg(d,true);
+      if(typeof BossModifierSystem!=='undefined') BossModifierSystem.acertouJogador(bossMajor,pl,d);
+    }
   }
   // Structure projectiles (BeaconArrow, BallistaBolt) hit enemies
   for(const p of projs){
@@ -18458,12 +18555,42 @@ function templeChoose(choice){
   <script src="src/campaign/campaign-runtime.js"></script>
   <script src="src/campaign/chapter-data.js"></script>
   <script src="src/campaign/campaign-system.js"></script>
+  <script src="src/campaign/boss-modifier-data.js"></script>
+  <script src="src/campaign/boss-modifiers.js"></script>
   <script src="src/ui/campaign-overlays.js"></script>
   <script src="src/ui/boss-hud.js"></script>
   <script>
 // GAME LOOP
 // ═══════════════════════════════════════════════════════
 // Elemental damage feedback shared by normal enemies and every campaign boss.
+/* ── NÍVEL DE AMEAÇA ──
+   O sistema de modificadores nao conhece o jogo: tudo o que ele precisa
+   entra por aqui, do mesmo jeito que campaignObjectives faz. */
+if(typeof BossModifierSystem!=='undefined'){
+  BossModifierSystem.configurar({
+    getPlayers:()=>[player,player2].filter(Boolean),
+    getEnemies:()=>enemies,
+    getW:()=>W, getH:()=>H,
+    getArenaBounds:()=>CAMPAIGN_ARENA_BOUNDS[currentArena]||CAMPAIGN_ARENA_BOUNDS.castle,
+    clampEntity:(e,pad)=>clampCampaignEntity(e,pad),
+    spawnParts:(...a)=>spawnParts(...a),
+    spawnNotice:(...a)=>spawnLevelUpNotice(...a),
+    // tipo null = deixa o jogo escolher pelo bioma da onda, entao os
+    // reforcos saem coerentes com o capitulo sem lista propria
+    spawnEnemy:(tipo,x,y,origem)=>campaignSpawnEnemy(tipo||pickType(wave),x,y,origem),
+    getSpawnCap:()=>((DIFF[difficulty]||DIFF.medium).spawnMax||14),
+    /* Converte o bonus em moedas pela MESMA economia do jogo (fator da
+       dificuldade, cartas do Hermes, loja), em vez de inventar numero. */
+    creditarBonus:(xpExtra)=>{
+      const d=DIFF[difficulty]||DIFF.medium;
+      const mult=getCardGoldMult(player)*getCampaignShopGoldMult()*(d.coinMult||1);
+      const moedas=Math.max(0,Math.round((xpExtra||0)*(d.coinFactor||0.22)*mult));
+      totalCoins+=moedas;
+      return moedas;
+    },
+  });
+}
+
 function drawEnemyStatusFx(e,t){
   if(!e||e.dead)return;
   const now=typeof performance!=='undefined'?performance.now():Date.now();
@@ -18795,11 +18922,13 @@ function loop(ts){
     if(!campaignEventActive)updateCampaignBiomeAndBoss(wildPetFight);
     // Update bossMajor
     if(bossMajor&&!bossMajor.dead){ bossMajor.update(dt,player.x,player.y); clampCampaignEntity(bossMajor,bossMajor.radius||40); }
+    if(typeof BossModifierSystem!=='undefined') BossModifierSystem.update(dt);
     // Depois de TODOS os chefes se moverem. Colocado antes, nao adiantava:
     // eles perseguem o jogador e voltavam a pisar em cima no mesmo quadro.
     separarDosCorpos();
     if(bossMajor&&bossMajor.dead){
       const defeatedBossWave=wave;
+      if(typeof BossModifierSystem!=='undefined') BossModifierSystem.limpar('boss-death');
       bossMajor=null;
       if(typeof Audio!=='undefined'){
         Audio.playBossDefeat();
@@ -18863,6 +18992,7 @@ function loop(ts){
   for(const m of meleeAnims) m.draw(t);
   for(const p of parts) p.draw();
   campaignObjectives.drawOverlay(ctx,t,W,H);
+  if(typeof BossModifierSystem!=='undefined') BossModifierSystem.draw(ctx,t);
   // Painel do chefe: um so', no alto. Vem depois do mundo para nada passar
   // por cima dele, e antes dos avisos de onda, que precisam ficar acima.
   if(typeof BossHUD!=='undefined'){
@@ -19006,6 +19136,8 @@ function drawForestAmbient(t){
 // ═══════════════════════════════════════════════════════
 function beginGame(){
   gameMode=_selMode; difficulty=_selDiff;
+  // O nivel de ameaca e' da RUN: congela aqui e nao muda mais ate' o fim.
+  if(typeof BossModifierSystem!=='undefined') BossModifierSystem.iniciarRun(_selThreat,difficulty);
   campaignCompletionPending=false;
   resetCampaignChapters();
   hideAllScreens();
@@ -19084,6 +19216,7 @@ function beginGame(){
 }
 
 function endGame(){
+  if(typeof BossModifierSystem!=='undefined') BossModifierSystem.limpar('run-end');
   CampProgressionSystem.endRun([player,player2]);
   runCookingBuffs=[];
   cleanupCampaignRuntime('death');
@@ -19285,7 +19418,7 @@ activeCookingBuffs=CampProgressionSystem.preparedMeals()
   .filter(meal=>COOKING_RECIPES.some(recipe=>recipe.id===meal.id))
   .slice(0,CampProgressionSystem.mealLimit());
 showScreen('main-menu');
-selectMode(1); selectDiff('medium');
+selectMode(1); selectDiff('medium');   // selectDiff ja' chama atualizarAmeaca()
 
 // ══════════════════════════════════════════════════════════════════
 GameRuntime.onSuspend(()=>{

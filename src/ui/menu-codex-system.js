@@ -53,6 +53,9 @@ function hideAllScreens(){
 
 // ── Menu helpers ──
 let _selMode=1, _selDiff='medium';
+/* Nivel de Ameaca escolhido no menu. Vira estado da run em beginGame() e
+   nao muda mais depois disso. */
+let _selThreat=0;
 
 // ═══════════════════════════════════════════════════════
 // SHOP INVENTORY PANEL — Brotato style
