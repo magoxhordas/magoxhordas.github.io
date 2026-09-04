@@ -214,9 +214,48 @@
     ]),
   });
 
+  /* ── Glifos ──────────────────────────────────────────────────────
+     Os ícones eram emoji. Emoji sai borrado no tamanho da HUD, muda de
+     desenho conforme o sistema e destoa da pixel art do resto do jogo.
+     Aqui cada modificador tem um glifo de 9x9 desenhado à mão, no mesmo
+     idioma dos outros ícones do projeto: 'a' é o traço, 'b' o brilho.
+     O emoji continua no campo `icone` para texto puro (log, títulos). */
+  const GLIFOS = Object.freeze({
+    volcanic: ['....a....','...aba...','..abbba..','..abbba..','.aabbbaa.','.aabbbaa.','..aaaaa..','...aaa...','.........'],
+    glacial:  ['..a.a.a..','...aaa...','a..aba..a','.aaabaaa.','..abbba..','.aaabaaa.','a..aba..a','...aaa...','..a.a.a..'],
+    stormbound:['...aab...','..aab....','.aab.....','aaabbb...','...aab...','..aab....','.aab.....','..ab.....','..a......'],
+    bloodthirsty:['....a....','....a....','...aba...','..abba...','.abbba...','.abbba...','.aabbaa..','..aaaa...','.........'],
+    berserker:['a.......a','.a..a..a.','..a.a.a..','...aba...','.aabbbaa.','...aba...','..a.a.a..','.a..a..a.','a.......a'],
+    vampiric: ['.........','aa.....aa','.aa...aa.','..aaaaa..','.aabbbaa.','..a.a.a..','...a.a...','..a...a..','.........'],
+    regenerator:['...aaa...','...aba...','...aba...','aaabbbaaa','abbbbbbba','aaabbbaaa','...aba...','...aba...','...aaa...'],
+    runic_shield:['.aaaaaaa.','.abbbbba.','.abaaaba.','.abaaaba.','.abbbbba.','..abbba..','...aba...','....a....','.........'],
+    summoner: ['..aaaaa..','.aaaaaaa.','.abaaaba.','.aaaaaaa.','..aa.aa..','.aaaaaaa.','..a.a.a..','..a.a.a..','.........'],
+    commander:['aa.......','abaaaaa..','abbbbba..','abaaaaa..','ab.......','ab.......','ab.......','aa.......','.........'],
+    teleporter:['..aaaaa..','.a.....a.','a..aaa..a','a.ab..a.a','a.ab.a..a','a.abba..a','a..aaa..a','.a.....a.','..aaaaa..'],
+    charger:  ['.........','....a....','.....a...','aaaaaabaa','.......bb','aaaaaabaa','.....a...','....a....','.........'],
+    hunter:   ['.........','..aaaaa..','.a.....a.','a..bbb..a','a.bbbbb.a','a..bbb..a','.a.....a.','..aaaaa..','.........'],
+    mine_layer:['......ab.','.....ab..','..aaaa...','.aaaaaa..','aabbbbaa.','aabbbbaa.','.aaaaaa..','..aaaa...','.........'],
+    corruptor:['.........','..aaaaa..','.abbbbba.','abbbbbbba','abbbbbbba','abbbbbbba','.abbbbba.','..aaaaa..','.........'],
+    gravity_well:['a.......a','.a.aaa.a.','..a...a..','.a..a..a.','a..aba..a','.a..a..a.','..a...a..','.a.aaa.a.','a.......a'],
+    repulsor: ['....a....','..a.a.a..','.a..a..a.','a...b...a','aabbbbbaa','a...b...a','.a..a..a.','..a.a.a..','....a....'],
+    orbitals: ['..aaaaa..','.a.....a.','a...b...a','a..bbb..a','a...b...a','a.......a','.a.....a.','..aaaaa..','.........'],
+    echoing:  ['.........','.aa...aa.','a..a.a..a','....a....','.bb...bb.','b..b.b..b','....b....','.........','.........'],
+    ritualist:['....a....','....b....','...aba...','...aba...','...aba...','..abbba..','..abbba..','.aaaaaaa.','.aaaaaaa.'],
+  });
+  /* cor do traço e do brilho, por modificador */
+  const CORES_GLIFO = Object.freeze({
+    volcanic:['#c2380a','#ffb040'], glacial:['#4a9ec8','#dff4ff'], stormbound:['#c9a516','#fff59a'],
+    bloodthirsty:['#8c1420','#ff4450'], berserker:['#a82818','#ff8a50'], vampiric:['#6a1030','#ff5570'],
+    regenerator:['#1f7a34','#7ee08a'], runic_shield:['#2f7fb8','#9fd8ff'], summoner:['#6a6250','#e2dac4'],
+    commander:['#7a2018','#ffbb55'], teleporter:['#5a2a9a','#c9a4ff'], charger:['#a05010','#ff9a50'],
+    hunter:['#4a2a6a','#c08aff'], mine_layer:['#5a3a18','#ffaa44'], corruptor:['#3a1060','#8a3ad0'],
+    gravity_well:['#241038','#7a4ab8'], repulsor:['#2a5a7a','#bfe6ff'], orbitals:['#8a6410','#ffd06a'],
+    echoing:['#5a4a8a','#c8b0ff'], ritualist:['#7a5a10','#ffd76a'],
+  });
+
   const POR_ID = Object.freeze(Object.fromEntries(MODIFICADORES.map(m => [m.id, m])));
 
   global.BossModifierData = Object.freeze({
-    CONFIG, CATEGORIAS, MODIFICADORES, INCOMPATIVEIS, POR_CHEFE, POR_ID,
+    CONFIG, CATEGORIAS, MODIFICADORES, INCOMPATIVEIS, POR_CHEFE, POR_ID, GLIFOS, CORES_GLIFO,
   });
 })(typeof window !== 'undefined' ? window : globalThis);

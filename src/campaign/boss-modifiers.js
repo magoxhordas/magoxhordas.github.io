@@ -591,85 +591,268 @@
   }
 
   /* ── desenho ───────────────────────────────────────────────────── */
+
+  /* Glifo de 9x9 do modificador. Substituiu o emoji: emoji sai borrado no
+     tamanho da HUD, muda de forma conforme o sistema e destoa da pixel art
+     do jogo. Aqui é fillRect puro, como o resto do projeto desenha. */
+  function glifo(ctx, id, x, y, px) {
+    const g = D.GLIFOS[id], cores = D.CORES_GLIFO[id];
+    if (!g || !cores) return false;
+    const p = px || 1;
+    for (let r = 0; r < 9; r++) {
+      const linha = g[r];
+      for (let c = 0; c < 9; c++) {
+        const ch = linha[c];
+        if (ch === '.') continue;
+        ctx.fillStyle = ch === 'b' ? cores[1] : cores[0];
+        ctx.fillRect(Math.round(x + c * p), Math.round(y + r * p), p, p);
+      }
+    }
+    return true;
+  }
+
   function draw(ctx, t) {
     if (!ativo() || !est.chefe || !ctx) return;
     const chefe = est.chefe;
     const ag = agora();
     ctx.save();
+    ctx.imageSmoothingEnabled = false;
 
-    const disco = (o, cor, raio, prog) => {
-      ctx.globalAlpha = 0.20 + 0.18 * (prog || 0);
-      ctx.fillStyle = cor;
-      ctx.beginPath(); ctx.ellipse(o.x, o.y, raio, raio * 0.5, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 0.55; ctx.strokeStyle = cor; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.ellipse(o.x, o.y, raio, raio * 0.5, 0, 0, Math.PI * 2); ctx.stroke();
-    };
-
-    for (const f of est.fogo) disco(f, '#ff6a20', par('volcanic', 'raio'), Math.sin(ag * 0.01) * 0.5 + 0.5);
-    for (const g of est.gelo) disco(g, '#7fd4ff', par('glacial', 'raio'), 0.3);
-    for (const c of est.corrupcao) disco(c, '#6a1fb8', par('corruptor', 'raio'), 0.4);
-    for (const g of est.abismos) {
-      const prog = clamp((ag - (g.puxaEm - par('gravity_well', 'avisoMs'))) / par('gravity_well', 'avisoMs'), 0, 1);
-      disco(g, '#2a1040', par('gravity_well', 'raio') * (ag < g.puxaEm ? prog : 1), prog);
+    /* VULCÂNICO — brasa no chão com labaredas curtas subindo do próprio
+       contorno da mancha, em vez de um disco chapado. */
+    for (const f of est.fogo) {
+      const vida = clamp((f.ate - ag) / par('volcanic', 'duracaoMs'), 0, 1);
+      const R = par('volcanic', 'raio');
+      ctx.globalAlpha = 0.30 * vida;
+      ctx.fillStyle = '#7a1c05';
+      ctx.beginPath(); ctx.ellipse(f.x, f.y, R, R * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.55 * vida;
+      ctx.fillStyle = '#c2380a';
+      ctx.beginPath(); ctx.ellipse(f.x, f.y, R * 0.72, R * 0.36, 0, 0, Math.PI * 2); ctx.fill();
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2 + f.x * 0.01;
+        const h = (5 + Math.sin(ag * 0.011 + i * 1.7) * 4) * vida;
+        ctx.globalAlpha = (0.55 + 0.35 * Math.sin(ag * 0.014 + i)) * vida;
+        ctx.fillStyle = i % 2 ? '#ffb040' : '#ff7a20';
+        ctx.fillRect(Math.round(f.x + Math.cos(a) * R * 0.55) - 1,
+                     Math.round(f.y + Math.sin(a) * R * 0.28 - h), 2, Math.max(2, h));
+      }
     }
-    // raios: círculo que fecha antes de cair
+
+    /* GLACIAL — placa com lascas de cristal cravadas na borda. */
+    for (const g of est.gelo) {
+      const vida = clamp((g.ate - ag) / par('glacial', 'duracaoMs'), 0, 1);
+      const R = par('glacial', 'raio');
+      ctx.globalAlpha = 0.34 * vida; ctx.fillStyle = '#4a9ec8';
+      ctx.beginPath(); ctx.ellipse(g.x, g.y, R, R * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.6 * vida; ctx.strokeStyle = '#dff4ff'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(g.x, g.y, R, R * 0.5, 0, 0, Math.PI * 2); ctx.stroke();
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2 + g.y * 0.02;
+        const bx = g.x + Math.cos(a) * R * 0.5, by = g.y + Math.sin(a) * R * 0.26;
+        ctx.globalAlpha = 0.85 * vida; ctx.fillStyle = '#eafaff';
+        ctx.fillRect(Math.round(bx) - 1, Math.round(by) - 5, 2, 6);
+        ctx.fillRect(Math.round(bx) - 2, Math.round(by) - 2, 4, 2);
+      }
+    }
+
+    /* CORRUPTOR — poça escura com tentáculos que se contorcem na borda. */
+    for (const c of est.corrupcao) {
+      const vida = clamp((c.ate - ag) / par('corruptor', 'duracaoMs'), 0, 1);
+      const R = par('corruptor', 'raio');
+      ctx.globalAlpha = 0.42 * vida; ctx.fillStyle = '#180530';
+      ctx.beginPath(); ctx.ellipse(c.x, c.y, R, R * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.5 * vida; ctx.strokeStyle = '#8a3ad0'; ctx.lineWidth = 1.4;
+      for (let i = 0; i < 7; i++) {
+        const a = (i / 7) * Math.PI * 2 + ag * 0.0009;
+        const l = R * (0.7 + 0.28 * Math.sin(ag * 0.005 + i * 2));
+        ctx.beginPath();
+        ctx.moveTo(c.x + Math.cos(a) * R * 0.4, c.y + Math.sin(a) * R * 0.2);
+        ctx.lineTo(c.x + Math.cos(a) * l, c.y + Math.sin(a) * l * 0.5);
+        ctx.stroke();
+      }
+    }
+
+    /* ABISMO — espiral que gira para dentro, deixando claro que puxa. */
+    for (const g of est.abismos) {
+      const armando = ag < g.puxaEm;
+      const prog = armando ? clamp(1 - (g.puxaEm - ag) / par('gravity_well', 'avisoMs'), 0, 1) : 1;
+      const R = par('gravity_well', 'raio') * prog;
+      ctx.globalAlpha = 0.30; ctx.fillStyle = '#150826';
+      ctx.beginPath(); ctx.ellipse(g.x, g.y, R, R * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = armando ? 0.5 + 0.3 * Math.sin(ag * 0.02) : 0.7;
+      ctx.strokeStyle = '#7a4ab8'; ctx.lineWidth = 1.6;
+      for (let b = 0; b < 3; b++) {
+        ctx.beginPath();
+        for (let k = 0; k <= 22; k++) {
+          const f = k / 22;
+          const a = ag * 0.003 + b * 2.09 + f * 3.4;
+          const rr = R * (1 - f * 0.92);
+          const px2 = g.x + Math.cos(a) * rr, py2 = g.y + Math.sin(a) * rr * 0.5;
+          k ? ctx.lineTo(px2, py2) : ctx.moveTo(px2, py2);
+        }
+        ctx.stroke();
+      }
+    }
+
+    /* TROVEJANTE — anel que fecha, e o risco de verdade quando cai. */
     for (const r of est.raios) {
       const falta = clamp((r.cai - ag) / par('stormbound', 'avisoMs'), 0, 1);
-      ctx.globalAlpha = 0.85; ctx.strokeStyle = '#fff59a'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(r.x, r.y, par('stormbound', 'raio') * (0.4 + falta * 0.6), 0, Math.PI * 2); ctx.stroke();
+      const R = par('stormbound', 'raio');
+      ctx.globalAlpha = 0.30; ctx.fillStyle = '#4a4210';
+      ctx.beginPath(); ctx.ellipse(r.x, r.y, R, R * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.95; ctx.strokeStyle = '#fff59a'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(r.x, r.y, R * (0.25 + falta * 0.75), R * (0.25 + falta * 0.75) * 0.5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      if (falta < 0.16) {
+        ctx.globalAlpha = 1; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.moveTo(r.x, r.y - 150);
+        ctx.lineTo(r.x - 7, r.y - 90); ctx.lineTo(r.x + 6, r.y - 44); ctx.lineTo(r.x, r.y);
+        ctx.stroke();
+      }
     }
-    // minas
+
+    /* MINADOR — corpo com espinhos e luz de armar piscando. */
     for (const m of est.minas) {
       const armada = ag > m.armada;
-      ctx.globalAlpha = armada ? (0.6 + 0.4 * Math.sin(ag * 0.02)) : 0.35;
-      ctx.fillStyle = armada ? '#ff7a30' : '#886644';
-      ctx.beginPath(); ctx.arc(m.x, m.y, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = '#3a2a18';
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        ctx.fillRect(Math.round(m.x + Math.cos(a) * 8) - 1, Math.round(m.y + Math.sin(a) * 8) - 1, 3, 3);
+      }
+      ctx.fillStyle = '#5a3a18';
+      ctx.beginPath(); ctx.arc(m.x, m.y, 6, 0, Math.PI * 2); ctx.fill();
+      const pisca = armada ? (0.35 + 0.65 * Math.abs(Math.sin(ag * 0.011))) : 0.25;
+      ctx.globalAlpha = pisca; ctx.fillStyle = armada ? '#ff5522' : '#886644';
+      ctx.beginPath(); ctx.arc(m.x, m.y, 3, 0, Math.PI * 2); ctx.fill();
     }
-    // ondas do repulsor
+
+    /* REPULSOR — anel que cresce com estilhaços saindo junto. */
     for (const o of est.ondas) {
       const prog = clamp(1 - (o.dispara - ag) / par('repulsor', 'avisoMs'), 0, 1);
-      ctx.globalAlpha = 0.5 * (1 - Math.abs(prog - 1)); ctx.strokeStyle = '#bfe6ff'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(o.x, o.y, par('repulsor', 'raio') * prog, 0, Math.PI * 2); ctx.stroke();
+      const R = par('repulsor', 'raio') * prog;
+      ctx.globalAlpha = 0.55 * (1 - Math.max(0, prog - 0.85) / 0.15);
+      ctx.strokeStyle = '#bfe6ff'; ctx.lineWidth = 2 + prog * 2;
+      ctx.beginPath(); ctx.ellipse(o.x, o.y, R, R * 0.5, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#eaf8ff';
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        ctx.globalAlpha = 0.7 * prog;
+        ctx.fillRect(Math.round(o.x + Math.cos(a) * R) - 1, Math.round(o.y + Math.sin(a) * R * 0.5) - 1, 2, 2);
+      }
     }
-    // ecos: sombra do impacto que vem
+
+    /* ECOANTE — o círculo fantasma se fecha até o segundo impacto. */
     for (const e of est.ecos) {
-      ctx.globalAlpha = 0.35; ctx.strokeStyle = '#c8b0ff'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(e.x, e.y, par('echoing', 'raio'), 0, Math.PI * 2); ctx.stroke();
-    }
-    // investida: linha de aviso
-    if (est.investida && !est.investida.fimAte) {
-      ctx.globalAlpha = 0.55; ctx.strokeStyle = '#ff9a50'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(chefe.x, chefe.y);
-      ctx.lineTo(chefe.x + Math.cos(est.investida.ang) * 260, chefe.y + Math.sin(est.investida.ang) * 260);
+      const falta = clamp((e.quando - ag) / par('echoing', 'atrasoMs'), 0, 1);
+      const R = par('echoing', 'raio');
+      ctx.globalAlpha = 0.22 + 0.25 * (1 - falta);
+      ctx.strokeStyle = '#c8b0ff'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(e.x, e.y, R * (0.5 + falta * 0.6), R * (0.5 + falta * 0.6) * 0.5, 0, 0, Math.PI * 2);
       ctx.stroke();
+      ctx.globalAlpha = 0.35;
+      ctx.beginPath(); ctx.ellipse(e.x, e.y, R * 0.5, R * 0.25, 0, 0, Math.PI * 2); ctx.stroke();
     }
-    // rituais
+
+    /* INVESTIDA — faixa larga de aviso, não um risco fino. */
+    if (est.investida && !est.investida.fimAte) {
+      const inv = est.investida;
+      const prog = clamp(1 - (inv.avisoAte - ag) / par('charger', 'avisoMs'), 0, 1);
+      ctx.save();
+      ctx.translate(chefe.x, chefe.y); ctx.rotate(inv.ang);
+      ctx.globalAlpha = 0.16 + 0.16 * prog; ctx.fillStyle = '#ff9a50';
+      ctx.fillRect(0, -16, 280, 32);
+      ctx.globalAlpha = 0.6 + 0.3 * Math.sin(ag * 0.02);
+      ctx.fillStyle = '#ffd0a0';
+      ctx.fillRect(0, -1, 280 * prog, 2);
+      ctx.restore();
+    }
+
+    /* RITUALISTA — vela com chama e a barra de progresso do ritual. */
     for (const r of est.rituais) {
       const prog = clamp(1 - (r.completa - ag) / par('ritualist', 'canalizaMs'), 0, 1);
-      ctx.globalAlpha = 0.8; ctx.fillStyle = '#ffd76a';
-      ctx.fillRect(r.x - 4, r.y - 10, 8, 20);
-      ctx.globalAlpha = 0.9; ctx.fillStyle = '#3a2a10'; ctx.fillRect(r.x - 12, r.y + 14, 24, 3);
-      ctx.fillStyle = '#ffd76a'; ctx.fillRect(r.x - 12, r.y + 14, 24 * prog, 3);
+      ctx.globalAlpha = 0.25 + 0.2 * Math.sin(ag * 0.008);
+      ctx.fillStyle = '#ffd76a';
+      ctx.beginPath();
+      ctx.ellipse(r.x, r.y + 12, 16 * (0.5 + prog * 0.6), 6 * (0.5 + prog * 0.6), 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#7a5a10'; ctx.fillRect(r.x - 3, r.y - 6, 6, 18);
+      ctx.fillStyle = '#c8a84b'; ctx.fillRect(r.x - 3, r.y - 6, 2, 18);
+      const h = 5 + Math.sin(ag * 0.014) * 2;
+      ctx.fillStyle = '#ffd76a'; ctx.fillRect(r.x - 2, r.y - 6 - h, 4, h);
+      ctx.fillStyle = '#fff3c0'; ctx.fillRect(r.x - 1, r.y - 5 - h, 2, h - 1);
+      ctx.fillStyle = '#241a10'; ctx.fillRect(r.x - 12, r.y + 16, 24, 3);
+      ctx.fillStyle = '#ffd76a'; ctx.fillRect(r.x - 12, r.y + 16, Math.round(24 * prog), 3);
     }
-    // runas do escudo
+
+    /* ESCUDO RÚNICO — glifo girando, com halo enquanto está de pé. */
     for (const r of est.runas) {
       if (!r.viva) continue;
-      ctx.globalAlpha = 0.9; ctx.fillStyle = '#9fd8ff';
-      ctx.fillRect(Math.round(r.x) - 4, Math.round(r.y) - 4, 8, 8);
-      ctx.globalAlpha = 0.5; ctx.strokeStyle = '#dff2ff'; ctx.lineWidth = 1;
-      ctx.strokeRect(Math.round(r.x) - 6, Math.round(r.y) - 6, 12, 12);
+      const forca = clamp(r.hp / par('runic_shield', 'vidaRuna'), 0, 1);
+      ctx.globalAlpha = 0.20 + 0.15 * Math.sin(ag * 0.006 + r.ang);
+      ctx.fillStyle = '#9fd8ff';
+      ctx.beginPath(); ctx.arc(r.x, r.y, 11, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.45 + 0.55 * forca;
+      ctx.save(); ctx.translate(r.x, r.y); ctx.rotate(ag * 0.0018);
+      ctx.fillStyle = '#dff2ff'; ctx.fillRect(-1, -6, 2, 12); ctx.fillRect(-6, -1, 12, 2);
+      ctx.fillStyle = '#2f7fb8'; ctx.fillRect(-4, -4, 3, 3); ctx.fillRect(1, 1, 3, 3);
+      ctx.restore();
     }
-    // orbitais
+
+    /* ORBITAIS — esfera com rastro curto atrás. */
     if (est.orbVisivel) for (const o of est.orbitais) {
-      ctx.globalAlpha = 0.95; ctx.fillStyle = '#ffd06a';
-      ctx.beginPath(); ctx.arc(o.x, o.y, 6, 0, Math.PI * 2); ctx.fill();
+      for (let i = 3; i >= 1; i--) {
+        const a = o.ang - i * 0.18;
+        ctx.globalAlpha = 0.16 * (4 - i);
+        ctx.fillStyle = '#8a6410';
+        ctx.beginPath();
+        ctx.arc(chefe.x + Math.cos(a) * par('orbitals', 'raio'),
+                chefe.y + Math.sin(a) * par('orbitals', 'raio') * 0.72, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 0.9; ctx.fillStyle = '#8a6410';
+      ctx.beginPath(); ctx.arc(o.x, o.y, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1; ctx.fillStyle = '#ffd06a';
+      ctx.beginPath(); ctx.arc(o.x, o.y, 4.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff3c0';
+      ctx.beginPath(); ctx.arc(o.x - 1, o.y - 1, 2, 0, Math.PI * 2); ctx.fill();
     }
-    // aura da fúria
+
+    /* BERSERKER — aura dupla pulsando, e fagulhas subindo. */
     if (est.furiaAte && ag < est.furiaAte) {
-      ctx.globalAlpha = 0.25 + 0.15 * Math.sin(ag * 0.012);
-      ctx.strokeStyle = '#ff5533'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(chefe.x, chefe.y, (chefe.radius || 30) + 12, 0, Math.PI * 2); ctx.stroke();
+      const R = (chefe.radius || 30);
+      for (let i = 0; i < 2; i++) {
+        ctx.globalAlpha = (0.30 - i * 0.12) + 0.16 * Math.sin(ag * 0.012 + i);
+        ctx.strokeStyle = '#ff5533'; ctx.lineWidth = 3 - i;
+        ctx.beginPath();
+        ctx.arc(chefe.x, chefe.y, R + 10 + i * 8 + Math.sin(ag * 0.01 + i) * 3, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#ffaa55';
+      for (let i = 0; i < 4; i++) {
+        const p = ((ag * 0.0011 + i * 0.25) % 1);
+        ctx.globalAlpha = (1 - p) * 0.8;
+        ctx.fillRect(Math.round(chefe.x + Math.sin(i * 2.1 + p * 4) * R),
+                     Math.round(chefe.y + R * 0.4 - p * R * 2.2), 2, 3);
+      }
     }
+
+    /* ERRANTE — enquanto some, um vórtice fecha no lugar dele. */
+    if (est.sumico) {
+      const p = clamp((est.sumico - ag) / par('teleporter', 'sumicoMs'), 0, 1);
+      ctx.globalAlpha = 0.7 * p; ctx.strokeStyle = '#c9a4ff'; ctx.lineWidth = 2;
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.arc(chefe.x, chefe.y, (chefe.radius || 30) * p * (0.5 + i * 0.35),
+                ag * 0.01 + i * 2, ag * 0.01 + i * 2 + 2.2);
+        ctx.stroke();
+      }
+    }
+
     ctx.globalAlpha = 1;
     ctx.restore();
     desenharRevelacao(ctx);
@@ -677,47 +860,50 @@
   }
 
   /* Revelação: aparece uns segundos quando o chefe entra, some sozinha e
-     não pede clique — o ritmo da luta não para. Depois disso os ícones ao
-     lado do chefe ficam de lembrete permanente. */
+     não pede clique — o ritmo da luta não para. Depois disso a fileira de
+     glifos ao lado do chefe fica de lembrete permanente. */
   function desenharRevelacao(ctx) {
     if (!revelando()) return;
     const restante = est.revelacaoAte - agora();
     const alfa = clamp(restante / 600, 0, 1) * clamp((CONFIG.REVELACAO_MS - restante) / 400, 0, 1);
-    const L = 300, alt = 34 + est.mods.length * 26;
-    const x = 320 - L / 2, y = 96;
+    const L = 306, alt = 36 + est.mods.length * 28;
+    const x = 320 - L / 2, y = 92;
     ctx.save();
-    ctx.globalAlpha = 0.88 * alfa;
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalAlpha = 0.90 * alfa;
     ctx.fillStyle = '#0b0810'; ctx.fillRect(x, y, L, alt);
-    ctx.strokeStyle = '#c8702a'; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, L - 2, alt - 2);
     ctx.globalAlpha = alfa;
+    ctx.strokeStyle = '#c8702a'; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, L - 2, alt - 2);
     ctx.textAlign = 'center';
-    ctx.font = 'bold 12px monospace'; ctx.fillStyle = '#ff9a4a';
-    ctx.fillText('NÍVEL DE AMEAÇA ' + nivelAtual(), 320, y + 20);
+    ctx.font = 'bold 11px monospace'; ctx.fillStyle = '#ff9a4a';
+    ctx.fillText('NÍVEL DE AMEAÇA ' + nivelAtual(), 320, y + 18);
     ctx.textAlign = 'left';
     est.mods.forEach((m, i) => {
-      const ly = y + 40 + i * 26;
-      ctx.font = '13px monospace'; ctx.fillStyle = '#ffd08a';
-      ctx.fillText(m.icone, x + 12, ly + 4);
+      const ly = y + 32 + i * 28;
+      glifo(ctx, m.id, x + 10, ly, 2);
       ctx.font = 'bold 10px monospace'; ctx.fillStyle = '#efe0c0';
-      ctx.fillText(m.nome, x + 34, ly);
+      ctx.fillText(m.nome, x + 34, ly + 8);
       ctx.font = '9px monospace'; ctx.fillStyle = '#9a8a72';
-      ctx.fillText(m.descricao, x + 34, ly + 11);
+      ctx.fillText(m.descricao, x + 34, ly + 19);
     });
     ctx.restore();
   }
 
-  /* Consulta durante a luta: uma fileira curta de ícones logo acima do
-     chefe, sem roubar espaço da HUD. */
+  /* Consulta durante a luta: fileira curta de glifos logo acima do chefe,
+     sem roubar espaço da HUD. */
   function desenharIcones(ctx, chefe) {
     if (!est.mods.length || revelando()) return;
-    const y = (Number.isFinite(chefe._hudAncoraY) ? chefe._hudAncoraY : chefe.y - 50) - 34;
-    const larg = est.mods.length * 15;
-    let x = chefe.x - larg / 2;
+    const y = (Number.isFinite(chefe._hudAncoraY) ? chefe._hudAncoraY : chefe.y - 50) - 38;
+    const passo = 13, larg = est.mods.length * passo;
+    let x = Math.round(chefe.x - larg / 2);
     ctx.save();
-    ctx.globalAlpha = 0.55; ctx.fillStyle = '#0b0810';
-    ctx.fillRect(x - 4, y - 10, larg + 8, 15);
-    ctx.globalAlpha = 0.95; ctx.font = '11px monospace'; ctx.textAlign = 'left';
-    for (const m of est.mods) { ctx.fillText(m.icone, x, y + 1); x += 15; }
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalAlpha = 0.62; ctx.fillStyle = '#0b0810';
+    ctx.fillRect(x - 3, y - 3, larg + 6, 15);
+    ctx.globalAlpha = 0.35; ctx.strokeStyle = '#6a5030'; ctx.lineWidth = 1;
+    ctx.strokeRect(x - 3.5, y - 3.5, larg + 7, 16);
+    ctx.globalAlpha = 1;
+    for (const m of est.mods) { glifo(ctx, m.id, x + 2, y, 1); x += passo; }
     ctx.restore();
   }
 
