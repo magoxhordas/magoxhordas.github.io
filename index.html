@@ -1604,6 +1604,20 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 }
 .br-start-btn:hover { border-color:#ff4422; color:#ff8866; box-shadow:0 0 20px rgba(255,60,20,0.3); transform:scale(1.03); }
 .br-start-btn:disabled { opacity:0.4; cursor:not-allowed; }
+.paired-action-row {
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px;
+  width:min(704px,92vw); align-items:stretch;
+}
+.paired-action-row > .paired-action-btn {
+  box-sizing:border-box; display:flex; align-items:center; justify-content:center;
+  width:100%; min-width:0 !important; height:76px; min-height:76px;
+  margin:0; padding:12px 24px; text-align:center; line-height:1.25;
+  font-size:18px !important; letter-spacing:3px;
+}
+@media (max-width:560px) {
+  .paired-action-row { grid-template-columns:1fr; width:min(360px,92vw); gap:10px; }
+  .paired-action-row > .paired-action-btn { height:60px; min-height:60px; }
+}
 .br-hud { position:absolute; top:8px; left:50%; transform:translateX(-50%);
   background:rgba(40,5,5,0.9); border:1px solid rgba(200,40,20,0.4);
   border-radius:3px; padding:4px 16px; font-size:17px; color:#ff6644;
@@ -5168,9 +5182,9 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
   <div class="cs-title">ESCOLHA SEU HERÓI</div>
   <div class="cs-sub" id="cs-sub-label">— Jogador 1 —</div>
   <div class="cs-cards" id="cs-cards-row"></div>
-  <div style="display:flex;gap:10px;align-items:center;">
-    <button class="menu-btn primary" id="cs-confirm-btn" onclick="confirmCharSelect()" style="min-width:180px;">⚔ CONFIRMAR</button>
-    <button class="menu-btn" onclick="cancelCharSelect()" style="min-width:100px;font-size:17px;">Voltar</button>
+  <div class="paired-action-row">
+    <button class="menu-btn primary paired-action-btn" id="cs-confirm-btn" onclick="confirmCharSelect()">CONFIRMAR</button>
+    <button class="menu-btn paired-action-btn" onclick="cancelCharSelect()">Voltar</button>
   </div>
 </div>
 
@@ -5586,9 +5600,9 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
     Enfrente os chefões em sequência. Sem ondas normais. Prove sua força!
   </div>
   <div class="br-boss-list" id="br-boss-list"></div>
-  <div style="display:flex;gap:10px;align-items:center;">
-    <button class="br-start-btn" id="br-start-btn" onclick="startBossRush()"><span class="pixel-btn-content"><span class="pixel-icon-slot" data-pixel-icon="sword" data-pixel-size="22"></span> INICIAR BOSS RUSH</span></button>
-    <button class="menu-btn" onclick="showScreen('main-menu')" style="font-size:15px;">Voltar</button>
+  <div class="paired-action-row">
+    <button class="br-start-btn paired-action-btn" id="br-start-btn" onclick="startBossRush()">INICIAR BOSS RUSH</button>
+    <button class="menu-btn paired-action-btn" onclick="showScreen('main-menu')">Voltar</button>
   </div>
   <div style="font-size:12px;color:#b0885f;margin-top:12px;text-align:center;">
     Derrote um boss na campanha normal para desbloqueá-lo aqui
@@ -8703,8 +8717,9 @@ function applyMetaUpgrades(pl){
 // ══════════════════════════════════════════════
 
 </script>
-  <script src="src/blessings/blessing-data.js"></script>
-  <script src="src/blessings/blessing-system.js"></script>
+  <script src="src/blessings/blessing-data.js?v=20260903-affinity"></script>
+  <script src="src/blessings/blessing-system.js?v=20260903-affinity"></script>
+  <script src="src/blessings/blessing-affinity-system.js?v=20260903-affinity"></script>
 </script>
   <script>
 // HUB — Acampamento
@@ -10102,7 +10117,7 @@ function drawPetSprite(c, petId, x, y, flipX, now){
 }
 
 </script>
-  <script src="src/ui/menu-codex-system.js"></script>
+  <script src="src/ui/menu-codex-system.js?v=20260903-affinity"></script>
   <script src="src/campaign/boss-data.js"></script>
   <script src="src/campaign/boss-rush-system.js"></script>
   <script src="src/classes/necromancer/necromancer-data.js?v=20260825-reanimation"></script>
@@ -10417,7 +10432,7 @@ function buildCharSelectUI(playerIdx){
       requestAnimationFrame(animate);
     });
   });
-  document.getElementById('cs-confirm-btn').textContent = (gameMode===2&&playerIdx===1) ? '→ JOGADOR 2' : '⚔ INICIAR BATALHA';
+  document.getElementById('cs-confirm-btn').textContent = (gameMode===2&&playerIdx===1) ? 'JOGADOR 2' : 'INICIAR BATALHA';
 }
 
 function confirmCharSelect(){
@@ -12328,9 +12343,13 @@ function drawNecromancerSummon(renderCtx,summon,time){
 NecromancerSystem.configure({
   getTargets:()=>allTargets(enemies),
   getPlayers:()=>[player,...(gameMode===2&&player2?[player2]:[])].filter(Boolean),
-  getGlobalAttackSpeedBonus:owner=>getCampaignShopAttackSpeedBonus(owner),
-  getGlobalCritChance:owner=>(owner?.cardEffects?.critChance||0)+getCampaignShopCritBonus(owner),
-  modifyDamage:(owner,target,damage)=>typeof campaignModifyOutgoingDamage==='function'?campaignModifyOutgoingDamage(owner,target,damage):damage,
+  getGlobalAttackSpeedBonus:owner=>getCampaignShopAttackSpeedBonus(owner)+(typeof getBlessingAttackSpeedBonus==='function'?getBlessingAttackSpeedBonus(owner):0),
+  getGlobalCritChance:owner=>(typeof getBlessingCritChance==='function'?getBlessingCritChance(owner):(owner?.cardEffects?.critChance||0))+getCampaignShopCritBonus(owner),
+  modifyDamage:(owner,target,damage,meta)=>{
+    let result=typeof campaignModifyOutgoingDamage==='function'?campaignModifyOutgoingDamage(owner,target,damage):damage;
+    if(meta?.summoned&&typeof applyBlessingSummonDamage==='function')result=applyBlessingSummonDamage(owner,target,result);
+    return result;
+  },
   spawnParts:(...args)=>spawnParts(...args),
   notifyHit:(owner,target,damage,weapon)=>{if(typeof notifyBlessingHit==='function')notifyBlessingHit(owner,target,damage,weapon);},
   drawSummon:(renderCtx,summon,time)=>drawNecromancerSummon(renderCtx,summon,time),
