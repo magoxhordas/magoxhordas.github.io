@@ -57,7 +57,10 @@
     {
       id: 'volcanic', nome: 'VULCÂNICO', icone: '🔥', categoria: CATEGORIAS.ARENA, peso: 1,
       descricao: 'Golpes pesados deixam o chão em brasa.',
-      params: { duracaoMs: 2600, raio: 30, dano: 6, intervaloDanoMs: 420 },
+      /* 5 a cada 480ms da' ~10/s. Com 6 a cada 420ms eram 14,3/s: ficar a
+         area inteira custava 37 de vida, quase metade de um Lendario — e o
+         teto de arena permite DOIS perigos de chao ao mesmo tempo. */
+      params: { duracaoMs: 2600, raio: 30, dano: 5, intervaloDanoMs: 480 },
     },
     {
       id: 'glacial', nome: 'GLACIAL', icone: '❄️', categoria: CATEGORIAS.ARENA, peso: 1,
@@ -127,7 +130,9 @@
     {
       id: 'corruptor', nome: 'CORRUPTOR', icone: '🕳️', categoria: CATEGORIAS.ARENA, peso: 0.9,
       descricao: 'Trechos da arena apodrecem por alguns segundos.',
-      params: { cooldownMs: 7500, raio: 46, duracaoMs: 4200, dano: 5, intervaloDanoMs: 520 },
+      /* dura mais que o Vulcanico e tem raio maior, entao pesa menos por
+         segundo: 4 a cada 560ms = ~7/s. */
+      params: { cooldownMs: 7500, raio: 46, duracaoMs: 4200, dano: 4, intervaloDanoMs: 560 },
     },
     {
       id: 'gravity_well', nome: 'ABISMO', icone: '🌑', categoria: CATEGORIAS.ARENA, peso: 0.7,
@@ -142,7 +147,11 @@
     {
       id: 'orbitals', nome: 'ORBITAIS', icone: '🔆', categoria: CATEGORIAS.ATAQUE, peso: 0.9,
       descricao: 'Esferas perigosas giram ao redor dele.',
-      params: { quantidade: 2, raio: 62, velocidade: 0.0016, dano: 9, ciclos: true, visivelMs: 4200, ocultoMs: 2200 },
+      /* dano 5, e nao 9: o toque continuo passa pelo chipT de 300ms, entao
+         9 viravam 30/s em quem encostasse — matava um Lendario (85 de vida)
+         em menos de 3 segundos so' por raspar na orbita. Com 5 da' ~17/s,
+         na mesma faixa das areas de chao. */
+      params: { quantidade: 2, raio: 62, velocidade: 0.0016, dano: 5, ciclos: true, visivelMs: 4200, ocultoMs: 2200 },
     },
     {
       id: 'echoing', nome: 'ECOANTE', icone: '〰️', categoria: CATEGORIAS.ATAQUE, peso: 1,
