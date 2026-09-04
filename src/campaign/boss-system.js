@@ -516,6 +516,34 @@ const BRUTE_BACK=[makeBruteBackFrame(0),makeBruteBackFrame(1)];
 const BRUTE_RUN=[makeBruteSideFrameV2(0),makeBruteSideFrameV2(1)];
 const BRUTE_ROCK_LIFT=makeBruteFrontFrame(0,'lift');
 const BRUTE_ROCK_THROW=makeBruteSideFrameV2(0,true);
+/* ── CLARAO DE DANO DOS CHEFES ──
+   Antes cada chefe pintava um DISCO CHAPADO por cima de si (fillStyle + arc
+   + fill) com o raio do corpo. Era o "circulo" que aparecia toda vez que o
+   chefe levava dano: uma moeda opaca colada na frente do bicho, com borda
+   dura, tapando a arte justo no momento em que o jogador quer ver o acerto.
+
+   Aqui o disco vira um brilho ADITIVO com gradiente ate' transparente. Sem
+   borda, o corpo do chefe continua visivel por baixo e o efeito le' como "o
+   bicho piscou", nao como "apareceu um circulo". E' generico de proposito:
+   cinco dos nove chefes se desenham de forma procedural, sem sprite, entao
+   nao da' para repintar silhueta como se faz com os inimigos normais.
+
+   O pico de opacidade caiu de 0.5-0.7 para 0.34 — o clarao ainda avisa,
+   mas nao rouba a cena. */
+function claraoChefe(x,y,r,cor,forca){
+  if(!(forca>0))return;
+  const raio=Math.max(1,r*1.15);
+  const a=Math.max(0,Math.min(1,forca))*0.34;
+  if(a<=0.004)return;
+  const g=ctx.createRadialGradient(x,y,0,x,y,raio);
+  g.addColorStop(0,cor); g.addColorStop(0.55,cor); g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.save();
+  ctx.globalCompositeOperation='lighter';
+  ctx.globalAlpha=a; ctx.fillStyle=g;
+  ctx.beginPath(); ctx.arc(x,y,raio,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
 function drawBossGrid(frame, pal, x, y, px, flipX=false){
   const Wd=frame.reduce((max,row)=>Math.max(max,row.length),0), Hd=frame.length;
   const ox=Math.round(x-Wd*px/2), oy=Math.round(y-Hd*px/2);
@@ -886,6 +914,7 @@ class BossSkeletonKing {
         this.isSpinning=false;
         const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead);
         for(const pl of allPl) if(Math.hypot(pl.x-this.x,pl.y-this.y)<this.spinRadius) pl.takeDmg(this.damage*0.9);
+        if(typeof BossModifierSystem!=='undefined') BossModifierSystem.golpeForte(this,this.x,this.y,this.damage*0.9);
         spawnParts(this.x,this.y,'#aabbff',16,75);
         this._throwBoomerang(allPl);
       }
@@ -970,8 +999,8 @@ class BossSkeletonKing {
     }
     spawnParts(this.x,this.y,'#d0d0ff',12,60);
   }
-  takeDmg(a){ if(this.phase2Triggered&&!this.resurrected) return; this.hp-=a; this.flashTimer=100; spawnParts(this.x,this.y,'#d0c8e0',4,35); }
-  _dropLoot(){
+  takeDmg(a){ if(typeof BossModifierSystem!=='undefined') a=BossModifierSystem.levouDano(this,a); if(this.phase2Triggered&&!this.resurrected) return; this.hp-=a; this.flashTimer=100; spawnParts(this.x,this.y,'#d0c8e0',4,35); }
+  _dropLoot(){ if(typeof BossModifierSystem!=='undefined') BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y);
     kills+=6;
     CampProgressionSystem.awardCampaignArtifact('coroa_quebrada',this);
     for(let i=0;i<8;i++) spawnCoin(this.x+(Math.random()-0.5)*50,this.y+(Math.random()-0.5)*30,Math.floor(this.xpVal/8));
@@ -1002,7 +1031,7 @@ class BossSkeletonKing {
       }
       ctx.restore();
     }
-    if(this.flashTimer>0){ ctx.save(); ctx.globalAlpha=this.flashTimer/800*0.7; ctx.fillStyle=this.resurrected?'#cc44ff':'#bbccff'; ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+    if(this.flashTimer>0) claraoChefe(this.x,this.y,this.radius,this.resurrected?'#cc44ff':'#bbccff',this.flashTimer/800*0.7);
     // Arte real do chefe, com o grid antigo de reserva.
     // A arte de perfil olha para a esquerda, entao espelha quando ele vai
     // para a direita. O giro nao usa direcao: as 8 rotacoes da arte sao o
@@ -1295,7 +1324,7 @@ function drawAracneAncestralBoss(b,t){
     ctx.restore();
   }
   for(const eg of b.eggs){ if(!eg.hatched){ drawAracneEgg(eg,t); eg.drawn=true; } else eg.drawn=true; }
-  if(b.flashTimer>0){ ctx.save(); ctx.globalAlpha=b.flashTimer/100*0.5; ctx.fillStyle='#b05bd0'; ctx.beginPath(); ctx.arc(drawX,drawY,b.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+  if(b.flashTimer>0){ claraoChefe(drawX,drawY,b.radius,'#b05bd0',b.flashTimer/100*0.5); }
   // O sprite novo e mais alto que o grid antigo: a barra acompanha, senao
   // ela cai em cima do corpo.
   const spriteTop=b._usouArte ? drawY+34-Math.round(33*b.aracneEscala)
@@ -1404,6 +1433,7 @@ class BossAracne {
         this.x=Math.max(40,Math.min(W-40,this.jumpTarget.x));
         this.y=Math.max(205,Math.min(H-40,this.jumpTarget.y));
         this.jumpState='landing'; this.jumpLandTimer=400;
+        if(typeof BossModifierSystem!=='undefined') BossModifierSystem.golpeForte(this,this.jumpTarget.x,this.jumpTarget.y,this.damage);
         const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead);
         this.jumpHit=false;
         for(const pl of allPl){
@@ -1456,8 +1486,8 @@ class BossAracne {
       spawnParts(ex,ey,'#888840',5,25);
     }
   }
-  takeDmg(a){ this.hp-=a; this.flashTimer=100; spawnParts(this.x,this.y,'#888840',4,35); }
-  _dropLoot(){ kills+=8; CampProgressionSystem.awardCampaignArtifact('olho_aracne',this); for(let i=0;i<10;i++) spawnCoin(this.x+(Math.random()-0.5)*60,this.y+(Math.random()-0.5)*35,Math.floor(this.xpVal/10)); const bl=['semente_erva','semente_tomate','madeira','pedra']; for(let bi=0;bi<5;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*40,this.y,it);} showInvNotif('Aracne Ancestral derrotada!'); savePersistentData(); spawnParts(this.x,this.y,'#888840',22,90); triggerScreenShake(16,480); }
+  takeDmg(a){ if(typeof BossModifierSystem!=='undefined') a=BossModifierSystem.levouDano(this,a); this.hp-=a; this.flashTimer=100; spawnParts(this.x,this.y,'#888840',4,35); }
+  _dropLoot(){ if(typeof BossModifierSystem!=='undefined') BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y); kills+=8; CampProgressionSystem.awardCampaignArtifact('olho_aracne',this); for(let i=0;i<10;i++) spawnCoin(this.x+(Math.random()-0.5)*60,this.y+(Math.random()-0.5)*35,Math.floor(this.xpVal/10)); const bl=['semente_erva','semente_tomate','madeira','pedra']; for(let bi=0;bi<5;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*40,this.y,it);} showInvNotif('Aracne Ancestral derrotada!'); savePersistentData(); spawnParts(this.x,this.y,'#888840',22,90); triggerScreenShake(16,480); }
   draw(t){
     drawAracneAncestralBoss(this,t);
     return;
@@ -1542,7 +1572,7 @@ class BossAracne {
     for(const eg of this.eggs){
       if(!eg.hatched){ const pct=1-(eg.timer/eg.maxTimer); ctx.save(); ctx.globalAlpha=0.9; ctx.fillStyle='#888840'; ctx.beginPath(); ctx.ellipse(eg.x,eg.y,12,9,0,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#aaaa60'; ctx.beginPath(); ctx.ellipse(eg.x-4,eg.y-3,5,4,0,0,Math.PI*2); ctx.fill(); ctx.strokeStyle=pct>0.7?'#ff3300':'#888840'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(eg.x,eg.y,14,0,Math.PI*2*pct); ctx.stroke(); ctx.restore(); eg.drawn=true; } else { eg.drawn=true; }
     }
-    if(this.flashTimer>0){ ctx.save(); ctx.globalAlpha=this.flashTimer/100*0.5; ctx.fillStyle='#888840'; ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+    if(this.flashTimer>0){ claraoChefe(this.x,this.y,this.radius,'#888840',this.flashTimer/100*0.5); }
     drawHPBar(this.x,this.y-this.radius*this.scale-20,this.hp/this.maxHp,95);
     ctx.fillStyle='#cc66ff'; ctx.font='bold 9px Courier New'; ctx.textAlign='center';
     if(typeof BossHUD!=='undefined') BossHUD.ancorar(this,this.x,this.y-this.radius*this.scale-24); if(typeof bossHudCobrindo==='undefined'||!bossHudCobrindo) ctx.fillText('🕷 ARACNE ANCESTRAL',this.x,this.y-this.radius*this.scale-24); ctx.textAlign='left';
@@ -1923,7 +1953,7 @@ function drawFrostGiantBoss(b,t){
   const core=ctx.createRadialGradient(x,y+8+bob,1,x,y+8+bob,22);
   core.addColorStop(0,'rgba(236,251,255,0.85)');core.addColorStop(0.45,'rgba(78,233,255,0.35)');core.addColorStop(1,'rgba(0,0,0,0)');
   ctx.fillStyle=core;ctx.beginPath();ctx.arc(x,y+8+bob,22,0,Math.PI*2);ctx.fill();
-  if(b.flashTimer>0){ctx.save();ctx.globalAlpha=b.flashTimer/100*0.5;ctx.fillStyle='#bcefff';ctx.beginPath();ctx.arc(x,y,b.radius,0,Math.PI*2);ctx.fill();ctx.restore();}
+  if(b.flashTimer>0){claraoChefe(x,y,b.radius,'#bcefff',b.flashTimer/100*0.5);}
   // O topo muda com a arte: a barra de vida acompanha, senao ela invade
   // a cabeca do boneco novo, que e mais alto que o grid antigo.
   const spriteTop=b._usouArte ? y+42-Math.round(42*b.golemEscala)
@@ -2090,7 +2120,7 @@ class BossFrostBehemoth {
     }
     this.flashTimer=100; spawnParts(this.x,this.y,'#88ccff',4,35);
   }
-  _dropLoot(){ kills+=10; CampProgressionSystem.awardCampaignArtifact('coracao_congelado',this); for(let i=0;i<12;i++) spawnCoin(this.x+(Math.random()-0.5)*70,this.y+(Math.random()-0.5)*40,Math.floor(this.xpVal/12)); const bl=['semente_erva','pedra','madeira']; for(let bi=0;bi<6;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*40,this.y,it);} showInvNotif('Gigante de Gelo derrotado! +6 itens!'); savePersistentData(); spawnParts(this.x,this.y,'#88ddff',28,100); triggerScreenShake(20,600); }
+  _dropLoot(){ if(typeof BossModifierSystem!=='undefined') BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y); kills+=10; CampProgressionSystem.awardCampaignArtifact('coracao_congelado',this); for(let i=0;i<12;i++) spawnCoin(this.x+(Math.random()-0.5)*70,this.y+(Math.random()-0.5)*40,Math.floor(this.xpVal/12)); const bl=['semente_erva','pedra','madeira']; for(let bi=0;bi<6;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*40,this.y,it);} showInvNotif('Gigante de Gelo derrotado! +6 itens!'); savePersistentData(); spawnParts(this.x,this.y,'#88ddff',28,100); triggerScreenShake(20,600); }
   draw(t){
     drawFrostGiantBoss(this,t);
     return;
@@ -2200,7 +2230,7 @@ class BossFrostBehemoth {
       ctx.beginPath(); ctx.arc(x+(f2%2?6:-6)*sc*fp*2, y+bob-4*sc+fp*16, 1.8+fp*3.2, 0, Math.PI*2); ctx.fill();
     }
     ctx.globalAlpha=1;
-    if(this.flashTimer>0){ ctx.save(); ctx.globalAlpha=this.flashTimer/100*0.5; ctx.fillStyle='#aaddff'; ctx.beginPath(); ctx.arc(x,y,this.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+    if(this.flashTimer>0){ claraoChefe(x,y,this.radius,'#aaddff',this.flashTimer/100*0.5); }
     drawHPBar(x,y-this.radius*this.scale/1.4-18,this.hp/this.maxHp,98);
     ctx.fillStyle='#88ddff'; ctx.font='bold 9px Courier New'; ctx.textAlign='center';
     if(typeof BossHUD!=='undefined') BossHUD.ancorar(this,x,y-this.radius*this.scale/1.4-22); if(typeof bossHudCobrindo==='undefined'||!bossHudCobrindo) ctx.fillText('❄ GIGANTE DE GELO',x,y-this.radius*this.scale/1.4-22); ctx.textAlign='left';
@@ -2471,7 +2501,7 @@ function drawDevourerBoss(b,t){
   const headAngle=diving?Math.max(-.28,Math.min(.28,heading*.18)):Math.sin(t*.006+b.phase)*.045;
   drawDevourerSpriteCentered(DEVOURER_HEAD_FRAMES[frame],b.x,b.y+headBob,diving?1.45:1.5,headAngle,dirX<0);
   }
-  if(b.flashTimer>0){ctx.save();ctx.globalAlpha=b.flashTimer/100*.55;ctx.fillStyle='#fff09a';ctx.beginPath();ctx.arc(b.x,b.y,44,0,Math.PI*2);ctx.fill();ctx.restore();}
+  if(b.flashTimer>0){claraoChefe(b.x,b.y,44,'#fff09a',b.flashTimer/100*.55);}
   // Com a arte nova o corpo cabe num quadro so', entao o topo sai dele; o
   // reserva continua olhando o segmento mais alto da fila.
   // A altura muda muito entre as vistas (o perfil tem 28..44 linhas, a de
@@ -2564,7 +2594,8 @@ class BossSandworm {
     this.x=Math.max(44,Math.min(W-44,this.x)); this.y=Math.max(210,Math.min(H-44,this.y));
     // Sinkhole
     this.sinkholeTimer-=dt*1000;
-    if(this.sinkholeTimer<=0){ this.sinkholeTimer=this.sinkholeCd; this.sinkhole={x:W/2,y:H/2,power:40,timer:3200,range:this.sinkholeRange}; spawnLevelUpNotice(W/2,H/2-50,'🌀 SUMIDOURO!',0); }
+    if(this.sinkholeTimer<=0){ this.sinkholeTimer=this.sinkholeCd; this.sinkhole={x:W/2,y:H/2,power:40,timer:3200,range:this.sinkholeRange};
+      if(typeof BossModifierSystem!=='undefined') BossModifierSystem.golpeForte(this,this.x,this.y,this.damage); spawnLevelUpNotice(W/2,H/2-50,'🌀 SUMIDOURO!',0); }
     if(this.sinkhole){
       this.sinkhole.timer-=dt*1000;
       const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead);
@@ -2669,8 +2700,8 @@ class BossSandworm {
     this.diveVx=Math.cos(angle)*650;this.diveVy=Math.sin(angle)*650;
     this.divePassTimer=1400;this._resetBodyTrail(angle);
   }
-  takeDmg(a){ this.hp-=a; this.flashTimer=100; spawnParts(this.x,this.y,'#c8a840',4,35); }
-  _dropLoot(){ kills+=12; CampProgressionSystem.awardCampaignArtifact('presa_fossil',this); for(let i=0;i<14;i++) spawnCoin(this.x+(Math.random()-0.5)*80,this.y+(Math.random()-0.5)*45,Math.floor(this.xpVal/14)); const bl=['semente_erva','pedra','madeira','semente_tomate']; for(let bi=0;bi<7;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*50,this.y,it);} showInvNotif('Verme Devorador derrotado! +7 itens!'); savePersistentData(); spawnParts(this.x,this.y,'#c8a840',30,110); triggerScreenShake(22,650); }
+  takeDmg(a){ if(typeof BossModifierSystem!=='undefined') a=BossModifierSystem.levouDano(this,a); this.hp-=a; this.flashTimer=100; spawnParts(this.x,this.y,'#c8a840',4,35); }
+  _dropLoot(){ if(typeof BossModifierSystem!=='undefined') BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y); kills+=12; CampProgressionSystem.awardCampaignArtifact('presa_fossil',this); for(let i=0;i<14;i++) spawnCoin(this.x+(Math.random()-0.5)*80,this.y+(Math.random()-0.5)*45,Math.floor(this.xpVal/14)); const bl=['semente_erva','pedra','madeira','semente_tomate']; for(let bi=0;bi<7;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*50,this.y,it);} showInvNotif('Verme Devorador derrotado! +7 itens!'); savePersistentData(); spawnParts(this.x,this.y,'#c8a840',30,110); triggerScreenShake(22,650); }
   draw(t){
     drawDevourerBoss(this,t);
     return;
@@ -2774,12 +2805,9 @@ class BossSandworm {
     // Acid drip from mouth
     for(let d=0;d<3;d++){
       const da=(((t*0.04)+d*30)%40)/40;
-      ctx.save(); ctx.globalAlpha=(1-da)*0.8;
-      ctx.fillStyle='#88ff22';
-      ctx.beginPath(); ctx.arc(x+(d-1)*8,y+8+da*12,2.5,0,Math.PI*2); ctx.fill();
-      ctx.restore();
+      claraoChefe(x+(d-1)*8,y+8+da*12,2.5,'#88ff22',(1-da)*0.8);
     }
-    if(this.flashTimer>0){ ctx.save(); ctx.globalAlpha=this.flashTimer/100*0.5; ctx.fillStyle='#88ff44'; ctx.beginPath(); ctx.arc(x,y,this.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+    if(this.flashTimer>0){ claraoChefe(x,y,this.radius,'#88ff44',this.flashTimer/100*0.5); }
     drawHPBar(x,y-this.radius*1.8-18,this.hp/this.maxHp,100);
     ctx.fillStyle='#aeff44'; ctx.font='bold 9px Courier New'; ctx.textAlign='center';
     if(typeof BossHUD!=='undefined') BossHUD.ancorar(this,x,y-this.radius*1.8-22); if(typeof bossHudCobrindo==='undefined'||!bossHudCobrindo) ctx.fillText('🪱 VERME DEVORADOR',x,y-this.radius*1.8-22); ctx.textAlign='left';
@@ -2849,6 +2877,7 @@ class BossBalrog {
       // esticar, entao o jogador levava o golpe sem ver de onde veio.
       if(!this.whipAcertou&&1-Math.max(0,this.whipAnim)/600>=0.72){
         this.whipAcertou=true;
+        if(typeof BossModifierSystem!=='undefined') BossModifierSystem.golpeForte(this,this.x,this.y,this.damage);
         const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead);
         for(const pl of allPl){
           if((this.whipSide===1&&pl.x>this.x-50)||(this.whipSide===-1&&pl.x<this.x+50)){
@@ -2897,8 +2926,8 @@ class BossBalrog {
     this.frameTick+=dt*1000; if(this.frameTick>150){this.frameTick=0;this.frameIdx=(this.frameIdx+1)%3;}
     if(this.flashTimer>0) this.flashTimer-=dt*1000;
   }
-  takeDmg(a){ this.hp-=a; this.flashTimer=120; spawnParts(this.x,this.y,'#ff4400',5,40); }
-  _dropLoot(){ kills+=20; CampProgressionSystem.awardCampaignArtifact('nucleo_infernal',this); for(let i=0;i<18;i++) spawnCoin(this.x+(Math.random()-0.5)*100,this.y+(Math.random()-0.5)*55,Math.floor(this.xpVal/18)); const bl=['semente_erva','pedra','madeira','semente_tomate','semente_trigo']; for(let bi=0;bi<10;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*60,this.y,it);} showInvNotif('BALROG DERROTADO! +10 itens!'); savePersistentData(); spawnParts(this.x,this.y,'#ff4400',40,120); spawnParts(this.x,this.y,'#ffcc00',20,80); triggerScreenShake(28, 800); }
+  takeDmg(a){ if(typeof BossModifierSystem!=='undefined') a=BossModifierSystem.levouDano(this,a); this.hp-=a; this.flashTimer=120; spawnParts(this.x,this.y,'#ff4400',5,40); }
+  _dropLoot(){ if(typeof BossModifierSystem!=='undefined') BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y); kills+=20; CampProgressionSystem.awardCampaignArtifact('nucleo_infernal',this); for(let i=0;i<18;i++) spawnCoin(this.x+(Math.random()-0.5)*100,this.y+(Math.random()-0.5)*55,Math.floor(this.xpVal/18)); const bl=['semente_erva','pedra','madeira','semente_tomate','semente_trigo']; for(let bi=0;bi<10;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*60,this.y,it);} showInvNotif('BALROG DERROTADO! +10 itens!'); savePersistentData(); spawnParts(this.x,this.y,'#ff4400',40,120); spawnParts(this.x,this.y,'#ffcc00',20,80); triggerScreenShake(28, 800); }
   draw(t){
     const x=this.x, y=this.y;
     const glow=0.7+0.3*Math.sin(t*0.006+this.phase);
@@ -2999,9 +3028,7 @@ class BossBalrog {
     }
     // fúria (fase 2): tinge o corpo de vermelho por trás
     if(this.phase2){
-      ctx.save(); ctx.globalAlpha=0.35+0.2*Math.sin(t*0.01);
-      ctx.fillStyle='#ff2200'; ctx.beginPath(); ctx.arc(x,bodyY,45,0,Math.PI*2); ctx.fill();
-      ctx.restore();
+      claraoChefe(x,bodyY,45,'#ff2200',0.35+0.2*Math.sin(t*0.01));
     }
     if(this.isMoving&&this.phase2){
       ctx.save();ctx.globalAlpha=.3;ctx.fillStyle='#ff6411';
@@ -3082,7 +3109,7 @@ class BossBalrog {
       ctx.fillStyle='#ff4400'; ctx.font=`bold ${Math.round(14+6*(1-this.roarTimer/800))}px Courier New`;
       ctx.textAlign='center'; ctx.fillText('GRAAAAH!',x,y-85); ctx.restore(); ctx.textAlign='left';
     }
-    if(this.flashTimer>0){ ctx.save(); ctx.globalAlpha=this.flashTimer/120*0.55; ctx.fillStyle='#ff6600'; ctx.beginPath(); ctx.arc(x,y,this.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+    if(this.flashTimer>0){ claraoChefe(x,y,this.radius,'#ff6600',this.flashTimer/120*0.55); }
     drawHPBar(x,y-this.radius*this.scale/2-26,this.hp/this.maxHp,104);
     ctx.fillStyle=this.phase2?'#ff2200':'#ff6600'; ctx.font='bold 9px Courier New'; ctx.textAlign='center';
     if(typeof BossHUD!=='undefined') BossHUD.ancorar(this,x,y-this.radius*this.scale/2-30);
@@ -3114,7 +3141,7 @@ class BossBrute {
     this.hitCd=2200; this.hitTimer=1800; this.hitAnim=0; this.hitAcertou=false;
     this.hitAlcance=this.radius+38;
   }
-  takeDmg(a){ this.hp-=a; this.flashTimer=100; spawnParts(this.x,this.y,'#7ab048',4,35); }
+  takeDmg(a){ if(typeof BossModifierSystem!=='undefined') a=BossModifierSystem.levouDano(this,a); this.hp-=a; this.flashTimer=100; spawnParts(this.x,this.y,'#7ab048',4,35); }
   update(dt,px,py){
     if(this.hp<=0){ this.dead=true; this._dropLoot(); return; }
     const ms=dt*1000;
@@ -3166,6 +3193,7 @@ class BossBrute {
         const hitRadius=finalJump?105:90;
         const hitMult=finalJump?1.35:0.9;
         for(const pl of allP){ if(Math.hypot(pl.x-this.x,pl.y-this.y)<hitRadius) pl.takeDmg(this.damage*hitMult); }
+        if(typeof BossModifierSystem!=='undefined') BossModifierSystem.golpeForte(this,this.x,this.y,this.damage*hitMult);
         this.leapChain--;
         if(this.leapChain>0){
           this.leapState='wind'; this.leapWind=this.leapWindMax=280; this.leapTarget={x:px,y:py};
@@ -3254,7 +3282,7 @@ class BossBrute {
     }
     this.rocks=this.rocks.filter(r=>r.life>0);
   }
-  _dropLoot(){
+  _dropLoot(){ if(typeof BossModifierSystem!=='undefined') BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y);
     kills+=12; for(let i=0;i<14;i++) spawnCoin(this.x+(Math.random()-0.5)*80,this.y+(Math.random()-0.5)*45,Math.floor(this.xpVal/14));
     const bl=['semente_erva','pedra','madeira','semente_tomate'];
     for(let bi=0;bi<7;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*50,this.y,it);}
@@ -3296,7 +3324,11 @@ class BossBrute {
       frame=BRUTE_RUN[this.frameIdx%2];flip=this.facing<0;
     }
     if(this.impactTimer>0){
-      const p=1-this.impactTimer/650;
+      // preso entre 0 e 1: o raio da onda sai de 28+p*52, entao um
+      // impactTimer acima de 650 vira raio NEGATIVO e o ctx.ellipse lanca
+      // IndexSizeError, derrubando o desenho do quadro inteiro. Em jogo o
+      // timer nasce em 650 e so' desce, mas a guarda custa nada.
+      const p=Math.max(0,Math.min(1,1-this.impactTimer/650));
       ctx.save();ctx.globalAlpha=(1-p)*.9;
       ctx.strokeStyle='#ff5038';ctx.lineWidth=4;
       for(let i=0;i<2;i++){ctx.beginPath();ctx.ellipse(this.x,groundY+3,28+p*(52+i*20),10+p*(20+i*7),0,0,Math.PI*2);ctx.stroke();}
@@ -3308,7 +3340,12 @@ class BossBrute {
     // O Brutamontes tem os DOIS ataques da pasta: Salto Esmagador e
     // arremesso de pedra. O estado escolhe o conjunto de quadros.
     let usouArte=false;
-    if(window.OrcSprites&&this.flashTimer<=0){
+    // A arte NAO depende mais do clarao do golpe. Enquanto dependia
+    // (flashTimer<=0), levar dano pulava este bloco inteiro e o Brutamontes
+    // caia no desenho procedural antigo — era ele "voltando a sprite velha"
+    // toda vez que apanhava. Todos os outros chefes mantem a arte e so'
+    // pintam um clarao por cima; agora este faz igual, logo abaixo.
+    if(window.OrcSprites){
       const NA=window.OrcSprites.N_ATK;
       let estado='idle', q=0, dirArte='down', flipArte=false;
       if(this.rockWind>0||this.rockThrowAnim>0){
@@ -3351,7 +3388,10 @@ class BossBrute {
                                           this.bruteEscala,flipArte);
     }
     if(usouArte){
-      /* arte nova ja desenhada */
+      // clarao do golpe POR CIMA da arte, no mesmo formato dos outros chefes
+      if(this.flashTimer>0){
+        claraoChefe(this.x,groundY-gh*0.45,this.radius*0.95,'#ffd2a6',Math.min(1,this.flashTimer/100)*0.5);
+      }
     } else if(this.flashTimer>0){
       ctx.save(); ctx.globalAlpha=0.85;
       drawBossGrid(frame, Object.fromEntries(Object.keys(PAL_BOSS_BRUTE).map(k=>[k,'#ffffff'])), this.x, cy, pxs,flip);

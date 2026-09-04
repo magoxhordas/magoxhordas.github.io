@@ -168,6 +168,10 @@ function updateCampaignBiomeAndBoss(wildPetFight){
       bossMajor.shieldHp=bossMajor.shieldMax;
     }
     if(typeof campaignObjectives!=='undefined')campaignObjectives.onBossSpawn(bossMajor,wave);
+    // Sorteia os modificadores UMA vez por encontro. O sistema devolve cedo
+    // se ja' houver conjunto para este mesmo chefe, entao uma re-entrada
+    // aqui nao re-sorteia no meio da luta.
+    if(typeof BossModifierSystem!=='undefined')BossModifierSystem.aoNascerChefe(bossMajor);
     CampProgressionSystem.onBossStarted([player,player2],bossMajor);
     if(typeof Audio!=='undefined'){
       const bossTheme={5:'skeleton_king',10:'aracne',15:'frost',20:'sandworm',25:'balrog',30:'brute'}[wave]||bossMajor.type||'default';

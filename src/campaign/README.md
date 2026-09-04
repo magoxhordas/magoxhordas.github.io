@@ -7,6 +7,8 @@ Esta pasta contém a extração incremental da progressão da campanha e do Modo
 - `chapter-data.js`: duração, imagens, partículas e arena dos capítulos nas ondas 1, 6, 11, 16 e 21.
 - `campaign-system.js`: avanço e encerramento de ondas, troca de bioma, abertura dos capítulos, limpeza de objetos, bônus e criação escalonada dos chefes.
 - `boss-data.js`: registros declarativos dos chefes e criaturas disponíveis no Modo Chefão.
+- `boss-modifier-data.js`: catálogo, categorias, compatibilidade por chefe e toda a configuração do Nível de Ameaça.
+- `boss-modifiers.js`: sorteio, estado, update, desenho, limpeza e recompensa do Nível de Ameaça. Ver `docs/nivel-de-ameaca.md`.
 - `boss-rush-system.js`: seleção, fila, troca de arena, vitória, derrota e conclusão da campanha.
 - `boss-system.js`: sprites, renderers e comportamento individual de Rei Cadáver, Aracne, Gigante de Gelo, Verme Devorador, Balrog e Brutamontes.
 

@@ -155,6 +155,46 @@
     return true;
   }
 
+  /* Tinge o MESMO quadro que o inimigo acabou de desenhar.
+
+     E' a diferenca entre "o bicho ficou verde" e "puseram uma bolha verde
+     em cima dele": aqui a cor entra por source-atop num canvas auxiliar, ou
+     seja, so' onde ha' pixel do sprite. O contorno do inimigo continua
+     nitido e a arte continua legivel por baixo da cor.
+
+     O canvas auxiliar e' um so', reaproveitado — criar um por inimigo por
+     quadro seria caro. */
+  let aux = null, auxCtx = null;
+  function tingir(ctx2, p, cor, forca) {
+    if (!p || typeof document === 'undefined') return false;
+    const def = DEFS[p.tipo];
+    if (!def) return false;
+    const im = quadro(p.tipo, p.estado, p.dir, p.idx);
+    if (!im) return false;
+    const rel = (def.escBase && Number.isFinite(p.escala) && p.escala > 0) ? p.escala / def.escBase : 1;
+    const lado = Math.round(def.quadro * def.escala * rel);
+    if (!(lado > 0)) return false;
+    if (!aux) { aux = document.createElement('canvas'); auxCtx = aux.getContext('2d'); }
+    if (aux.width !== lado || aux.height !== lado) { aux.width = lado; aux.height = lado; }
+    auxCtx.clearRect(0, 0, lado, lado);
+    auxCtx.imageSmoothingEnabled = false;
+    auxCtx.globalCompositeOperation = 'source-over';
+    auxCtx.drawImage(im, 0, 0, lado, lado);
+    auxCtx.globalCompositeOperation = 'source-atop';   // so' onde ha' sprite
+    auxCtx.fillStyle = cor;
+    auxCtx.fillRect(0, 0, lado, lado);
+    auxCtx.globalCompositeOperation = 'source-over';
+    const dx = Math.round(p.x - lado / 2);
+    const dy = Math.round(p.pesY - def.pe * def.escala * rel);
+    ctx2.save();
+    ctx2.globalAlpha = forca;
+    ctx2.imageSmoothingEnabled = false;
+    if (p.flip) { ctx2.translate(dx + lado, dy); ctx2.scale(-1, 1); ctx2.drawImage(aux, 0, 0); }
+    else ctx2.drawImage(aux, dx, dy);
+    ctx2.restore();
+    return true;
+  }
+
   (function precarregar() {
     for (const tipo in DEFS) {
       const def = DEFS[tipo];
@@ -172,7 +212,7 @@
   function golpeDeContato(tipo) { const d = DEFS[tipo]; return !!(d && d.contato && d.nHit); }
 
   const API = {
-    desenhar, quadro, quadroGolpe, suporta, duracaoGolpe, golpeDeContato, DEFS, DUR_GOLPE,
+    desenhar, tingir, quadro, quadroGolpe, suporta, duracaoGolpe, golpeDeContato, DEFS, DUR_GOLPE,
     WALK_MS, PX_POR_QUADRO,
     pronto() { return !!img('goblin/idle_south'); },
   };
