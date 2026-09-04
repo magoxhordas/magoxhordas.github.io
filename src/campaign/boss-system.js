@@ -3296,7 +3296,11 @@ class BossBrute {
       frame=BRUTE_RUN[this.frameIdx%2];flip=this.facing<0;
     }
     if(this.impactTimer>0){
-      const p=1-this.impactTimer/650;
+      // preso entre 0 e 1: o raio da onda sai de 28+p*52, entao um
+      // impactTimer acima de 650 vira raio NEGATIVO e o ctx.ellipse lanca
+      // IndexSizeError, derrubando o desenho do quadro inteiro. Em jogo o
+      // timer nasce em 650 e so' desce, mas a guarda custa nada.
+      const p=Math.max(0,Math.min(1,1-this.impactTimer/650));
       ctx.save();ctx.globalAlpha=(1-p)*.9;
       ctx.strokeStyle='#ff5038';ctx.lineWidth=4;
       for(let i=0;i<2;i++){ctx.beginPath();ctx.ellipse(this.x,groundY+3,28+p*(52+i*20),10+p*(20+i*7),0,0,Math.PI*2);ctx.stroke();}
@@ -3308,7 +3312,12 @@ class BossBrute {
     // O Brutamontes tem os DOIS ataques da pasta: Salto Esmagador e
     // arremesso de pedra. O estado escolhe o conjunto de quadros.
     let usouArte=false;
-    if(window.OrcSprites&&this.flashTimer<=0){
+    // A arte NAO depende mais do clarao do golpe. Enquanto dependia
+    // (flashTimer<=0), levar dano pulava este bloco inteiro e o Brutamontes
+    // caia no desenho procedural antigo — era ele "voltando a sprite velha"
+    // toda vez que apanhava. Todos os outros chefes mantem a arte e so'
+    // pintam um clarao por cima; agora este faz igual, logo abaixo.
+    if(window.OrcSprites){
       const NA=window.OrcSprites.N_ATK;
       let estado='idle', q=0, dirArte='down', flipArte=false;
       if(this.rockWind>0||this.rockThrowAnim>0){
@@ -3351,7 +3360,13 @@ class BossBrute {
                                           this.bruteEscala,flipArte);
     }
     if(usouArte){
-      /* arte nova ja desenhada */
+      // clarao do golpe POR CIMA da arte, no mesmo formato dos outros chefes
+      if(this.flashTimer>0){
+        ctx.save(); ctx.globalAlpha=Math.min(1,this.flashTimer/100)*0.5;
+        ctx.fillStyle='#ffd2a6';
+        ctx.beginPath(); ctx.arc(this.x,groundY-gh*0.45,this.radius*0.95,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+      }
     } else if(this.flashTimer>0){
       ctx.save(); ctx.globalAlpha=0.85;
       drawBossGrid(frame, Object.fromEntries(Object.keys(PAL_BOSS_BRUTE).map(k=>[k,'#ffffff'])), this.x, cy, pxs,flip);
