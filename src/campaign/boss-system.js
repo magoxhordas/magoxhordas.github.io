@@ -516,6 +516,34 @@ const BRUTE_BACK=[makeBruteBackFrame(0),makeBruteBackFrame(1)];
 const BRUTE_RUN=[makeBruteSideFrameV2(0),makeBruteSideFrameV2(1)];
 const BRUTE_ROCK_LIFT=makeBruteFrontFrame(0,'lift');
 const BRUTE_ROCK_THROW=makeBruteSideFrameV2(0,true);
+/* ── CLARAO DE DANO DOS CHEFES ──
+   Antes cada chefe pintava um DISCO CHAPADO por cima de si (fillStyle + arc
+   + fill) com o raio do corpo. Era o "circulo" que aparecia toda vez que o
+   chefe levava dano: uma moeda opaca colada na frente do bicho, com borda
+   dura, tapando a arte justo no momento em que o jogador quer ver o acerto.
+
+   Aqui o disco vira um brilho ADITIVO com gradiente ate' transparente. Sem
+   borda, o corpo do chefe continua visivel por baixo e o efeito le' como "o
+   bicho piscou", nao como "apareceu um circulo". E' generico de proposito:
+   cinco dos nove chefes se desenham de forma procedural, sem sprite, entao
+   nao da' para repintar silhueta como se faz com os inimigos normais.
+
+   O pico de opacidade caiu de 0.5-0.7 para 0.34 — o clarao ainda avisa,
+   mas nao rouba a cena. */
+function claraoChefe(x,y,r,cor,forca){
+  if(!(forca>0))return;
+  const raio=Math.max(1,r*1.15);
+  const a=Math.max(0,Math.min(1,forca))*0.34;
+  if(a<=0.004)return;
+  const g=ctx.createRadialGradient(x,y,0,x,y,raio);
+  g.addColorStop(0,cor); g.addColorStop(0.55,cor); g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.save();
+  ctx.globalCompositeOperation='lighter';
+  ctx.globalAlpha=a; ctx.fillStyle=g;
+  ctx.beginPath(); ctx.arc(x,y,raio,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
 function drawBossGrid(frame, pal, x, y, px, flipX=false){
   const Wd=frame.reduce((max,row)=>Math.max(max,row.length),0), Hd=frame.length;
   const ox=Math.round(x-Wd*px/2), oy=Math.round(y-Hd*px/2);
@@ -1003,7 +1031,7 @@ class BossSkeletonKing {
       }
       ctx.restore();
     }
-    if(this.flashTimer>0){ ctx.save(); ctx.globalAlpha=this.flashTimer/800*0.7; ctx.fillStyle=this.resurrected?'#cc44ff':'#bbccff'; ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+    if(this.flashTimer>0) claraoChefe(this.x,this.y,this.radius,this.resurrected?'#cc44ff':'#bbccff',this.flashTimer/800*0.7);
     // Arte real do chefe, com o grid antigo de reserva.
     // A arte de perfil olha para a esquerda, entao espelha quando ele vai
     // para a direita. O giro nao usa direcao: as 8 rotacoes da arte sao o
@@ -1296,7 +1324,7 @@ function drawAracneAncestralBoss(b,t){
     ctx.restore();
   }
   for(const eg of b.eggs){ if(!eg.hatched){ drawAracneEgg(eg,t); eg.drawn=true; } else eg.drawn=true; }
-  if(b.flashTimer>0){ ctx.save(); ctx.globalAlpha=b.flashTimer/100*0.5; ctx.fillStyle='#b05bd0'; ctx.beginPath(); ctx.arc(drawX,drawY,b.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+  if(b.flashTimer>0){ claraoChefe(drawX,drawY,b.radius,'#b05bd0',b.flashTimer/100*0.5); }
   // O sprite novo e mais alto que o grid antigo: a barra acompanha, senao
   // ela cai em cima do corpo.
   const spriteTop=b._usouArte ? drawY+34-Math.round(33*b.aracneEscala)
@@ -1544,7 +1572,7 @@ class BossAracne {
     for(const eg of this.eggs){
       if(!eg.hatched){ const pct=1-(eg.timer/eg.maxTimer); ctx.save(); ctx.globalAlpha=0.9; ctx.fillStyle='#888840'; ctx.beginPath(); ctx.ellipse(eg.x,eg.y,12,9,0,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#aaaa60'; ctx.beginPath(); ctx.ellipse(eg.x-4,eg.y-3,5,4,0,0,Math.PI*2); ctx.fill(); ctx.strokeStyle=pct>0.7?'#ff3300':'#888840'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(eg.x,eg.y,14,0,Math.PI*2*pct); ctx.stroke(); ctx.restore(); eg.drawn=true; } else { eg.drawn=true; }
     }
-    if(this.flashTimer>0){ ctx.save(); ctx.globalAlpha=this.flashTimer/100*0.5; ctx.fillStyle='#888840'; ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+    if(this.flashTimer>0){ claraoChefe(this.x,this.y,this.radius,'#888840',this.flashTimer/100*0.5); }
     drawHPBar(this.x,this.y-this.radius*this.scale-20,this.hp/this.maxHp,95);
     ctx.fillStyle='#cc66ff'; ctx.font='bold 9px Courier New'; ctx.textAlign='center';
     if(typeof BossHUD!=='undefined') BossHUD.ancorar(this,this.x,this.y-this.radius*this.scale-24); if(typeof bossHudCobrindo==='undefined'||!bossHudCobrindo) ctx.fillText('🕷 ARACNE ANCESTRAL',this.x,this.y-this.radius*this.scale-24); ctx.textAlign='left';
@@ -1925,7 +1953,7 @@ function drawFrostGiantBoss(b,t){
   const core=ctx.createRadialGradient(x,y+8+bob,1,x,y+8+bob,22);
   core.addColorStop(0,'rgba(236,251,255,0.85)');core.addColorStop(0.45,'rgba(78,233,255,0.35)');core.addColorStop(1,'rgba(0,0,0,0)');
   ctx.fillStyle=core;ctx.beginPath();ctx.arc(x,y+8+bob,22,0,Math.PI*2);ctx.fill();
-  if(b.flashTimer>0){ctx.save();ctx.globalAlpha=b.flashTimer/100*0.5;ctx.fillStyle='#bcefff';ctx.beginPath();ctx.arc(x,y,b.radius,0,Math.PI*2);ctx.fill();ctx.restore();}
+  if(b.flashTimer>0){claraoChefe(x,y,b.radius,'#bcefff',b.flashTimer/100*0.5);}
   // O topo muda com a arte: a barra de vida acompanha, senao ela invade
   // a cabeca do boneco novo, que e mais alto que o grid antigo.
   const spriteTop=b._usouArte ? y+42-Math.round(42*b.golemEscala)
@@ -2202,7 +2230,7 @@ class BossFrostBehemoth {
       ctx.beginPath(); ctx.arc(x+(f2%2?6:-6)*sc*fp*2, y+bob-4*sc+fp*16, 1.8+fp*3.2, 0, Math.PI*2); ctx.fill();
     }
     ctx.globalAlpha=1;
-    if(this.flashTimer>0){ ctx.save(); ctx.globalAlpha=this.flashTimer/100*0.5; ctx.fillStyle='#aaddff'; ctx.beginPath(); ctx.arc(x,y,this.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+    if(this.flashTimer>0){ claraoChefe(x,y,this.radius,'#aaddff',this.flashTimer/100*0.5); }
     drawHPBar(x,y-this.radius*this.scale/1.4-18,this.hp/this.maxHp,98);
     ctx.fillStyle='#88ddff'; ctx.font='bold 9px Courier New'; ctx.textAlign='center';
     if(typeof BossHUD!=='undefined') BossHUD.ancorar(this,x,y-this.radius*this.scale/1.4-22); if(typeof bossHudCobrindo==='undefined'||!bossHudCobrindo) ctx.fillText('❄ GIGANTE DE GELO',x,y-this.radius*this.scale/1.4-22); ctx.textAlign='left';
@@ -2473,7 +2501,7 @@ function drawDevourerBoss(b,t){
   const headAngle=diving?Math.max(-.28,Math.min(.28,heading*.18)):Math.sin(t*.006+b.phase)*.045;
   drawDevourerSpriteCentered(DEVOURER_HEAD_FRAMES[frame],b.x,b.y+headBob,diving?1.45:1.5,headAngle,dirX<0);
   }
-  if(b.flashTimer>0){ctx.save();ctx.globalAlpha=b.flashTimer/100*.55;ctx.fillStyle='#fff09a';ctx.beginPath();ctx.arc(b.x,b.y,44,0,Math.PI*2);ctx.fill();ctx.restore();}
+  if(b.flashTimer>0){claraoChefe(b.x,b.y,44,'#fff09a',b.flashTimer/100*.55);}
   // Com a arte nova o corpo cabe num quadro so', entao o topo sai dele; o
   // reserva continua olhando o segmento mais alto da fila.
   // A altura muda muito entre as vistas (o perfil tem 28..44 linhas, a de
@@ -2777,12 +2805,9 @@ class BossSandworm {
     // Acid drip from mouth
     for(let d=0;d<3;d++){
       const da=(((t*0.04)+d*30)%40)/40;
-      ctx.save(); ctx.globalAlpha=(1-da)*0.8;
-      ctx.fillStyle='#88ff22';
-      ctx.beginPath(); ctx.arc(x+(d-1)*8,y+8+da*12,2.5,0,Math.PI*2); ctx.fill();
-      ctx.restore();
+      claraoChefe(x+(d-1)*8,y+8+da*12,2.5,'#88ff22',(1-da)*0.8);
     }
-    if(this.flashTimer>0){ ctx.save(); ctx.globalAlpha=this.flashTimer/100*0.5; ctx.fillStyle='#88ff44'; ctx.beginPath(); ctx.arc(x,y,this.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+    if(this.flashTimer>0){ claraoChefe(x,y,this.radius,'#88ff44',this.flashTimer/100*0.5); }
     drawHPBar(x,y-this.radius*1.8-18,this.hp/this.maxHp,100);
     ctx.fillStyle='#aeff44'; ctx.font='bold 9px Courier New'; ctx.textAlign='center';
     if(typeof BossHUD!=='undefined') BossHUD.ancorar(this,x,y-this.radius*1.8-22); if(typeof bossHudCobrindo==='undefined'||!bossHudCobrindo) ctx.fillText('🪱 VERME DEVORADOR',x,y-this.radius*1.8-22); ctx.textAlign='left';
@@ -3003,9 +3028,7 @@ class BossBalrog {
     }
     // fúria (fase 2): tinge o corpo de vermelho por trás
     if(this.phase2){
-      ctx.save(); ctx.globalAlpha=0.35+0.2*Math.sin(t*0.01);
-      ctx.fillStyle='#ff2200'; ctx.beginPath(); ctx.arc(x,bodyY,45,0,Math.PI*2); ctx.fill();
-      ctx.restore();
+      claraoChefe(x,bodyY,45,'#ff2200',0.35+0.2*Math.sin(t*0.01));
     }
     if(this.isMoving&&this.phase2){
       ctx.save();ctx.globalAlpha=.3;ctx.fillStyle='#ff6411';
@@ -3086,7 +3109,7 @@ class BossBalrog {
       ctx.fillStyle='#ff4400'; ctx.font=`bold ${Math.round(14+6*(1-this.roarTimer/800))}px Courier New`;
       ctx.textAlign='center'; ctx.fillText('GRAAAAH!',x,y-85); ctx.restore(); ctx.textAlign='left';
     }
-    if(this.flashTimer>0){ ctx.save(); ctx.globalAlpha=this.flashTimer/120*0.55; ctx.fillStyle='#ff6600'; ctx.beginPath(); ctx.arc(x,y,this.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+    if(this.flashTimer>0){ claraoChefe(x,y,this.radius,'#ff6600',this.flashTimer/120*0.55); }
     drawHPBar(x,y-this.radius*this.scale/2-26,this.hp/this.maxHp,104);
     ctx.fillStyle=this.phase2?'#ff2200':'#ff6600'; ctx.font='bold 9px Courier New'; ctx.textAlign='center';
     if(typeof BossHUD!=='undefined') BossHUD.ancorar(this,x,y-this.radius*this.scale/2-30);
@@ -3367,10 +3390,7 @@ class BossBrute {
     if(usouArte){
       // clarao do golpe POR CIMA da arte, no mesmo formato dos outros chefes
       if(this.flashTimer>0){
-        ctx.save(); ctx.globalAlpha=Math.min(1,this.flashTimer/100)*0.5;
-        ctx.fillStyle='#ffd2a6';
-        ctx.beginPath(); ctx.arc(this.x,groundY-gh*0.45,this.radius*0.95,0,Math.PI*2); ctx.fill();
-        ctx.restore();
+        claraoChefe(this.x,groundY-gh*0.45,this.radius*0.95,'#ffd2a6',Math.min(1,this.flashTimer/100)*0.5);
       }
     } else if(this.flashTimer>0){
       ctx.save(); ctx.globalAlpha=0.85;
