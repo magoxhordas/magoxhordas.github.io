@@ -19,6 +19,7 @@ function resetCampaignMapObjects(){
 }
 
 function advWave(){
+  if(typeof ComboSystem!=='undefined')ComboSystem.concluirOnda();
   weaponDmgDone=[0,0,0];
   for(const w of [...weaponSlots,...weaponSlots2])if(w)w.damageDone=0;
   wave++;
@@ -266,10 +267,14 @@ function endWave(){
   growFarm(1);
   // Completion bonus grows slower than shop prices to keep late-game choices relevant.
   const d=DIFF[difficulty]||DIFF.medium;
-  const waveBonus=Math.max(1,Math.round(d.waveBonusBase+wave*d.waveBonusRate));
+  const baseWaveBonus=Math.max(1,Math.round(d.waveBonusBase+wave*d.waveBonusRate));
+  const comboRate=typeof ComboSystem!=='undefined'
+    ?Math.max(0,...[player,gameMode===2?player2:null].filter(Boolean).map(pl=>ComboSystem.bonusRecompensa(pl)))
+    :0;
+  const waveBonus=Math.max(1,Math.round(baseWaveBonus*(1+comboRate)));
   totalCoins += waveBonus;
   if(typeof RunStats!=='undefined')RunStats.recordCoins({amount:waveBonus,playerIndex:0});
-  spawnLevelUpNotice(W/2, H/2-52, `🏆 ONDA ${wave} · +${waveBonus}🪙`, 0);
+  spawnLevelUpNotice(W/2, H/2-52, `🏆 ONDA ${wave} · +${waveBonus}🪙${comboRate?` · COMBO +${Math.round(comboRate*100)}%`:''}`, 0);
   // Card blessings — wave regen
   if(typeof applyCardWaveRegen==='function') applyCardWaveRegen();
   // Wave regen — cooking buffs + exp_recuperacao upgrade

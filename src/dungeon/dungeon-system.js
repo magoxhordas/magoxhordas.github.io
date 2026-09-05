@@ -1336,6 +1336,7 @@ const DNG={
 
   start(){
     this.pClassId=(typeof selectedClass!=='undefined'&&selectedClass.p1)||'mage';
+    if(typeof ComboSystem!=='undefined')ComboSystem.limpar();
     if(typeof RunStats!=='undefined')RunStats.start({mode:'dungeon',difficulty:typeof difficulty!=='undefined'?difficulty:'medium',players:[{classId:this.pClassId,skinId:typeof GameSettings!=='undefined'?GameSettings.skinId:'classic'}]});
     if(typeof AchievementSystem!=='undefined')AchievementSystem.notify('dungeonEntered');
     this.floor=1;this.pHp=100;this.pMaxHp=100;this.pDmg=18;this.pSpeed=1.9;
@@ -1382,6 +1383,7 @@ const DNG={
   },
   stop(){
     this.running=false;this.paused=false;this.invOpen=false;this.menuOpen=false;this.equipOpen=false;this.mapOpen=false;
+    if(typeof ComboSystem!=='undefined')ComboSystem.limpar();
     if(this.raf){cancelAnimationFrame(this.raf);this.raf=null;}
     if(this._mapInt){clearInterval(this._mapInt);this._mapInt=null;}
     this._restoreCraftPanel();
@@ -2225,6 +2227,7 @@ const DNG={
     if(typeof RunStats!=='undefined')RunStats.tick(dt,{inCombat:true,players:[{hp:this.pHp,maxHp:this.pMaxHp}]});
     // ── Freeze frame ──
     if(this._freeze>0){ this._freeze-=dt; return; } // halt all updates during freeze
+    if(typeof ComboSystem!=='undefined')ComboSystem.atualizar(dt/1000);
     // ── Screen shake update ──
     if(this._shake.t>0){
       this._shake.t-=dt;
@@ -2262,7 +2265,8 @@ const DNG={
     if(this.pAttackAnim>0)this.pAttackAnim-=dt;
     // Web slow
     if(this._webTimer>0)this._webTimer-=dt;
-    const effSpeed=this.pSpeed*(this._webTimer>0?0.35:1)*(1+(this._speedBuff||0));
+    const comboMove=typeof ComboSystem!=='undefined'?ComboSystem.bonusMovimento(this):0;
+    const effSpeed=this.pSpeed*(this._webTimer>0?0.35:1)*(1+(this._speedBuff||0))*(1+comboMove);
     const spd=effSpeed*(dt/16.67),r2=8;
     const nx=this.px+dx*spd,ny=this.py+dy*spd;
     // Check 4 corners — X axis first
@@ -2316,13 +2320,17 @@ const DNG={
       if(best||dngManualAim){
         // Cooldown por tipo
         const baseCd = wId==='dagger'?180:wId==='bow'?500:wId==='staff'?650:wId==='hammer'?700:350;
-        this.pAttackCd=Math.round(baseCd*(this._gearCdMult||1));
+        const comboSpeed=typeof ComboSystem!=='undefined'?ComboSystem.bonusVelocidadeAtaque(this):0;
+        this.pAttackCd=Math.max(80,Math.round(baseCd*(this._gearCdMult||1)/(1+comboSpeed)));
+        this._comboAttackCooldown=this.pAttackCd;
+        if(typeof ComboSystem!=='undefined')this._comboEvento=ComboSystem.abrirEvento(this,null,this.pAttackCd,'player_weapon');
         this.pFacing=dngManualAim?manualAngle:Math.atan2(best.y-this.py,best.x-this.px);
         this.pAttackAnim=this.pAttackAnimMax;
         const isMelee=!isRanged;
         let dmg=(equip?equip.dmg:this.pDmg)+Math.floor(Math.random()*8);
         dmg=Math.round(dmg*(1+0.1*(MVP.upg.ferreiro||0)));   // Fio da Lamina Arcana
         if(this._dmgBuff>0) dmg=Math.round(dmg*(1+this._dmgBuff));
+        if(typeof ComboSystem!=='undefined')dmg=Math.round(dmg*(1+ComboSystem.bonusDano(this)));
         const isCrit=((this._crit||0)+(this._critBuff||0))>0&&Math.random()<((this._crit||0)+(this._critBuff||0));
         const runAttackEventId=typeof RunStats!=='undefined'?RunStats.createAttackEvent(0):null;
         if(isCrit){dmg*=2;if(typeof RunStats!=='undefined')RunStats.recordCritical({playerIndex:0,attackEventId:runAttackEventId});if(best&&!dngManualAim)this._ft(best.x,best.y-28,'💥CRÍTICO!','#ffcc00');}
@@ -2343,6 +2351,7 @@ const DNG={
             dmg:_dmgFinal, r:projR, life:projLife, col:projCol,
             secondaryCol:skinAttack?.secondary||'#ffffff',
             _rangedWpn:true, _targetRef, _isCrit, _runAttackEventId:runAttackEventId,
+            comboEventId:this._comboEvento||0,
           };
           this.projectiles.push(proj);
           // Feedback de disparo (sem aplicar dano ainda — o dano é na colisão)
@@ -2354,6 +2363,7 @@ const DNG={
         } else if(best) {
           // ── MELEE: hit instantâneo ──
           const beforeHp=best.hp;best.hp-=dmg;best.flash=300;this._necroBossDamage(best,beforeHp,best.hp);
+          if(typeof ComboSystem!=='undefined')ComboSystem.validarEvento(this._comboEvento||0,{critico:!!isCrit});
           if(typeof RunStats!=='undefined'){
             if(best.type==='boss')RunStats.recordBossStart({id:best._hyper?'hyper_boss':String(best.name||'dungeon-boss').toLowerCase().replace(/\W+/g,'_'),name:best.name});
             RunStats.recordDamage({playerIndex:0,hpBefore:beforeHp,hpAfter:best.hp,sourceType:equip?'weapon':'direct',sourceId:equip?.defId||'dungeon-basic',sourceName:equip?.name||'Ataque básico',rarity:equip?.rarity,targetType:best.type,attackEventId:runAttackEventId});
@@ -2474,6 +2484,7 @@ const DNG={
           if(Math.hypot(p.x-e.x,p.y-e.y)<(e.r||12)+p.r){
             // Aplica dano
             const beforeHp=e.hp;e.hp-=p.dmg; e.flash=300;this._necroBossDamage(e,beforeHp,e.hp);
+            if(typeof ComboSystem!=='undefined')ComboSystem.validarEvento(p.comboEventId||0,{critico:!!p._isCrit});
             if(typeof RunStats!=='undefined'){
               if(e.type==='boss')RunStats.recordBossStart({id:e._hyper?'hyper_boss':String(e.name||'dungeon-boss').toLowerCase().replace(/\W+/g,'_'),name:e.name});
               RunStats.recordDamage({playerIndex:0,hpBefore:beforeHp,hpAfter:e.hp,sourceType:'weapon',sourceId:this.inv[this.equippedIdx]?.defId||'dungeon-ranged',sourceName:this.inv[this.equippedIdx]?.name||'Arma de distância',rarity:this.inv[this.equippedIdx]?.rarity,targetType:e.type,attackEventId:p._runAttackEventId});
@@ -2603,6 +2614,7 @@ const DNG={
   _applyKill(best, equip, dmg, source='direct',attackEventId=null){
     if(best.hp>0||best.dead) return;
     best.dead=true; this.pKills++;
+    if(typeof ComboSystem!=='undefined')ComboSystem.notificarAbate(this,best,source);
     if(best.type==='boss'){
       if(typeof RunStats!=='undefined')RunStats.recordBossEnd({id:best._hyper?'hyper_boss':String(best.name||'dungeon-boss').toLowerCase().replace(/\W+/g,'_'),name:best.name,playerIndex:0,victory:true});
     }else if(typeof RunStats!=='undefined')RunStats.recordKill({playerIndex:0,sourceType:source==='summon'?'summon':equip?'weapon':'direct',sourceId:source==='summon'?'necromancer-summon':equip?.defId||'dungeon-basic',sourceName:source==='summon'?'Invocações':equip?.name||'Ataque básico',attackEventId});
@@ -2660,6 +2672,7 @@ const DNG={
     const hpBefore=this.pHp;
     this.pHp -= reduced; this.pInvTimer=500;
     if(typeof RunStats!=='undefined')RunStats.recordDamageTaken({playerIndex:0,hpBefore,hpAfter:this.pHp});
+    if(typeof ComboSystem!=='undefined')ComboSystem.notificarDanoRecebido(this,reduced,this.pMaxHp);
     // Player hit feedback
     this._shake={x:0,y:0,t:200,mag:4};
     this._freeze=25; // tiny freeze on player hit
@@ -2678,7 +2691,10 @@ const DNG={
         this._parts(this.px,this.py,'#77ffbb',28,85);
         this._ft(this.px,this.py-38,`FIO DO DESTINO · ${this._revivesLeft}`,'#77ffbb');
         this._updateHUD();
-      }else this._die();
+      }else{
+        if(typeof ComboSystem!=='undefined')ComboSystem.notificarMorte(this);
+        this._die();
+      }
     }else this._updateHUD();
   },
 
@@ -3702,6 +3718,7 @@ const DNG={
     }
 
     ctx.restore(); // end screen shake transform
+    if(typeof ComboHUD!=='undefined')ComboHUD.desenhar(ctx,[this],W,H);
   },
 };
 
