@@ -38,6 +38,10 @@
       projectile.speed=420*(opts.speed||1);projectile.vx=Math.cos(angle)*projectile.speed;projectile.vy=Math.sin(angle)*projectile.speed;
       projectile.target=opts.target||null;projectile.homing=!!opts.homing;projectile.pierce=opts.pierce||0;projectile.hitTargets=new Set();projectile.trail=[];projectile.isCampaignWeaponProj=true;
       projectile.originX=x;projectile.originY=y;projectile.returning=false;
+      /* Id do ciclo de combo que disparou este projetil. Todos os
+         projeteis da mesma rajada carregam o MESMO id, entao a rajada
+         inteira vale um evento so' — nao um por flecha. */
+      projectile.comboEventId=opts.comboEventId||owner?._comboEventoAtual||0;
     }
 
     function updateCampaign(projectile,dt){

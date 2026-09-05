@@ -18,6 +18,10 @@ function resetCampaignMapObjects(){
 }
 
 function advWave(){
+  /* Fim de onda: o combo NAO zera. Preserva CARRY_ONDA (50%) para dar
+     continuidade sem permitir acumulo eterno. Roda antes de wave++ para o
+     recorde da onda que acabou ainda estar disponivel. */
+  if(typeof ComboSystem!=='undefined')ComboSystem.concluirOnda();
   weaponDmgDone=[0,0,0];
   for(const w of [...weaponSlots,...weaponSlots2])if(w)w.damageDone=0;
   wave++;

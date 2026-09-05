@@ -2172,6 +2172,8 @@ const DNG={
   _update(dt,ts){
     // ── Freeze frame ──
     if(this._freeze>0){ this._freeze-=dt; return; } // halt all updates during freeze
+    // Combo: o dt da Dungeon e' em MILISSEGUNDOS, o modulo espera segundos.
+    if(typeof ComboSystem!=='undefined')ComboSystem.atualizar(dt/1000);
     // ── Screen shake update ──
     if(this._shake.t>0){
       this._shake.t-=dt;
@@ -2264,6 +2266,11 @@ const DNG={
         // Cooldown por tipo
         const baseCd = wId==='dagger'?180:wId==='bow'?500:wId==='staff'?650:wId==='hammer'?700:350;
         this.pAttackCd=Math.round(baseCd*(this._gearCdMult||1));
+        /* UM ciclo de ataque = UM evento, com o cooldown EFETIVO da
+           Dungeon (base da arma x reducao do equipamento). E' o mesmo
+           criterio da campanha, entao adaga e martelo sobem o combo na
+           mesma velocidade media. */
+        if(typeof ComboSystem!=='undefined')this._comboEvento=ComboSystem.abrirEvento(this,null,this.pAttackCd,'player_weapon');
         this.pFacing=dngManualAim?manualAngle:Math.atan2(best.y-this.py,best.x-this.px);
         this.pAttackAnim=this.pAttackAnimMax;
         const isMelee=!isRanged;
@@ -2290,6 +2297,7 @@ const DNG={
             secondaryCol:skinAttack?.secondary||'#ffffff',
             _rangedWpn:true, _targetRef, _isCrit,
           };
+          proj.comboEventId=this._comboEvento||0;   // a rajada inteira e' um ciclo
           this.projectiles.push(proj);
           // Feedback de disparo (sem aplicar dano ainda — o dano é na colisão)
           this._freeze=isCrit?40:20;
@@ -2300,6 +2308,7 @@ const DNG={
         } else if(best) {
           // ── MELEE: hit instantâneo ──
           const beforeHp=best.hp;best.hp-=dmg;best.flash=300;this._necroBossDamage(best,beforeHp,best.hp);
+          if(typeof ComboSystem!=='undefined')ComboSystem.validarEvento(this._comboEvento||0,{critico:!!isCrit});
           const impAng=Math.atan2(best.y-this.py,best.x-this.px);
           if(!best._shadowBound){
             const kbF=isCrit?80:50;
@@ -2416,6 +2425,7 @@ const DNG={
           if(Math.hypot(p.x-e.x,p.y-e.y)<(e.r||12)+p.r){
             // Aplica dano
             const beforeHp=e.hp;e.hp-=p.dmg; e.flash=300;this._necroBossDamage(e,beforeHp,e.hp);
+            if(typeof ComboSystem!=='undefined')ComboSystem.validarEvento(p.comboEventId||0,{critico:!!p._isCrit});
             // Efeito impacto
             this._parts(e.x,e.y,p.col,8,45);
             const impAng=Math.atan2(e.y-this.py,e.x-this.px);
@@ -2537,6 +2547,8 @@ const DNG={
   _applyKill(best, equip, dmg, source='direct'){
     if(best.hp>0||best.dead) return;
     best.dead=true; this.pKills++;
+    // Bonus de eliminacao, com o mesmo teto por segundo da campanha.
+    if(typeof ComboSystem!=='undefined')ComboSystem.notificarAbate(this,best,source);
     this._necroOnKill(best,source);
     if(best.type==='boss') mvpOnKill('boss'); else mvpOnKill('enemy');   // progresso de missoes
     const bloodCol=best.type==='boss'?'#dd00ff':'#cc2200';
@@ -2577,6 +2589,9 @@ const DNG={
   },
 
   _takeDmg(dmg){
+    // Perde uma fracao do combo, nunca tudo. O modulo tem cooldown de
+    // penalidade proprio para golpe multi-hit nao punir varias vezes.
+    if(typeof ComboSystem!=='undefined')ComboSystem.notificarDanoRecebido(this,dmg,this.pMaxHp||this.pHp||1);
     if(this._shActive){this._shActive=false;this._shCd=10000;
       this._shake={x:0,y:0,t:150,mag:3};
       this._ft(this.px,this.py-28,'🛡️ BLOQUEADO','#88aaff');return;}
