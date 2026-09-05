@@ -16459,6 +16459,19 @@ class Enemy {
         const allPl=[player,...(gameMode===2&&player2?[player2]:[])].filter(p=>p&&!p.dead);
         for(const pl of allPl) if(Math.hypot(pl.x-this.x,pl.y-this.y)<70) pl.takeDmg(this.damage*1.2);
       }
+      /* Morte visual. O gameplay ja' considerou este inimigo morto: o
+         fantasma abaixo e' so' apresentacao e nunca entra em lista de
+         entidade. Elite e minichefe usam a mesma rota, um degrau acima. */
+      if(typeof CombatJuiceSystem!=='undefined'){
+        CombatJuiceSystem.morte({
+          alvo:this,x:this.x,y:this.y,
+          critico:!!this._lastDamageOwner?._lastAttackWasCrit,
+          elite:Number(this.maxHp||0)>=260||!!this.isElite,
+          minichefe:!!this.isMiniboss,
+          elemento:typeof campaignDamageElement==='function'?campaignDamageElement(this._lastRunWeapon||''):'physical',
+          dano:Number(this._ultimoDanoRecebido||0),hpRestante:Math.max(1,Number(this.maxHp||1)*0.06),
+        });
+      }
       spawnCoin(this.x, this.y, this.xpVal);
       spawnParts(this.x,this.y,'#ffdd00',10,60);
       rollLootDrop(this.x, this.y);
@@ -18956,6 +18969,19 @@ if(typeof CombatJuiceSystem!=='undefined'){
       if(I&&I.tingir&&alvo._ultimoQuadro)return I.tingir(ctx2,alvo._ultimoQuadro,cor,forca);
       return false;
     },
+    /* Desenho do fantasma de morte: reaproveita o mesmo desenhador dos
+       inimigos, com o quadro que a entidade tinha no ultimo frame vivo.
+       Nenhum sprite de morte foi necessario. */
+    desenharQuadro:(ctx2,q)=>{
+      const I=window.InimigosNormais;
+      if(!I||!I.desenhar||!q)return false;
+      return I.desenhar(ctx2,q.tipo,q.x,q.pesY,q.dir,q.estado,q.idx,q.flip,q.escala);
+    },
+    tingirQuadro:(ctx2,q,cor,forca)=>{
+      const I=window.InimigosNormais;
+      if(!I||!I.tingir||!q)return false;
+      return I.tingir(ctx2,q,cor,forca);
+    },
     /* Som de impacto. O audio do jogo e' procedural, entao a variacao de
        pitch e' multiplicar a frequencia — nenhum arquivo novo. O critico
        ganha uma CAMADA curta por cima, sem trocar o som da arma. */
@@ -19241,6 +19267,9 @@ function loop(ts){
   const ents=[
     ...coins.map(c=>({y:c.y,fn:()=>c.draw(t)})),
     ...enemies.map(e=>({y:e.y,fn:()=>{ e.draw(t); if(typeof CombatJuiceSystem!=='undefined')CombatJuiceSystem.desenharFlash(ctx,e); drawEnemyStatusFx(e,t); }})),
+    // Fantasmas de morte ficam no meio do mundo, junto das entidades, e
+    // nao por cima da HUD.
+    {y:-1,fn:()=>{ if(typeof CombatJuiceSystem!=='undefined')CombatJuiceSystem.desenharFantasmas(ctx); }},
     ...(bossOrc&&!bossOrc.dead?[{y:bossOrc.y,fn:()=>{desenharChefe(bossOrc,t);}}]:[]),
     ...(bossSkel&&!bossSkel.dead?[{y:bossSkel.y,fn:()=>{desenharChefe(bossSkel,t);}}]:[]),
     ...(bossSpider&&!bossSpider.dead?[{y:bossSpider.y,fn:()=>{desenharChefe(bossSpider,t);}}]:[]),

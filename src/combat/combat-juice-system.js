@@ -81,6 +81,39 @@
 
     /* Intensidade por preferencia do jogador (item 60). */
     INTENSIDADE:{baixa:0.6,normal:1,alta:1.35},
+
+    /* ── MORTE ──
+       Morrer nao pode parecer "perder vida". A morte tem sequencia curta
+       propria: clarao final, encolhida, fade e fragmentos. Sem sprite
+       novo: o fantasma reusa o ULTIMO QUADRO que a entidade desenhou. */
+    MORTE:{
+      comum:    {dur:170, particulas:8,  anel:0,  shake:0,   escala:0.82},
+      critica:  {dur:210, particulas:13, anel:0,  shake:0,   escala:0.74},
+      elite:    {dur:300, particulas:20, anel:34, shake:2,   escala:0.70},
+      minichefe:{dur:380, particulas:26, anel:44, shake:3.5, escala:0.66},
+    },
+    MAX_FANTASMAS:14,
+    /* Teto do overkill: um bicho de 10 de vida levando 300 ganha uma morte
+       um pouco maior, nunca uma explosao nuclear. */
+    OVERKILL_MAX:1.6,
+
+    /* Multikill: uma explosao que mata 12 nao pode tocar 12 sons nem
+       gerar 12 sequencias. A janela agrega. */
+    MULTIKILL_JANELA_MS:400,
+    MULTIKILL_MARCOS:[2,5,10],
+
+    /* ── MORTE DE CHEFE ──
+       Marcos em ms desde o instante em que a vida chegou a zero. IMPORTANTE:
+       para o gameplay o chefe ja' morreu no quadro zero; isto e' so' visual. */
+    CHEFE_MORTE:{
+      clarao:150, pausa:150, bursts:[180,300,420,540], burstParticulas:14,
+      shakeEm:300, shakeForca:7, anelEm:400, anelRaio:120, fim:900,
+    },
+    /* Impacto acumulado no chefe: ataques rapidos so' fazem micro flash;
+       quando uma fatia significativa da vida cai numa janela curta, sai um
+       impacto pesado. E' o que faz build forte ser PERCEBIDA sem um shake
+       por projetil. */
+    CHEFE_ACUMULO:{janelaMs:500, fracaoHp:0.04, anelRaio:52, shake:2.5},
   };
 
   /* Paletas de particula por elemento. Curtas e legiveis — nada de
@@ -109,6 +142,10 @@
   const numeros=[];        // numeros de dano flutuantes
   const aneis=[];          // aneis de impacto
   const eventos=new Map(); // attackEventId -> agregado do ciclo
+  const fantasmas=[];      // mortes visuais (nunca entidades de gameplay)
+  const chefesMortos=[];   // sequencias de morte de chefe em andamento
+  const acumuloChefe=new Map(); // chefe -> dano recente, para o impacto pesado
+  let multikill={contagem:0,ate:0,x:0,y:0};
   let pausaAte=0;          // pseudo-hitstop: ate' quando enfatizar
   let pausaForca=0;
   let ultimoShakeEm=-1e9;
@@ -358,11 +395,129 @@
   }
 
   // ═══════════════════════════════════════════════════════
+  // MORTE
+  // ═══════════════════════════════════════════════════════
+
+  /* Morte de inimigo. O gameplay ja' considerou o bicho morto — isto e'
+     puramente visual, e por isso o "fantasma" nunca entra em nenhuma
+     lista de entidade. Ele guarda uma COPIA do ultimo quadro desenhado,
+     entao encolhe e some sem exigir sprite de morte. */
+  function morte(info){
+    if(!info)return;
+    const p=prefs();
+    const alvo=info.alvo;
+    let tipo='comum';
+    if(info.minichefe)tipo='minichefe';
+    else if(info.elite)tipo='elite';
+    else if(info.critico)tipo='critica';
+    const cfg=CONFIG.MORTE[tipo];
+    const x=num(info.x||alvo?.x), y=num(info.y||alvo?.y);
+    const elemento=info.elemento||'physical';
+
+    /* Overkill: dano muito acima da vida restante engrossa um pouco a
+       morte, com teto. Sem o teto, qualquer bicho fraco viraria explosao. */
+    const excesso=num(info.dano)/Math.max(1,num(info.hpRestante)||1);
+    const reforco=clamp(1+(excesso>2?Math.log10(excesso)*0.5:0),1,CONFIG.OVERKILL_MAX);
+
+    particulas(x,y,elemento,Math.round(cfg.particulas*reforco),tipo==='comum'?1:2);
+    if(cfg.anel>0&&!p.reduzirMovimento)anel(x,y,cfg.anel*reforco,corDoElemento(elemento),2);
+    if(cfg.shake>0)shake(cfg.shake,200);
+
+    // fantasma: copia do ultimo quadro, so' para o fade
+    if(alvo&&alvo._ultimoQuadro&&fantasmas.length<CONFIG.MAX_FANTASMAS){
+      fantasmas.push({quadro:Object.assign({},alvo._ultimoQuadro),
+        nasceu:agora(),dur:cfg.dur,escalaFim:cfg.escala,
+        cor:info.critico?'#fff2c0':corDoElemento(elemento)});
+    }
+    registrarMultikill(x,y);
+    if(depurando)ultimoDebug=Object.assign({},ultimoDebug,{morte:tipo,overkill:+reforco.toFixed(2)});
+  }
+
+  /* Varias mortes quase juntas viram UM feedback, e nao quinze sons.
+     Se o sistema de combo existir, ele ja' comunica boa parte disso —
+     aqui fica so' o reforco sonoro/visual dos marcos. */
+  function registrarMultikill(x,y){
+    const t=agora();
+    if(t>multikill.ate)multikill={contagem:0,ate:t+CONFIG.MULTIKILL_JANELA_MS,x,y};
+    multikill.contagem++;
+    multikill.ate=t+CONFIG.MULTIKILL_JANELA_MS;
+    multikill.x=x; multikill.y=y;
+    if(CONFIG.MULTIKILL_MARCOS.includes(multikill.contagem)){
+      const forca=CONFIG.MULTIKILL_MARCOS.indexOf(multikill.contagem);
+      particulas(x,y,'physical',6+forca*4,1+forca);
+      if(forca>=1)anel(x,y,26+forca*14,'#ffd23f',1+forca);
+      if(forca>=2)shake(2,180);
+      som('multikill',forca>=2?'heavy':'medium',false);
+    }
+  }
+
+  function multikillAtual(){
+    return agora()<=multikill.ate?multikill.contagem:0;
+  }
+
+  /* Sequencia de morte de chefe. Para o GAMEPLAY o chefe morreu no quadro
+     zero — nada aqui segura o estado dele. E' so' apresentacao. */
+  function morteDeChefe(info){
+    const alvo=info&&info.alvo;
+    const x=num(info?.x||alvo?.x), y=num(info?.y||alvo?.y);
+    chefesMortos.push({x,y,nasceu:agora(),passo:0,
+      quadro:alvo&&alvo._ultimoQuadro?Object.assign({},alvo._ultimoQuadro):null,
+      elemento:info?.elemento||'physical'});
+    if(chefesMortos.length>3)chefesMortos.shift();
+  }
+
+  function avancarMortesDeChefe(){
+    const p=prefs();
+    const C=CONFIG.CHEFE_MORTE;
+    for(let i=chefesMortos.length-1;i>=0;i--){
+      const m=chefesMortos[i];
+      const dt=agora()-m.nasceu;
+      // cada marco dispara uma vez so'
+      if(m.passo===0&&dt>=0){ m.passo=1; if(!p.reduzirFlashes)enfase(C.pausa,3); }
+      for(let b=0;b<C.bursts.length;b++){
+        const marca=2+b;
+        if(m.passo<marca&&dt>=C.bursts[b]){
+          m.passo=marca;
+          const ang=Math.random()*Math.PI*2, r=18+Math.random()*22;
+          particulas(m.x+Math.cos(ang)*r,m.y+Math.sin(ang)*r,m.elemento,C.burstParticulas,3);
+        }
+      }
+      if(m.passo<90&&dt>=C.shakeEm){ m.passo=90; shake(C.shakeForca,320); }
+      if(m.passo<91&&dt>=C.anelEm){ m.passo=91; anel(m.x,m.y,C.anelRaio,'#ffd6a0',3); }
+      if(dt>=C.fim)chefesMortos.splice(i,1);
+    }
+  }
+
+  /* Impacto acumulado no chefe (item 13). Ataques rapidos fazem micro
+     flash; quando uma fatia significativa da vida cai numa janela curta,
+     sai UM impacto pesado. Sem isso a alternativa seria tremer a cada
+     projetil, que e' exatamente o que a spec proibe. */
+  function danoNoChefe(chefe,quanto,maxHp){
+    if(!chefe)return false;
+    const t=agora();
+    let a=acumuloChefe.get(chefe);
+    if(!a||t-a.desde>CONFIG.CHEFE_ACUMULO.janelaMs){ a={desde:t,soma:0}; acumuloChefe.set(chefe,a); }
+    a.soma+=num(quanto);
+    const limite=Math.max(1,num(maxHp))*CONFIG.CHEFE_ACUMULO.fracaoHp;
+    if(a.soma>=limite){
+      a.desde=t; a.soma=0;
+      anel(chefe.x,chefe.y,CONFIG.CHEFE_ACUMULO.anelRaio,'#ffd6a0',2);
+      shake(CONFIG.CHEFE_ACUMULO.shake,190);
+      som('impacto','heavy',false);
+      return true;
+    }
+    return false;
+  }
+
+  // ═══════════════════════════════════════════════════════
   // ATUALIZACAO E DESENHO
   // ═══════════════════════════════════════════════════════
 
   function atualizar(dt){
     particulasNesteQuadro=0; quadroAbertoEm=agora();
+    avancarMortesDeChefe();
+    const tf=agora();
+    for(let i=fantasmas.length-1;i>=0;i--) if(tf-fantasmas[i].nasceu>=fantasmas[i].dur) fantasmas.splice(i,1);
     const ms=num(dt)*1000;
     const t=agora();
     for(let i=numeros.length-1;i>=0;i--){
@@ -407,6 +562,32 @@
     return false;
   }
 
+  /* Fantasmas de morte. Desenhados NO MEIO do mundo (junto das entidades),
+     nao por cima da HUD, entao vao numa funcao propria que o laco chama no
+     ponto certo da ordem de desenho. */
+  function desenharFantasmas(ctx){
+    if(!ctx||!fantasmas.length)return;
+    const t=agora();
+    for(const f of fantasmas){
+      const prog=clamp((t-f.nasceu)/f.dur,0,1);
+      const alpha=1-prog;
+      if(alpha<=0.02)continue;
+      // encolhe um pouco e sobe de leve: le' como "desfez", nao como "sumiu"
+      const esc=1-(1-f.escalaFim)*prog;
+      const q=f.quadro;
+      const original={x:q.x,pesY:q.pesY,escala:q.escala};
+      q.pesY=original.pesY-prog*5;
+      if(typeof q.escala==='number')q.escala=original.escala*esc;
+      ctx.save();
+      ctx.globalAlpha=alpha;
+      if(typeof deps.desenharQuadro==='function')deps.desenharQuadro(ctx,q,alpha);
+      // clarao final: a mesma tintura do hit flash, sumindo junto
+      if(typeof deps.tingirQuadro==='function')deps.tingirQuadro(ctx,q,f.cor,alpha*0.85);
+      ctx.restore();
+      q.x=original.x; q.pesY=original.pesY; q.escala=original.escala;
+    }
+  }
+
   function desenhar(ctx){
     if(!ctx)return;
     // aneis primeiro: ficam ATRAS dos numeros
@@ -442,6 +623,10 @@
   function limpar(){
     numeros.length=0;
     aneis.length=0;
+    fantasmas.length=0;
+    chefesMortos.length=0;
+    acumuloChefe.clear();
+    multikill={contagem:0,ate:0,x:0,y:0};
     eventos.clear();
     pausaAte=0; pausaForca=0;
     ultimoShakeEm=-1e9;
@@ -465,7 +650,7 @@
 
   global.CombatJuiceSystem=Object.freeze({
     CONFIG,ELEMENTOS,
-    configurar,impacto,
+    configurar,impacto,morte,morteDeChefe,danoNoChefe,multikillAtual,desenharFantasmas,
     particulas,anel,shake,enfase,numero,som,
     atualizar,desenhar,desenharFlash,enfaseAtual,
     limpar,

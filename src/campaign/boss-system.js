@@ -999,6 +999,9 @@ class BossSkeletonKing {
   }
   takeDmg(a){if(this.phase2Triggered&&!this.resurrected)return;if(typeof BossModifierSystem!=='undefined')a=BossModifierSystem.levouDano(this,a);this.hp-=a;this.flashTimer=100;spawnParts(this.x,this.y,'#d0c8e0',4,35);if(this.hp<=0&&this.resurrected&&typeof BossModifierSystem!=='undefined')BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y);}
   _dropLoot(){
+    /* Sequencia visual de morte. Para o GAMEPLAY este chefe ja' esta'
+       morto neste mesmo quadro — nada aqui segura o estado dele. */
+    if(typeof CombatJuiceSystem!=='undefined')CombatJuiceSystem.morteDeChefe({alvo:this,x:this.x,y:this.y});
     if(typeof RunStats!=='undefined')RunStats.recordBossEnd({id:'skeleton_king',name:'Rei Cadáver',victory:true,playerIndex:this._lastDamageOwner?.idx||0});
     if(typeof BossModifierSystem!=='undefined')BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y);
     kills+=6;
@@ -1487,7 +1490,10 @@ class BossAracne {
     }
   }
   takeDmg(a){if(typeof BossModifierSystem!=='undefined')a=BossModifierSystem.levouDano(this,a);this.hp-=a;this.flashTimer=100;spawnParts(this.x,this.y,'#888840',4,35);if(this.hp<=0&&typeof BossModifierSystem!=='undefined')BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y);}
-  _dropLoot(){ if(typeof RunStats!=='undefined')RunStats.recordBossEnd({id:'aracne',name:'Aracne',victory:true,playerIndex:this._lastDamageOwner?.idx||0}); kills+=8; CampProgressionSystem.awardCampaignArtifact('olho_aracne',this); for(let i=0;i<10;i++) spawnCoin(this.x+(Math.random()-0.5)*60,this.y+(Math.random()-0.5)*35,Math.floor(this.xpVal/10)); const bl=['semente_erva','semente_tomate','madeira','pedra']; for(let bi=0;bi<5;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*40,this.y,it);} showInvNotif('Aracne Ancestral derrotada!'); savePersistentData(); spawnParts(this.x,this.y,'#888840',22,90); triggerScreenShake(16,480); }
+  _dropLoot(){
+    /* Sequencia visual de morte. Para o GAMEPLAY este chefe ja' esta'
+       morto neste mesmo quadro — nada aqui segura o estado dele. */
+    if(typeof CombatJuiceSystem!=='undefined')CombatJuiceSystem.morteDeChefe({alvo:this,x:this.x,y:this.y}); if(typeof RunStats!=='undefined')RunStats.recordBossEnd({id:'aracne',name:'Aracne',victory:true,playerIndex:this._lastDamageOwner?.idx||0}); kills+=8; CampProgressionSystem.awardCampaignArtifact('olho_aracne',this); for(let i=0;i<10;i++) spawnCoin(this.x+(Math.random()-0.5)*60,this.y+(Math.random()-0.5)*35,Math.floor(this.xpVal/10)); const bl=['semente_erva','semente_tomate','madeira','pedra']; for(let bi=0;bi<5;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*40,this.y,it);} showInvNotif('Aracne Ancestral derrotada!'); savePersistentData(); spawnParts(this.x,this.y,'#888840',22,90); triggerScreenShake(16,480); }
   draw(t){
     drawAracneAncestralBoss(this,t);
     return;
@@ -2126,7 +2132,10 @@ class BossFrostBehemoth {
     this.flashTimer=100; spawnParts(this.x,this.y,'#88ccff',4,35);
     if(this.hp<=0&&typeof BossModifierSystem!=='undefined')BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y);
   }
-  _dropLoot(){ if(typeof RunStats!=='undefined')RunStats.recordBossEnd({id:'ice_giant',name:'Gigante de Gelo',victory:true,playerIndex:this._lastDamageOwner?.idx||0}); kills+=10; CampProgressionSystem.awardCampaignArtifact('coracao_congelado',this); for(let i=0;i<12;i++) spawnCoin(this.x+(Math.random()-0.5)*70,this.y+(Math.random()-0.5)*40,Math.floor(this.xpVal/12)); const bl=['semente_erva','pedra','madeira']; for(let bi=0;bi<6;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*40,this.y,it);} showInvNotif('Gigante de Gelo derrotado! +6 itens!'); savePersistentData(); spawnParts(this.x,this.y,'#88ddff',28,100); triggerScreenShake(20,600); }
+  _dropLoot(){
+    /* Sequencia visual de morte. Para o GAMEPLAY este chefe ja' esta'
+       morto neste mesmo quadro — nada aqui segura o estado dele. */
+    if(typeof CombatJuiceSystem!=='undefined')CombatJuiceSystem.morteDeChefe({alvo:this,x:this.x,y:this.y}); if(typeof RunStats!=='undefined')RunStats.recordBossEnd({id:'ice_giant',name:'Gigante de Gelo',victory:true,playerIndex:this._lastDamageOwner?.idx||0}); kills+=10; CampProgressionSystem.awardCampaignArtifact('coracao_congelado',this); for(let i=0;i<12;i++) spawnCoin(this.x+(Math.random()-0.5)*70,this.y+(Math.random()-0.5)*40,Math.floor(this.xpVal/12)); const bl=['semente_erva','pedra','madeira']; for(let bi=0;bi<6;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*40,this.y,it);} showInvNotif('Gigante de Gelo derrotado! +6 itens!'); savePersistentData(); spawnParts(this.x,this.y,'#88ddff',28,100); triggerScreenShake(20,600); }
   draw(t){
     drawFrostGiantBoss(this,t);
     return;
@@ -2706,7 +2715,10 @@ class BossSandworm {
     this.divePassTimer=1400;this._resetBodyTrail(angle);
   }
   takeDmg(a){if(typeof BossModifierSystem!=='undefined')a=BossModifierSystem.levouDano(this,a);this.hp-=a;this.flashTimer=100;spawnParts(this.x,this.y,'#c8a840',4,35);if(this.hp<=0&&typeof BossModifierSystem!=='undefined')BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y);}
-  _dropLoot(){ if(typeof RunStats!=='undefined')RunStats.recordBossEnd({id:'worm',name:'Verme Devorador',victory:true,playerIndex:this._lastDamageOwner?.idx||0}); kills+=12; CampProgressionSystem.awardCampaignArtifact('presa_fossil',this); for(let i=0;i<14;i++) spawnCoin(this.x+(Math.random()-0.5)*80,this.y+(Math.random()-0.5)*45,Math.floor(this.xpVal/14)); const bl=['semente_erva','pedra','madeira','semente_tomate']; for(let bi=0;bi<7;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*50,this.y,it);} showInvNotif('Verme Devorador derrotado! +7 itens!'); savePersistentData(); spawnParts(this.x,this.y,'#c8a840',30,110); triggerScreenShake(22,650); }
+  _dropLoot(){
+    /* Sequencia visual de morte. Para o GAMEPLAY este chefe ja' esta'
+       morto neste mesmo quadro — nada aqui segura o estado dele. */
+    if(typeof CombatJuiceSystem!=='undefined')CombatJuiceSystem.morteDeChefe({alvo:this,x:this.x,y:this.y}); if(typeof RunStats!=='undefined')RunStats.recordBossEnd({id:'worm',name:'Verme Devorador',victory:true,playerIndex:this._lastDamageOwner?.idx||0}); kills+=12; CampProgressionSystem.awardCampaignArtifact('presa_fossil',this); for(let i=0;i<14;i++) spawnCoin(this.x+(Math.random()-0.5)*80,this.y+(Math.random()-0.5)*45,Math.floor(this.xpVal/14)); const bl=['semente_erva','pedra','madeira','semente_tomate']; for(let bi=0;bi<7;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*50,this.y,it);} showInvNotif('Verme Devorador derrotado! +7 itens!'); savePersistentData(); spawnParts(this.x,this.y,'#c8a840',30,110); triggerScreenShake(22,650); }
   draw(t){
     drawDevourerBoss(this,t);
     return;
@@ -2932,7 +2944,10 @@ class BossBalrog {
     if(this.flashTimer>0) this.flashTimer-=dt*1000;
   }
   takeDmg(a){if(typeof BossModifierSystem!=='undefined')a=BossModifierSystem.levouDano(this,a);this.hp-=a;this.flashTimer=120;spawnParts(this.x,this.y,'#ff4400',5,40);if(this.hp<=0&&typeof BossModifierSystem!=='undefined')BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y);}
-  _dropLoot(){ if(typeof RunStats!=='undefined')RunStats.recordBossEnd({id:'balrog',name:'Balrog',victory:true,playerIndex:this._lastDamageOwner?.idx||0}); kills+=20; CampProgressionSystem.awardCampaignArtifact('nucleo_infernal',this); for(let i=0;i<18;i++) spawnCoin(this.x+(Math.random()-0.5)*100,this.y+(Math.random()-0.5)*55,Math.floor(this.xpVal/18)); const bl=['semente_erva','pedra','madeira','semente_tomate','semente_trigo']; for(let bi=0;bi<10;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*60,this.y,it);} showInvNotif('BALROG DERROTADO! +10 itens!'); savePersistentData(); spawnParts(this.x,this.y,'#ff4400',40,120); spawnParts(this.x,this.y,'#ffcc00',20,80); triggerScreenShake(28, 800); }
+  _dropLoot(){
+    /* Sequencia visual de morte. Para o GAMEPLAY este chefe ja' esta'
+       morto neste mesmo quadro — nada aqui segura o estado dele. */
+    if(typeof CombatJuiceSystem!=='undefined')CombatJuiceSystem.morteDeChefe({alvo:this,x:this.x,y:this.y}); if(typeof RunStats!=='undefined')RunStats.recordBossEnd({id:'balrog',name:'Balrog',victory:true,playerIndex:this._lastDamageOwner?.idx||0}); kills+=20; CampProgressionSystem.awardCampaignArtifact('nucleo_infernal',this); for(let i=0;i<18;i++) spawnCoin(this.x+(Math.random()-0.5)*100,this.y+(Math.random()-0.5)*55,Math.floor(this.xpVal/18)); const bl=['semente_erva','pedra','madeira','semente_tomate','semente_trigo']; for(let bi=0;bi<10;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*60,this.y,it);} showInvNotif('BALROG DERROTADO! +10 itens!'); savePersistentData(); spawnParts(this.x,this.y,'#ff4400',40,120); spawnParts(this.x,this.y,'#ffcc00',20,80); triggerScreenShake(28, 800); }
   draw(t){
     const x=this.x, y=this.y;
     const glow=0.7+0.3*Math.sin(t*0.006+this.phase);
@@ -3286,6 +3301,9 @@ class BossBrute {
     this.rocks=this.rocks.filter(r=>r.life>0);
   }
   _dropLoot(){
+    /* Sequencia visual de morte. Para o GAMEPLAY este chefe ja' esta'
+       morto neste mesmo quadro — nada aqui segura o estado dele. */
+    if(typeof CombatJuiceSystem!=='undefined')CombatJuiceSystem.morteDeChefe({alvo:this,x:this.x,y:this.y});
     if(typeof RunStats!=='undefined')RunStats.recordBossEnd({id:'brute',name:'Brutamontes',victory:true,playerIndex:this._lastDamageOwner?.idx||0});
     kills+=12; for(let i=0;i<14;i++) spawnCoin(this.x+(Math.random()-0.5)*80,this.y+(Math.random()-0.5)*45,Math.floor(this.xpVal/14));
     const bl=['semente_erva','pedra','madeira','semente_tomate'];

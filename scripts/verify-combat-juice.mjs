@@ -23,7 +23,11 @@ function exigir(cond,msg){ if(!cond) throw new Error(`FALHA: ${msg}`); checagens
 /* Carrega o modulo isolado e devolve um banco de provas: quem pediu
    tremor, quantas particulas, quais aneis. */
 function bancada(preferencias){
-  const ctx={console,performance:{now:()=>Date.now()}};
+  /* Relogio CONTROLAVEL. Com Date.now() real o tempo nao anda dentro de um
+     laco sincrono, e sequencias temporais (morte de chefe, throttles)
+     nunca disparariam — o teste passaria por engano. */
+  let relogio=1000;
+  const ctx={console,performance:{now:()=>relogio}};
   ctx.window=ctx;
   vm.createContext(ctx);
   vm.runInContext(modulo,ctx);
@@ -39,7 +43,8 @@ function bancada(preferencias){
     tingirAlvo:()=>{registro.tintas++;return true;},
     tocarImpacto:()=>{registro.sons++;},
   });
-  return {J,registro,total:()=>registro.shakes.reduce((s,v)=>s+v,0)};
+  return {J,registro,total:()=>registro.shakes.reduce((s,v)=>s+v,0),
+          avancar:ms=>{relogio+=ms;}, agora:()=>relogio};
 }
 
 // ── 1. LIGHT nao gera tremor forte ──
@@ -113,11 +118,14 @@ function bancada(preferencias){
   const b=bancada();
   const bicho={};
   let renovacoes=0,ultimo=null;
+  // 25 acertos em 250ms de relogio (10ms entre eles): uma arma de 520ms
+  // nunca faria isso, mas e' o pior caso e e' o que o throttle precisa segurar
   for(let i=0;i<25;i++){
+    b.avancar(10);
     b.J.impacto({x:1,y:1,cooldown:520,dano:9,alvo:bicho,attackEventId:'f'+i});
     if(bicho._juiceFlash&&bicho._juiceFlash!==ultimo){renovacoes++;ultimo=bicho._juiceFlash;}
   }
-  exigir(renovacoes<=2,`25 acertos instantaneos nao podem gerar ${renovacoes} flashes (lampada)`);
+  exigir(renovacoes<=4,`25 acertos em 250ms nao podem gerar ${renovacoes} flashes (lampada)`);
 }
 
 // ── 10/11/12. Configuracao do jogador e acessibilidade ──
@@ -219,6 +227,78 @@ function bancada(preferencias){
     'o tremor precisa combinar pelo MAIOR, nunca sobrescrever nem somar');
   exigir(/screenShake\.t\/\(screenShake\.dur/.test(html),
     'o decaimento do tremor precisa usar a duracao real, nao 180 fixo');
+}
+
+// ═══════════════════════════════════════════════════════
+// FASE 2 — morte, critico e chefe
+// ═══════════════════════════════════════════════════════
+
+// ── 14. Escala das mortes: comum < critica < elite < minichefe ──
+{
+  const medir=fn=>{const b=bancada();fn(b.J);return {p:b.registro.particulas,s:b.total()};};
+  const comum=medir(J=>J.morte({x:1,y:1,dano:20,hpRestante:10}));
+  const crit =medir(J=>J.morte({x:1,y:1,critico:true,dano:60,hpRestante:10}));
+  const elite=medir(J=>J.morte({x:1,y:1,elite:true,dano:60,hpRestante:40}));
+  const mini =medir(J=>J.morte({x:1,y:1,minichefe:true,dano:90,hpRestante:60}));
+  exigir(comum.p<crit.p,'morte critica precisa ser maior que a comum');
+  exigir(crit.p<elite.p,'morte de elite precisa ser maior que a critica');
+  exigir(elite.p<mini.p,'morte de minichefe precisa ser maior que a de elite');
+  exigir(comum.s===0,'morte comum nao pode tremer a tela');
+  exigir(elite.s>0&&mini.s>elite.s,'elite treme pouco; minichefe treme mais');
+}
+
+// ── 15. Overkill reforca, mas com teto ──
+{
+  const medir=(dano)=>{const b=bancada();b.J.morte({x:1,y:1,dano,hpRestante:10});return b.registro.particulas;};
+  const normal=medir(12), dez=medir(100), absurdo=medir(100000);
+  exigir(dez>normal,'overkill precisa reforcar a morte');
+  const b=bancada();
+  exigir(absurdo<=Math.ceil(normal*b.J.CONFIG.OVERKILL_MAX)+1,
+    `overkill precisa ter teto: 100000 de dano deu ${absurdo} contra ${normal} do normal`);
+}
+
+// ── 16. Morte de chefe: sequencia visual que NAO segura o gameplay ──
+{
+  const b=bancada();
+  b.J.morteDeChefe({x:100,y:100});
+  for(let i=0;i<70;i++){ b.avancar(16); b.J.atualizar(0.016); }
+  exigir(b.registro.particulas>0,'a morte de chefe precisa gerar bursts');
+  exigir(b.total()>0,'a morte de chefe precisa tremer');
+  // e o modulo nao pode manter o chefe "vivo" de nenhuma forma
+  exigir(!/\.dead\s*=\s*false/.test(modulo),'o juice nao pode reviver nem segurar entidade');
+  const bossSrc=ler('src/campaign/boss-system.js');
+  exigir(/CombatJuiceSystem\.morteDeChefe/.test(bossSrc),'os chefes precisam disparar a sequencia');
+  // o gatilho fica no _dropLoot, que roda com o chefe JA' marcado como morto
+  const numaLinha=bossSrc.replace(/\s+/g,' ');
+  exigir(numaLinha.includes('this.dead=true; this._dropLoot()'),
+    'a sequencia visual precisa comecar depois de o chefe ja estar morto para o gameplay');
+}
+
+// ── 17. Impacto acumulado no chefe (nada de tremor por projetil) ──
+{
+  const rapido=bancada(), forte=bancada();
+  const chefe={x:1,y:1};
+  for(let i=0;i<25;i++) rapido.J.danoNoChefe(chefe,1,1000);   // 2,5% da vida
+  forte.J.danoNoChefe({x:1,y:1},60,1000);                      // 6% de uma vez
+  exigir(rapido.total()===0,'tiros fracos no chefe nao podem tremer a tela');
+  exigir(forte.total()>0,'uma fatia significativa da vida do chefe precisa gerar impacto pesado');
+}
+
+// ── 18. Multikill agrega em vez de repetir ──
+{
+  const b=bancada();
+  for(let i=0;i<12;i++) b.J.morte({x:1,y:1,dano:20,hpRestante:10});
+  exigir(b.J.multikillAtual()===12,'o agregador precisa contar as mortes da janela');
+  exigir(b.registro.sons<=CONFIG_MARCOS(b),'multikill nao pode tocar um som por morte');
+  function CONFIG_MARCOS(bb){ return bb.J.CONFIG.MULTIKILL_MARCOS.length+1; }
+}
+
+// ── 19. Damage lag na barra do chefe (leitura, nao alteracao de vida) ──
+{
+  const hud=ler('src/ui/boss-hud.js');
+  exigir(/rastroDe\(/.test(hud),'a barra do chefe precisa do rastro de dano');
+  exigir(!/\.hp\s*=/.test(hud),'a HUD nao pode escrever vida');
+  exigir(/RASTRO_MS/.test(hud),'a duracao do rastro precisa ser configuravel');
 }
 
 console.log(`OK: feedback de combate verificado (${checagens} checagens).`);
