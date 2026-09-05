@@ -12,6 +12,13 @@ const GameSettings = (function(){
     autoAttack:true,
     skinId:'classic',
     renderScale:'auto',
+    /* Feedback de combate. Padroes conforme pedido: NORMAL, tremor em
+       80%, nada reduzido. Ficam no MESMO storage do resto — sem criar
+       um segundo mecanismo de persistencia so' para isto. */
+    combatFxIntensity:'normal',      // baixa | normal | alta
+    combatFxShake:0.8,               // 0..1  (slider de 0 a 100%)
+    combatFxReduceMotion:false,
+    combatFxReduceFlashes:false,
     controls:{
       moveUp:'KeyW', moveDown:'KeyS', moveLeft:'KeyA', moveRight:'KeyD',
       dash:'ShiftLeft', inventory:'KeyI', map:'KeyM', crafting:'KeyT', pause:'Escape'
@@ -383,7 +390,27 @@ const GameSettings = (function(){
     getProgressSnapshot(){return JSON.parse(JSON.stringify(skinProgress));},
     get autoAttack(){ return data.autoAttack; },
     get skinId(){ return data.skinId; },
-    get controls(){ return {...data.controls}; }
+    get controls(){ return {...data.controls}; },
+    /* Lido pelo CombatJuiceSystem a cada efeito. Devolve copia simples
+       para o modulo de juice nao conseguir escrever na configuracao. */
+    getCombatFx(){
+      return {
+        intensidade:data.combatFxIntensity||'normal',
+        shake:typeof data.combatFxShake==='number'?data.combatFxShake:0.8,
+        reduzirMovimento:!!data.combatFxReduceMotion,
+        reduzirFlashes:!!data.combatFxReduceFlashes,
+      };
+    },
+    setCombatFx(parcial){
+      if(!parcial||typeof parcial!=='object')return;
+      if(parcial.intensidade&&['baixa','normal','alta'].includes(parcial.intensidade))
+        data.combatFxIntensity=parcial.intensidade;
+      if(typeof parcial.shake==='number'&&isFinite(parcial.shake))
+        data.combatFxShake=Math.max(0,Math.min(1,parcial.shake));
+      if(typeof parcial.reduzirMovimento==='boolean')data.combatFxReduceMotion=parcial.reduzirMovimento;
+      if(typeof parcial.reduzirFlashes==='boolean')data.combatFxReduceFlashes=parcial.reduzirFlashes;
+      save();
+    }
   };
 })();
 
