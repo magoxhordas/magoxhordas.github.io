@@ -5689,6 +5689,27 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
       <div class="settings-panel" data-settings-panel="video">
         <div class="settings-resolution-grid" id="settings-resolution-grid"></div>
         <p class="settings-help">A área do jogo permanece em 4:3. A opção muda a nitidez interna sem alterar gráficos ou jogabilidade.</p>
+
+        <h2 style="margin-top:18px">Efeitos de combate</h2>
+        <div class="settings-row">
+          <span>Intensidade</span>
+          <button class="settings-toggle" id="settings-fx-intensity"
+                  onclick="GameSettings.cycleCombatFxIntensity()">NORMAL</button>
+        </div>
+        <label class="settings-volume"><span>Tremor de tela</span>
+          <input id="settings-fx-shake" type="range" min="0" max="100" step="5"
+                 oninput="GameSettings.setCombatFxShake(this.value)"></label>
+        <div class="settings-row">
+          <span>Reduzir movimento de câmera</span>
+          <button class="settings-toggle" id="settings-fx-motion"
+                  onclick="GameSettings.toggleCombatFxMotion()">DESATIVADO</button>
+        </div>
+        <div class="settings-row">
+          <span>Reduzir flashes</span>
+          <button class="settings-toggle" id="settings-fx-flash"
+                  onclick="GameSettings.toggleCombatFxFlashes()">DESATIVADO</button>
+        </div>
+        <p class="settings-help">Estas opções mudam apenas a apresentação. Nenhuma delas altera dano, alcance, recarga ou dificuldade — e nenhuma esconde os avisos de ataque dos chefes.</p>
       </div>
 
       <div class="settings-panel" data-settings-panel="skins">
@@ -5764,6 +5785,7 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
   <script src="src/combat/status-effects.js"></script>
   <script src="src/combat/damage-system.js"></script>
   <script src="src/combat/combat-system.js"></script>
+  <script src="src/combat/combat-juice-system.js"></script>
   <script>
 (function(global){
   'use strict';
@@ -10174,16 +10196,39 @@ function drawPetSprite(c, petId, x, y, flipX, now){
   <script>
 // SCREEN SHAKE — for axe heavy impact
 // ═══════════════════════════════════════════════════════
-let screenShake={x:0,y:0,t:0,intensity:0};
+let screenShake={x:0,y:0,t:0,dur:180,intensity:0};
+/* Tremor de tela GRADUADO.
+   Duas coisas estavam erradas na versao anterior e ficam corrigidas aqui:
+
+   1. A funcao SOBRESCREVIA o estado (`screenShake={...}`). Um hit fraco
+      chegando durante um tremor forte cancelava o forte e o rebaixava.
+      Agora o resultado e' o MAIOR entre o que ja' esta' rolando e o que
+      foi pedido, com um acrescimo pequeno quando os dois sao fortes —
+      nunca a soma, senao dez eventos juntos viram terremoto.
+
+   2. O decaimento dividia por 180 fixo (`screenShake.t/180`) mesmo quando
+      a duracao passada era outra. Com duracao 240 o tremor "estourava"
+      acima de 1; com 90, morria pela metade. Agora divide pela duracao
+      real. */
 function triggerScreenShake(intensity=5,duration=180){
-  screenShake={x:0,y:0,t:duration,intensity};
+  const pedido=Math.max(0,Number(intensity)||0);
+  if(pedido<=0)return;
+  const dur=Math.max(1,Number(duration)||180);
+  const atual=screenShake.t>0?screenShake.intensity:0;
+  const combinado=atual>0
+    ? Math.max(atual,pedido)+Math.min(atual,pedido)*0.18
+    : pedido;
+  screenShake.intensity=Math.min(12,combinado);   // teto: nunca enjoa
+  screenShake.t=Math.max(screenShake.t,dur);
+  screenShake.dur=Math.max(screenShake.dur>0?screenShake.dur:dur,dur);
 }
 function updateScreenShake(dt){
-  if(screenShake.t<=0) return;
+  if(screenShake.t<=0){ screenShake.x=0; screenShake.y=0; return; }
   screenShake.t-=dt*1000;
-  const p=Math.max(0,screenShake.t/180);
+  const p=Math.max(0,screenShake.t/(screenShake.dur||180));
   screenShake.x=(Math.random()-0.5)*screenShake.intensity*p*2;
   screenShake.y=(Math.random()-0.5)*screenShake.intensity*p*2;
+  if(screenShake.t<=0){ screenShake.intensity=0; screenShake.dur=180; }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -12287,7 +12332,23 @@ function weaponDamage(player,weapon,target,amount,color){
   weapon.damageDone=(weapon.damageDone||0)+effective;
   markEnemyWeaponStatus(target,weapon);
   if(typeof applyClassHitEffect==='function')applyClassHitEffect({owner:player,dmg,weapon},target);
-  spawnParts(target.x,target.y,color||'#ffffff',5,38);
+  /* Antes: 5 particulas fixas para TODO acerto, do Arco Curto ao Machado
+     Colossal. Agora o feedback sai do perfil do ataque, e o
+     attackEventId (que o RunStats ja' cria por ciclo) garante que um
+     golpe em 10 inimigos gere UM impacto, e nao dez. */
+  if(typeof CombatJuiceSystem!=='undefined'){
+    const defJ=WEAPON_DEFS[weapon?.type];
+    CombatJuiceSystem.impacto({
+      x:target.x,y:target.y,alvo:target,arma:weapon?.type,
+      cooldown:defJ?campaignWeaponCooldown(defJ,weapon.rarity,player,weapon):0,
+      dano:effective,critico:!!player?._lastAttackWasCrit,
+      angulo:player?Math.atan2(target.y-player.y,target.x-player.x):0,
+      elemento:typeof campaignWeaponElement==='function'?campaignWeaponElement(weapon?.type||''):'physical',
+      matou:Number(target.hp||0)<=0,
+      attackEventId:player?._runAttackEventId||null,
+      origem:'player_weapon',
+    });
+  } else spawnParts(target.x,target.y,color||'#ffffff',5,38);
   return effective;
 }
 function weaponKnockback(player,target,force){
@@ -15516,9 +15577,16 @@ function triggerDash(pl){
   pl._dashCd=pl._dashMaxCd; pl._dashAfterImages=[];
   if(typeof RunStats!=='undefined')RunStats.recordDash({playerIndex:pl.idx||0});
   if(typeof notifyBlessingDash==='function') notifyBlessingDash(pl);
-  // Som e partículas
-  spawnParts(pl.x,pl.y,'#4466ff',10,55);
-  triggerScreenShake(3,120);
+  /* Feedback do dash. Antes eram particulas azuis fixas para TODAS as
+     classes e triggerScreenShake(3,120) — a mesma forca de um golpe
+     pesado, o que fazia um movimento parecer um impacto. Agora a cor sai
+     da classe e o tremor e' pequeno, alem de respeitar o slider. */
+  if(typeof CombatJuiceSystem!=='undefined'){
+    CombatJuiceSystem.dash({x:pl.x,y:pl.y,classe:pl.classId});
+  } else {
+    spawnParts(pl.x,pl.y,'#4466ff',10,55);
+    triggerScreenShake(3,120);
+  }
 }
 
 function _updateDashBar(pl){
@@ -15907,7 +15975,20 @@ class Player {
   }
 
   takeDmg(a,continuous){
-    return campaignDamageSystem.damagePlayer(this,a,continuous);
+    const antes=this.hp;
+    const r=campaignDamageSystem.damagePlayer(this,a,continuous);
+    /* Feedback do dano recebido. Usa o dano REALMENTE sofrido (armadura,
+       escudo e esquiva ja' descontados), senao um golpe bloqueado geraria
+       vinheta e tremor sem o jogador ter perdido nada. */
+    if(typeof CombatJuiceSystem!=='undefined'){
+      const sofrido=Math.max(0,antes-this.hp);
+      if(sofrido>0){
+        CombatJuiceSystem.danoNoJogador({x:this.x,y:this.y,quantidade:sofrido,vidaMaxima:this.maxHp,
+          angulo:typeof this._ultimaDirecaoDano==='number'?this._ultimaDirecaoDano:undefined});
+        CombatJuiceSystem.checarVidaCritica(this,this.hp,this.maxHp);
+      }
+    }
+    return r;
   }
 
   updateAbility(dt){
@@ -16419,6 +16500,19 @@ class Enemy {
         spawnParts(this.x,this.y,'#8fce4a',18,70); spawnParts(this.x,this.y,'#cc2a24',8,45);
         const allPl=[player,...(gameMode===2&&player2?[player2]:[])].filter(p=>p&&!p.dead);
         for(const pl of allPl) if(Math.hypot(pl.x-this.x,pl.y-this.y)<70) pl.takeDmg(this.damage*1.2);
+      }
+      /* Morte visual. O gameplay ja' considerou este inimigo morto: o
+         fantasma abaixo e' so' apresentacao e nunca entra em lista de
+         entidade. Elite e minichefe usam a mesma rota, um degrau acima. */
+      if(typeof CombatJuiceSystem!=='undefined'){
+        CombatJuiceSystem.morte({
+          alvo:this,x:this.x,y:this.y,
+          critico:!!this._lastDamageOwner?._lastAttackWasCrit,
+          elite:Number(this.maxHp||0)>=260||!!this.isElite,
+          minichefe:!!this.isMiniboss,
+          elemento:typeof campaignDamageElement==='function'?campaignDamageElement(this._lastRunWeapon||''):'physical',
+          dano:Number(this._ultimoDanoRecebido||0),hpRestante:Math.max(1,Number(this.maxHp||1)*0.06),
+        });
       }
       spawnCoin(this.x, this.y, this.xpVal);
       spawnParts(this.x,this.y,'#ffdd00',10,60);
@@ -17469,6 +17563,22 @@ function collide(){
         const runSourceName=p.isCampaignWeaponProj?(WEAPON_DEFS[p.weapon?.type]?.name||p.weapon?.type||'Arma'):'Ataque básico';
         const effective=typeof RunStats!=='undefined'?RunStats.recordDamage({playerIndex:owner?.idx||0,hpBefore:beforeHp,hpAfter:Number(e.hp)||0,amount:finalDmg,sourceType:p.isCampaignWeaponProj?'weapon':'direct',sourceId:p.weapon?.type||owner?.classId||'basic',sourceName:runSourceName,rarity:p.weapon?.rarity||'unknown',targetType:e.type||'enemy',attackEventId:e._runStatsAttackEventId}):Math.max(0,beforeHp-Number(e.hp||0));
         if(p.owner?.classId==='necromancer')NecromancerSystem.onProjectileHit(p,e,finalDmg);
+        /* Rajada, ricochete e perfuracao carregam o mesmo _runAttackEventId,
+           entao o feedback caro (shake/anel/pausa) sai UMA vez por ciclo;
+           cada alvo ainda recebe o seu flash e as suas particulas. */
+        if(typeof CombatJuiceSystem!=='undefined'){
+          const defJ=p.isCampaignWeaponProj?WEAPON_DEFS[p.weapon?.type]:null;
+          CombatJuiceSystem.impacto({
+            x:e.x,y:e.y,alvo:e,arma:p.weapon?.type||'basico',
+            cooldown:defJ?campaignWeaponCooldown(defJ,p.weapon.rarity,p.owner,p.weapon):(p.owner?.atkCd||0),
+            dano:finalDmg,critico:!!p.owner?._lastAttackWasCrit,
+            angulo:typeof p.angle==='number'?p.angle:Math.atan2(p.vy||0,p.vx||1),
+            elemento:typeof campaignWeaponElement==='function'?campaignWeaponElement(p.weapon?.type||''):'physical',
+            matou:Number(e.hp||0)<=0,
+            attackEventId:p._runAttackEventId||null,
+            origem:'player_weapon',
+          });
+        }
         if(p.isCampaignWeaponProj)markEnemyWeaponStatus(e,p.weapon);
         if(p.isCampaignWeaponProj){
           p.weapon.damageDone=(p.weapon.damageDone||0)+effective;p.hitTargets.add(e);
@@ -18872,6 +18982,70 @@ function drawLegacyEnemyStatusFx(e,t){
 
 /* Usa a propria silhueta quando o quadro exato esta disponivel. Chefes e
    desenhos procedurais continuam no efeito anterior como reserva. */
+/* ── FEEDBACK DE COMBATE ──
+   O modulo de juice OBSERVA o combate e desenha; tudo o que precisa entra
+   por aqui. Repare que ele nao recebe nenhum caminho para alterar dano,
+   cooldown ou estado de gameplay — de proposito. Juice e' feedback. */
+if(typeof CombatJuiceSystem!=='undefined'){
+  CombatJuiceSystem.configurar({
+    /* GameSettings e' const de topo de script classico (binding lexico,
+       nao propriedade de window), entao o modulo NAO consegue alcanca-lo
+       sozinho. Entregar por aqui e' o que faz o slider de tremor e as
+       opcoes de acessibilidade realmente valerem. */
+    getPreferencias:()=>(typeof GameSettings!=='undefined'&&GameSettings.getCombatFx)
+      ?GameSettings.getCombatFx()
+      :{intensidade:'normal',shake:0.8,reduzirMovimento:false,reduzirFlashes:false},
+    /* O array `parts` so' existe depois de beginGame(). Sem esta guarda,
+       qualquer efeito disparado fora de uma run — a galeria de depuracao,
+       por exemplo — quebrava dentro do spawnParts. */
+    spawnParts:(x,y,cor,n,vel)=>{
+      if(typeof parts==='undefined'||!Array.isArray(parts))return;
+      spawnParts(x,y,cor,n,vel);
+    },
+    aplicarShake:(forca,dur)=>triggerScreenShake(forca,dur),
+    getW:()=>W, getH:()=>H,
+    // Nao gastar particula com o que ninguem vai ver (item 46).
+    visivel:(x,y)=>x>=-40&&x<=W+40&&y>=-40&&y<=H+40,
+    ehChefe:alvo=>Boolean(alvo)&&Boolean(alvo.isBoss||alvo.type?.startsWith?.('boss')||
+      alvo===bossOrc||alvo===bossSkel||alvo===bossSpider||alvo===bossMajor||alvo===petBoss),
+    /* Tintura do alvo: reaproveita exatamente o caminho dos efeitos
+       elementais — o quadro que a entidade acabou de desenhar, com
+       source-atop. Nada de retangulo colorido por cima do sprite. */
+    tingirAlvo:(ctx2,alvo,cor,forca)=>{
+      const I=window.InimigosNormais;
+      if(alvo._ultimoQuadroHeroi&&typeof tingirHeroi==='function')
+        return tingirHeroi(ctx2,alvo._ultimoQuadroHeroi,cor,forca);
+      if(I&&I.tingir&&alvo._ultimoQuadro)return I.tingir(ctx2,alvo._ultimoQuadro,cor,forca);
+      return false;
+    },
+    /* Desenho do fantasma de morte: reaproveita o mesmo desenhador dos
+       inimigos, com o quadro que a entidade tinha no ultimo frame vivo.
+       Nenhum sprite de morte foi necessario. */
+    desenharQuadro:(ctx2,q)=>{
+      const I=window.InimigosNormais;
+      if(!I||!I.desenhar||!q)return false;
+      return I.desenhar(ctx2,q.tipo,q.x,q.pesY,q.dir,q.estado,q.idx,q.flip,q.escala);
+    },
+    tingirQuadro:(ctx2,q,cor,forca)=>{
+      const I=window.InimigosNormais;
+      if(!I||!I.tingir||!q)return false;
+      return I.tingir(ctx2,q,cor,forca);
+    },
+    /* Som de impacto. O audio do jogo e' procedural, entao a variacao de
+       pitch e' multiplicar a frequencia — nenhum arquivo novo. O critico
+       ganha uma CAMADA curta por cima, sem trocar o som da arma. */
+    tocarImpacto:({perfil,critico})=>{
+      if(typeof Audio==='undefined')return;
+      try{
+        if(perfil==='massive'&&Audio.sfxEnemyDeath)Audio.sfxEnemyDeath();
+        else if(perfil==='heavy'&&Audio.sfxAxe)Audio.sfxAxe();
+        else if(Audio.sfxHit)Audio.sfxHit();
+        if(critico&&Audio.sfxCoin)Audio.sfxCoin();
+      }catch(_){}
+    },
+  });
+}
+
 function drawEnemyStatusFx(e,t){
   if(!e||e.dead)return;
   const now=typeof performance!=='undefined'?performance.now():Date.now();
@@ -19112,6 +19286,7 @@ function loop(ts){
     }
     updateUI();
     updateScreenShake(dt);
+    if(typeof CombatJuiceSystem!=='undefined')CombatJuiceSystem.atualizar(dt);
     // Pet companion update
     if(currentPet){ currentPet.update(dt); clampCampaignEntity(currentPet); }
     // Wild pet boss update
@@ -19140,7 +19315,10 @@ function loop(ts){
   campaignEvents.draw(ctx,t);
   const ents=[
     ...coins.map(c=>({y:c.y,fn:()=>c.draw(t)})),
-    ...enemies.map(e=>({y:e.y,fn:()=>{ e.draw(t); drawEnemyStatusFx(e,t); }})),
+    ...enemies.map(e=>({y:e.y,fn:()=>{ e.draw(t); if(typeof CombatJuiceSystem!=='undefined')CombatJuiceSystem.desenharFlash(ctx,e); drawEnemyStatusFx(e,t); }})),
+    // Fantasmas de morte ficam no meio do mundo, junto das entidades, e
+    // nao por cima da HUD.
+    {y:-1,fn:()=>{ if(typeof CombatJuiceSystem!=='undefined')CombatJuiceSystem.desenharFantasmas(ctx); }},
     ...(bossOrc&&!bossOrc.dead?[{y:bossOrc.y,fn:()=>{desenharChefe(bossOrc,t);}}]:[]),
     ...(bossSkel&&!bossSkel.dead?[{y:bossSkel.y,fn:()=>{desenharChefe(bossSkel,t);}}]:[]),
     ...(bossSpider&&!bossSpider.dead?[{y:bossSpider.y,fn:()=>{desenharChefe(bossSpider,t);}}]:[]),
@@ -19170,6 +19348,12 @@ function loop(ts){
   drawWaveAnnounce(t);
   drawWaveCountdown(t,dt);
   drawBossWarning(t);
+  // Feedback de combate: aneis de impacto e numeros de dano. Vem antes
+  // dos avisos de onda, que precisam continuar por cima de tudo.
+  if(typeof CombatJuiceSystem!=='undefined'){
+    CombatJuiceSystem.desenharVinheta(ctx,W,H);
+    CombatJuiceSystem.desenhar(ctx);
+  }
   drawLevelNotices();
   // Draw pet companion and wild pet boss
   if(currentPet) currentPet.draw(t);
@@ -19347,6 +19531,7 @@ function beginGame(){
   CampProgressionSystem.setPreparedMeals([]);
   enemies=[]; projs=[]; coins=[]; parts=[]; meleeAnims=[]; firePatches=[]; structures=[];
   kills=0; wave=1; waveTimer=DIFF[difficulty].waveLen;
+  if(typeof CombatJuiceSystem!=='undefined')CombatJuiceSystem.limpar();   // nova run: sem efeito pendente
   CampProgressionSystem.onWaveStarted([player,player2],wave);
   const initSpawnInt=(DIFF[difficulty]||DIFF.medium).spawnBase;
   spawnInt=initSpawnInt; spawnTimer=800; lastTs=null;

@@ -86,9 +86,41 @@
     return chefe.constructor && chefe.constructor.name === 'BossSkeletonKing' && !chefe.phase2Triggered;
   }
 
-  function barra(ctx, x, y, w, h, pct, corFundo, corCheia, corTopo) {
+  /* Rastro de dano ("damage lag"). A vida vermelha cai na hora; uma faixa
+     clara fica para tras e alcanca o novo valor em ~320ms. Isso mostra
+     QUANTO acabou de entrar, que e' dificil de perceber so' com a barra
+     descendo. Nao altera vida nenhuma: e' leitura da mesma pct. */
+  const rastros = new Map();   // chave da barra -> {pct, ate}
+  const RASTRO_MS = 320;
+
+  function rastroDe(chave, pct) {
+    const t = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    let r = rastros.get(chave);
+    if (!r) { r = { pct, alvo: pct, desde: t }; rastros.set(chave, r); }
+    if (pct < r.alvo - 0.0001) {          // levou dano: comeca a alcancar
+      r.pct = r.alvo; r.desde = t;
+    } else if (pct > r.alvo + 0.0001) {   // curou ou reiniciou: acompanha
+      r.pct = pct;
+    }
+    r.alvo = pct;
+    const prog = Math.min(1, (t - r.desde) / RASTRO_MS);
+    if (rastros.size > 12) {
+      for (const [k, v] of rastros) if (t - v.desde > 4000) rastros.delete(k);
+    }
+    return r.pct + (r.alvo - r.pct) * prog;
+  }
+
+  function barra(ctx, x, y, w, h, pct, corFundo, corCheia, corTopo, chaveRastro) {
     ctx.fillStyle = '#08070a'; ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
     ctx.fillStyle = corFundo; ctx.fillRect(x, y, w, h);
+    if (chaveRastro) {
+      const atrasado = rastroDe(chaveRastro, pct);
+      const larguraRastro = Math.max(0, Math.min(w, Math.round(w * atrasado)));
+      if (larguraRastro > 0) {
+        ctx.fillStyle = 'rgba(255,214,160,0.55)';
+        ctx.fillRect(x, y, larguraRastro, h);
+      }
+    }
     const cheio = Math.max(0, Math.min(w, Math.round(w * pct)));
     if (cheio > 0) {
       ctx.fillStyle = corCheia; ctx.fillRect(x, y, cheio, h);
@@ -188,7 +220,8 @@
 
     // ── vida: sempre vermelha ──
     const bx = px + BX, by = py + 11, bh = 7;
-    barra(ctx, bx, by, BW, bh, vida, '#2b0d12', '#c8202a', 'rgba(255,120,110,0.34)');
+    barra(ctx, bx, by, BW, bh, vida, '#2b0d12', '#c8202a', 'rgba(255,120,110,0.34)',
+          'vida:' + (chefe.constructor?.name || 'chefe'));
     // O rastro vem DEPOIS da barra: desenhado antes, o fundo dela (que cobre
     // a largura toda) o apagava e o dano recente nunca aparecia.
     if (e.atraso > vida) {
