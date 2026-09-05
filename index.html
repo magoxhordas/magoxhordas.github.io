@@ -862,6 +862,222 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
     radial-gradient(ellipse at 50% 0%,rgba(60,20,100,0.4) 0%,transparent 55%),
     linear-gradient(180deg,#06040e 0%,#0c0818 50%,#060410 100%);
 }
+/* ══════════════════════════════════════════════════════
+   TELA DE HEROIS — duas etapas
+
+   A anterior mostrava tudo de uma vez: cinco cartoes com retrato, nome,
+   arma, descricao, quatro barras e a habilidade, todos competindo entre
+   si. Aqui a leitura e' em dois tempos — primeiro QUEM, depois O QUE ELE
+   FAZ —, que e' como Skul, Hades 2 e Hollow Knight organizam as proprias
+   telas: uma coisa em foco por vez, e espaco em volta dela.
+
+   Tudo em grid; o respiro vem de gap e padding em clamp(), entao a tela
+   acompanha a janela em vez de espremer.
+   ══════════════════════════════════════════════════════ */
+#char-select{ padding:0; overflow:hidden; }
+
+/* ── Fundo do heroi em foco ──
+   Duas camadas iguais que se alternam: a de baixo mostra o atual, a de
+   cima recebe o novo e sobe o alpha. Com uma so' a troca piscaria. */
+.cs-bg{
+  position:absolute; inset:0; z-index:0;
+  background-size:cover; background-position:center;
+  opacity:0; transition:opacity .55s ease;
+  transform:scale(1.04);
+}
+.cs-bg.ativa{ opacity:1; }
+
+/* Veu: a arte e' clara demais para texto por cima. Escurece o topo e o
+   rodape, onde ficam titulo e botoes, e preserva o meio. */
+.cs-veu{
+  position:absolute; inset:0; z-index:1; pointer-events:none;
+  background:
+    linear-gradient(180deg, rgba(8,5,14,.86) 0%, rgba(8,5,14,.55) 34%, rgba(8,5,14,.72) 68%, rgba(6,4,10,.94) 100%),
+    radial-gradient(ellipse at 50% 42%, rgba(8,5,14,0) 0%, rgba(8,5,14,.55) 78%);
+}
+#char-select.detalhando .cs-veu{
+  background:
+    linear-gradient(180deg, rgba(8,5,14,.78) 0%, rgba(8,5,14,.42) 30%, rgba(8,5,14,.62) 70%, rgba(6,4,10,.92) 100%),
+    linear-gradient(90deg, rgba(8,5,14,.62) 0%, rgba(8,5,14,.18) 46%, rgba(8,5,14,.55) 100%);
+}
+
+/* ── Etapas ── */
+.cs-etapa{
+  position:relative; z-index:2;
+  width:100%; height:100%;
+  display:grid; grid-template-rows:auto 1fr auto;
+  align-content:center;
+  padding:clamp(14px,3.2vh,34px) clamp(16px,4vw,56px);
+  box-sizing:border-box;
+  transition:opacity .32s ease, transform .32s ease;
+}
+.cs-etapa[hidden]{ display:none; }
+.cs-etapa.saindo{ opacity:0; transform:scale(.975); pointer-events:none; }
+.cs-etapa.entrando{ animation:csEntra .38s ease both; }
+@keyframes csEntra{
+  from{ opacity:0; transform:translateY(14px) scale(.985); }
+  to{ opacity:1; transform:none; }
+}
+
+/* ── Cabecalho ── */
+.cs-cabecalho{ text-align:center; }
+.cs-titulo{
+  margin:0; font-size:clamp(19px,2.5vw,30px); font-weight:bold;
+  letter-spacing:clamp(4px,1vw,11px); color:#f2e3b8;
+  text-shadow:0 2px 18px rgba(0,0,0,.9), 0 0 30px rgba(200,168,75,.22);
+}
+.cs-legenda{
+  margin:8px 0 0; font-size:clamp(9px,1vw,12px);
+  letter-spacing:clamp(2px,.5vw,5px); text-transform:uppercase; color:#8b7f9e;
+}
+
+/* ── Grade dos herois: o respiro mora aqui ── */
+.cs-grade{
+  align-self:center; justify-self:center;
+  display:grid; grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:clamp(10px,1.6vw,22px);
+  width:100%; max-width:1080px;
+  padding:clamp(10px,2.4vh,26px) 0;
+}
+.cs-heroi{
+  position:relative; display:grid; grid-template-rows:1fr auto auto;
+  gap:6px; justify-items:center;
+  padding:clamp(10px,1.6vh,18px) 8px clamp(10px,1.6vh,16px);
+  background:linear-gradient(180deg, rgba(16,11,26,.62), rgba(10,7,18,.88));
+  border:1px solid rgba(120,104,150,.20); border-radius:10px;
+  cursor:pointer;
+  transition:transform .2s ease, border-color .2s ease, background .2s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+.cs-heroi::after{
+  content:""; position:absolute; left:14%; right:14%; bottom:-1px; height:2px;
+  background:var(--cc); opacity:0; transition:opacity .2s ease; border-radius:2px;
+}
+.cs-heroi:hover, .cs-heroi.focado{
+  transform:translateY(-5px);
+  border-color:color-mix(in srgb, var(--cc) 62%, transparent);
+  background:linear-gradient(180deg, rgba(26,18,42,.72), rgba(12,8,22,.94));
+}
+.cs-heroi:hover::after, .cs-heroi.focado::after{ opacity:1; }
+.cs-heroi:focus-visible{ outline:2px solid var(--cc); outline-offset:3px; }
+.cs-heroi canvas{ image-rendering:pixelated; width:100%; height:auto; max-width:104px; }
+.cs-heroi-nome{
+  font-size:clamp(11px,1.15vw,15px); font-weight:bold; color:#f2e3b8; letter-spacing:1px;
+}
+.cs-heroi-badge{
+  font-size:clamp(7px,.62vw,9px); letter-spacing:1.6px; text-transform:uppercase;
+  color:var(--cc); border:1px solid color-mix(in srgb, var(--cc) 40%, transparent);
+  padding:2px 7px; border-radius:3px; white-space:nowrap;
+}
+
+/* ── Rodape comum as duas etapas ── */
+.cs-rodape{
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  width:100%; max-width:1080px; margin:0 auto;
+}
+.cs-dica{
+  margin:0; font-size:clamp(8px,.85vw,11px); letter-spacing:2px;
+  text-transform:uppercase; color:#6d6280;
+}
+.cs-btn{
+  font-family:inherit; font-size:clamp(9px,1vw,12px); letter-spacing:3px;
+  text-transform:uppercase; color:#cfc4e2; background:rgba(14,10,24,.72);
+  cursor:pointer; border:1px solid rgba(130,112,166,.34); border-radius:6px;
+  padding:clamp(8px,1.3vh,13px) clamp(14px,2vw,26px);
+  transition:border-color .18s ease, color .18s ease, background .18s ease;
+}
+.cs-btn:hover{ color:#f2e3b8; border-color:rgba(200,168,75,.6); background:rgba(26,18,42,.86); }
+.cs-btn-seta{ margin-right:6px; opacity:.7; }
+.cs-btn-principal{
+  color:#1a1208; font-weight:bold;
+  background:linear-gradient(180deg,#e8cf86,#c8a84b); border-color:#8a6d24;
+}
+.cs-btn-principal:hover{ background:linear-gradient(180deg,#f4e0a2,#d8b85b); color:#1a1208; }
+
+/* ══ ETAPA 2 — DETALHE ══ */
+.cs-det-grade{
+  align-self:center; justify-self:center;
+  display:grid; grid-template-columns:minmax(0,0.86fr) minmax(0,1.14fr);
+  gap:clamp(18px,3.4vw,56px); align-items:center;
+  width:100%; max-width:1040px;
+}
+.cs-det-heroi{ display:grid; justify-items:center; gap:clamp(8px,1.6vh,18px); }
+.cs-det-retrato{
+  position:relative; display:grid; place-items:center;
+  width:clamp(150px,20vw,250px); aspect-ratio:1;
+}
+.cs-det-retrato::before{
+  content:""; position:absolute; inset:8%;
+  background:radial-gradient(circle, color-mix(in srgb, var(--cc) 34%, transparent) 0%, transparent 68%);
+  filter:blur(6px);
+}
+.cs-det-retrato canvas{ position:relative; image-rendering:pixelated; width:100%; height:auto; }
+.cs-det-identidade{ text-align:center; display:grid; gap:5px; justify-items:center; }
+.cs-det-badge{
+  font-size:clamp(8px,.75vw,10px); letter-spacing:2.4px; text-transform:uppercase;
+  color:var(--cc); border:1px solid color-mix(in srgb, var(--cc) 44%, transparent);
+  padding:3px 10px; border-radius:3px;
+}
+.cs-det-nome{
+  margin:0; font-size:clamp(21px,2.7vw,34px); color:#f2e3b8; letter-spacing:2px;
+  text-shadow:0 2px 16px rgba(0,0,0,.9);
+}
+.cs-det-arma{ margin:0; font-size:clamp(9px,.95vw,12px); color:#9d92b2; letter-spacing:1.5px; }
+
+.cs-det-fichas{ display:grid; gap:clamp(9px,1.6vh,16px); }
+.cs-det-desc{
+  margin:0; font-size:clamp(11px,1.15vw,15px); line-height:1.6; color:#d6cce6;
+  border-left:2px solid color-mix(in srgb, var(--cc) 55%, transparent); padding-left:14px;
+}
+.cs-painel{
+  background:rgba(10,7,18,.72); border:1px solid rgba(120,104,150,.22);
+  border-radius:9px; padding:clamp(11px,1.8vh,18px) clamp(12px,1.6vw,20px);
+}
+.cs-painel-titulo{
+  margin:0 0 10px; font-size:clamp(8px,.75vw,10px); letter-spacing:3px;
+  text-transform:uppercase; color:#7d7192; font-weight:normal;
+}
+.cs-atributos{ display:grid; gap:8px; }
+.cs-atributo{
+  display:grid; grid-template-columns:clamp(58px,7vw,86px) 1fr auto;
+  gap:10px; align-items:center;
+}
+.cs-atributo-nome{
+  font-size:clamp(8px,.75vw,10px); letter-spacing:1.5px; color:#9d92b2; text-transform:uppercase;
+}
+.cs-atributo-trilho{ height:6px; background:rgba(255,255,255,.07); border-radius:3px; overflow:hidden; }
+.cs-atributo-barra{
+  height:100%; border-radius:3px; width:0; background:var(--cc);
+  transition:width .5s cubic-bezier(.2,.8,.3,1);
+}
+.cs-atributo-valor{ font-size:clamp(8px,.72vw,10px); color:#6d6280; min-width:26px; text-align:right; }
+.cs-painel-poder{ border-color:color-mix(in srgb, var(--cc) 30%, transparent); }
+.cs-poder{ display:grid; grid-template-columns:auto 1fr; gap:11px; align-items:start; }
+.cs-poder-marca{ color:var(--cc); font-size:14px; line-height:1.2; }
+.cs-poder-nome{ margin:0 0 3px; font-size:clamp(12px,1.25vw,16px); color:#f2e3b8; letter-spacing:.5px; }
+.cs-poder-desc{ margin:0; font-size:clamp(9px,.95vw,12px); line-height:1.55; color:#a99ec0; }
+
+/* ── Telas estreitas: a grade quebra em vez de espremer ── */
+@media (max-width:760px){
+  .cs-grade{ grid-template-columns:repeat(3,minmax(0,1fr)); max-width:460px; }
+  .cs-det-grade{ grid-template-columns:1fr; gap:14px; max-width:420px; }
+  .cs-det-retrato{ width:clamp(120px,34vw,170px); }
+  .cs-rodape{ flex-direction:column-reverse; gap:10px; }
+  .cs-rodape .cs-btn{ width:100%; }
+  .cs-dica{ text-align:center; }
+}
+@media (max-height:520px){
+  .cs-grade{ padding:6px 0; gap:8px; }
+  .cs-heroi canvas{ max-width:66px; }
+  .cs-titulo{ font-size:clamp(16px,2vw,22px); }
+}
+
+/* Respeita quem pediu menos movimento no sistema operacional. */
+@media (prefers-reduced-motion:reduce){
+  .cs-bg,.cs-etapa,.cs-heroi,.cs-atributo-barra{ transition:none; }
+  .cs-etapa.entrando{ animation:none; }
+}
+
 .cs-title { font-size:18px; color:#f0d080; letter-spacing:5px; text-transform:uppercase; margin-bottom:3px; text-shadow:0 0 14px rgba(200,168,75,0.4); }
 .cs-sub   { font-size:12px; color:#4a3a1a; letter-spacing:4px; text-transform:uppercase; margin-bottom:16px; }
 .cs-cards { display:flex; gap:10px; justify-content:center; margin-bottom:16px; flex-wrap:wrap; max-width:850px; }
@@ -5213,12 +5429,68 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
      CHAR SELECT
 ═══════════════════════════════════ -->
 <div class="screen" id="char-select" style="display:none">
-  <div class="cs-title">ESCOLHA SEU HERÓI</div>
-  <div class="cs-sub" id="cs-sub-label">— Jogador 1 —</div>
-  <div class="cs-cards" id="cs-cards-row"></div>
-  <div class="paired-action-row">
-    <button class="menu-btn primary paired-action-btn" id="cs-confirm-btn" onclick="confirmCharSelect()">CONFIRMAR</button>
-    <button class="menu-btn paired-action-btn" onclick="cancelCharSelect()">Voltar</button>
+  <!-- Fundo do heroi em foco. Duas camadas para o cruzamento suave:
+       a de tras recebe a imagem nova e sobe o alpha por cima da atual. -->
+  <div class="cs-bg" id="cs-bg-a"></div>
+  <div class="cs-bg" id="cs-bg-b"></div>
+  <div class="cs-veu"></div>
+
+  <!-- ══ ETAPA 1 — RANQUE ══ -->
+  <div class="cs-etapa" id="cs-ranque">
+    <header class="cs-cabecalho">
+      <h1 class="cs-titulo">ESCOLHA SEU HERÓI</h1>
+      <p class="cs-legenda" id="cs-sub-label">— Encontre sua essência —</p>
+    </header>
+
+    <div class="cs-grade" id="cs-cards-row" role="listbox" aria-label="Heróis"></div>
+
+    <footer class="cs-rodape">
+      <button class="cs-btn" onclick="cancelCharSelect()">
+        <span class="cs-btn-seta">←</span> VOLTAR
+      </button>
+      <p class="cs-dica">Escolha um herói para ver seus poderes</p>
+    </footer>
+  </div>
+
+  <!-- ══ ETAPA 2 — DETALHE ══ -->
+  <div class="cs-etapa cs-detalhe" id="cs-detalhe" aria-hidden="true">
+    <div class="cs-det-grade">
+      <section class="cs-det-heroi">
+        <div class="cs-det-retrato"><canvas id="cs-det-canvas" width="260" height="260"></canvas></div>
+        <div class="cs-det-identidade">
+          <span class="cs-det-badge" id="cs-det-badge"></span>
+          <h2 class="cs-det-nome" id="cs-det-nome"></h2>
+          <p class="cs-det-arma" id="cs-det-arma"></p>
+        </div>
+      </section>
+
+      <section class="cs-det-fichas">
+        <p class="cs-det-desc" id="cs-det-desc"></p>
+
+        <div class="cs-painel">
+          <h3 class="cs-painel-titulo">ATRIBUTOS</h3>
+          <div class="cs-atributos" id="cs-det-stats"></div>
+        </div>
+
+        <div class="cs-painel cs-painel-poder">
+          <h3 class="cs-painel-titulo">PODER</h3>
+          <div class="cs-poder">
+            <span class="cs-poder-marca">◆</span>
+            <div>
+              <p class="cs-poder-nome" id="cs-det-poder"></p>
+              <p class="cs-poder-desc" id="cs-det-poder-desc"></p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <footer class="cs-rodape">
+      <button class="cs-btn" onclick="voltarAoRanque()">
+        <span class="cs-btn-seta">←</span> TROCAR HERÓI
+      </button>
+      <button class="cs-btn cs-btn-principal" id="cs-confirm-btn" onclick="confirmCharSelect()">CONTINUAR</button>
+    </footer>
   </div>
 </div>
 
@@ -10393,96 +10665,188 @@ function cancelCharSelect(){
   showScreen('play-menu');
 }
 
+/* ══ TELA DE HEROIS ══
+   Duas etapas: RANQUE (quem) e DETALHE (o que ele faz). A tela antiga
+   mostrava as duas coisas ao mesmo tempo em cinco cartoes, e nenhuma das
+   duas ficava legivel. */
+
+const CS_CLASSES=['mage','warrior','archer','viking','necromancer'];
+let csHeroiFocado=null;      // heroi em foco no ranque
+let csJogadorAtual=1;
+let csBgAtual='a';           // qual das duas camadas de fundo esta visivel
+
+/* Troca o fundo com cruzamento. Duas camadas alternadas: a que esta
+   escondida recebe a imagem nova e so' entao sobe o alpha — com uma so'
+   camada a troca daria um piscar branco. */
+function csTrocarFundo(classe){
+  const a=document.getElementById('cs-bg-a'), b=document.getElementById('cs-bg-b');
+  if(!a||!b)return;
+  const entra=csBgAtual==='a'?b:a, sai=csBgAtual==='a'?a:b;
+  const url=`assets/heroes/bg-${classe}.jpg`;
+  const img=new Image();
+  img.onload=()=>{
+    entra.style.backgroundImage=`url("${url}")`;
+    entra.classList.add('ativa');
+    sai.classList.remove('ativa');
+    csBgAtual=csBgAtual==='a'?'b':'a';
+  };
+  img.src=url;
+}
+
+/* Animacao de retrato compartilhada pelas duas etapas. Uma so' funcao,
+   porque o retrato do ranque e o do detalhe sao o mesmo desenho em
+   tamanhos diferentes — o que muda e' o estado (andando x atacando). */
+function csAnimarRetrato(canvas, classe, atacando, fill){
+  if(!canvas)return;
+  const alvo=canvas;
+  (function quadro(){
+    if(!alvo.isConnected)return;              // saiu da tela: para o laco
+    const c=alvo.getContext('2d');
+    c.clearRect(0,0,alvo.width,alvo.height);
+    const t=Date.now();
+    if(typeof drawHeroPortrait==='function'){
+      const set=(typeof HERO_IMG_SETS!=='undefined')?HERO_IMG_SETS[classe]:null;
+      const nAtk=(set&&set.down&&set.down.atk&&set.down.atk.length)||6;
+      const ok=atacando()
+        ? drawHeroPortrait(alvo,classe,'atkFrame',Math.floor(t/110)%nAtk,fill)
+        : drawHeroPortrait(alvo,classe,'walkFrame',Math.floor(t/300)%6,fill);
+      if(ok){ requestAnimationFrame(quadro); return; }
+    }
+    requestAnimationFrame(quadro);
+  })();
+}
+
 function buildCharSelectUI(playerIdx){
+  csJogadorAtual=playerIdx;
+  const tela=document.getElementById('char-select');
+  const ranque=document.getElementById('cs-ranque');
+  const detalhe=document.getElementById('cs-detalhe');
+  tela.classList.remove('detalhando');
+  ranque.hidden=false; detalhe.hidden=true; detalhe.setAttribute('aria-hidden','true');
+  ranque.classList.remove('saindo');
+
   document.getElementById('cs-sub-label').textContent = gameMode===2
     ? `— Jogador ${playerIdx} · ${playerIdx===1?'WASD':'Setas'} —`
-    : '— Escolha sua classe —';
-  const row=document.getElementById('cs-cards-row');
-  row.innerHTML='';
-  const classes=['mage','warrior','archer','viking','necromancer'];
-  const cur = playerIdx===1 ? selectedClass.p1 : selectedClass.p2;
-  classes.forEach(cid=>{
+    : '— Encontre sua essência —';
+
+  const grade=document.getElementById('cs-cards-row');
+  grade.innerHTML='';
+  const atual = playerIdx===1 ? selectedClass.p1 : selectedClass.p2;
+
+  CS_CLASSES.forEach(cid=>{
     const def=CLASS_DEFS[cid];
-    const card=document.createElement('div');
-    card.className=`cs-card ${cid}${cur===cid?' selected':''}`;
-    card.dataset.cid=cid;
-    // mini preview canvas
-    const previewId=`cs-prev-${cid}`;
-    // stat bars
-    const sb=(label,val)=>`<div class="cs-stat-row"><span class="cs-stat-label">${label}</span><div class="cs-stat-bar"><div class="cs-stat-fill" style="width:${val}%"></div></div></div>`;
-    card.innerHTML=`
-      <div class="cs-preview"><canvas id="${previewId}" width="80" height="80"></canvas></div>
-      <div class="cs-class-badge">${def.badge}</div>
-      <div class="cs-class-name">${def.name}</div>
-      <div class="cs-weapon-tag">⚔ ${def.weapon}</div>
-      <div class="cs-desc">${def.desc}</div>
-      <div class="cs-stats">
-        ${sb('VIDA',def.stats.vida)}
-        ${sb('DANO',def.stats.dano)}
-        ${sb('VELOC',def.stats.veloc)}
-        ${sb('CRÍTICO',def.stats.crit)}
-      </div>
-      <div class="cs-ability-box">
-        <div class="cs-ability-name">◆ ${def.ability}</div>
-        <div class="cs-ability-desc">${def.abilityDesc}</div>
-      </div>
-      <div class="cs-selected-label">SELECIONADO ✓</div>`;
-    card.onclick=()=>{
-      if(playerIdx===1) selectedClass.p1=cid; else selectedClass.p2=cid;
-      row.querySelectorAll('.cs-card').forEach(c=>c.classList.remove('selected'));
-      card.classList.add('selected');
-    };
-    row.appendChild(card);
-    // Animate preview with real WIZ sprite + class palette
-    const CS_FILL=0.82;   // folga no medalhao do card (1 = preenche tudo)
-    const palLookup = {PAL_WIZARD, PAL_WARRIOR_P, PAL_ARCHER_P, PAL_VIKING_P, PAL_NECROMANCER};
-    requestAnimationFrame(function animate(){
-      const cv=document.getElementById(previewId);
-      if(!cv) return;
-      const c2d=cv.getContext('2d');
-      c2d.clearRect(0,0,80,80);
-      const pal=palLookup[def.previewPalKey]||PAL_WIZARD;
-      const t=Date.now();
-      // Pick idle or gentle walk frame
-      const pvCls={PAL_WIZARD:'mage',PAL_WARRIOR_P:'warrior',PAL_ARCHER_P:'archer',PAL_VIKING_P:'viking',PAL_NECROMANCER:'necromancer'}[def.previewPalKey]||'mage';
-      // Arte nova (PNG): andando sempre; se o card estiver selecionado, ataca.
-      if(typeof drawHeroPortrait==='function'){
-        const sel=card.classList.contains('selected');
-        const nAtk=(HERO_IMG_SETS[pvCls]&&HERO_IMG_SETS[pvCls].down.atk.length)||6;
-        const ok=sel
-          ? drawHeroPortrait(cv,pvCls,'atkFrame',Math.floor(t/110)%nAtk,CS_FILL)
-          : drawHeroPortrait(cv,pvCls,'walkFrame',Math.floor(t/300)%6,CS_FILL);
-        if(ok){ requestAnimationFrame(animate); return; }   // segue animando!
-      }
-      const fi=Math.floor(t/350)%3; // 0,1,2 walk cycle
-      const sprite=WIZ.down[fi];
-      // Draw scaled 2× into the 80×80 canvas centred
-      const PX_SAVE=PX;
-      // temporarily draw at 2px per pixel
-      const cellW=16, cellH=(sprite.length);
-      const offX=Math.floor((80-cellW*2)/2);
-      const offY=Math.floor((80-cellH*2)/2);
-      for(let row2=0;row2<sprite.length;row2++){
-        const rowStr=sprite[row2];
-        for(let col=0;col<rowStr.length;col++){
-          const ch=rowStr[col];
-          if(ch===' ') continue;
-          const col2=pal[ch];
-          if(!col2) continue;
-          c2d.fillStyle=col2;
-          c2d.fillRect(offX+col*2, offY+row2*2, 2, 2);
-        }
-      }
-      // Weapon glow overlay
-      const glowCol=def.color;
-      c2d.save(); c2d.globalAlpha=0.18+0.08*Math.sin(t*0.005);
-      c2d.fillStyle=glowCol;
-      c2d.beginPath(); c2d.arc(40,40,36,0,Math.PI*2); c2d.fill();
-      c2d.restore();
-      requestAnimationFrame(animate);
+    const cartao=document.createElement('div');
+    cartao.className=`cs-heroi ${cid}`;
+    cartao.style.setProperty('--cc', def.color);
+    cartao.dataset.cid=cid;
+    cartao.tabIndex=0;
+    cartao.setAttribute('role','option');
+    cartao.setAttribute('aria-label',`${def.name} — ${def.badge}`);
+    cartao.innerHTML=`
+      <canvas width="120" height="120" aria-hidden="true"></canvas>
+      <span class="cs-heroi-nome">${def.name}</span>
+      <span class="cs-heroi-badge">${def.badge}</span>`;
+
+    const focar=()=>csFocarHeroi(cid);
+    cartao.addEventListener('mouseenter',focar);
+    cartao.addEventListener('focus',focar);
+    cartao.addEventListener('click',()=>csAbrirDetalhe(cid));
+    cartao.addEventListener('keydown',e=>{
+      if(e.key==='Enter'||e.key===' '){ e.preventDefault(); csAbrirDetalhe(cid); }
     });
+    grade.appendChild(cartao);
+
+    // o retrato do ranque so' ataca quando o heroi esta em foco
+    csAnimarRetrato(cartao.querySelector('canvas'),cid,()=>cartao.classList.contains('focado'),0.9);
   });
-  document.getElementById('cs-confirm-btn').textContent = (gameMode===2&&playerIdx===1) ? 'JOGADOR 2' : 'INICIAR BATALHA';
+
+  csFocarHeroi(atual&&CLASS_DEFS[atual]?atual:CS_CLASSES[0]);
+}
+
+/* Foco no ranque: marca o cartao e troca o fundo. Nao confirma nada — a
+   escolha so' acontece ao abrir o detalhe. */
+function csFocarHeroi(cid){
+  if(!CLASS_DEFS[cid])return;
+  csHeroiFocado=cid;
+  const grade=document.getElementById('cs-cards-row');
+  if(grade){
+    grade.querySelectorAll('.cs-heroi').forEach(c=>{
+      c.classList.toggle('focado', c.dataset.cid===cid);
+      c.setAttribute('aria-selected', c.dataset.cid===cid ? 'true':'false');
+    });
+  }
+  csTrocarFundo(cid);
+}
+
+/* Abre a ficha do heroi. A troca de etapa e' animada: o ranque encolhe e
+   some, o detalhe entra por baixo. */
+function csAbrirDetalhe(cid){
+  if(!CLASS_DEFS[cid])return;
+  csFocarHeroi(cid);
+  if(csJogadorAtual===1) selectedClass.p1=cid; else selectedClass.p2=cid;
+
+  const tela=document.getElementById('char-select');
+  const ranque=document.getElementById('cs-ranque');
+  const detalhe=document.getElementById('cs-detalhe');
+  const def=CLASS_DEFS[cid];
+
+  csPreencherDetalhe(cid,def);
+
+  ranque.classList.add('saindo');
+  setTimeout(()=>{
+    ranque.hidden=true; ranque.classList.remove('saindo');
+    tela.classList.add('detalhando');
+    detalhe.hidden=false; detalhe.setAttribute('aria-hidden','false');
+    detalhe.classList.add('entrando');
+    setTimeout(()=>detalhe.classList.remove('entrando'),400);
+    // as barras nascem em zero e crescem: o valor fica legivel ao chegar
+    requestAnimationFrame(()=>{
+      detalhe.querySelectorAll('.cs-atributo-barra').forEach(b=>{ b.style.width=b.dataset.valor+'%'; });
+    });
+    const cv=document.getElementById('cs-det-canvas');
+    if(cv) csAnimarRetrato(cv,cid,()=>true,0.94);   // no detalhe ele ataca sempre
+  },260);
+}
+
+function csPreencherDetalhe(cid,def){
+  const detalhe=document.getElementById('cs-detalhe');
+  detalhe.style.setProperty('--cc',def.color);
+  document.getElementById('cs-det-badge').textContent=def.badge;
+  document.getElementById('cs-det-nome').textContent=def.name;
+  document.getElementById('cs-det-arma').textContent=`⚔ ${def.weapon}`;
+  document.getElementById('cs-det-desc').textContent=def.desc;
+  document.getElementById('cs-det-poder').textContent=def.ability;
+  document.getElementById('cs-det-poder-desc').textContent=def.abilityDesc;
+
+  const ordem=[['VIDA','vida'],['DANO','dano'],['VELOCIDADE','veloc'],['CRÍTICO','crit']];
+  document.getElementById('cs-det-stats').innerHTML=ordem.map(([rotulo,chave])=>{
+    const v=Math.max(0,Math.min(100,Number(def.stats[chave])||0));
+    return `<div class="cs-atributo">
+      <span class="cs-atributo-nome">${rotulo}</span>
+      <div class="cs-atributo-trilho"><div class="cs-atributo-barra" data-valor="${v}"></div></div>
+      <span class="cs-atributo-valor">${v}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('cs-confirm-btn').textContent =
+    (gameMode===2&&csJogadorAtual===1) ? 'JOGADOR 2' : 'CONTINUAR';
+}
+
+function voltarAoRanque(){
+  const tela=document.getElementById('char-select');
+  const ranque=document.getElementById('cs-ranque');
+  const detalhe=document.getElementById('cs-detalhe');
+  detalhe.classList.add('saindo');
+  setTimeout(()=>{
+    detalhe.hidden=true; detalhe.classList.remove('saindo');
+    detalhe.setAttribute('aria-hidden','true');
+    tela.classList.remove('detalhando');
+    ranque.hidden=false;
+    ranque.classList.add('entrando');
+    setTimeout(()=>ranque.classList.remove('entrando'),400);
+    const foco=document.querySelector('.cs-heroi.focado');
+    if(foco) foco.focus({preventScroll:true});
+  },260);
 }
 
 function confirmCharSelect(){

@@ -71,13 +71,15 @@ includesAll(applicationSource,[
 
 // Selecao: as quatro classes originais permanecem registradas e o Necromante
 // entra como quinta classe sem reescrever os contratos anteriores.
-const classDefs=between(html,'const CLASS_DEFS = {','const classes=','classes');
+const classDefs=between(html,'const CLASS_DEFS = {','const CS_CLASSES=','classes');
 for(const [id,name] of Object.entries({mage:'Mago',archer:'Arqueiro',warrior:'Guerreiro',viking:'Viking'})){
   assert(new RegExp(`\\b${id}:\\s*\\{`).test(classDefs),`classe ausente: ${id}`);
   assert(classDefs.includes(`name:'${name}'`),`nome da classe foi alterado: ${name}`);
 }
 assert(html.includes('CLASS_DEFS.necromancer=NecromancerData.CLASS_DEF;'),'classe ausente: necromancer');
-assert(/const classes\s*=\s*\[['"]mage['"],['"]warrior['"],['"]archer['"],['"]viking['"],['"]necromancer['"]\]/.test(html),'ordem/lista de classes foi alterada');
+// A constante mudou de nome (classes -> CS_CLASSES) na reforma da tela de
+// herois. O CONTRATO continua o mesmo: os cinco ids, nesta ordem.
+assert(/const CS_CLASSES\s*=\s*\[['"]mage['"],['"]warrior['"],['"]archer['"],['"]viking['"],['"]necromancer['"]\]/.test(html),'ordem/lista de classes foi alterada');
 
 // Campanha: biomas e marcos de capitulos devem continuar iguais.
 const arenaBounds=between(html,'const CAMPAIGN_ARENA_BOUNDS=Object.freeze({','});','arenas da campanha');
