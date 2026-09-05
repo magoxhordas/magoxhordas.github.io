@@ -62,10 +62,11 @@ includesAll(html,[
   "marcarElemento(pl,'poison',1400)",
   "marcarElemento(pl,'fire',900)",
   'for(const alvo of campaignObjectives.getTodosAlvos())drawEnemyStatusFx(alvo,t);',
-  "src/blessings/blessing-affinity-system.js?v=20260903-affinity",
+  "src/blessings/blessing-system.js?v=20260904-blessings-v4",
   'getGlobalAttackSpeedBonus:owner=>getCampaignShopAttackSpeedBonus(owner)+(typeof getBlessingAttackSpeedBonus',
   'class="paired-action-row"',
 ], 'integracao sem regressoes');
+ok(!fs.existsSync('src/blessings/blessing-affinity-system.js'),'o motor antigo de afinidade nao deve voltar apos consolidar as Ascensoes');
 
 // Exercita os dois caminhos de source-atop com imagens prontas e canvas falso.
 class FakeImage{

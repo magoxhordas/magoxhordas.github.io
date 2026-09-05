@@ -832,10 +832,17 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 .blessing-pip {
   font-size:20px; line-height:1; width:22px; height:22px;
   display:flex; align-items:center; justify-content:center;
+  position:relative;
   background:rgba(8,2,0,0.7); border-radius:3px;
   border:1px solid rgba(140,50,0,0.4);
   filter:drop-shadow(0 0 4px rgba(220,80,0,0.45));
   animation:pipIn .35s cubic-bezier(.18,.89,.32,1.28) backwards;
+}
+.blessing-pip.ascension-pip { border-color:#ffe38a;box-shadow:0 0 8px rgba(255,211,90,.55); }
+.blessing-affinity-badge {
+  position:absolute;right:-3px;bottom:-4px;min-width:11px;padding:1px 2px;border-radius:4px;
+  background:#090b18;border:1px solid rgba(255,255,255,.28);color:#f7e8a0;
+  font:700 7px/1 monospace;text-align:center;
 }
 .blessing-pip:hover { transform:scale(1.3); z-index:5; position:relative; }
 @keyframes pipIn { from{transform:scale(0) rotate(-20deg);opacity:0} to{transform:scale(1) rotate(0);opacity:1} }
@@ -8742,10 +8749,8 @@ function applyMetaUpgrades(pl){
 // ══════════════════════════════════════════════
 
 </script>
-  <script src="src/blessings/blessing-data.js?v=20260903-affinity"></script>
-  <script src="src/blessings/blessing-system.js?v=20260903-affinity"></script>
-  <script src="src/blessings/blessing-affinity-system.js?v=20260903-affinity"></script>
-</script>
+  <script src="src/blessings/blessing-data.js?v=20260904-blessings-v4"></script>
+  <script src="src/blessings/blessing-system.js?v=20260904-blessings-v4"></script>
   <script>
 // HUB — Acampamento
 // ══════════════════════════════════════════════
@@ -10142,7 +10147,7 @@ function drawPetSprite(c, petId, x, y, flipX, now){
 }
 
 </script>
-  <script src="src/ui/menu-codex-system.js?v=20260903-affinity"></script>
+  <script src="src/ui/menu-codex-system.js?v=20260904-blessings-v4"></script>
   <script src="src/campaign/boss-data.js"></script>
   <script src="src/campaign/boss-rush-system.js"></script>
   <script src="src/classes/necromancer/necromancer-data.js?v=20260825-reanimation"></script>
@@ -12412,10 +12417,11 @@ NecromancerSystem.configure({
   getGlobalCritChance:owner=>(typeof getBlessingCritChance==='function'?getBlessingCritChance(owner):(owner?.cardEffects?.critChance||0))+getCampaignShopCritBonus(owner),
   modifyDamage:(owner,target,damage,meta)=>{
     let result=typeof campaignModifyOutgoingDamage==='function'?campaignModifyOutgoingDamage(owner,target,damage):damage;
-    if(meta?.summoned&&typeof applyBlessingSummonDamage==='function')result=applyBlessingSummonDamage(owner,target,result);
+    if(meta?.summoned&&typeof applyBlessingSummonDamage==='function')result=applyBlessingSummonDamage(owner,target,result,meta);
     return result;
   },
   spawnParts:(...args)=>spawnParts(...args),
+  notifyDamage:(owner,target,damage,meta)=>{if(meta?.summoned&&typeof notifyBlessingSummonDamageResolved==='function')notifyBlessingSummonDamageResolved(owner,target,damage,meta);},
   notifyHit:(owner,target,damage,weapon)=>{if(typeof notifyBlessingHit==='function')notifyBlessingHit(owner,target,damage,weapon);},
   drawSummon:(renderCtx,summon,time)=>drawNecromancerSummon(renderCtx,summon,time),
   playSfx:name=>{

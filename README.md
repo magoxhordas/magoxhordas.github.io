@@ -11,11 +11,13 @@ Versão consolidada do jogo de ação em HTML, CSS e JavaScript.
 - acampamento, fazenda, pesca, crafting e lojas;
 - testes de integridade em `scripts/`.
 
-## Afinidade divina
+## Bênçãos e Ascensões
 
-O sistema de bênçãos possui 15 divindades, 75 bênçãos normais e progressão por afinidade. Duas bênçãos ativam Ressonância; a terceira abre uma escolha entre duas Ascensões; a quarta evolui a escolha; e a quinta desperta a Apoteose e encerra as ofertas daquele deus. Os efeitos usam ataques automáticos, acertos, eliminações, dash, dano e ondas reais, com estado independente para P1 e P2.
+O sistema possui 15 divindades, 75 bênçãos normais e 30 Ascensões. Ao reunir três bênçãos da mesma divindade, o jogador escolhe imediatamente uma de duas Ascensões definitivas; o deus então sai das ofertas normais. Afinidade moderada ajuda a perseguir uma build e uma proteção contra azar prioriza uma afinidade 2/3 depois de oito escolhas sem Ascensão.
 
-O catálogo fica em `src/blessings/blessing-data.js` e o motor de progressão e combate em `src/blessings/blessing-affinity-system.js`. O verificador dedicado é `scripts/verify-deity-blessings.mjs`.
+Cada Ascensão possui um efeito-base funcional e sinergias com as bênçãos do deus. Os gatilhos compartilham os contratos reais de ataque, acerto, crítico, eliminação, dano, dash e onda, inclusive em chefes, co-op e invocações do Necromante.
+
+O catálogo fica em `src/blessings/blessing-data.js`, o motor canônico em `src/blessings/blessing-system.js` e o verificador dedicado em `scripts/verify-deity-blessings.mjs`.
 
 ## Estrutura do codigo
 
