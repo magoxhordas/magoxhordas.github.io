@@ -462,7 +462,9 @@ function shopBuy(i, e){
   const item=shopPool[i];
   if(!item||shopItemAlreadyPurchased(item)||totalCoins<shopPrice(item)) return;
   if(item.wtype&&!canAddWeapon(item.wtype,item.rarity,item.pidx||0)) return;
-  totalCoins-=shopPrice(item);
+  const paid=shopPrice(item);
+  totalCoins-=paid;
+  if(typeof RunStats!=='undefined')RunStats.recordCoins({playerIndex:item.pidx||0,amount:paid,spent:true});
   document.getElementById('shop-coins-val').textContent=totalCoins;
   document.getElementById('coin-display').textContent='🪙 '+totalCoins;
   if(item.wtype){
@@ -506,7 +508,9 @@ function shopToggleLock(i, e){
 
 function shopReroll(){
   if(totalCoins<shopRerollCost) return;
-  totalCoins-=shopRerollCost;
+  const paid=shopRerollCost;
+  totalCoins-=paid;
+  if(typeof RunStats!=='undefined')RunStats.recordCoins({playerIndex:0,amount:paid,spent:true});
   shopRerollsThisVisit++;
   shopRerollCost=Math.max(1,Math.round(shopRerollBaseCost*Math.pow(2,shopRerollsThisVisit)));
   document.getElementById('shop-coins-val').textContent=totalCoins;

@@ -236,7 +236,7 @@ function player(){return {hp:100,maxHp:100,dmg:10,speed:100,x:0,y:0,inv:false,in
 }
 
 // Integrações que garantem ausência de propriedades fantasma e limpeza de run.
-assert.match(index,/this\.xp\+=a\*\(this\.xpGainMult\|\|1\)/,'XP real lê xpGainMult');
+assert.match(index,/const actual=a\*\(this\.xpGainMult\|\|1\);[\s\S]{0,220}this\.xp\+=actual/,'XP real lê xpGainMult e preserva o valor efetivo para a telemetria');
 assert.match(index+blessingCode,/CampProgressionSystem\.damageBonus\((?:pl|player),target\)/,'dano real lê Ecos');
 assert.match(index,/CampProgressionSystem\.movementMultiplier\(this\)/,'movimento real lê Ecos');
 assert.match(index,/CampProgressionSystem\.setPreparedMeals\(\[\]\)/,'início da run limpa a preparação persistida');

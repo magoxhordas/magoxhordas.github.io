@@ -150,6 +150,7 @@ function prepareBossRushArena(b){
 function spawnNextBossRush(){
   if(bossRushCurrent>=bossRushQueue.length){ endBossRush(true); return; }
   const b=bossRushQueue[bossRushCurrent++];
+  if(typeof RunStats!=='undefined')RunStats.recordBossStart({id:b.id||b.petId||'boss',name:b.name||'Chefão'});
   prepareBossRushArena(b);
   if(typeof Audio!=='undefined'){
     Audio.playBossMusic(b.petId?'pet':b.id);
@@ -205,7 +206,10 @@ function scheduleVictoryScreen(mode,delay){
 }
 
 function endBossRush(victory){
-  if(victory&&typeof GameSettings!=='undefined'&&typeof GameSettings.recordBossRushVictory==='function') GameSettings.recordBossRushVictory(bossRushQueue);
+  if(victory&&typeof GameSettings!=='undefined'&&typeof GameSettings.recordBossRushVictory==='function'){
+    const completedAll=GameSettings.recordBossRushVictory(bossRushQueue);
+    if(completedAll&&typeof AchievementSystem!=='undefined')AchievementSystem.notify('bossRushComplete');
+  }
   if(typeof cleanupCampaignRuntime==='function')cleanupCampaignRuntime('boss-rush-end');
   if(victory) state='victory';
   bossRushMode=false;
@@ -227,6 +231,11 @@ function showVictoryScreen(mode='bossrush'){
   CampProgressionSystem.endRun([player,player2]);
   runCookingBuffs=[];
   if(raf){cancelAnimationFrame(raf);raf=null;}
+  if(typeof PostRunScreen!=='undefined'){
+    savePersistentData(true);
+    PostRunScreen.finishAndOpen('victory',{wave:mode==='campaign'?25:Math.max(1,bossRushCurrent),level:Math.max(player?.level||1,player2?.level||1)});
+    return;
+  }
   const campaignClear=mode==='campaign';
   const screen=document.getElementById('victory-screen');
   screen.classList.toggle('campaign-clear',campaignClear);

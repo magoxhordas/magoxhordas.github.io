@@ -40,6 +40,7 @@
 
     function damagePlayer(player,amount,continuous){
       if(player.dead)return 0;
+      const hpBefore=Math.max(0,Number(player.hp)||0);
       // Contact, trails and puddles use their own short cadence instead of
       // granting the full invulnerability window that protects big attacks.
       if(continuous){
@@ -55,6 +56,7 @@
       const reduced=calculatePlayerDamage(player,amount);
       const damageDealt=Math.min(Math.max(0,player.hp),Math.max(0,reduced));
       player.hp-=reduced;
+      if(global.RunStats?.active)global.RunStats.recordDamageTaken({playerIndex:player.idx||0,hpBefore,hpAfter:Math.max(0,player.hp),amount:reduced});
       if(!continuous){
         player.inv=true;
         player.invT=600;
