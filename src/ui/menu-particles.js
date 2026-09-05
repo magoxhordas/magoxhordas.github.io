@@ -83,7 +83,10 @@
   }
 
   function quadro(agora){
-    if(!canvas||!canvas.isConnected||canvas.offsetParent===null){ parar(); return; }
+    /* Tela saiu de vista: para o laco E LIMPA. Sem limpar, o canvas
+       guardava o ultimo quadro pintado, e ao voltar para aquela tela o
+       jogador via motas CONGELADAS ate' o laco reassumir. */
+    if(!canvas||!canvas.isConnected||canvas.offsetParent===null){ limpar(); parar(); return; }
     const dt=Math.min(64,agora-(ultimo||agora)); ultimo=agora;
     ajustarTamanho();
     const l=canvas.clientWidth, a=canvas.clientHeight;
@@ -109,6 +112,10 @@
     if(laco){ cancelAnimationFrame(laco); laco=null; }
   }
 
+  function limpar(){
+    if(ctx&&canvas) ctx.clearRect(0,0,canvas.width,canvas.height);
+  }
+
   /* Liga as particulas num canvas, com a paleta daquela tela. Chamar de
      novo com outras cores troca a paleta sem reiniciar o efeito. */
   function ligar(alvo,paleta){
@@ -116,6 +123,7 @@
     if(Array.isArray(paleta)&&paleta.length) cores=paleta.slice();
     if(canvas!==alvo){
       parar();
+      limpar();               // o canvas anterior nao pode ficar sujo
       canvas=alvo; ctx=canvas.getContext('2d');
       particulas=[]; ultimo=0;
     }

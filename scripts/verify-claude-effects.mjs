@@ -64,7 +64,11 @@ includesAll(html,[
   'for(const alvo of campaignObjectives.getTodosAlvos())drawEnemyStatusFx(alvo,t);',
   "src/blessings/blessing-system.js?v=20260904-blessings-v4",
   'getGlobalAttackSpeedBonus:owner=>getCampaignShopAttackSpeedBonus(owner)+(typeof getBlessingAttackSpeedBonus',
-  'class="paired-action-row"',
+  /* O par de botoes de acao migrou de .paired-action-row para o rodape
+     compartilhado dos menus (.mn-rodape + .mn-btn), usado agora pelas
+     quatro telas. O contrato continua sendo 'as telas tem o par de
+     acoes'; o que mudou foi a implementacao. */
+  'class="mn-rodape"',
 ], 'integracao sem regressoes');
 ok(!fs.existsSync('src/blessings/blessing-affinity-system.js'),'o motor antigo de afinidade nao deve voltar apos consolidar as Ascensoes');
 

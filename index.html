@@ -874,6 +874,11 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 :root{
   /* Titulo: meio-termo. Era ate' 36px e ficava grande demais. */
   --mn-fs-titulo:clamp(17px,2.15vw,27px);
+  /* Titulos CURTOS ("DIFICULDADE", "MODO DE JOGO", "MODO CHEFAO") sobem de
+     corpo. Eles ja' tinham o mesmo tamanho de "ESCOLHA SEU HEROI", mas com
+     6 caracteres a menos ocupavam bem menos largura e liam como menores —
+     o olho compara a MANCHA, nao o numero. */
+  --mn-fs-titulo-curto:clamp(21px,2.7vw,34px);
   --mn-ls-titulo:clamp(4px,.9vw,10px);
   --mn-fs-legenda:clamp(8px,.85vw,11px);
   --mn-ls-legenda:clamp(2px,.42vw,4px);
@@ -883,6 +888,7 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
   --mn-ls-btn:clamp(2px,.4vw,4px);
   --mn-pad-btn:clamp(13px,2.1vh,19px) clamp(22px,3vw,42px);
   --mn-min-btn:clamp(150px,20vw,250px);
+  --mn-max-btn:clamp(190px,26vw,290px);
   /* Respiro acima do titulo: ele estava colado no topo da tela. */
   --mn-topo:clamp(10px,4.2vh,46px);
 }
@@ -914,6 +920,16 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
     linear-gradient(180deg, rgba(8,4,6,.90) 0%, rgba(8,4,6,.72) 26%, rgba(8,4,6,.80) 62%, rgba(6,3,5,.96) 100%),
     radial-gradient(ellipse at 50% 45%, rgba(8,4,6,.30) 0%, rgba(8,4,6,.70) 82%);
 }
+.br-chamada{
+  margin:0; text-align:center; color:#e8b09a;
+  font-size:var(--mn-fs-legenda); letter-spacing:1.5px; max-width:640px;
+  text-shadow:0 2px 10px rgba(0,0,0,.9);
+}
+.br-dica{
+  margin:0; text-align:center; color:#a2745e;
+  font-size:clamp(8px,.78vw,10px); letter-spacing:1px; max-width:640px;
+}
+.br-sub{ display:flex; align-items:center; gap:10px; justify-content:center; }
 .mn-particulas{
   position:absolute; inset:0; z-index:1; pointer-events:none;
   width:100%; height:100%;
@@ -954,7 +970,7 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
   box-shadow:0 0 10px rgba(200,168,75,.35);
 }
 .mn-titulo{
-  margin:0; font-size:var(--mn-fs-titulo); font-weight:bold;
+  margin:0; font-size:var(--mn-fs-titulo-curto); font-weight:bold;
   letter-spacing:var(--mn-ls-titulo); color:#f4e6bd;
   text-shadow:0 2px 20px rgba(0,0,0,.92), 0 0 34px rgba(200,168,75,.26);
 }
@@ -1063,6 +1079,7 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 }
 .mn-btn{
   position:relative; font-family:inherit; cursor:pointer;
+  max-width:var(--mn-max-btn);
   font-size:var(--mn-fs-btn); letter-spacing:var(--mn-ls-btn);
   text-transform:uppercase; font-weight:bold;
   min-width:var(--mn-min-btn);
@@ -1127,7 +1144,7 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
   .mn-btn{ width:100%; min-width:0; }
 }
 @media (max-height:560px){
-  .mn-titulo{ font-size:clamp(16px,2vw,22px); }
+  .mn-titulo{ font-size:clamp(19px,2.4vw,26px); }
   .mn-cartao{ min-height:0; padding:clamp(9px,1.6vh,14px) 10px; }
   .mn-cartao-icone{ width:30px; height:30px; }
 }
@@ -1277,7 +1294,7 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 }
 
 /* Coluna 1 — identidade */
-.cs-ficha-heroi{ display:grid; grid-template-columns:auto 1fr; gap:clamp(9px,1.3vw,16px); align-items:center; }
+.cs-ficha-heroi{ display:grid; align-items:center; }
 .cs-ficha-retrato{
   position:relative; display:grid; place-items:center;
   width:clamp(62px,7.4vw,96px); aspect-ratio:1;
@@ -1340,7 +1357,9 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
   position:relative; font-family:inherit; cursor:pointer;
   font-size:var(--mn-fs-btn); letter-spacing:var(--mn-ls-btn);
   text-transform:uppercase; font-weight:bold;
-  min-width:var(--mn-min-btn);
+  /* teto de largura: sem ele o botao desta tela esticava e ficava maior
+     que o das outras, que e' exatamente o que destoava */
+  min-width:var(--mn-min-btn); max-width:var(--mn-max-btn);
   padding:var(--mn-pad-btn);
   color:#b9aecb; background:linear-gradient(180deg, rgba(20,14,32,.92), rgba(10,7,18,.96));
   border:1px solid rgba(130,112,166,.36);
@@ -2122,12 +2141,13 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 }
 /* O Modo Chefao usa a MESMA escala das outras telas de menu: antes tinha
    numeros proprios (28px de titulo, 14px de legenda) e destoava. */
-.br-title { font-size:var(--mn-fs-titulo); color:#ff5533; letter-spacing:var(--mn-ls-titulo);
+.br-title { font-size:var(--mn-fs-titulo-curto); color:#ff5533; letter-spacing:var(--mn-ls-titulo);
   font-weight:900; text-shadow:0 2px 20px rgba(0,0,0,.9), 0 0 26px rgba(255,60,20,0.45);
   margin-bottom:4px; text-transform:uppercase; padding-top:var(--mn-topo); }
 .br-sub { font-size:var(--mn-fs-legenda); color:#b06a52; letter-spacing:var(--mn-ls-legenda);
   text-transform:uppercase; margin-bottom:20px; }
-.br-boss-list { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-bottom:16px; max-width:700px; }
+.br-boss-list { display:flex; gap:10px; flex-wrap:wrap; justify-content:center;
+  width:100%; max-width:min(720px,100%); box-sizing:border-box;  }
 .br-boss-card {
   background:rgba(8,3,18,0.95); border:1px solid rgba(140,40,20,0.45);
   border-radius:4px; padding:12px 14px; cursor:pointer; text-align:center;
@@ -5789,8 +5809,10 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
     <div class="cs-aba" id="cs-aba" aria-live="polite">
       <div class="cs-aba-interna">
         <div class="cs-aba-grade">
+          <!-- Sem retrato aqui: o heroi ja' aparece animado no cartao logo
+               acima, e repeti-lo mostrava DOIS do mesmo na tela. A ficha
+               fica so' com nome, atributos e poder. -->
           <section class="cs-ficha-heroi">
-            <div class="cs-ficha-retrato"><canvas id="cs-det-canvas" width="200" height="200"></canvas></div>
             <div class="cs-ficha-id">
               <h2 class="cs-ficha-nome" id="cs-det-nome"></h2>
               <span class="cs-ficha-badge" id="cs-det-badge"></span>
@@ -6233,18 +6255,28 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
   <div class="mn-bg ativa" style="background-image:url('assets/menu/bg-chefao.jpg')"></div>
   <div class="mn-veu"></div>
   <canvas class="mn-particulas" id="part-bossrush-screen" aria-hidden="true"></canvas>
-  <div class="br-title" style="position:relative;z-index:2">MODO CHEFÃO</div>
-  <div class="br-sub" style="position:relative;z-index:2">— Boss Rush · Desafio Extremo —</div>
-  <div style="position:relative;z-index:2;font-size:14px;color:#e8a888;letter-spacing:1px;margin-bottom:14px;text-align:center;">
-    Enfrente os chefões em sequência. Sem ondas normais. Prove sua força!
-  </div>
-  <div class="br-boss-list" id="br-boss-list" style="position:relative;z-index:2"></div>
-  <div class="paired-action-row" style="position:relative;z-index:2">
-    <button class="mn-btn mn-btn-principal" id="br-start-btn" onclick="startBossRush()">INICIAR BOSS RUSH</button>
-    <button class="mn-btn" onclick="showScreen('main-menu')">VOLTAR</button>
-  </div>
-  <div style="font-size:12px;color:#b0885f;margin-top:12px;text-align:center;">
-    Derrote um boss na campanha normal para desbloqueá-lo aqui
+  <!-- Mesma casca das outras telas: cabecalho e botoes fixos, e so' a
+       lista de chefes rola. Antes era um empilhamento livre que
+       transbordava em janela pequena. -->
+  <div class="mn-palco">
+    <header class="mn-cabecalho">
+      <span class="mn-ornamento" aria-hidden="true">
+        <i class="mn-orn-linha"></i><i class="mn-orn-losango"></i><i class="mn-orn-linha"></i>
+      </span>
+      <h1 class="br-title">MODO CHEFÃO</h1>
+      <p class="br-sub"><i class="mn-leg-linha"></i><span>BOSS RUSH · DESAFIO EXTREMO</span><i class="mn-leg-linha"></i></p>
+    </header>
+
+    <div class="mn-rolavel">
+      <p class="br-chamada">Enfrente os chefões em sequência. Sem ondas normais.</p>
+      <div class="br-boss-list" id="br-boss-list"></div>
+      <p class="br-dica">Derrote um chefe na campanha normal para desbloqueá-lo aqui</p>
+    </div>
+
+    <footer class="mn-rodape">
+      <button class="mn-btn mn-btn-principal" id="br-start-btn" onclick="startBossRush()">INICIAR</button>
+      <button class="mn-btn" onclick="showScreen('main-menu')">VOLTAR</button>
+    </footer>
   </div>
 </div>
 <div class="br-hud" id="br-hud"></div>
@@ -11031,10 +11063,19 @@ function csTrocarFundo(classe){
 
 /* Um laco de animacao por canvas. Para sozinho quando o elemento sai do
    documento, entao reconstruir a tela nao deixa lacos orfaos rodando. */
+/* Cada canvas guarda a "geracao" do laco que o desenha. Ao iniciar um
+   novo, a geracao muda e o laco antigo se encerra sozinho no proximo
+   quadro. Sem isto, escolher heróis em sequencia deixava um laco vivo por
+   clique — cinco cliques, cinco lacos desenhando no MESMO canvas e
+   brigando entre si, o que fazia o retrato tremer. */
+let csGeracao=0;
 function csAnimarRetrato(canvas, classe, atacando, fill){
   if(!canvas)return;
+  const minha=++csGeracao;
+  canvas.dataset.geracao=String(minha);
   (function quadro(){
     if(!canvas.isConnected)return;
+    if(canvas.dataset.geracao!==String(minha))return;   // outro laco assumiu
     const c=canvas.getContext('2d');
     c.clearRect(0,0,canvas.width,canvas.height);
     const t=Date.now();
@@ -11156,11 +11197,7 @@ function csPreencherAba(cid,def,semAnimarBarras){
     .forEach(b=>{ b.style.width=b.dataset.valor+'%'; });
   if(semAnimarBarras) pintar(); else requestAnimationFrame(()=>requestAnimationFrame(pintar));
 
-  const cv=document.getElementById('cs-det-canvas');
-  if(cv&&cv.dataset.cid!==cid){
-    cv.dataset.cid=cid;
-    csAnimarRetrato(cv,cid,()=>true,0.94);   // na ficha ele ataca sempre
-  }
+
 }
 
 function confirmCharSelect(){

@@ -99,8 +99,16 @@ function buildBossRushScreen(){
   // Hint if no pet bosses found yet
   if(metPets.length===0){
     const hint=document.createElement('div');
-    hint.style.cssText='width:100%;font-size:12px;color:#3a1a5a;letter-spacing:2px;text-align:center;margin-top:8px;';
-    hint.innerHTML=`<span class="pixel-inline">${gamePixelIconHtml('paw',18)} Encontre criaturas selvagens durante expedições para reavê-las aqui</span>`;
+    /* A dica e' uma linha longa e sem quebra; em janela estreita ela
+       empurrava a largura da tela inteira. max-width + quebra resolvem. */
+    hint.style.cssText='width:100%;max-width:100%;box-sizing:border-box;padding:0 8px;'+
+      'font-size:clamp(8px,.8vw,11px);color:#8a6a52;letter-spacing:1px;text-align:center;'+
+      'margin-top:8px;overflow-wrap:anywhere;';
+    /* O icone fica em .pixel-inline (que e' white-space:nowrap), mas o
+       TEXTO nao: envolto naquela classe, a frase inteira virava uma linha
+       so' e empurrava a largura da tela em janela estreita. */
+    hint.innerHTML=`<span class="pixel-inline" style="vertical-align:middle">${gamePixelIconHtml('paw',16)}</span> `+
+      `Encontre criaturas selvagens durante expedições para reavê-las aqui`;
     list.appendChild(hint);
   }
 
