@@ -30,6 +30,7 @@
       index,classId:String(meta?.classId||meta?.class||'unknown'),skinId:String(meta?.skinId||'classic'),level:Math.max(1,num(meta?.level)||1),
       kills:0,elites:0,minibosses:0,bosses:0,damageDealt:0,damageTaken:0,healing:0,
       criticals:0,dashes:0,xpEarned:0,coinsEarned:0,coinsSpent:0,longestKillStreak:0,currentKillStreak:0,
+      maxCombo:0,
       weapons:[],blessings:[],damageBySource:{},killsBySource:{},nearDeathMs:0,nearDeathActive:false,
       combatPressureMs:0,lastDamageAt:null,lastValidAttackAt:null,nearDeathAwarded:false,combatPressureAwarded:false,
       lowestHpPercent:100,lastObservedHp:null
@@ -43,7 +44,7 @@
       threatLevel:Math.max(0,num(meta.threatLevel)),coop:players.length>1,elapsedMs:0,combatMs:0,
       wave:Math.max(1,num(meta.wave)||1),maxWave:Math.max(1,num(meta.wave)||1),chapter:Math.max(1,num(meta.chapter)||1),
       level:Math.max(1,num(meta.level)||1),players,team:{kills:0,elites:0,minibosses:0,bosses:0,damageDealt:0,
-        damageTaken:0,healing:0,criticals:0,dashes:0,xpEarned:0,coinsEarned:0,coinsSpent:0,longestKillStreak:0},
+        damageTaken:0,healing:0,criticals:0,dashes:0,xpEarned:0,coinsEarned:0,coinsSpent:0,longestKillStreak:0,maxCombo:0},
       weapons:[],blessings:[],pet:meta.pet||null,bossFights:[],damageBySource:{},killsBySource:{},
       flawlessWaves:0,longestFlawlessStreak:0,currentFlawlessStreak:0,waveDamageStart:0,
       maxMultiKill:0,attackEvents:{},criticalEvents:{},campaignBosses:[],achievementsUnlocked:[],progress:{pets:0,codex:0},
@@ -152,6 +153,7 @@
   }
   function recordPet(meta={}){ensure();run.pet=meta?{id:String(meta.id||meta.petId||''),name:String(meta.name||meta.id||'Pet')}:null;emit('petEquipped',{pet:clone(run.pet)});}
   function recordDash(meta={}){ensure();const player=getPlayer(meta.playerIndex);player.dashes++;run.team.dashes++;emit('dash',{playerIndex:player.index});}
+  function recordCombo(meta={}){ensure();const player=getPlayer(meta.playerIndex);const value=Math.max(0,Math.floor(num(meta.value)));if(value<=player.maxCombo)return false;player.maxCombo=value;run.team.maxCombo=Math.max(run.team.maxCombo,value);emit('comboRecord',{playerIndex:player.index,value});return true;}
   function recordCoins(meta={}){ensure();const player=getPlayer(meta.playerIndex);const amount=Math.max(0,num(meta.amount));const spent=!!meta.spent;if(spent){player.coinsSpent+=amount;run.team.coinsSpent+=amount;}else{player.coinsEarned+=amount;run.team.coinsEarned+=amount;}emit(spent?'coinsSpent':'coinsEarned',{playerIndex:player.index,amount});}
   function recordXP(meta={}){ensure();const player=getPlayer(meta.playerIndex);const amount=Math.max(0,num(meta.amount));player.xpEarned+=amount;run.team.xpEarned+=amount;player.level=Math.max(player.level,Math.floor(num(meta.level)||player.level));run.level=Math.max(run.level,player.level);emit('xpEarned',{playerIndex:player.index,amount,level:player.level});}
   function tick(deltaMs,context={}){
@@ -172,7 +174,7 @@
   }
   function recordsFor(snapshot){
     const system=save();const loaded=system?.readJSON?.(RECORDS_KEY,{})||{};const previous=loaded&&typeof loaded==='object'&&!Array.isArray(loaded)?loaded:{};const records={...previous};const added=[];
-    const candidates={mostKills:snapshot.team.kills,mostDamage:Math.round(snapshot.team.damageDealt),mostElites:snapshot.team.elites,longestKillStreak:snapshot.team.longestKillStreak,mostBlessings:snapshot.blessings.filter(item=>!item.ascension).length,highestThreatVictory:snapshot.result==='victory'?snapshot.threatLevel:0,maxWeaponDamage:Math.round(Math.max(0,...snapshot.weapons.map(item=>item.damage||0)))};
+    const candidates={mostKills:snapshot.team.kills,mostDamage:Math.round(snapshot.team.damageDealt),mostElites:snapshot.team.elites,longestKillStreak:snapshot.team.longestKillStreak,maxCombo:snapshot.team.maxCombo,mostBlessings:snapshot.blessings.filter(item=>!item.ascension).length,highestThreatVictory:snapshot.result==='victory'?snapshot.threatLevel:0,maxWeaponDamage:Math.round(Math.max(0,...snapshot.weapons.map(item=>item.damage||0)))};
     if(snapshot.mode==='campaign'&&snapshot.result==='victory')candidates.fastestCampaignMs=snapshot.elapsedMs;
     for(const [key,value] of Object.entries(candidates)){
       const better=key.startsWith('fastest')?(value>0&&(!num(records[key])||value<num(records[key]))):value>num(records[key]);
@@ -189,7 +191,7 @@
     run.result=normalized;run.finishedAt=new Date().toISOString();
     run.maxWave=Math.max(run.maxWave,Math.floor(num(meta.wave)||run.wave));run.wave=run.maxWave;run.chapter=Math.max(run.chapter,Math.floor(num(meta.chapter)||run.chapter));run.level=Math.max(run.level,Math.floor(num(meta.level)||run.level));run.defeatedBy=activeBossName||meta.defeatedBy||null;
     let snapshot=publicSnapshot();snapshot.records=recordsFor(snapshot);
-    const system=save();const loadedHistory=system?.readJSON?.(HISTORY_KEY,[])||[];const history=Array.isArray(loadedHistory)?loadedHistory:[];history.unshift({id:snapshot.id,date:snapshot.finishedAt,result:snapshot.result,mode:snapshot.mode,difficulty:snapshot.difficulty,classIds:snapshot.players.map(item=>item.classId),durationMs:snapshot.elapsedMs,wave:snapshot.maxWave,kills:snapshot.team.kills,damage:Math.round(snapshot.team.damageDealt)});system?.writeJSON?.(HISTORY_KEY,history.slice(0,HISTORY_LIMIT));
+    const system=save();const loadedHistory=system?.readJSON?.(HISTORY_KEY,[])||[];const history=Array.isArray(loadedHistory)?loadedHistory:[];history.unshift({id:snapshot.id,date:snapshot.finishedAt,result:snapshot.result,mode:snapshot.mode,difficulty:snapshot.difficulty,classIds:snapshot.players.map(item=>item.classId),durationMs:snapshot.elapsedMs,wave:snapshot.maxWave,kills:snapshot.team.kills,damage:Math.round(snapshot.team.damageDealt),maxCombo:snapshot.team.maxCombo});system?.writeJSON?.(HISTORY_KEY,history.slice(0,HISTORY_LIMIT));
     run.records=snapshot.records;finishedSnapshot=publicSnapshot(run);emit('runFinished',{result:run.result,snapshot:clone(finishedSnapshot)});return clone(finishedSnapshot);
   }
   function attachAchievements(items){if(!run)return;run.achievementsUnlocked=Array.isArray(items)?clone(items):[];if(finishedSnapshot)finishedSnapshot.achievementsUnlocked=clone(run.achievementsUnlocked);}
@@ -200,7 +202,7 @@
   global.RunStats=Object.freeze({
     RECORDS_KEY,HISTORY_KEY,start,tick,finish,reset,on,recordDamage,recordDamageTaken,recordHeal,recordCritical,
     recordKill,recordBossStart,recordBossEnd,recordWaveCompleted,recordWeapon,recordBlessing,recordPet,recordDash,
-    recordCoins,recordXP,createAttackEvent,attachAchievements,setProgressDelta,getSnapshot:()=>publicSnapshot(),debugSnapshot,
+    recordCombo,recordCoins,recordXP,createAttackEvent,attachAchievements,setProgressDelta,getSnapshot:()=>publicSnapshot(),debugSnapshot,
     get active(){return !!run&&!run.result;}
   });
 })(typeof window!=='undefined'?window:globalThis);
