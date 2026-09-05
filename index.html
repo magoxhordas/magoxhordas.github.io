@@ -884,11 +884,13 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
   --mn-ls-legenda:clamp(2px,.42vw,4px);
   /* Botao: era pequeno demais perto do resto. Subiu fonte, respiro e
      largura minima, mantendo a proporcao entre eles. */
-  --mn-fs-btn:clamp(11px,1.15vw,15px);
-  --mn-ls-btn:clamp(2px,.4vw,4px);
-  --mn-pad-btn:clamp(13px,2.1vh,19px) clamp(22px,3vw,42px);
-  --mn-min-btn:clamp(150px,20vw,250px);
-  --mn-max-btn:clamp(190px,26vw,290px);
+  /* Meio-termo: 43px de altura ficou pequeno, 56px ficou pesado demais
+     perto dos cartoes. Estes valores dao ~47px na tela cheia. */
+  --mn-fs-btn:clamp(10px,1.02vw,13px);
+  --mn-ls-btn:clamp(2px,.36vw,3.5px);
+  --mn-pad-btn:clamp(11px,1.7vh,15px) clamp(18px,2.4vw,32px);
+  --mn-min-btn:clamp(130px,15vw,190px);
+  --mn-max-btn:clamp(160px,19vw,230px);
   /* Respiro acima do titulo: ele estava colado no topo da tela. */
   --mn-topo:clamp(10px,4.2vh,46px);
 }
@@ -1079,7 +1081,7 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 }
 .mn-btn{
   position:relative; font-family:inherit; cursor:pointer;
-  max-width:var(--mn-max-btn);
+  max-width:var(--mn-max-btn); white-space:nowrap;
   font-size:var(--mn-fs-btn); letter-spacing:var(--mn-ls-btn);
   text-transform:uppercase; font-weight:bold;
   min-width:var(--mn-min-btn);
@@ -1360,6 +1362,9 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
   /* teto de largura: sem ele o botao desta tela esticava e ficava maior
      que o das outras, que e' exatamente o que destoava */
   min-width:var(--mn-min-btn); max-width:var(--mn-max-btn);
+  /* uma linha sempre: um rotulo mais longo quebrava em duas e deixava
+     ESTE botao mais alto que os das outras telas */
+  white-space:nowrap;
   padding:var(--mn-pad-btn);
   color:#b9aecb; background:linear-gradient(180deg, rgba(20,14,32,.92), rgba(10,7,18,.96));
   border:1px solid rgba(130,112,166,.36);
@@ -5839,7 +5844,7 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
     <!-- ══ BOTOES ══ -->
     <footer class="cs-rodape">
       <button class="cs-btn cs-btn-principal" id="cs-confirm-btn" onclick="confirmCharSelect()" disabled>
-        INICIAR BATALHA
+        INICIAR
       </button>
       <button class="cs-btn" onclick="cancelCharSelect()">VOLTAR</button>
     </footer>
@@ -11163,14 +11168,14 @@ function csEscolher(cid, semAnimarBarras){
 
   const botao=document.getElementById('cs-confirm-btn');
   botao.disabled=false;
-  botao.textContent=(gameMode===2&&csJogadorAtual===1)?'JOGADOR 2':'INICIAR BATALHA';
+  botao.textContent=(gameMode===2&&csJogadorAtual===1)?'JOGADOR 2':'INICIAR';
 }
 
 function csFecharAba(){
   const aba=document.getElementById('cs-aba');
   if(aba) aba.classList.remove('aberta');
   const botao=document.getElementById('cs-confirm-btn');
-  if(botao){ botao.disabled=true; botao.textContent='INICIAR BATALHA'; }
+  if(botao){ botao.disabled=true; botao.textContent='INICIAR'; }
 }
 
 function csPreencherAba(cid,def,semAnimarBarras){

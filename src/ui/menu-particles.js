@@ -67,11 +67,23 @@
     };
   }
 
+  /* UMA fonte de medida so'.
+     A versao anterior dimensionava o buffer por getBoundingClientRect()
+     (tamanho VISUAL) e desenhava por clientWidth/clientHeight (tamanho de
+     LAYOUT). Quando os dois diferiam — e diferem, porque o jogo escala a
+     interface — o desenho saia num espaco menor e era ESTICADO ate' o
+     buffer, e o clearRect nao alcancava a faixa restante: cada mota virava
+     um risco curvo que nunca era apagado.
+     clientWidth/clientHeight sao o espaco em que o canvas de fato desenha,
+     entao sao eles que mandam aqui e no laco. */
+  function medida(){
+    return {l:Math.max(1,canvas.clientWidth||0), a:Math.max(1,canvas.clientHeight||0)};
+  }
+
   function ajustarTamanho(){
     if(!canvas)return;
-    const r=canvas.getBoundingClientRect();
     const dpr=Math.min(2,global.devicePixelRatio||1);
-    const l=Math.max(1,Math.round(r.width)), a=Math.max(1,Math.round(r.height));
+    const {l,a}=medida();
     if(canvas.width!==l*dpr||canvas.height!==a*dpr){
       canvas.width=l*dpr; canvas.height=a*dpr;
       ctx.setTransform(dpr,0,0,dpr,0,0);
@@ -87,9 +99,11 @@
        guardava o ultimo quadro pintado, e ao voltar para aquela tela o
        jogador via motas CONGELADAS ate' o laco reassumir. */
     if(!canvas||!canvas.isConnected||canvas.offsetParent===null){ limpar(); parar(); return; }
+    // tela em transicao pode reportar 0: nao desenha neste quadro
+    if(canvas.clientWidth<2||canvas.clientHeight<2){ laco=requestAnimationFrame(quadro); return; }
     const dt=Math.min(64,agora-(ultimo||agora)); ultimo=agora;
     ajustarTamanho();
-    const l=canvas.clientWidth, a=canvas.clientHeight;
+    const {l,a}=medida();
     ctx.clearRect(0,0,l,a);
     for(let i=0;i<particulas.length;i++){
       const p=particulas[i];
