@@ -169,7 +169,7 @@ includesAll(source,[
 const scriptTag='<script src="src/core/audio-system.js"></script>';
 const scriptIndex=html.indexOf(scriptTag);
 assert(scriptIndex>=0,'index.html nao carrega o modulo de audio');
-assert(scriptIndex<html.indexOf('<script src="src/ui/settings-system.js"></script>'),'Audio deve carregar antes das configuracoes que o consomem');
+assert(scriptIndex<html.indexOf('<script src="src/ui/settings-system.js'),'Audio deve carregar antes das configuracoes que o consomem');
 assert(!html.includes('const Audio = (function(){'),'implementacao de Audio ainda ficou duplicada no index.html');
 
 includesAll(integrationSource,[

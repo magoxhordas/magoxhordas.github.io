@@ -7,6 +7,7 @@ Esta pasta contem a primeira extracao incremental do combate da campanha. Os mod
 - `status-effects.js`: resolve o elemento visual, aplica fogo, veneno e lentidao e atualiza timers e ticks dos status dos inimigos.
 - `damage-system.js`: calcula e aplica dano comum em jogadores e inimigos, incluindo armadura, escudos, invulnerabilidade, revive e transicao para morte.
 - `combat-system.js`: concentra cura, recuo de bencao e efeitos comuns de acerto das quatro classes.
+- `combat-juice-system.js`: representa impactos, criticos, mortes, dano e cura sem alterar valores de gameplay. Inclui limites de particulas, preferencias de acessibilidade e integracao com chefes.
 
 O `index.html` carrega estes arquivos antes do codigo que os utiliza. Os nomes globais antigos de cura, recuo e status continuam como wrappers de compatibilidade para evitar mudancas nos chamadores atuais.
 

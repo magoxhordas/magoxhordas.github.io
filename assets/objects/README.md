@@ -9,3 +9,9 @@ Os PNGs originais medem 48×48. O renderer ignora a margem transparente usando
 o retângulo `(1, 12, 47, 27)` e mantém 48 pixels de largura visível, ancorada
 na base do objeto. Posições, raio de colisão, vida e regras da onda não mudam.
 `ninho.png` permanece como fallback durante o carregamento.
+
+Os objetivos posteriores usam artes dedicadas, também ancoradas sem alterar
+posição, colisão ou regras: `altar_demoniaco.png`, `bau_antigo.png`,
+`obelisco_deserto_off.png`, `obelisco_deserto_on.png` e
+`fissura_infernal.png`. A fissura é centralizada como decalque de chão; as
+demais artes ficam imóveis e recebem apenas brilho, sem pulsação de escala.

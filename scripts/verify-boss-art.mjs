@@ -20,7 +20,7 @@ const scripts=[
 let checks=0;
 function assert(condition,message){if(!condition)throw new Error(`FALHA: ${message}`);checks++;}
 
-const bossSystemIndex=html.indexOf('<script src="src/campaign/boss-system.js"></script>');
+const bossSystemIndex=html.indexOf('<script src="src/campaign/boss-system.js');
 assert(bossSystemIndex>0,'boss-system nao foi carregado');
 for(const [,script,icon] of scripts){
   const tag=`<script src="${script}"></script>`;
