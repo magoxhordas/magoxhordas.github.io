@@ -108,7 +108,7 @@ for (const [type, [folder, frameSize, walkCount, hitCount]] of Object.entries(ob
 }
 
 const enemyScript = '<script src="src/enemies/normais-sprites.js"></script>';
-const bossScript = '<script src="src/campaign/boss-system.js"></script>';
+const bossScript = '<script src="src/campaign/boss-system.js';
 assert(index.includes(enemyScript), 'index.html nao carrega o modulo de inimigos normais');
 assert(index.indexOf(enemyScript) < index.indexOf(bossScript), 'Modulo de inimigos deve carregar antes do boss-system');
 assert(index.includes('const I=window.InimigosNormais') && index.includes('I.desenhar(ctx,this.type'),

@@ -68,8 +68,59 @@
     ctx.restore();
     return true;
   }
+
+  function desenharObjetoCentrado(ctx,nome,x,yCentro,larguraAlvo,dono){
+    const im=arteObjeto(nome);
+    if(!im)return false;
+    const recorte=ARTE_RECORTES[nome];
+    const largura=recorte?recorte.w:im.naturalWidth;
+    const altura=recorte?recorte.h:im.naturalHeight;
+    const escala=larguraAlvo/largura;
+    const w=Math.round(largura*escala),h=Math.round(altura*escala);
+    if(dono)dono._ultimoObjeto={nome,x,yBase:yCentro+h/2,largura:larguraAlvo};
+    ctx.save();ctx.imageSmoothingEnabled=false;
+    if(recorte)ctx.drawImage(im,recorte.x,recorte.y,recorte.w,recorte.h,Math.round(x-w/2),Math.round(yCentro-h/2),w,h);
+    else ctx.drawImage(im,Math.round(x-w/2),Math.round(yCentro-h/2),w,h);
+    ctx.restore();
+    return true;
+  }
+
+  let auxAnim=null,auxAnimCtx=null;
+  function desenharObjetoAnimado(ctx,nome,x,yBase,larguraAlvo,dono,tempo,estilo={}){
+    const im=arteObjeto(nome);
+    if(!im)return false;
+    const largura=Math.max(1,larguraAlvo);
+    const ok=estilo.decalque
+      ?desenharObjetoCentrado(ctx,nome,x,yBase,largura,dono)
+      :desenharObjeto(ctx,nome,x,yBase,largura,dono);
+    if(!ok)return false;
+    if(!(estilo.brilho>0)||typeof document==='undefined')return true;
+    const recorte=ARTE_RECORTES[nome];
+    const lw=recorte?recorte.w:im.naturalWidth,lh=recorte?recorte.h:im.naturalHeight;
+    const escala=largura/lw,w=Math.round(lw*escala),h=Math.round(lh*escala);
+    if(w<=0||h<=0)return true;
+    if(!auxAnim){auxAnim=document.createElement('canvas');auxAnimCtx=auxAnim.getContext('2d');}
+    if(auxAnim.width!==w||auxAnim.height!==h){auxAnim.width=w;auxAnim.height=h;}
+    auxAnimCtx.clearRect(0,0,w,h);
+    auxAnimCtx.imageSmoothingEnabled=false;
+    auxAnimCtx.globalCompositeOperation='source-over';
+    if(recorte)auxAnimCtx.drawImage(im,recorte.x,recorte.y,recorte.w,recorte.h,0,0,w,h);
+    else auxAnimCtx.drawImage(im,0,0,w,h);
+    auxAnimCtx.globalCompositeOperation='source-atop';
+    auxAnimCtx.fillStyle=estilo.corBrilho||'#ffd88a';
+    auxAnimCtx.fillRect(0,0,w,h);
+    auxAnimCtx.globalCompositeOperation='source-over';
+    const fase=(x*.37+yBase*.71)%6.283;
+    const pulso=.5+.5*Math.sin((Number(tempo)||0)*(estilo.ritmoBrilho||.0032)+fase);
+    ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=estilo.brilho*(.45+.55*pulso);ctx.imageSmoothingEnabled=false;
+    ctx.drawImage(auxAnim,Math.round(x-w/2),Math.round(estilo.decalque?yBase-h/2:yBase-h));
+    ctx.restore();
+    return true;
+  }
+
   (function precarregarObjetos(){
-    for(const n of ['altar_ossos','ninho','ninho_east','ninho_west','fogueira_off','fogueira_on','obelisco','santuario'])arteObjeto(n);
+    for(const n of ['altar_ossos','ninho','ninho_east','ninho_west','fogueira_off','fogueira_on','obelisco','santuario',
+      'altar_demoniaco','obelisco_deserto_on','obelisco_deserto_off','bau_antigo','fissura_infernal'])arteObjeto(n);
   })();
 
   /* Objetos que o heroi NAO atravessa. Ficam de fora a fissura infernal
@@ -324,7 +375,7 @@
         current.data.nextTremor=4200;current.data.tremor=null;
       }else if(definition.id==='infernal_fissures'){
         current.data.spawnTimer=1700;
-        POSITIONS.fissures.forEach(([x,y],index)=>makeTarget({kind:'infernal_fissure',label:`Fissura ${index+1}`,x,y,hp:Math.round(245*hpScale),radius:24,hitColor:'#ff7b37',onDestroyed:onMandatoryStructureDestroyed}));
+        POSITIONS.fissures.forEach(([x,y],index)=>makeTarget({kind:'infernal_fissure',planoNoChao:true,label:`Fissura ${index+1}`,x,y,hp:Math.round(245*hpScale),radius:24,hitColor:'#ff7b37',onDestroyed:onMandatoryStructureDestroyed}));
       }else if(definition.id==='demon_altar'){
         makeTarget({kind:'demon_altar',label:'Altar Demoníaco',x:320,y:265,hp:Math.round(260*hpScale),radius:23,damageable:false,autoTarget:false,interactive:true,decisionMade:false,
           interactionText:'Decidir destino do altar',onDestroyed:()=>{deps.addCoins(16);deps.addXp(20);deps.spawnNotice(320,200,'ALTAR DESTRUÍDO · RECOMPENSA RECUPERADA',0);complete();}});
@@ -997,9 +1048,14 @@
         ctx.fillStyle=`rgba(206,142,232,${.4+pulse*.35})`;
         ctx.fillRect(x-11,y-3,3,1);ctx.fillRect(x-2,y-3,4,1);ctx.fillRect(x+8,y-3,3,1);
       }else if(target.kind==='dark_altar'||target.kind==='demon_altar'){
-        // So' o Sombrio tem arte: o Demoniaco (onda 23, vulcao) continua
-        // desenhado a mao, porque nao veio objeto infernal no pacote.
         const altarY=y+16;
+        if(target.kind==='demon_altar'&&desenharObjetoAnimado(ctx,'altar_demoniaco',x,altarY,44,target,time,
+          {brilho:.30,corBrilho:'#ff7a3a',ritmoBrilho:.0042})){
+          const g=ctx.createRadialGradient(x,y-14,1,x,y-14,30);
+          g.addColorStop(0,'rgba(255,110,40,.30)');g.addColorStop(1,'rgba(60,10,0,0)');
+          ctx.fillStyle=g;ctx.fillRect(x-36,y-46,72,58);
+          ctx.globalAlpha=1;drawTargetHealth(ctx,target,x,y-58);ctx.restore();return;
+        }
         if(target.kind==='dark_altar'&&desenharObjeto(ctx,'obelisco',x,altarY,40,target)){
           const g=ctx.createRadialGradient(x,y-16,1,x,y-16,29);
           g.addColorStop(0,'rgba(190,120,235,.36)');
@@ -1169,6 +1225,15 @@
         if(target.holdProgress>0&&!target.lit){ctx.strokeStyle='#d7f7ff';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y-10,28,-Math.PI/2,-Math.PI/2+Math.PI*2*clamp(target.holdProgress/target.holdMs,0,1));ctx.stroke();}
       }else if(target.kind==='obelisk'){
         const on=target.activated;
+        if(desenharObjetoAnimado(ctx,on?'obelisco_deserto_on':'obelisco_deserto_off',x,y+17,32,target,time,
+          on?{brilho:.34,corBrilho:'#ffd77a',ritmoBrilho:.0038}:{brilho:0})){
+          if(on){
+            const g=ctx.createRadialGradient(x,y-10,1,x,y-10,26);
+            g.addColorStop(0,`rgba(255,214,122,${.22+pulse*.16})`);g.addColorStop(1,'rgba(60,40,0,0)');
+            ctx.fillStyle=g;ctx.fillRect(x-30,y-38,60,50);
+          }
+          ctx.globalAlpha=1;drawTargetHealth(ctx,target,x,y-46);ctx.restore();return;
+        }
         // plinto
         ctx.fillStyle='#231f28';ctx.fillRect(x-15,y+10,30,7);
         ctx.fillStyle=on?'#5a4326':'#332e3c';ctx.fillRect(x-13,y+5,26,6);
@@ -1191,6 +1256,10 @@
           ctx.fillStyle=g;ctx.fillRect(x-38,y-46,76,60);
         }
       }else if(target.kind==='ancient_chest'){
+        if(desenharObjetoAnimado(ctx,'bau_antigo',x,y+17,46,target,time,
+          {brilho:.26,corBrilho:'#c86bff',ritmoBrilho:.0030})){
+          ctx.globalAlpha=1;drawTargetHealth(ctx,target,x,y-26);ctx.restore();return;
+        }
         // corpo
         ctx.fillStyle='#2a1810';ctx.fillRect(x-22,y-4,44,21);
         ctx.fillStyle='#6d4823';ctx.fillRect(x-21,y-3,42,19);
@@ -1212,6 +1281,16 @@
         g.addColorStop(0,`rgba(255,206,110,${.22+pulse*.16})`);g.addColorStop(1,'rgba(80,50,0,0)');
         ctx.fillStyle=g;ctx.fillRect(x-32,y-32,64,52);
       }else if(target.kind==='infernal_fissure'){
+        const sombra=ctx.createRadialGradient(x,y+4,2,x,y+4,30);
+        sombra.addColorStop(0,'rgba(0,0,0,.55)');sombra.addColorStop(.62,'rgba(0,0,0,.28)');sombra.addColorStop(1,'rgba(0,0,0,0)');
+        ctx.save();ctx.fillStyle=sombra;ctx.beginPath();ctx.ellipse(x,y+4,30,17,0,0,Math.PI*2);ctx.fill();ctx.restore();
+        if(desenharObjetoAnimado(ctx,'fissura_infernal',x,y+4,54,target,time,
+          {decalque:true,brilho:.34,corBrilho:'#ff5a20',ritmoBrilho:.0050})){
+          const g=ctx.createRadialGradient(x,y,0,x,y,34);
+          g.addColorStop(0,`rgba(255,70,20,${.30+pulse*.18})`);g.addColorStop(1,'rgba(0,0,0,0)');
+          ctx.fillStyle=g;ctx.fillRect(x-36,y-24,72,48);
+          ctx.globalAlpha=1;drawTargetHealth(ctx,target,x,y-26);ctx.restore();return;
+        }
         const glow=ctx.createRadialGradient(x,y,0,x,y,38);glow.addColorStop(0,`rgba(255,70,20,${.45+pulse*.25})`);glow.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=glow;ctx.fillRect(x-40,y-40,80,80);ctx.strokeStyle='#ff5a20';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(x-22,y-12);ctx.lineTo(x-7,y-2);ctx.lineTo(x-15,y+14);ctx.lineTo(x+5,y+4);ctx.lineTo(x+20,y+17);ctx.stroke();ctx.strokeStyle='#ffd15c';ctx.lineWidth=2;ctx.stroke();
       }
       drawTargetHealth(ctx,target,x,y-(target.healthOffset||target.radius+15));

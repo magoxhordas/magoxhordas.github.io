@@ -80,7 +80,7 @@ includesAll(settings,[
 const menuAt=html.indexOf('<script src="src/ui/menu-codex-system.js');
 const bossDataAt=html.indexOf('<script src="src/campaign/boss-data.js"></script>');
 const audioAt=html.indexOf('<script src="src/core/audio-system.js"></script>');
-const settingsAt=html.indexOf('<script src="src/ui/settings-system.js"></script>');
+const settingsAt=html.indexOf('<script src="src/ui/settings-system.js');
 const dungeonAt=html.indexOf('<script src="src/dungeon/dungeon-system.js"></script>');
 assert(menuAt>=0&&menuAt<bossDataAt,'menu/Códex mudou de ordem em relacao aos chefes');
 assert(audioAt>=0&&settingsAt>audioAt&&settingsAt<dungeonAt,'configuracoes devem carregar entre audio e Dungeon');

@@ -196,7 +196,7 @@ close(h.system.modifyOutgoingDamage(h.players[0],{frozen:true},100),100,.001,'bu
 ok(h.system.debugSnapshot().targetCount===0,'alvos vazaram após cleanup');
 
 for(const file of ['src/campaign/campaign-ui.js','src/campaign/campaign-objectives.js','src/campaign/campaign-events.js','src/campaign/campaign-runtime.js']){
-  ok(html.includes(`<script src="${file}"></script>`),`index.html não carrega ${file}`);
+  ok(html.includes(`<script src="${file}`),`index.html não carrega ${file}`);
   new vm.Script(read(file),{filename:file});
 }
 const uiSource=read('src/campaign/campaign-ui.js');
@@ -204,6 +204,12 @@ for(const contract of ['@media (max-width:800px)','#campaign-action-button','poi
 for(const contract of ['#${ROOT_ID}.suspended','function setSuspended(value)','root.classList.toggle(\'suspended\',suspended)','setActionHandlers,setSuspended'])ok(uiSource.includes(contract),`pausa não protege o HUD de missão: ${contract}`);
 for(const contract of ['function drawTargetHealth(','`${atual}/${maximo}`','const altarY=y+14','const altarY=y+16','globalCompositeOperation=\'lighter\'','ctx.ellipse(x,y+9,17,5'])ok(source.includes(contract),`visual/vida estável dos altares perdeu contrato: ${contract}`);
 ok(!source.includes('const altarBob='),'altares voltaram a oscilar verticalmente');
+for(const asset of ['altar_demoniaco','bau_antigo','fissura_infernal','obelisco_deserto_off','obelisco_deserto_on']){
+  ok(source.includes(`'${asset}'`),`renderer não referencia ${asset}.png`);
+  ok(fs.existsSync(path.join(root,'assets','objects',`${asset}.png`)),`asset ausente: ${asset}.png`);
+}
+ok(source.includes("kind:'infernal_fissure',planoNoChao:true"),'fissura infernal precisa ser um decalque de chão');
+ok(source.includes("{decalque:true,brilho:.34"),'fissura infernal perdeu desenho centralizado e brilho');
 for(const contract of ["global.InimigosNormais?.desenhar?.(ctx,'spitting_spider'","global.InimigosNormais?.desenhar?.(ctx,'sand_worm_small'",'enemy._campaignNpcObjectiveId!==target.id','target.flashTimer=180'])ok(source.includes(contract),`polimento de objetivo ausente: ${contract}`);
 ok(html.indexOf('src/campaign/campaign-objectives.js')<html.indexOf('src/campaign/campaign-runtime.js'),'runtime carrega antes dos objetivos');
 for(const contract of [

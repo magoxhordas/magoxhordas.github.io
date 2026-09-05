@@ -21,7 +21,7 @@ function ok(condition,message){ assert.ok(condition,message); checks++; }
 function has(haystack,needle,message){ ok(haystack.includes(needle),message||`Contrato ausente: ${needle}`); }
 
 for(const file of Object.values(files)){
-  const tag=`<script src="${file}"></script>`;
+  const tag=`<script src="${file}`;
   has(html,tag,`index.html não carrega ${file}`);
   new vm.Script(read(file),{filename:file});
 }

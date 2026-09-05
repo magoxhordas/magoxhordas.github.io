@@ -5689,6 +5689,24 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
       <div class="settings-panel" data-settings-panel="video">
         <div class="settings-resolution-grid" id="settings-resolution-grid"></div>
         <p class="settings-help">A área do jogo permanece em 4:3. A opção muda a nitidez interna sem alterar gráficos ou jogabilidade.</p>
+
+        <h2 style="margin-top:18px">Efeitos de combate</h2>
+        <div class="settings-row">
+          <span>Intensidade</span>
+          <button class="settings-toggle" id="settings-fx-intensity" onclick="GameSettings.cycleCombatFxIntensity()"><span></span><b>NORMAL</b></button>
+        </div>
+        <label class="settings-volume"><span>Tremor de tela</span>
+          <input id="settings-fx-shake" type="range" min="0" max="100" step="5" oninput="GameSettings.setCombatFxShake(this.value)">
+        </label>
+        <div class="settings-row">
+          <span>Reduzir movimento de câmera</span>
+          <button class="settings-toggle" id="settings-fx-motion" onclick="GameSettings.toggleCombatFxMotion()"><span></span><b>DESATIVADO</b></button>
+        </div>
+        <div class="settings-row">
+          <span>Reduzir flashes</span>
+          <button class="settings-toggle" id="settings-fx-flash" onclick="GameSettings.toggleCombatFxFlashes()"><span></span><b>DESATIVADO</b></button>
+        </div>
+        <p class="settings-help">Estas opções alteram somente a apresentação. Dano, alcance, recarga, dificuldade e avisos dos chefes permanecem iguais.</p>
       </div>
 
       <div class="settings-panel" data-settings-panel="skins">
@@ -5765,6 +5783,7 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
   <script src="src/combat/damage-system.js"></script>
   <script src="src/combat/combat-system.js"></script>
   <script src="src/combat/combo-system.js?v=20260905-combo1"></script>
+  <script src="src/combat/combat-juice-system.js?v=20260905-juice1"></script>
   <script>
 (function(global){
   'use strict';
@@ -10175,16 +10194,26 @@ function drawPetSprite(c, petId, x, y, flipX, now){
   <script>
 // SCREEN SHAKE — for axe heavy impact
 // ═══════════════════════════════════════════════════════
-let screenShake={x:0,y:0,t:0,intensity:0};
+let screenShake={x:0,y:0,t:0,dur:180,intensity:0};
 function triggerScreenShake(intensity=5,duration=180){
-  screenShake={x:0,y:0,t:duration,intensity};
+  const pedido=Math.max(0,Number(intensity)||0);
+  if(pedido<=0)return;
+  const dur=Math.max(1,Number(duration)||180);
+  const atual=screenShake.t>0?screenShake.intensity:0;
+  const combinado=atual>0
+    ?Math.max(atual,pedido)+Math.min(atual,pedido)*0.18
+    :pedido;
+  screenShake.intensity=Math.min(12,combinado);
+  screenShake.t=Math.max(screenShake.t,dur);
+  screenShake.dur=Math.max(screenShake.dur>0?screenShake.dur:dur,dur);
 }
 function updateScreenShake(dt){
-  if(screenShake.t<=0) return;
+  if(screenShake.t<=0){screenShake.x=0;screenShake.y=0;return;}
   screenShake.t-=dt*1000;
-  const p=Math.max(0,screenShake.t/180);
+  const p=Math.max(0,screenShake.t/(screenShake.dur||180));
   screenShake.x=(Math.random()-0.5)*screenShake.intensity*p*2;
   screenShake.y=(Math.random()-0.5)*screenShake.intensity*p*2;
+  if(screenShake.t<=0){screenShake.intensity=0;screenShake.dur=180;}
 }
 
 // ═══════════════════════════════════════════════════════
@@ -12337,6 +12366,25 @@ function nearestWeaponTargets(player,enemies,range,limit=1,exclude=[]){
   return allTargets(enemies).filter(e=>e&&!e.dead&&!skipped.has(e)&&Math.hypot(e.x-player.x,e.y-player.y)<=range)
     .sort((a,b)=>Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y)).slice(0,limit);
 }
+function emitCampaignCombatImpact(owner,target,weapon,effective,attackEventId,angle){
+  if(typeof CombatJuiceSystem==='undefined'||!target)return false;
+  const def=weapon?WEAPON_DEFS[weapon.type]:null;
+  const bossTarget=!!(target.isBoss||target.type?.startsWith?.('boss')||
+    target===bossOrc||target===bossSkel||target===bossSpider||target===bossMajor||target===petBoss);
+  CombatJuiceSystem.impacto({
+    x:target.x,y:target.y,alvo:target,arma:weapon?.type||owner?.classId||'basico',
+    cooldown:def?campaignWeaponCooldown(def,weapon.rarity,owner,weapon):(owner?.atkCd||0),
+    dano:Math.max(0,Number(effective)||0),
+    critico:!!target._lastHitCrit,
+    angulo:Number.isFinite(angle)?angle:(owner?Math.atan2(target.y-owner.y,target.x-owner.x):0),
+    elemento:campaignWeaponElement(weapon?.type||owner?.classId||''),
+    matou:Number(target.hp||0)<=0,
+    attackEventId:attackEventId||owner?._runAttackEventId||null,
+    origem:'player_weapon',
+  });
+  if(bossTarget&&effective>0)CombatJuiceSystem.danoNoChefe(target,effective,target.maxHp);
+  return true;
+}
 function weaponDamage(player,weapon,target,amount,color){
   if(!target||target.dead)return 0;
   const dmg=typeof applyCardCrit==='function'?applyCardCrit(player,amount,target,weapon):amount;
@@ -12347,11 +12395,12 @@ function weaponDamage(player,weapon,target,amount,color){
   target.takeDmg(dmg);
   if(typeof ComboSystem!=='undefined')ComboSystem.validarEvento(weapon?._comboEventId||player?._comboEventoAtual||0,{critico:dmg>amount+0.001});
   const effective=typeof RunStats!=='undefined'?RunStats.recordDamage({playerIndex:player?.idx||0,hpBefore:beforeHp,hpAfter:Number(target.hp||0),amount:dmg,sourceType:'weapon',sourceId:weapon?.type||'unknown',sourceName:WEAPON_DEFS[weapon?.type]?.name||weapon?.type||'Arma',rarity:weapon?.rarity||'unknown',targetType:target?.type||'enemy',attackEventId:player?._runAttackEventId||null}):Math.max(0,beforeHp-Number(target.hp||0));
+  emitCampaignCombatImpact(player,target,weapon,effective,player?._runAttackEventId||null);
   if(player?.classId==='necromancer')NecromancerSystem.onBossDamaged(player,target,beforeHp,Number(target.hp||0));
   weapon.damageDone=(weapon.damageDone||0)+effective;
   markEnemyWeaponStatus(target,weapon);
   if(typeof applyClassHitEffect==='function')applyClassHitEffect({owner:player,dmg,weapon},target);
-  spawnParts(target.x,target.y,color||'#ffffff',5,38);
+  if(typeof CombatJuiceSystem==='undefined')spawnParts(target.x,target.y,color||'#ffffff',5,38);
   return effective;
 }
 function weaponKnockback(player,target,force){
@@ -15580,9 +15629,11 @@ function triggerDash(pl){
   pl._dashCd=pl._dashMaxCd; pl._dashAfterImages=[];
   if(typeof RunStats!=='undefined')RunStats.recordDash({playerIndex:pl.idx||0});
   if(typeof notifyBlessingDash==='function') notifyBlessingDash(pl);
-  // Som e partículas
-  spawnParts(pl.x,pl.y,'#4466ff',10,55);
-  triggerScreenShake(3,120);
+  if(typeof CombatJuiceSystem!=='undefined')CombatJuiceSystem.dash({x:pl.x,y:pl.y,classe:pl.classId});
+  else{
+    spawnParts(pl.x,pl.y,'#4466ff',10,55);
+    triggerScreenShake(3,120);
+  }
 }
 
 function _updateDashBar(pl){
@@ -15936,7 +15987,11 @@ class Player {
         const dmg=(typeof applyCardCrit==='function')?applyCardCrit(this,this.dmg,e):this.dmg;
         const before=Number(e.hp)||0;e._lastDamageOwner=this;e._lastDamageSource='direct';e._runStatsAttackEventId=this._runAttackEventId;e.takeDmg(dmg);
         if(typeof ComboSystem!=='undefined')ComboSystem.validarEvento(this._comboEventoAtual||0,{critico:dmg>this.dmg+0.001});
-        if(typeof RunStats!=='undefined')RunStats.recordDamage({playerIndex:this.idx||0,hpBefore:before,hpAfter:Number(e.hp)||0,amount:dmg,sourceType:'direct',sourceId:this.classId,sourceName:'Ataque básico',targetType:e.type||'enemy',attackEventId:this._runAttackEventId});hits++;
+        const effective=typeof RunStats!=='undefined'
+          ?RunStats.recordDamage({playerIndex:this.idx||0,hpBefore:before,hpAfter:Number(e.hp)||0,amount:dmg,sourceType:'direct',sourceId:this.classId,sourceName:'Ataque básico',targetType:e.type||'enemy',attackEventId:this._runAttackEventId})
+          :Math.max(0,before-(Number(e.hp)||0));
+        emitCampaignCombatImpact(this,e,null,effective,this._runAttackEventId,angle);
+        hits++;
         // efeito de classe: viking sempre (roubo de vida); guerreiro até 2 focos de fogo por golpe
         if(isViking||hits<=2) applyClassHitEffect({owner:this,dmg},e);
       }
@@ -15987,10 +16042,17 @@ class Player {
   takeDmg(a,continuous){
     const antes=this.hp;
     const result=campaignDamageSystem.damagePlayer(this,a,continuous);
+    const sofrido=Math.max(0,antes-this.hp);
     if(typeof ComboSystem!=='undefined'){
-      const sofrido=Math.max(0,antes-this.hp);
       if(sofrido>0)ComboSystem.notificarDanoRecebido(this,sofrido,this.maxHp);
       if(this.dead)ComboSystem.notificarMorte(this);
+    }
+    if(typeof CombatJuiceSystem!=='undefined'&&sofrido>0){
+      CombatJuiceSystem.danoNoJogador({
+        x:this.x,y:this.y,quantidade:sofrido,vidaMaxima:this.maxHp,
+        angulo:Number.isFinite(this._ultimaDirecaoDano)?this._ultimaDirecaoDano:undefined,
+      });
+      CombatJuiceSystem.checarVidaCritica(this,this.hp,this.maxHp);
     }
     return result;
   }
@@ -16495,12 +16557,29 @@ class Enemy {
   }
 
   takeDmg(a){
-    return campaignDamageSystem.damageEnemy(this,a,()=>this._handleDeath());
+    const hpAntes=Number(this.hp)||0;
+    return campaignDamageSystem.damageEnemy(this,a,()=>{
+      this._juiceUltimoDano=Math.max(0,hpAntes-(Number(this.hp)||0));
+      this._juiceHpAntes=hpAntes;
+      this._handleDeath();
+    });
   }
 
   _handleDeath(){
       if(typeof ComboSystem!=='undefined'&&this._lastDamageOwner){
         ComboSystem.notificarAbate(this._lastDamageOwner,this,this._lastDamageSource||'player_weapon');
+      }
+      if(typeof CombatJuiceSystem!=='undefined'){
+        const ultimoTipo=this._lastDamageSource==='weapon'?this._lastRunWeapon:'';
+        CombatJuiceSystem.morte({
+          alvo:this,x:this.x,y:this.y,
+          critico:(this._lastDamageSource==='weapon'||this._lastDamageSource==='direct')&&!!this._lastHitCrit,
+          elite:Number(this.maxHp||0)>=260||!!this.isElite,
+          minichefe:!!this.isMiniboss,
+          elemento:campaignWeaponElement(ultimoTipo||''),
+          dano:Number(this._juiceUltimoDano)||0,
+          hpRestante:Math.max(1,Number(this._juiceHpAntes)||1),
+        });
       }
       // Cogumelo: explosão de esporos venenosos ao morrer
       if(this.isShroom){
@@ -17200,6 +17279,7 @@ function healCampaignPlayer(owner,amount,x,y,useBlessing=true){
   const before=Number(owner?.hp)||0;
   const healed=campaignCombatSystem.healPlayer(owner,amount,x,y,useBlessing);
   if(healed>0&&typeof RunStats!=='undefined')RunStats.recordHeal({playerIndex:owner?.idx||0,hpBefore:before,hpAfter:Number(owner?.hp)||before,maxHp:Number(owner?.maxHp)||before,amount:healed});
+  if(healed>0&&typeof CombatJuiceSystem!=='undefined')CombatJuiceSystem.cura(x??owner?.x,y??owner?.y,healed);
   return healed;
 }
 window.healCampaignPlayer=healCampaignPlayer;
@@ -17484,7 +17564,7 @@ class HomingFireball {
   <script src="src/bosses/aracne-sprites.js"></script>
   <script src="src/bosses/sandworm-sprites.js"></script>
   <script src="src/enemies/normais-sprites.js"></script>
-  <script src="src/campaign/boss-system.js"></script>
+  <script src="src/campaign/boss-system.js?v=20260905-juice1"></script>
   <script>
 const enemyCollisionGrid=new SpatialHash(64);
 const enemyCollisionCandidates=[];
@@ -17503,6 +17583,8 @@ function hitCampaignObjectiveWithProjectile(p,target){
   target._lastDamageOwner=owner;
   target.takeDmg(damage);
   const effective=typeof RunStats!=='undefined'?RunStats.recordDamage({playerIndex:owner?.idx||0,hpBefore:beforeHp,hpAfter:Number(target.hp)||0,amount:damage,sourceType:p.isCampaignWeaponProj?'weapon':'direct',sourceId:p.weapon?.type||owner?.classId||'basic',sourceName:p.isCampaignWeaponProj?(WEAPON_DEFS[p.weapon?.type]?.name||p.weapon?.type||'Arma'):'Ataque básico',rarity:p.weapon?.rarity||'unknown',targetType:'objective',attackEventId:p._runAttackEventId||owner?._runAttackEventId||null}):Math.max(0,beforeHp-Number(target.hp||0));
+  emitCampaignCombatImpact(owner,target,p.weapon||null,effective,p._runAttackEventId||owner?._runAttackEventId||null,
+    Number.isFinite(p.angle)?p.angle:Math.atan2(p.vy||0,p.vx||1));
   if(owner?.classId==='necromancer')NecromancerSystem.onProjectileHit(p,target,damage);
   if(p.isCampaignWeaponProj){
     p.hitTargets.add(target);markEnemyWeaponStatus(target,p.weapon);
@@ -17514,7 +17596,7 @@ function hitCampaignObjectiveWithProjectile(p,target){
   }
   const canContinue=p.isCampaignWeaponProj&&p.pierce>0;
   if(canContinue)p.pierce--;else p.dead=true;
-  spawnParts(target.x,target.y,p.color||'#f0d080',5,34);
+  if(typeof CombatJuiceSystem==='undefined')spawnParts(target.x,target.y,p.color||'#f0d080',5,34);
   return true;
 }
 
@@ -17557,6 +17639,8 @@ function collide(){
         if(typeof ComboSystem!=='undefined')ComboSystem.validarEvento(p.comboEventId||0,{critico:finalDmg>projectileDamage+0.001});
         const runSourceName=p.isCampaignWeaponProj?(WEAPON_DEFS[p.weapon?.type]?.name||p.weapon?.type||'Arma'):'Ataque básico';
         const effective=typeof RunStats!=='undefined'?RunStats.recordDamage({playerIndex:owner?.idx||0,hpBefore:beforeHp,hpAfter:Number(e.hp)||0,amount:finalDmg,sourceType:p.isCampaignWeaponProj?'weapon':'direct',sourceId:p.weapon?.type||owner?.classId||'basic',sourceName:runSourceName,rarity:p.weapon?.rarity||'unknown',targetType:e.type||'enemy',attackEventId:e._runStatsAttackEventId}):Math.max(0,beforeHp-Number(e.hp||0));
+        emitCampaignCombatImpact(owner,e,p.weapon||null,effective,e._runStatsAttackEventId,
+          Number.isFinite(p.angle)?p.angle:Math.atan2(p.vy||0,p.vx||1));
         if(p.owner?.classId==='necromancer')NecromancerSystem.onProjectileHit(p,e,finalDmg);
         if(p.isCampaignWeaponProj)markEnemyWeaponStatus(e,p.weapon);
         if(p.isCampaignWeaponProj){
@@ -17588,19 +17672,19 @@ function collide(){
     // Player projectiles hit bosses
     if(!p.dead&&bossOrc&&!bossOrc.dead&&Math.hypot(p.x-bossOrc.x,p.y-bossOrc.y)<p.radius+bossOrc.radius){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossOrc,p.weapon||null):p.dmg;
-      const before=bossOrc.hp;bossOrc._lastDamageOwner=p.owner||player;bossOrc.takeDmg(dmg);if(typeof ComboSystem!=='undefined')ComboSystem.validarEvento(p.comboEventId||0,{}); const effective=typeof RunStats!=='undefined'?RunStats.recordDamage({playerIndex:(p.owner||player)?.idx||0,hpBefore:before,hpAfter:Number(bossOrc.hp)||0,amount:dmg,sourceType:p.isCampaignWeaponProj?'weapon':'direct',sourceId:p.weapon?.type||(p.owner||player)?.classId||'basic',sourceName:p.isCampaignWeaponProj?(WEAPON_DEFS[p.weapon?.type]?.name||'Arma'):'Ataque básico',rarity:p.weapon?.rarity||'unknown',targetType:'boss',attackEventId:p._runAttackEventId||null}):Math.max(0,before-Number(bossOrc.hp||0)); if(p.owner?.classId==='necromancer'){NecromancerSystem.onBossDamaged(p.owner,bossOrc,before,bossOrc.hp);NecromancerSystem.onProjectileHit(p,bossOrc,dmg);} if(p.isCampaignWeaponProj){markEnemyWeaponStatus(bossOrc,p.weapon);p.weapon.damageDone=(p.weapon.damageDone||0)+effective;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossOrc);}else applyClassHitEffect(p,bossOrc); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
+      const before=bossOrc.hp;bossOrc._lastDamageOwner=p.owner||player;bossOrc.takeDmg(dmg);if(typeof ComboSystem!=='undefined')ComboSystem.validarEvento(p.comboEventId||0,{}); const effective=typeof RunStats!=='undefined'?RunStats.recordDamage({playerIndex:(p.owner||player)?.idx||0,hpBefore:before,hpAfter:Number(bossOrc.hp)||0,amount:dmg,sourceType:p.isCampaignWeaponProj?'weapon':'direct',sourceId:p.weapon?.type||(p.owner||player)?.classId||'basic',sourceName:p.isCampaignWeaponProj?(WEAPON_DEFS[p.weapon?.type]?.name||'Arma'):'Ataque básico',rarity:p.weapon?.rarity||'unknown',targetType:'boss',attackEventId:p._runAttackEventId||null}):Math.max(0,before-Number(bossOrc.hp||0)); emitCampaignCombatImpact(p.owner||player,bossOrc,p.weapon||null,effective,p._runAttackEventId||null,Number.isFinite(p.angle)?p.angle:Math.atan2(p.vy||0,p.vx||1)); if(p.owner?.classId==='necromancer'){NecromancerSystem.onBossDamaged(p.owner,bossOrc,before,bossOrc.hp);NecromancerSystem.onProjectileHit(p,bossOrc,dmg);} if(p.isCampaignWeaponProj){markEnemyWeaponStatus(bossOrc,p.weapon);p.weapon.damageDone=(p.weapon.damageDone||0)+effective;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossOrc);}else applyClassHitEffect(p,bossOrc); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
     }
     if(!p.dead&&bossSkel&&!bossSkel.dead&&Math.hypot(p.x-bossSkel.x,p.y-bossSkel.y)<p.radius+bossSkel.radius){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossSkel,p.weapon||null):p.dmg;
-      const before=bossSkel.hp;bossSkel._lastDamageOwner=p.owner||player;bossSkel.takeDmg(dmg);if(typeof ComboSystem!=='undefined')ComboSystem.validarEvento(p.comboEventId||0,{}); const effective=typeof RunStats!=='undefined'?RunStats.recordDamage({playerIndex:(p.owner||player)?.idx||0,hpBefore:before,hpAfter:Number(bossSkel.hp)||0,amount:dmg,sourceType:p.isCampaignWeaponProj?'weapon':'direct',sourceId:p.weapon?.type||(p.owner||player)?.classId||'basic',sourceName:p.isCampaignWeaponProj?(WEAPON_DEFS[p.weapon?.type]?.name||'Arma'):'Ataque básico',rarity:p.weapon?.rarity||'unknown',targetType:'boss',attackEventId:p._runAttackEventId||null}):Math.max(0,before-Number(bossSkel.hp||0)); if(p.owner?.classId==='necromancer'){NecromancerSystem.onBossDamaged(p.owner,bossSkel,before,bossSkel.hp);NecromancerSystem.onProjectileHit(p,bossSkel,dmg);} if(p.isCampaignWeaponProj){markEnemyWeaponStatus(bossSkel,p.weapon);p.weapon.damageDone=(p.weapon.damageDone||0)+effective;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossSkel);}else applyClassHitEffect(p,bossSkel); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
+      const before=bossSkel.hp;bossSkel._lastDamageOwner=p.owner||player;bossSkel.takeDmg(dmg);if(typeof ComboSystem!=='undefined')ComboSystem.validarEvento(p.comboEventId||0,{}); const effective=typeof RunStats!=='undefined'?RunStats.recordDamage({playerIndex:(p.owner||player)?.idx||0,hpBefore:before,hpAfter:Number(bossSkel.hp)||0,amount:dmg,sourceType:p.isCampaignWeaponProj?'weapon':'direct',sourceId:p.weapon?.type||(p.owner||player)?.classId||'basic',sourceName:p.isCampaignWeaponProj?(WEAPON_DEFS[p.weapon?.type]?.name||'Arma'):'Ataque básico',rarity:p.weapon?.rarity||'unknown',targetType:'boss',attackEventId:p._runAttackEventId||null}):Math.max(0,before-Number(bossSkel.hp||0)); emitCampaignCombatImpact(p.owner||player,bossSkel,p.weapon||null,effective,p._runAttackEventId||null,Number.isFinite(p.angle)?p.angle:Math.atan2(p.vy||0,p.vx||1)); if(p.owner?.classId==='necromancer'){NecromancerSystem.onBossDamaged(p.owner,bossSkel,before,bossSkel.hp);NecromancerSystem.onProjectileHit(p,bossSkel,dmg);} if(p.isCampaignWeaponProj){markEnemyWeaponStatus(bossSkel,p.weapon);p.weapon.damageDone=(p.weapon.damageDone||0)+effective;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossSkel);}else applyClassHitEffect(p,bossSkel); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
     }
     if(!p.dead&&bossSpider&&!bossSpider.dead&&Math.hypot(p.x-bossSpider.x,p.y-bossSpider.y)<p.radius+bossSpider.radius){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossSpider,p.weapon||null):p.dmg;
-      const before=bossSpider.hp;bossSpider._lastDamageOwner=p.owner||player;bossSpider.takeDmg(dmg);if(typeof ComboSystem!=='undefined')ComboSystem.validarEvento(p.comboEventId||0,{}); const effective=typeof RunStats!=='undefined'?RunStats.recordDamage({playerIndex:(p.owner||player)?.idx||0,hpBefore:before,hpAfter:Number(bossSpider.hp)||0,amount:dmg,sourceType:p.isCampaignWeaponProj?'weapon':'direct',sourceId:p.weapon?.type||(p.owner||player)?.classId||'basic',sourceName:p.isCampaignWeaponProj?(WEAPON_DEFS[p.weapon?.type]?.name||'Arma'):'Ataque básico',rarity:p.weapon?.rarity||'unknown',targetType:'boss',attackEventId:p._runAttackEventId||null}):Math.max(0,before-Number(bossSpider.hp||0)); if(p.owner?.classId==='necromancer'){NecromancerSystem.onBossDamaged(p.owner,bossSpider,before,bossSpider.hp);NecromancerSystem.onProjectileHit(p,bossSpider,dmg);} if(p.isCampaignWeaponProj){markEnemyWeaponStatus(bossSpider,p.weapon);p.weapon.damageDone=(p.weapon.damageDone||0)+effective;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossSpider);}else applyClassHitEffect(p,bossSpider); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
+      const before=bossSpider.hp;bossSpider._lastDamageOwner=p.owner||player;bossSpider.takeDmg(dmg);if(typeof ComboSystem!=='undefined')ComboSystem.validarEvento(p.comboEventId||0,{}); const effective=typeof RunStats!=='undefined'?RunStats.recordDamage({playerIndex:(p.owner||player)?.idx||0,hpBefore:before,hpAfter:Number(bossSpider.hp)||0,amount:dmg,sourceType:p.isCampaignWeaponProj?'weapon':'direct',sourceId:p.weapon?.type||(p.owner||player)?.classId||'basic',sourceName:p.isCampaignWeaponProj?(WEAPON_DEFS[p.weapon?.type]?.name||'Arma'):'Ataque básico',rarity:p.weapon?.rarity||'unknown',targetType:'boss',attackEventId:p._runAttackEventId||null}):Math.max(0,before-Number(bossSpider.hp||0)); emitCampaignCombatImpact(p.owner||player,bossSpider,p.weapon||null,effective,p._runAttackEventId||null,Number.isFinite(p.angle)?p.angle:Math.atan2(p.vy||0,p.vx||1)); if(p.owner?.classId==='necromancer'){NecromancerSystem.onBossDamaged(p.owner,bossSpider,before,bossSpider.hp);NecromancerSystem.onProjectileHit(p,bossSpider,dmg);} if(p.isCampaignWeaponProj){markEnemyWeaponStatus(bossSpider,p.weapon);p.weapon.damageDone=(p.weapon.damageDone||0)+effective;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossSpider);}else applyClassHitEffect(p,bossSpider); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
     }
     if(!p.dead&&bossMajor&&!bossMajor.dead&&!(typeof BossModifierSystem!=='undefined'&&BossModifierSystem.chefeOculto(bossMajor))&&Math.hypot(p.x-bossMajor.x,p.y-bossMajor.y)<p.radius+(bossMajor.radius||36)){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossMajor,p.weapon||null):p.dmg;
-      const before=bossMajor.hp;bossMajor._lastDamageOwner=p.owner||player;bossMajor.takeDmg(dmg);if(typeof ComboSystem!=='undefined')ComboSystem.validarEvento(p.comboEventId||0,{}); const effective=typeof RunStats!=='undefined'?RunStats.recordDamage({playerIndex:(p.owner||player)?.idx||0,hpBefore:before,hpAfter:Number(bossMajor.hp)||0,amount:dmg,sourceType:p.isCampaignWeaponProj?'weapon':'direct',sourceId:p.weapon?.type||(p.owner||player)?.classId||'basic',sourceName:p.isCampaignWeaponProj?(WEAPON_DEFS[p.weapon?.type]?.name||'Arma'):'Ataque básico',rarity:p.weapon?.rarity||'unknown',targetType:'boss',attackEventId:p._runAttackEventId||null}):Math.max(0,before-Number(bossMajor.hp||0)); if(p.owner?.classId==='necromancer'){NecromancerSystem.onBossDamaged(p.owner,bossMajor,before,bossMajor.hp);NecromancerSystem.onProjectileHit(p,bossMajor,dmg);} if(p.isCampaignWeaponProj){markEnemyWeaponStatus(bossMajor,p.weapon);p.weapon.damageDone=(p.weapon.damageDone||0)+effective;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossMajor);}else applyClassHitEffect(p,bossMajor); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
+      const before=bossMajor.hp;bossMajor._lastDamageOwner=p.owner||player;bossMajor.takeDmg(dmg);if(typeof ComboSystem!=='undefined')ComboSystem.validarEvento(p.comboEventId||0,{}); const effective=typeof RunStats!=='undefined'?RunStats.recordDamage({playerIndex:(p.owner||player)?.idx||0,hpBefore:before,hpAfter:Number(bossMajor.hp)||0,amount:dmg,sourceType:p.isCampaignWeaponProj?'weapon':'direct',sourceId:p.weapon?.type||(p.owner||player)?.classId||'basic',sourceName:p.isCampaignWeaponProj?(WEAPON_DEFS[p.weapon?.type]?.name||'Arma'):'Ataque básico',rarity:p.weapon?.rarity||'unknown',targetType:'boss',attackEventId:p._runAttackEventId||null}):Math.max(0,before-Number(bossMajor.hp||0)); emitCampaignCombatImpact(p.owner||player,bossMajor,p.weapon||null,effective,p._runAttackEventId||null,Number.isFinite(p.angle)?p.angle:Math.atan2(p.vy||0,p.vx||1)); if(p.owner?.classId==='necromancer'){NecromancerSystem.onBossDamaged(p.owner,bossMajor,before,bossMajor.hp);NecromancerSystem.onProjectileHit(p,bossMajor,dmg);} if(p.isCampaignWeaponProj){markEnemyWeaponStatus(bossMajor,p.weapon);p.weapon.damageDone=(p.weapon.damageDone||0)+effective;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossMajor);}else applyClassHitEffect(p,bossMajor); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
     }
     if(!p.dead&&petBoss&&!petBoss.dead&&!petBoss.tamed&&Math.hypot(p.x-petBoss.x,p.y-petBoss.y)<p.radius+petBoss.radius){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,petBoss,p.weapon||null):p.dmg;
@@ -17609,6 +17693,8 @@ function collide(){
       petBoss.takeDmg(dmg);
       if(typeof ComboSystem!=='undefined')ComboSystem.validarEvento(p.comboEventId||0,{});
       const effective=typeof RunStats!=='undefined'?RunStats.recordDamage({playerIndex:(p.owner||player)?.idx||0,hpBefore:before,hpAfter:Number(petBoss.hp)||0,amount:dmg,sourceType:p.isCampaignWeaponProj?'weapon':'direct',sourceId:p.weapon?.type||(p.owner||player)?.classId||'basic',sourceName:p.isCampaignWeaponProj?(WEAPON_DEFS[p.weapon?.type]?.name||'Arma'):'Ataque básico',rarity:p.weapon?.rarity||'unknown',targetType:'boss',attackEventId:p._runAttackEventId||null}):Math.max(0,before-Number(petBoss.hp||0));
+      emitCampaignCombatImpact(p.owner||player,petBoss,p.weapon||null,effective,p._runAttackEventId||null,
+        Number.isFinite(p.angle)?p.angle:Math.atan2(p.vy||0,p.vx||1));
       if(p.owner?.classId==='necromancer'){
         NecromancerSystem.onBossDamaged(p.owner,petBoss,before,petBoss.hp);
         NecromancerSystem.onProjectileHit(p,petBoss,dmg);
@@ -18693,7 +18779,7 @@ function templeChoose(choice){
 
 </script>
   <script src="src/campaign/campaign-ui.js"></script>
-  <script src="src/campaign/campaign-objectives.js"></script>
+  <script src="src/campaign/campaign-objectives.js?v=20260905-juice1"></script>
   <script src="src/campaign/campaign-events.js"></script>
   <script src="src/campaign/campaign-runtime.js"></script>
   <script src="src/campaign/chapter-data.js"></script>
@@ -18963,6 +19049,48 @@ function drawLegacyEnemyStatusFx(e,t){
 
 /* Usa a propria silhueta quando o quadro exato esta disponivel. Chefes e
    desenhos procedurais continuam no efeito anterior como reserva. */
+if(typeof CombatJuiceSystem!=='undefined'){
+  CombatJuiceSystem.configurar({
+    getPreferencias:()=>(typeof GameSettings!=='undefined'&&GameSettings.getCombatFx)
+      ?GameSettings.getCombatFx()
+      :{intensidade:'normal',shake:0.8,reduzirMovimento:false,reduzirFlashes:false},
+    spawnParts:(x,y,cor,n,vel)=>{
+      if(typeof parts==='undefined'||!Array.isArray(parts))return;
+      spawnParts(x,y,cor,n,vel);
+    },
+    aplicarShake:(forca,dur)=>triggerScreenShake(forca,dur),
+    getW:()=>W,
+    getH:()=>H,
+    visivel:(x,y)=>x>=-40&&x<=W+40&&y>=-40&&y<=H+40,
+    ehChefe:alvo=>Boolean(alvo)&&Boolean(alvo.isBoss||alvo.type?.startsWith?.('boss')||
+      alvo===bossOrc||alvo===bossSkel||alvo===bossSpider||alvo===bossMajor||alvo===petBoss),
+    tingirAlvo:(ctx2,alvo,cor,forca)=>{
+      const sprites=window.InimigosNormais;
+      if(alvo._ultimoQuadroHeroi&&typeof tingirHeroi==='function')return tingirHeroi(ctx2,alvo._ultimoQuadroHeroi,cor,forca);
+      if(sprites?.tingir&&alvo._ultimoQuadro)return sprites.tingir(ctx2,alvo._ultimoQuadro,cor,forca);
+      return false;
+    },
+    desenharQuadro:(ctx2,quadro)=>{
+      const sprites=window.InimigosNormais;
+      if(!sprites?.desenhar||!quadro)return false;
+      return sprites.desenhar(ctx2,quadro.tipo,quadro.x,quadro.pesY,quadro.dir,quadro.estado,quadro.idx,quadro.flip,quadro.escala);
+    },
+    tingirQuadro:(ctx2,quadro,cor,forca)=>{
+      const sprites=window.InimigosNormais;
+      return sprites?.tingir&&quadro?sprites.tingir(ctx2,quadro,cor,forca):false;
+    },
+    tocarImpacto:({perfil,critico})=>{
+      if(typeof Audio==='undefined')return;
+      try{
+        if(perfil==='massive'&&Audio.sfxEnemyDeath)Audio.sfxEnemyDeath();
+        else if(perfil==='heavy'&&Audio.sfxAxe)Audio.sfxAxe();
+        else if(Audio.sfxHit)Audio.sfxHit();
+        if(critico&&Audio.sfxCoin)Audio.sfxCoin();
+      }catch(_){ }
+    },
+  });
+}
+
 function drawEnemyStatusFx(e,t){
   if(!e||e.dead)return;
   const now=typeof performance!=='undefined'?performance.now():Date.now();
@@ -19007,7 +19135,9 @@ function drawEnemyStatusFx(e,t){
   ctx.save();
   if(ice){
     const jaTemCubo=e.freezeFx==='iceCube';
-    if(e.frozen&&!jaTemCubo)drawFrozenPlayerCube(e,t,{meia:r*1.12,alto:r*1.7,baixo:r*.62});
+    if(e.frozen&&!jaTemCubo)drawFrozenPlayerCube(e,t,e.planoNoChao
+      ?{meia:r*1.05,alto:r*.34,baixo:r*.30}
+      :{meia:r*1.12,alto:r*1.7,baixo:r*.62});
     else if(!e.frozen){tingir('#7fd4ff',.30+.10*pulso);faiscas('#dff4ff',2,.0004,-.5,.5);}
   }
   if(fire){tingir('#ff3a10',.34+.12*pulso);faiscas('#ffb040',3,.0009,1.5,.42);}
@@ -19204,6 +19334,7 @@ function loop(ts){
     }
     updateUI();
     updateScreenShake(dt);
+    if(typeof CombatJuiceSystem!=='undefined')CombatJuiceSystem.atualizar(dt);
     // Pet companion update
     if(currentPet){ currentPet.update(dt); clampCampaignEntity(currentPet); }
     // Wild pet boss update
@@ -19222,6 +19353,11 @@ function loop(ts){
   // Screen shake transform
   ctx.save();
   if(screenShake.t>0) ctx.translate(screenShake.x, screenShake.y);
+  const combatEmphasis=typeof CombatJuiceSystem!=='undefined'?CombatJuiceSystem.enfaseAtual():0;
+  if(combatEmphasis>0){
+    const zoom=1+combatEmphasis*.012;
+    ctx.translate(W/2,H/2);ctx.scale(zoom,zoom);ctx.translate(-W/2,-H/2);
+  }
   if(bgCanvas) ctx.drawImage(bgCanvas,0,0);
   // Web puddles + fire patches — draw under entities
   for(const wp of webPuddles) wp.draw();
@@ -19232,11 +19368,12 @@ function loop(ts){
   campaignEvents.draw(ctx,t);
   const ents=[
     ...coins.map(c=>({y:c.y,fn:()=>c.draw(t)})),
-    ...enemies.map(e=>({y:e.y,fn:()=>{ e.draw(t); drawEnemyStatusFx(e,t); }})),
-    ...(bossOrc&&!bossOrc.dead?[{y:bossOrc.y,fn:()=>{desenharChefe(bossOrc,t);}}]:[]),
-    ...(bossSkel&&!bossSkel.dead?[{y:bossSkel.y,fn:()=>{desenharChefe(bossSkel,t);}}]:[]),
-    ...(bossSpider&&!bossSpider.dead?[{y:bossSpider.y,fn:()=>{desenharChefe(bossSpider,t);}}]:[]),
-    ...(bossMajor&&!bossMajor.dead?[{y:bossMajor.y,fn:()=>{desenharChefe(bossMajor,t);}}]:[]),
+    ...enemies.map(e=>({y:e.y,fn:()=>{e.draw(t);if(typeof CombatJuiceSystem!=='undefined')CombatJuiceSystem.desenharFlash(ctx,e);drawEnemyStatusFx(e,t);}})),
+    {y:-1,fn:()=>{if(typeof CombatJuiceSystem!=='undefined')CombatJuiceSystem.desenharFantasmas(ctx);}},
+    ...(bossOrc&&!bossOrc.dead?[{y:bossOrc.y,fn:()=>{desenharChefe(bossOrc,t);if(typeof CombatJuiceSystem!=='undefined')CombatJuiceSystem.desenharFlash(ctx,bossOrc);}}]:[]),
+    ...(bossSkel&&!bossSkel.dead?[{y:bossSkel.y,fn:()=>{desenharChefe(bossSkel,t);if(typeof CombatJuiceSystem!=='undefined')CombatJuiceSystem.desenharFlash(ctx,bossSkel);}}]:[]),
+    ...(bossSpider&&!bossSpider.dead?[{y:bossSpider.y,fn:()=>{desenharChefe(bossSpider,t);if(typeof CombatJuiceSystem!=='undefined')CombatJuiceSystem.desenharFlash(ctx,bossSpider);}}]:[]),
+    ...(bossMajor&&!bossMajor.dead?[{y:bossMajor.y,fn:()=>{desenharChefe(bossMajor,t);if(typeof CombatJuiceSystem!=='undefined')CombatJuiceSystem.desenharFlash(ctx,bossMajor);}}]:[]),
     ...structures.map(s=>({y:s.y,fn:()=>s.draw(t)})),
     {y:player.y,fn:()=>{player.draw(t);drawEnemyStatusFx(player,t);}},
     ...(gameMode===2&&player2?[{y:player2.y,fn:()=>{player2.draw(t);drawEnemyStatusFx(player2,t);}}]:[]),
@@ -19263,10 +19400,14 @@ function loop(ts){
   drawWaveAnnounce(t);
   drawWaveCountdown(t,dt);
   drawBossWarning(t);
+  if(typeof CombatJuiceSystem!=='undefined'){
+    CombatJuiceSystem.desenharVinheta(ctx,W,H);
+    CombatJuiceSystem.desenhar(ctx);
+  }
   drawLevelNotices();
   // Draw pet companion and wild pet boss
   if(currentPet) currentPet.draw(t);
-  if(petBoss&&!petBoss.dead){petBoss.draw(t);drawEnemyStatusFx(petBoss,t);}
+  if(petBoss&&!petBoss.dead){petBoss.draw(t);if(typeof CombatJuiceSystem!=='undefined')CombatJuiceSystem.desenharFlash(ctx,petBoss);drawEnemyStatusFx(petBoss,t);}
 
   // Web puddles (below HUD)
   for(const wp of webPuddles) wp.draw();
@@ -19441,6 +19582,7 @@ function beginGame(){
   enemies=[]; projs=[]; coins=[]; parts=[]; meleeAnims=[]; firePatches=[]; structures=[];
   kills=0; wave=1; waveTimer=DIFF[difficulty].waveLen;
   if(typeof ComboSystem!=='undefined')ComboSystem.limpar();
+  if(typeof CombatJuiceSystem!=='undefined')CombatJuiceSystem.limpar();
   CampProgressionSystem.onWaveStarted([player,player2],wave);
   const initSpawnInt=(DIFF[difficulty]||DIFF.medium).spawnBase;
   spawnInt=initSpawnInt; spawnTimer=800; lastTs=null;
@@ -19693,7 +19835,7 @@ GameRuntime.onSuspend(()=>{
 
 </script>
   <script src="src/core/audio-system.js"></script>
-  <script src="src/ui/settings-system.js"></script>
+  <script src="src/ui/settings-system.js?v=20260905-juice1"></script>
     <script src="src/dungeon/dungeon-system.js"></script>
   <script>
 // SISTEMA DE PESCA — Estilo Stardew Valley

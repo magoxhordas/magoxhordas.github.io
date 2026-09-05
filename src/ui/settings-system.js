@@ -12,6 +12,10 @@ const GameSettings = (function(){
     autoAttack:true,
     skinId:'classic',
     renderScale:'auto',
+    combatFxIntensity:'normal',
+    combatFxShake:0.8,
+    combatFxReduceMotion:false,
+    combatFxReduceFlashes:false,
     controls:{
       moveUp:'KeyW', moveDown:'KeyS', moveLeft:'KeyA', moveRight:'KeyD',
       dash:'ShiftLeft', inventory:'KeyI', map:'KeyM', crafting:'KeyT', pause:'Escape'
@@ -122,6 +126,17 @@ const GameSettings = (function(){
     button.setAttribute('aria-pressed',String(on));
     const label=button.querySelector('b'); if(label) label.textContent=on?onText:offText;
   }
+
+  function renderCombatFx(){
+    const labels={baixa:'BAIXA',normal:'NORMAL',alta:'ALTA'};
+    const intensity=document.getElementById('settings-fx-intensity');
+    const intensityLabel=intensity?.querySelector('b');
+    if(intensityLabel)intensityLabel.textContent=labels[data.combatFxIntensity||'normal'];
+    const shake=document.getElementById('settings-fx-shake');
+    if(shake)shake.value=Math.round((typeof data.combatFxShake==='number'?data.combatFxShake:0.8)*100);
+    setToggle('settings-fx-motion',data.combatFxReduceMotion,'ATIVADO','DESATIVADO');
+    setToggle('settings-fx-flash',data.combatFxReduceFlashes,'ATIVADO','DESATIVADO');
+  }
   function renderAudio(){
     setToggle('settings-music-toggle',data.musicEnabled,'ATIVADA','DESATIVADA');
     setToggle('settings-attack-sound-toggle',data.attackSoundEnabled,'ATIVADO','DESATIVADO');
@@ -135,6 +150,7 @@ const GameSettings = (function(){
   }
   function renderControls(){
     setToggle('settings-auto-attack-toggle',data.autoAttack,'ATIVADO','MANUAL');
+    renderCombatFx();
     const hint=document.getElementById('settings-attack-hint');
     if(hint) hint.textContent=data.autoAttack
       ?'O herói ataca o inimigo mais próximo automaticamente.'
@@ -383,7 +399,36 @@ const GameSettings = (function(){
     getProgressSnapshot(){return JSON.parse(JSON.stringify(skinProgress));},
     get autoAttack(){ return data.autoAttack; },
     get skinId(){ return data.skinId; },
-    get controls(){ return {...data.controls}; }
+    get controls(){ return {...data.controls}; },
+    getCombatFx(){
+      return {
+        intensidade:data.combatFxIntensity||'normal',
+        shake:typeof data.combatFxShake==='number'?data.combatFxShake:0.8,
+        reduzirMovimento:!!data.combatFxReduceMotion,
+        reduzirFlashes:!!data.combatFxReduceFlashes,
+      };
+    },
+    cycleCombatFxIntensity(){
+      const levels=['baixa','normal','alta'];
+      const index=levels.indexOf(data.combatFxIntensity||'normal');
+      data.combatFxIntensity=levels[(index+1)%levels.length];
+      save();renderCombatFx();
+    },
+    setCombatFxShake(value){
+      data.combatFxShake=Math.max(0,Math.min(1,(Number(value)||0)/100));
+      save();renderCombatFx();
+    },
+    toggleCombatFxMotion(){data.combatFxReduceMotion=!data.combatFxReduceMotion;save();renderCombatFx();},
+    toggleCombatFxFlashes(){data.combatFxReduceFlashes=!data.combatFxReduceFlashes;save();renderCombatFx();},
+    renderCombatFx,
+    setCombatFx(partial){
+      if(!partial||typeof partial!=='object')return;
+      if(['baixa','normal','alta'].includes(partial.intensidade))data.combatFxIntensity=partial.intensidade;
+      if(typeof partial.shake==='number'&&Number.isFinite(partial.shake))data.combatFxShake=Math.max(0,Math.min(1,partial.shake));
+      if(typeof partial.reduzirMovimento==='boolean')data.combatFxReduceMotion=partial.reduzirMovimento;
+      if(typeof partial.reduzirFlashes==='boolean')data.combatFxReduceFlashes=partial.reduzirFlashes;
+      save();renderCombatFx();
+    }
   };
 })();
 
