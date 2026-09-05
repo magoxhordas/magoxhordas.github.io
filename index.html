@@ -18916,7 +18916,14 @@ function drawEnemyStatusFx(e,t){
   ctx.save();
   if(ice){
     const jaTemCubo=e.freezeFx==='iceCube';
-    if(e.frozen&&!jaTemCubo)drawFrozenPlayerCube(e,t,{meia:r*1.12,alto:r*1.7,baixo:r*.62});
+    /* Alvo PLANO (racha no chao, mancha) nao pode receber o cubo alto: ele
+       nao tem altura, e um bloco em pe' por cima quebra a leitura de que a
+       marca pertence ao piso. Nesses casos o gelo vira uma placa rasa. */
+    if(e.frozen&&!jaTemCubo){
+      drawFrozenPlayerCube(e,t, e.planoNoChao
+        ? {meia:r*1.05, alto:r*0.34, baixo:r*0.30}
+        : {meia:r*1.12, alto:r*1.7,  baixo:r*.62});
+    }
     else if(!e.frozen){tingir('#7fd4ff',.30+.10*pulso);faiscas('#dff4ff',2,.0004,-.5,.5);}
   }
   if(fire){tingir('#ff3a10',.34+.12*pulso);faiscas('#ffb040',3,.0009,1.5,.42);}

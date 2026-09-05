@@ -88,10 +88,18 @@
     const t=Number(tempo)||0;
     // fase propria por objeto: nada de dois altares pulsando juntos
     const fase=((x*0.37+yBase*0.71)%6.283);
-    const balanco=(e.balanco||0)*Math.sin(t*(e.ritmo||0.0016)+fase);
-    const respiro=1+(e.respiro||0)*Math.sin(t*(e.ritmo||0.0016)*0.8+fase*1.3);
-    const larg=Math.max(1,larguraAlvo*respiro);
-    const ok=desenharObjeto(ctx,nome,x,yBase-balanco,larg,dono);
+    /* Objeto de cenario NAO se mexe: ele esta apoiado no chao. A primeira
+       versao subia e descia 1-2px e oscilava a largura, e o resultado foi
+       exatamente o que nao podia acontecer — pareciam flutuando. Todo o
+       movimento saiu; o que anima agora e' so' a LUZ, que e' o que faz
+       sentido para pedra, brasa e runa. */
+    const larg=Math.max(1,larguraAlvo);
+    /* Decalque de chao: ancorado pelo CENTRO, e nao pela base. Uma racha
+       no piso desenhada com a base no ponto do chao fica "em pe' sobre"
+       ele, como um objeto apoiado; centrada, ela pertence ao mapa. */
+    const ok=e.decalque
+      ? desenharObjetoCentrado(ctx,nome,x,yBase,larg,dono)
+      : desenharObjeto(ctx,nome,x,yBase,larg,dono);
     if(!ok)return false;
     // brilho: a mesma silhueta, clareada e pulsando por cima
     if(e.brilho>0&&typeof document!=='undefined'){
@@ -115,10 +123,28 @@
         ctx.globalCompositeOperation='lighter';
         ctx.globalAlpha=e.brilho*(0.45+0.55*p);
         ctx.imageSmoothingEnabled=false;
-        ctx.drawImage(auxAnim,Math.round(x-w/2),Math.round(yBase-balanco-h));
+        ctx.drawImage(auxAnim,Math.round(x-w/2),Math.round(e.decalque?yBase-h/2:yBase-h));
         ctx.restore();
       }
     }
+    return true;
+  }
+
+  /* Igual ao desenharObjeto, mas ancorado pelo CENTRO. Serve para o que e'
+     marca no piso — racha, queimado, mancha — e nao objeto apoiado nele. */
+  function desenharObjetoCentrado(ctx,nome,x,yCentro,larguraAlvo,dono){
+    const im=arteObjeto(nome);
+    if(!im)return false;
+    const recorte=ARTE_RECORTES[nome];
+    const largura=recorte?recorte.w:im.naturalWidth,altura=recorte?recorte.h:im.naturalHeight;
+    const k=larguraAlvo/largura;
+    const w=Math.round(largura*k),h=Math.round(altura*k);
+    if(dono)dono._ultimoObjeto={nome,x,yBase:yCentro+h/2,largura:larguraAlvo};
+    ctx.save();
+    ctx.imageSmoothingEnabled=false;
+    if(recorte)ctx.drawImage(im,recorte.x,recorte.y,recorte.w,recorte.h,Math.round(x-w/2),Math.round(yCentro-h/2),w,h);
+    else ctx.drawImage(im,Math.round(x-w/2),Math.round(yCentro-h/2),w,h);
+    ctx.restore();
     return true;
   }
 
@@ -380,7 +406,7 @@
         current.data.nextTremor=4200;current.data.tremor=null;
       }else if(definition.id==='infernal_fissures'){
         current.data.spawnTimer=1700;
-        POSITIONS.fissures.forEach(([x,y],index)=>makeTarget({kind:'infernal_fissure',label:`Fissura ${index+1}`,x,y,hp:Math.round(245*hpScale),radius:24,hitColor:'#ff7b37',onDestroyed:onMandatoryStructureDestroyed}));
+        POSITIONS.fissures.forEach(([x,y],index)=>makeTarget({kind:'infernal_fissure',planoNoChao:true,label:`Fissura ${index+1}`,x,y,hp:Math.round(245*hpScale),radius:24,hitColor:'#ff7b37',onDestroyed:onMandatoryStructureDestroyed}));
       }else if(definition.id==='demon_altar'){
         makeTarget({kind:'demon_altar',label:'Altar Demoníaco',x:320,y:265,hp:Math.round(260*hpScale),radius:23,damageable:false,autoTarget:false,interactive:true,decisionMade:false,
           interactionText:'Decidir destino do altar',onDestroyed:()=>{deps.addCoins(16);deps.addXp(20);deps.spawnNotice(320,200,'ALTAR DESTRUÍDO · RECOMPENSA RECUPERADA',0);complete();}});
@@ -1057,7 +1083,7 @@
         /* O Demoniaco ganhou arte propria. Balanco lento e brilho quente
            pulsando: a foto e' um quadro so', o movimento vem daqui. */
         if(target.kind==='demon_altar'&&desenharObjetoAnimado(ctx,'altar_demoniaco',x,altarY,44,target,time,
-             {balanco:1.2,ritmo:0.0013,respiro:0.012,brilho:0.30,corBrilho:'#ff7a3a',ritmoBrilho:0.0042})){
+             {brilho:0.30,corBrilho:'#ff7a3a',ritmoBrilho:0.0042})){
           const g=ctx.createRadialGradient(x,y-14,1,x,y-14,30);
           g.addColorStop(0,'rgba(255,110,40,.30)');
           g.addColorStop(1,'rgba(60,10,0,0)');
@@ -1237,8 +1263,8 @@
         /* Os dois estados dividem a MESMA moldura (34x52), entao acender
            nao muda o tamanho do objeto — so' a luz. */
         if(desenharObjetoAnimado(ctx,on?'obelisco_deserto_on':'obelisco_deserto_off',x,y+17,32,target,time,
-             on?{balanco:1.0,ritmo:0.0015,respiro:0.010,brilho:0.34,corBrilho:'#ffd77a',ritmoBrilho:0.0038}
-               :{balanco:0.5,ritmo:0.0009,respiro:0.006,brilho:0})){
+             on?{brilho:0.34,corBrilho:'#ffd77a',ritmoBrilho:0.0038}
+               :{brilho:0})){
           if(on){
             const g=ctx.createRadialGradient(x,y-10,1,x,y-10,26);
             g.addColorStop(0,`rgba(255,214,122,${.22+pulse*.16})`);
@@ -1274,7 +1300,7 @@
            com cranio e runas, entao o brilho segue a paleta dela — dourado
            brigaria com a propria pintura. */
         if(desenharObjetoAnimado(ctx,'bau_antigo',x,y+17,46,target,time,
-             {balanco:0.8,ritmo:0.0011,respiro:0.008,brilho:0.26,corBrilho:'#c86bff',ritmoBrilho:0.0030})){
+             {brilho:0.26,corBrilho:'#c86bff',ritmoBrilho:0.0030})){
           ctx.globalAlpha=1;drawTargetHealth(ctx,target,x,y-26);
           ctx.restore();return;
         }
@@ -1301,8 +1327,23 @@
       }else if(target.kind==='infernal_fissure'){
         /* A fissura e' uma racha NO CHAO: nada de balanco vertical, que a
            faria parecer flutuando. So' respiro e brasa pulsando. */
-        if(desenharObjetoAnimado(ctx,'fissura_infernal',x,y+12,52,target,time,
-             {balanco:0,ritmo:0.0018,respiro:0.016,brilho:0.34,corBrilho:'#ff5a20',ritmoBrilho:0.0050})){
+        /* A fissura e' parte do MAPA: decalque centrado no ponto do chao,
+           imovel, com apenas a brasa pulsando. Nem balanco, nem respiro —
+           qualquer um dos dois a faria parecer um objeto pousado ali.
+
+           E antes da arte vai uma DEPRESSAO escura, que e' o que da' a
+           leitura de "escavada no piso" em vez de "colada por cima". */
+        {
+          const sombra=ctx.createRadialGradient(x,y+4,2,x,y+4,30);
+          sombra.addColorStop(0,'rgba(0,0,0,0.55)');
+          sombra.addColorStop(0.62,'rgba(0,0,0,0.28)');
+          sombra.addColorStop(1,'rgba(0,0,0,0)');
+          ctx.save();ctx.fillStyle=sombra;
+          ctx.beginPath();ctx.ellipse(x,y+4,30,17,0,0,Math.PI*2);ctx.fill();
+          ctx.restore();
+        }
+        if(desenharObjetoAnimado(ctx,'fissura_infernal',x,y+4,54,target,time,
+             {decalque:true,brilho:0.34,corBrilho:'#ff5a20',ritmoBrilho:0.0050})){
           const g=ctx.createRadialGradient(x,y,0,x,y,34);
           g.addColorStop(0,`rgba(255,70,20,${.30+pulse*.18})`);
           g.addColorStop(1,'rgba(0,0,0,0)');
