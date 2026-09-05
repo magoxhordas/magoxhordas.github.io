@@ -863,6 +863,31 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
     linear-gradient(180deg,#06040e 0%,#0c0818 50%,#060410 100%);
 }
 /* ══════════════════════════════════════════════════════
+   ESCALA DOS MENUS — uma fonte de verdade
+
+   Cada tela tinha os proprios numeros e elas foram ficando diferentes: o
+   titulo da selecao de heroi chegava a 36px enquanto os botoes paravam em
+   13px, o que deixava a tela desequilibrada. Agora as tres (modo,
+   dificuldade e herois) leem os MESMOS tokens, entao ajustar aqui ajusta
+   todas juntas.
+   ══════════════════════════════════════════════════════ */
+:root{
+  /* Titulo: meio-termo. Era ate' 36px e ficava grande demais. */
+  --mn-fs-titulo:clamp(17px,2.15vw,27px);
+  --mn-ls-titulo:clamp(4px,.9vw,10px);
+  --mn-fs-legenda:clamp(8px,.85vw,11px);
+  --mn-ls-legenda:clamp(2px,.42vw,4px);
+  /* Botao: era pequeno demais perto do resto. Subiu fonte, respiro e
+     largura minima, mantendo a proporcao entre eles. */
+  --mn-fs-btn:clamp(11px,1.15vw,15px);
+  --mn-ls-btn:clamp(2px,.4vw,4px);
+  --mn-pad-btn:clamp(13px,2.1vh,19px) clamp(22px,3vw,42px);
+  --mn-min-btn:clamp(150px,20vw,250px);
+  /* Respiro acima do titulo: ele estava colado no topo da tela. */
+  --mn-topo:clamp(10px,4.2vh,46px);
+}
+
+/* ══════════════════════════════════════════════════════
    MENUS — estilo compartilhado
 
    A tela de herois definiu a linguagem: fundo de cena com veu, titulo
@@ -881,6 +906,18 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
   opacity:0; transition:opacity .55s ease; transform:scale(1.04);
 }
 .mn-bg.ativa{ opacity:1; }
+/* A arte do Modo Chefao e' a mais clara e movimentada das cinco, e o veu
+   padrao nao dava contraste para o texto corrido dessa tela. Aqui ele
+   escurece mais no miolo, onde ficam a descricao e a lista de chefes. */
+#bossrush-screen .mn-veu{
+  background:
+    linear-gradient(180deg, rgba(8,4,6,.90) 0%, rgba(8,4,6,.72) 26%, rgba(8,4,6,.80) 62%, rgba(6,3,5,.96) 100%),
+    radial-gradient(ellipse at 50% 45%, rgba(8,4,6,.30) 0%, rgba(8,4,6,.70) 82%);
+}
+.mn-particulas{
+  position:absolute; inset:0; z-index:1; pointer-events:none;
+  width:100%; height:100%;
+}
 .mn-veu{
   position:absolute; inset:0; z-index:1; pointer-events:none;
   background:
@@ -904,7 +941,8 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 }
 
 /* ── Titulo ornamentado ── */
-.mn-cabecalho{ display:grid; justify-items:center; gap:6px; text-align:center; }
+.mn-cabecalho{ display:grid; justify-items:center; gap:6px; text-align:center;
+  padding-top:var(--mn-topo); }
 .mn-ornamento{ display:flex; align-items:center; gap:10px; }
 .mn-orn-linha{
   display:block; width:clamp(34px,7vw,92px); height:1px;
@@ -916,13 +954,13 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
   box-shadow:0 0 10px rgba(200,168,75,.35);
 }
 .mn-titulo{
-  margin:0; font-size:clamp(20px,2.9vw,36px); font-weight:bold;
-  letter-spacing:clamp(5px,1.2vw,14px); color:#f4e6bd;
+  margin:0; font-size:var(--mn-fs-titulo); font-weight:bold;
+  letter-spacing:var(--mn-ls-titulo); color:#f4e6bd;
   text-shadow:0 2px 20px rgba(0,0,0,.92), 0 0 34px rgba(200,168,75,.26);
 }
 .mn-legenda{
   margin:2px 0 0; display:flex; align-items:center; gap:10px;
-  font-size:clamp(8px,.92vw,11px); letter-spacing:clamp(2px,.5vw,5px);
+  font-size:var(--mn-fs-legenda); letter-spacing:var(--mn-ls-legenda);
   text-transform:uppercase; color:#9a8fae;
 }
 .mn-leg-linha{
@@ -1025,10 +1063,10 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 }
 .mn-btn{
   position:relative; font-family:inherit; cursor:pointer;
-  font-size:clamp(9px,.98vw,13px); letter-spacing:clamp(2px,.35vw,4px);
+  font-size:var(--mn-fs-btn); letter-spacing:var(--mn-ls-btn);
   text-transform:uppercase; font-weight:bold;
-  min-width:clamp(120px,17vw,210px);
-  padding:clamp(9px,1.5vh,15px) clamp(16px,2.2vw,30px);
+  min-width:var(--mn-min-btn);
+  padding:var(--mn-pad-btn);
   color:#b9aecb; background:linear-gradient(180deg, rgba(20,14,32,.92), rgba(10,7,18,.96));
   border:1px solid rgba(130,112,166,.36);
   /* Retangulo INTEIRO. O chanfro nos cantos cortava a moldura e deixava
@@ -1149,7 +1187,8 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 }
 
 /* ══ TITULO ══ */
-.cs-cabecalho{ display:grid; justify-items:center; gap:6px; text-align:center; }
+.cs-cabecalho{ display:grid; justify-items:center; gap:6px; text-align:center;
+  padding-top:var(--mn-topo); }
 /* Ornamento: losango entre dois fios que se apagam nas pontas. */
 .cs-ornamento{ display:flex; align-items:center; gap:10px; }
 .cs-orn-linha{
@@ -1163,14 +1202,14 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
   box-shadow:0 0 10px rgba(200,168,75,.35);
 }
 .cs-titulo{
-  margin:0; font-size:clamp(20px,2.9vw,36px); font-weight:bold;
-  letter-spacing:clamp(5px,1.2vw,14px); color:#f4e6bd;
+  margin:0; font-size:var(--mn-fs-titulo); font-weight:bold;
+  letter-spacing:var(--mn-ls-titulo); color:#f4e6bd;
   text-shadow:0 2px 20px rgba(0,0,0,.92), 0 0 34px rgba(200,168,75,.26);
 }
 /* Legenda entre dois fios, como no menu de referencia. */
 .cs-legenda{
   margin:2px 0 0; display:flex; align-items:center; gap:10px;
-  font-size:clamp(8px,.92vw,11px); letter-spacing:clamp(2px,.5vw,5px);
+  font-size:var(--mn-fs-legenda); letter-spacing:var(--mn-ls-legenda);
   text-transform:uppercase; color:#9a8fae;
 }
 .cs-leg-linha{
@@ -1299,10 +1338,10 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 }
 .cs-btn{
   position:relative; font-family:inherit; cursor:pointer;
-  font-size:clamp(9px,.98vw,13px); letter-spacing:clamp(2px,.35vw,4px);
+  font-size:var(--mn-fs-btn); letter-spacing:var(--mn-ls-btn);
   text-transform:uppercase; font-weight:bold;
-  min-width:clamp(120px,17vw,210px);
-  padding:clamp(9px,1.5vh,15px) clamp(16px,2.2vw,30px);
+  min-width:var(--mn-min-btn);
+  padding:var(--mn-pad-btn);
   color:#b9aecb; background:linear-gradient(180deg, rgba(20,14,32,.92), rgba(10,7,18,.96));
   border:1px solid rgba(130,112,166,.36);
   /* Retangulo INTEIRO. O chanfro nos cantos cortava a moldura e deixava
@@ -2081,9 +2120,13 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
     linear-gradient(180deg,#08020e 0%,#120408 50%,#080210 100%);
   flex-direction:column; align-items:center; justify-content:center;
 }
-.br-title { font-size:28px; color:#ff4422; letter-spacing:6px; font-weight:900;
-  text-shadow:0 0 20px rgba(255,60,20,0.6); margin-bottom:4px; text-transform:uppercase; }
-.br-sub { font-size:14px; color:#6a2a1a; letter-spacing:4px; text-transform:uppercase; margin-bottom:20px; }
+/* O Modo Chefao usa a MESMA escala das outras telas de menu: antes tinha
+   numeros proprios (28px de titulo, 14px de legenda) e destoava. */
+.br-title { font-size:var(--mn-fs-titulo); color:#ff5533; letter-spacing:var(--mn-ls-titulo);
+  font-weight:900; text-shadow:0 2px 20px rgba(0,0,0,.9), 0 0 26px rgba(255,60,20,0.45);
+  margin-bottom:4px; text-transform:uppercase; padding-top:var(--mn-topo); }
+.br-sub { font-size:var(--mn-fs-legenda); color:#b06a52; letter-spacing:var(--mn-ls-legenda);
+  text-transform:uppercase; margin-bottom:20px; }
 .br-boss-list { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-bottom:16px; max-width:700px; }
 .br-boss-card {
   background:rgba(8,3,18,0.95); border:1px solid rgba(140,40,20,0.45);
@@ -3710,14 +3753,16 @@ canvas, img {
     padding:10px 8px;
   }
   .cs-preview { width:64px; height:64px; }
-  .cs-title, .coll-title, .br-title, .temple-title {
+  /* .br-title saiu daqui: o Modo Chefao usa os tokens dos menus, e esta
+     regra o devolvia a outra escala em telas estreitas. */
+  .cs-title, .coll-title, .temple-title {
     max-width:100%;
     text-align:center;
     font-size:var(--font-title);
     letter-spacing:clamp(2px,1vw,5px);
     overflow-wrap:anywhere;
   }
-  .cs-sub, .coll-sub, .br-sub, .temple-sub {
+  .cs-sub, .coll-sub, .temple-sub {
     max-width:100%;
     text-align:center;
     font-size:var(--font-caption);
@@ -5645,6 +5690,7 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
 <div class="screen" id="mode-menu" style="display:none">
   <div class="mn-bg ativa" style="background-image:url('assets/menu/bg-modo-jogo.jpg')"></div>
   <div class="mn-veu"></div>
+  <canvas class="mn-particulas" id="part-mode-menu" aria-hidden="true"></canvas>
 
   <div class="mn-palco">
     <header class="mn-cabecalho">
@@ -5673,6 +5719,7 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
   <div class="mn-bg" id="dif-bg-a"></div>
   <div class="mn-bg" id="dif-bg-b"></div>
   <div class="mn-veu"></div>
+  <canvas class="mn-particulas" id="part-play-menu" aria-hidden="true"></canvas>
 
   <div class="mn-palco">
     <header class="mn-cabecalho">
@@ -5716,6 +5763,7 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
   <div class="cs-bg" id="cs-bg-a"></div>
   <div class="cs-bg" id="cs-bg-b"></div>
   <div class="cs-veu"></div>
+  <canvas class="mn-particulas" id="part-char-select" aria-hidden="true"></canvas>
 
   <div class="cs-palco">
     <!-- ══ TITULO ══ -->
@@ -6184,15 +6232,16 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
 <div class="screen" id="bossrush-screen" style="display:none">
   <div class="mn-bg ativa" style="background-image:url('assets/menu/bg-chefao.jpg')"></div>
   <div class="mn-veu"></div>
-  <div class="br-title" style="position:relative;z-index:2"><span class="pixel-icon-slot pixel-icon-danger" data-pixel-icon="sword" data-pixel-size="38"></span> MODO CHEFÃO</div>
+  <canvas class="mn-particulas" id="part-bossrush-screen" aria-hidden="true"></canvas>
+  <div class="br-title" style="position:relative;z-index:2">MODO CHEFÃO</div>
   <div class="br-sub" style="position:relative;z-index:2">— Boss Rush · Desafio Extremo —</div>
   <div style="position:relative;z-index:2;font-size:14px;color:#e8a888;letter-spacing:1px;margin-bottom:14px;text-align:center;">
     Enfrente os chefões em sequência. Sem ondas normais. Prove sua força!
   </div>
   <div class="br-boss-list" id="br-boss-list" style="position:relative;z-index:2"></div>
   <div class="paired-action-row" style="position:relative;z-index:2">
-    <button class="br-start-btn paired-action-btn" id="br-start-btn" onclick="startBossRush()">INICIAR BOSS RUSH</button>
-    <button class="menu-btn paired-action-btn" onclick="showScreen('main-menu')">Voltar</button>
+    <button class="mn-btn mn-btn-principal" id="br-start-btn" onclick="startBossRush()">INICIAR BOSS RUSH</button>
+    <button class="mn-btn" onclick="showScreen('main-menu')">VOLTAR</button>
   </div>
   <div style="font-size:12px;color:#b0885f;margin-top:12px;text-align:center;">
     Derrote um boss na campanha normal para desbloqueá-lo aqui
@@ -10939,6 +10988,7 @@ function openBossRushMenu(){
   state='menu';
   showScreen('bossrush-screen');
   buildBossRushScreen();
+  mnParticulas('part-bossrush-screen',MN_PALETAS.chefao);
 }
 
 function cancelCharSelect(){
@@ -11058,6 +11108,13 @@ function csEscolher(cid, semAnimarBarras){
   });
 
   csTrocarFundo(cid);
+  // particulas na cor do heroi, para a tela respirar junto com o fundo
+  if(typeof MenuParticulas!=='undefined'){
+    const cv=document.getElementById('part-char-select');
+    const paleta=[def.color,'#ffffff',def.color];
+    if(cv)MenuParticulas.ligar(cv,paleta); else MenuParticulas.pintar(paleta);
+    MenuParticulas.pintar(paleta);
+  }
   csPreencherAba(cid,def,semAnimarBarras);
 
   const aba=document.getElementById('cs-aba');
@@ -11118,6 +11175,22 @@ function confirmCharSelect(){
 /* ══ MENUS: MODO DE JOGO e DIFICULDADE ══
    Eram uma tela so' com tudo empilhado. Agora sao duas, cada uma com um
    assunto, na mesma linguagem da tela de herois. */
+
+/* Paletas das particulas. Saem das cores dominantes de cada arte, para
+   as motas parecerem poeira DAQUELA cena e nao um efeito generico. */
+const MN_PALETAS={
+  modo:      ['#e8b45c','#ffd8a0','#c8894b'],
+  easy:      ['#7fe3a0','#4fbf7a','#cdf5dc'],
+  medium:    ['#f0c666','#e8a03c','#ffe4ae'],
+  hard:      ['#ff7a5c','#e04030','#ffb6a0'],
+  chefao:    ['#ff5533','#ff9a70','#b81f10'],
+};
+
+function mnParticulas(idCanvas,paleta){
+  if(typeof MenuParticulas==='undefined')return;
+  const cv=document.getElementById(idCanvas);
+  if(cv)MenuParticulas.ligar(cv,paleta);
+}
 
 const MODOS=[
   {id:1, nome:'Solitário', cor:'#c8a84b', icone:'solo',
@@ -11227,6 +11300,7 @@ function buildModeMenu(){
     c.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();escolher();} });
   });
   selectMode(_selMode||1);
+  mnParticulas('part-mode-menu',MN_PALETAS.modo);
 }
 
 function selectMode(n){
@@ -11284,6 +11358,9 @@ function selectDiff(d){
   });
   const ficha=DIFICULDADES.find(x=>x.id===d);
   if(ficha)difTrocarFundo(ficha.fundo);
+  // as motas acompanham a dificuldade: verde, dourado ou vermelho
+  mnParticulas('part-play-menu',MN_PALETAS[d]||MN_PALETAS.medium);
+  if(typeof MenuParticulas!=='undefined')MenuParticulas.pintar(MN_PALETAS[d]||MN_PALETAS.medium);
   if(typeof atualizarAmeaca==='function')atualizarAmeaca();
 }
 
@@ -19484,6 +19561,7 @@ function templeChoose(choice){
   <script src="src/campaign/boss-modifiers.js?v=20260904-threat1"></script>
   <script src="src/ui/campaign-overlays.js"></script>
   <script src="src/ui/boss-hud.js"></script>
+  <script src="src/ui/menu-particles.js"></script>
   <script src="src/ui/combo-hud.js?v=20260905-combo1"></script>
   <script>
 // GAME LOOP
