@@ -43,9 +43,13 @@ Exemplos:
 
 O sorteio de deuses também ganhou **afinidade de build**: possuir 1 ou 2 bênçãos de uma divindade aumenta a chance de encontrá-la novamente, permitindo perseguir uma Ascensão sem tornar a escolha garantida.
 
+Para a mecânica central não desaparecer por puro azar numa campanha completa, depois de oito bênçãos normais sem nenhuma Ascensão uma divindade já em 2/3 recebe prioridade. Todas as Ascensões também possuem efeito-base próprio: as sinergias melhoram o caminho escolhido, mas não são pré-requisitos escondidos.
+
 ## Compatibilidade
 
-Os contratos globais usados pelo jogo foram preservados: ofertas, aplicação, crítico, acerto, morte, dash, esquiva, prevenção de morte, dano recebido, atualização temporal, transição de onda, HUD e reset continuam disponíveis nos mesmos pontos de integração.
+Os contratos globais usados pelo jogo foram preservados: ofertas, aplicação, crítico, acerto, morte, dash, esquiva, prevenção de morte, dano recebido, atualização temporal, transição de onda, HUD e reset continuam disponíveis nos mesmos pontos de integração. Progresso baseado em abates recebe créditos proporcionais ao dano causado em chefes, jogadores mortos no co-op recebem escolhas compartilhadas sem serem ressuscitados, e invocações do Necromante herdam dano, velocidade de ataque, crítico e gatilhos de acerto compatíveis.
+
+Defesas de fontes diferentes são combinadas multiplicativamente e respeitam um piso de 25% do dano original. Custos de vida máxima são cobrados no momento da escolha, sem depender da ordem das bênçãos.
 
 ## Verificação
 
@@ -55,7 +59,9 @@ Os contratos globais usados pelo jogo foram preservados: ofertas, aplicação, c
 - 75 bênçãos únicas;
 - cinco raridades;
 - 30 Ascensões;
-- implementação explícita dos efeitos;
-- gatilhos essenciais de Zeus, Hécate, Moros e Nazgûl;
+- escalonamento monotônico e limites seguros de raridade;
+- implementação comportamental dos efeitos e das 30 Ascensões sem pré-requisito oculto;
+- gatilhos essenciais de dano, cura, crítico, dash, onda, chefe e invocação;
 - desbloqueio da Ascensão na terceira bênção;
-- oferta de dois caminhos e bloqueio do deus após o compromisso.
+- proteção contra azar, oferta de dois caminhos e bloqueio do deus após o compromisso;
+- sincronização de P1/P2, inclusive quando um jogador está morto.

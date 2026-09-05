@@ -20,8 +20,9 @@ function includesAll(source,needles,context){
 
 for(const file of files) new vm.Script(sources[file],{filename:file});
 for(const file of files){
-  const tag=`<script src="${file}"></script>`;
-  assert(html.includes(tag),`index.html nao carrega ${file}`);
+  const escaped=file.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const tag=new RegExp(`<script src="${escaped}(?:\\?[^\"]*)?"></script>`);
+  assert(tag.test(html),`index.html nao carrega ${file}`);
 }
 assert(!html.includes('// ── Class selection ──'),'selecao/Codex ainda estao inline');
 assert(!html.includes('// WAVE ANNOUNCE overlay'),'overlays da campanha ainda estao inline');
@@ -76,7 +77,7 @@ includesAll(settings,[
   'function closeSettings(){ GameSettings.close(); }',
 ], 'configuracoes e controles');
 
-const menuAt=html.indexOf('<script src="src/ui/menu-codex-system.js"></script>');
+const menuAt=html.indexOf('<script src="src/ui/menu-codex-system.js');
 const bossDataAt=html.indexOf('<script src="src/campaign/boss-data.js"></script>');
 const audioAt=html.indexOf('<script src="src/core/audio-system.js"></script>');
 const settingsAt=html.indexOf('<script src="src/ui/settings-system.js"></script>');

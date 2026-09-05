@@ -201,13 +201,14 @@
     target._lastDamageOwner=owner;target._lastDamageSource=meta.summoned?'summon':'direct';
     target._lastNecroWeapon=meta.weaponType||'';
     if(typeof target.takeDmg==='function')target.takeDmg(damage);
-    const dealt=Math.max(0,Math.min(before,damage));
+    const dealt=Math.max(0,before-Number(target.hp||0));
     if(meta.summoned){
       const state=stateFor(owner);
       const inheritedLifeSteal=Math.max(0,Number(owner?.lifeSteal||0))*.20;
       if(state&&inheritedLifeSteal>0)summonHeal(state,dealt*inheritedLifeSteal);
     }
     if(isBoss(target))onBossDamaged(owner,target,before,Number(target.hp||0));
+    deps.notifyDamage?.(owner,target,dealt,meta);
     if(deps.notifyHit&&Math.random()<(meta.summoned?CFG.summonProcCoefficient:1)){
       const procWeapon=meta.weapon||(owner._necromancerSummonWeapon||(owner._necromancerSummonWeapon={type:'necromancer_summon',rarity:'common',damageDone:0}));
       deps.notifyHit(owner,target,dealt,procWeapon);

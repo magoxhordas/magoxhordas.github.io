@@ -1752,7 +1752,8 @@ function collDeityArtIcon(id){
   return art?{artPath:art.path,color:art.color}:collBlessingIcon({id:`${id}_codex`});
 }
 function renderCollBlessings(grid){
-  const deities=Array.isArray(window.DEITY_BLESSINGS_V2)?window.DEITY_BLESSINGS_V2:[];
+  const deities=Array.isArray(window.DEITY_BLESSINGS_V4)?window.DEITY_BLESSINGS_V4:
+    (Array.isArray(window.DEITY_BLESSINGS_V2)?window.DEITY_BLESSINGS_V2:[]);
   const rarities=Array.isArray(window.DEITY_BLESSING_RARITIES)?window.DEITY_BLESSING_RARITIES:[
     {id:'comum',label:'COMUM',color:'#79e89a'},
     {id:'incomum',label:'INCOMUM',color:'#43d477'},
@@ -1763,10 +1764,12 @@ function renderCollBlessings(grid){
   const valueText=typeof window.formatDeityBlessingValue==='function'
     ?window.formatDeityBlessingValue
     :(boon,value)=>`+${Math.round(value*100)}%`;
+  const ascensionsByDeity=window.DEITY_BLESSING_ASCENSIONS||{};
   deities.forEach(deity=>{
     const boons=Array.isArray(deity.boons)?deity.boons:[];
+    const ascensions=Array.isArray(ascensionsByDeity[deity.id])?ascensionsByDeity[deity.id]:[];
     const godIcon=collDeityArtIcon(deity.id);
-    grid.appendChild(collCard(godIcon, deity.name, `${boons.length} bênçãos`, false, ()=>{
+    grid.appendChild(collCard(godIcon, deity.name, `${boons.length} bênçãos · ${ascensions.length} Ascensões`, false, ()=>{
       const det=document.getElementById('coll-detail');det.className='coll-detail visible';
       const boonHtml=boons.map(boon=>{
         const rarityHtml=rarities.map((rarity,index)=>{
@@ -1788,14 +1791,21 @@ function renderCollBlessings(grid){
           <div class="coll-boon-rarity-grid">${rarityHtml}</div>
         </div>`;
       }).join('');
+      const progressionHtml=ascensions.length?`<div class="coll-det-divider"></div>
+        <div class="coll-det-section-title">ASCENSÃO DE BUILD · DESBLOQUEIA EM 3/3</div>
+        <div class="coll-affinity-ascensions">${ascensions.map(ascension=>`<div class="coll-boon-card coll-affinity-card" style="--boon-color:${godIcon.color||'#c8a84b'}">
+          <div class="coll-boon-role">3/3 · ${ascension.role||'ASCENSÃO'}</div>
+          <div class="coll-boon-name">${ascension.icon||'★'} ${ascension.name}</div>
+          <div class="coll-boon-desc">${ascension.desc}</div>
+        </div>`).join('')}</div>`:'';
       det.innerHTML=`<div class="coll-det-header">
         <div class="coll-det-icon">${collIconHtml(godIcon,48)}</div>
         <div class="coll-det-info">
           <div class="coll-det-name">${deity.name}</div>
           <div class="coll-det-type">${deity.title}</div>
-          <div class="coll-det-kills">${boons.length} bênçãos · ${rarities.length} raridades</div>
+          <div class="coll-det-kills">${boons.length} bênçãos · ${ascensions.length} Ascensões · escolha definitiva em 3/3</div>
         </div>
-      </div><div class="coll-det-divider"></div>${boonHtml}`;
+      </div><div class="coll-det-divider"></div>${boonHtml}${progressionHtml}`;
     }, null, godIcon.color||'#c8a84b'));
   });
 }
