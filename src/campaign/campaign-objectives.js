@@ -68,8 +68,64 @@
     ctx.restore();
     return true;
   }
+  /* ── ANIMACAO DOS OBJETOS ──
+     A arte nova sao FOTOS: um quadro so', sem folha de animacao. Para elas
+     nao ficarem paradas como adesivo, o movimento vem do desenho, e nao de
+     sprites novos:
+
+       balanco  — sobe e desce 1-2px, no ritmo de cada objeto;
+       respiro  — a largura oscila ~1.5%, como se o objeto inflasse;
+       brilho   — uma copia clara por cima, pulsando (so' onde faz sentido).
+
+     Cada objeto ganha uma FASE propria a partir da posicao, entao dois
+     altares na mesma tela nao pulsam em uniss..o. Nada disso mexe em
+     hitbox, raio de colisao ou vida: o desenho e' o unico afetado. */
+  let auxAnim=null,auxAnimCtx=null;
+  function desenharObjetoAnimado(ctx,nome,x,yBase,larguraAlvo,dono,tempo,estilo){
+    const im=arteObjeto(nome);
+    if(!im)return false;
+    const e=estilo||{};
+    const t=Number(tempo)||0;
+    // fase propria por objeto: nada de dois altares pulsando juntos
+    const fase=((x*0.37+yBase*0.71)%6.283);
+    const balanco=(e.balanco||0)*Math.sin(t*(e.ritmo||0.0016)+fase);
+    const respiro=1+(e.respiro||0)*Math.sin(t*(e.ritmo||0.0016)*0.8+fase*1.3);
+    const larg=Math.max(1,larguraAlvo*respiro);
+    const ok=desenharObjeto(ctx,nome,x,yBase-balanco,larg,dono);
+    if(!ok)return false;
+    // brilho: a mesma silhueta, clareada e pulsando por cima
+    if(e.brilho>0&&typeof document!=='undefined'){
+      const recorte=ARTE_RECORTES[nome];
+      const lw=recorte?recorte.w:im.naturalWidth, lh=recorte?recorte.h:im.naturalHeight;
+      const k=larg/lw, w=Math.round(lw*k), h=Math.round(lh*k);
+      if(w>0&&h>0){
+        if(!auxAnim){auxAnim=document.createElement('canvas');auxAnimCtx=auxAnim.getContext('2d');}
+        if(auxAnim.width!==w||auxAnim.height!==h){auxAnim.width=w;auxAnim.height=h;}
+        auxAnimCtx.clearRect(0,0,w,h);
+        auxAnimCtx.imageSmoothingEnabled=false;
+        auxAnimCtx.globalCompositeOperation='source-over';
+        if(recorte)auxAnimCtx.drawImage(im,recorte.x,recorte.y,recorte.w,recorte.h,0,0,w,h);
+        else auxAnimCtx.drawImage(im,0,0,w,h);
+        auxAnimCtx.globalCompositeOperation='source-atop';
+        auxAnimCtx.fillStyle=e.corBrilho||'#ffd88a';
+        auxAnimCtx.fillRect(0,0,w,h);
+        auxAnimCtx.globalCompositeOperation='source-over';
+        const p=0.5+0.5*Math.sin(t*(e.ritmoBrilho||0.0032)+fase);
+        ctx.save();
+        ctx.globalCompositeOperation='lighter';
+        ctx.globalAlpha=e.brilho*(0.45+0.55*p);
+        ctx.imageSmoothingEnabled=false;
+        ctx.drawImage(auxAnim,Math.round(x-w/2),Math.round(yBase-balanco-h));
+        ctx.restore();
+      }
+    }
+    return true;
+  }
+
   (function precarregarObjetos(){
-    for(const n of ['altar_ossos','ninho','ninho_east','ninho_west','fogueira_off','fogueira_on','obelisco','santuario'])arteObjeto(n);
+    for(const n of ['altar_ossos','ninho','ninho_east','ninho_west','fogueira_off','fogueira_on',
+                    'obelisco','santuario','altar_demoniaco','obelisco_deserto_on',
+                    'obelisco_deserto_off','bau_antigo','fissura_infernal'])arteObjeto(n);
   })();
 
   /* Objetos que o heroi NAO atravessa. Ficam de fora a fissura infernal
@@ -997,9 +1053,18 @@
         ctx.fillStyle=`rgba(206,142,232,${.4+pulse*.35})`;
         ctx.fillRect(x-11,y-3,3,1);ctx.fillRect(x-2,y-3,4,1);ctx.fillRect(x+8,y-3,3,1);
       }else if(target.kind==='dark_altar'||target.kind==='demon_altar'){
-        // So' o Sombrio tem arte: o Demoniaco (onda 23, vulcao) continua
-        // desenhado a mao, porque nao veio objeto infernal no pacote.
         const altarY=y+16;
+        /* O Demoniaco ganhou arte propria. Balanco lento e brilho quente
+           pulsando: a foto e' um quadro so', o movimento vem daqui. */
+        if(target.kind==='demon_altar'&&desenharObjetoAnimado(ctx,'altar_demoniaco',x,altarY,44,target,time,
+             {balanco:1.2,ritmo:0.0013,respiro:0.012,brilho:0.30,corBrilho:'#ff7a3a',ritmoBrilho:0.0042})){
+          const g=ctx.createRadialGradient(x,y-14,1,x,y-14,30);
+          g.addColorStop(0,'rgba(255,110,40,.30)');
+          g.addColorStop(1,'rgba(60,10,0,0)');
+          ctx.fillStyle=g;ctx.fillRect(x-36,y-46,72,58);
+          ctx.globalAlpha=1;drawTargetHealth(ctx,target,x,y-58);
+          ctx.restore();return;
+        }
         if(target.kind==='dark_altar'&&desenharObjeto(ctx,'obelisco',x,altarY,40,target)){
           const g=ctx.createRadialGradient(x,y-16,1,x,y-16,29);
           g.addColorStop(0,'rgba(190,120,235,.36)');
@@ -1169,6 +1234,20 @@
         if(target.holdProgress>0&&!target.lit){ctx.strokeStyle='#d7f7ff';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y-10,28,-Math.PI/2,-Math.PI/2+Math.PI*2*clamp(target.holdProgress/target.holdMs,0,1));ctx.stroke();}
       }else if(target.kind==='obelisk'){
         const on=target.activated;
+        /* Os dois estados dividem a MESMA moldura (34x52), entao acender
+           nao muda o tamanho do objeto — so' a luz. */
+        if(desenharObjetoAnimado(ctx,on?'obelisco_deserto_on':'obelisco_deserto_off',x,y+17,32,target,time,
+             on?{balanco:1.0,ritmo:0.0015,respiro:0.010,brilho:0.34,corBrilho:'#ffd77a',ritmoBrilho:0.0038}
+               :{balanco:0.5,ritmo:0.0009,respiro:0.006,brilho:0})){
+          if(on){
+            const g=ctx.createRadialGradient(x,y-10,1,x,y-10,26);
+            g.addColorStop(0,`rgba(255,214,122,${.22+pulse*.16})`);
+            g.addColorStop(1,'rgba(60,40,0,0)');
+            ctx.fillStyle=g;ctx.fillRect(x-30,y-38,60,50);
+          }
+          ctx.globalAlpha=1;drawTargetHealth(ctx,target,x,y-46);
+          ctx.restore();return;
+        }
         // plinto
         ctx.fillStyle='#231f28';ctx.fillRect(x-15,y+10,30,7);
         ctx.fillStyle=on?'#5a4326':'#332e3c';ctx.fillRect(x-13,y+5,26,6);
@@ -1191,6 +1270,14 @@
           ctx.fillStyle=g;ctx.fillRect(x-38,y-46,76,60);
         }
       }else if(target.kind==='ancient_chest'){
+        /* Bau: respiro bem curto e brilho ARCANO. A arte e' um bau roxo
+           com cranio e runas, entao o brilho segue a paleta dela — dourado
+           brigaria com a propria pintura. */
+        if(desenharObjetoAnimado(ctx,'bau_antigo',x,y+17,46,target,time,
+             {balanco:0.8,ritmo:0.0011,respiro:0.008,brilho:0.26,corBrilho:'#c86bff',ritmoBrilho:0.0030})){
+          ctx.globalAlpha=1;drawTargetHealth(ctx,target,x,y-26);
+          ctx.restore();return;
+        }
         // corpo
         ctx.fillStyle='#2a1810';ctx.fillRect(x-22,y-4,44,21);
         ctx.fillStyle='#6d4823';ctx.fillRect(x-21,y-3,42,19);
@@ -1212,6 +1299,17 @@
         g.addColorStop(0,`rgba(255,206,110,${.22+pulse*.16})`);g.addColorStop(1,'rgba(80,50,0,0)');
         ctx.fillStyle=g;ctx.fillRect(x-32,y-32,64,52);
       }else if(target.kind==='infernal_fissure'){
+        /* A fissura e' uma racha NO CHAO: nada de balanco vertical, que a
+           faria parecer flutuando. So' respiro e brasa pulsando. */
+        if(desenharObjetoAnimado(ctx,'fissura_infernal',x,y+12,52,target,time,
+             {balanco:0,ritmo:0.0018,respiro:0.016,brilho:0.34,corBrilho:'#ff5a20',ritmoBrilho:0.0050})){
+          const g=ctx.createRadialGradient(x,y,0,x,y,34);
+          g.addColorStop(0,`rgba(255,70,20,${.30+pulse*.18})`);
+          g.addColorStop(1,'rgba(0,0,0,0)');
+          ctx.fillStyle=g;ctx.fillRect(x-36,y-24,72,48);
+          ctx.globalAlpha=1;drawTargetHealth(ctx,target,x,y-26);
+          ctx.restore();return;
+        }
         const glow=ctx.createRadialGradient(x,y,0,x,y,38);glow.addColorStop(0,`rgba(255,70,20,${.45+pulse*.25})`);glow.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=glow;ctx.fillRect(x-40,y-40,80,80);ctx.strokeStyle='#ff5a20';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(x-22,y-12);ctx.lineTo(x-7,y-2);ctx.lineTo(x-15,y+14);ctx.lineTo(x+5,y+4);ctx.lineTo(x+20,y+17);ctx.stroke();ctx.strokeStyle='#ffd15c';ctx.lineWidth=2;ctx.stroke();
       }
       drawTargetHealth(ctx,target,x,y-(target.healthOffset||target.radius+15));
