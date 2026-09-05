@@ -5689,6 +5689,27 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
       <div class="settings-panel" data-settings-panel="video">
         <div class="settings-resolution-grid" id="settings-resolution-grid"></div>
         <p class="settings-help">A área do jogo permanece em 4:3. A opção muda a nitidez interna sem alterar gráficos ou jogabilidade.</p>
+
+        <h2 style="margin-top:18px">Efeitos de combate</h2>
+        <div class="settings-row">
+          <span>Intensidade</span>
+          <button class="settings-toggle" id="settings-fx-intensity"
+                  onclick="GameSettings.cycleCombatFxIntensity()">NORMAL</button>
+        </div>
+        <label class="settings-volume"><span>Tremor de tela</span>
+          <input id="settings-fx-shake" type="range" min="0" max="100" step="5"
+                 oninput="GameSettings.setCombatFxShake(this.value)"></label>
+        <div class="settings-row">
+          <span>Reduzir movimento de câmera</span>
+          <button class="settings-toggle" id="settings-fx-motion"
+                  onclick="GameSettings.toggleCombatFxMotion()">DESATIVADO</button>
+        </div>
+        <div class="settings-row">
+          <span>Reduzir flashes</span>
+          <button class="settings-toggle" id="settings-fx-flash"
+                  onclick="GameSettings.toggleCombatFxFlashes()">DESATIVADO</button>
+        </div>
+        <p class="settings-help">Estas opções mudam apenas a apresentação. Nenhuma delas altera dano, alcance, recarga ou dificuldade — e nenhuma esconde os avisos de ataque dos chefes.</p>
       </div>
 
       <div class="settings-panel" data-settings-panel="skins">
@@ -12321,6 +12342,7 @@ function weaponDamage(player,weapon,target,amount,color){
       x:target.x,y:target.y,alvo:target,arma:weapon?.type,
       cooldown:defJ?campaignWeaponCooldown(defJ,weapon.rarity,player,weapon):0,
       dano:effective,critico:!!player?._lastAttackWasCrit,
+      angulo:player?Math.atan2(target.y-player.y,target.x-player.x):0,
       elemento:typeof campaignWeaponElement==='function'?campaignWeaponElement(weapon?.type||''):'physical',
       matou:Number(target.hp||0)<=0,
       attackEventId:player?._runAttackEventId||null,
@@ -15555,9 +15577,16 @@ function triggerDash(pl){
   pl._dashCd=pl._dashMaxCd; pl._dashAfterImages=[];
   if(typeof RunStats!=='undefined')RunStats.recordDash({playerIndex:pl.idx||0});
   if(typeof notifyBlessingDash==='function') notifyBlessingDash(pl);
-  // Som e partículas
-  spawnParts(pl.x,pl.y,'#4466ff',10,55);
-  triggerScreenShake(3,120);
+  /* Feedback do dash. Antes eram particulas azuis fixas para TODAS as
+     classes e triggerScreenShake(3,120) — a mesma forca de um golpe
+     pesado, o que fazia um movimento parecer um impacto. Agora a cor sai
+     da classe e o tremor e' pequeno, alem de respeitar o slider. */
+  if(typeof CombatJuiceSystem!=='undefined'){
+    CombatJuiceSystem.dash({x:pl.x,y:pl.y,classe:pl.classId});
+  } else {
+    spawnParts(pl.x,pl.y,'#4466ff',10,55);
+    triggerScreenShake(3,120);
+  }
 }
 
 function _updateDashBar(pl){
@@ -15946,7 +15975,20 @@ class Player {
   }
 
   takeDmg(a,continuous){
-    return campaignDamageSystem.damagePlayer(this,a,continuous);
+    const antes=this.hp;
+    const r=campaignDamageSystem.damagePlayer(this,a,continuous);
+    /* Feedback do dano recebido. Usa o dano REALMENTE sofrido (armadura,
+       escudo e esquiva ja' descontados), senao um golpe bloqueado geraria
+       vinheta e tremor sem o jogador ter perdido nada. */
+    if(typeof CombatJuiceSystem!=='undefined'){
+      const sofrido=Math.max(0,antes-this.hp);
+      if(sofrido>0){
+        CombatJuiceSystem.danoNoJogador({x:this.x,y:this.y,quantidade:sofrido,vidaMaxima:this.maxHp,
+          angulo:typeof this._ultimaDirecaoDano==='number'?this._ultimaDirecaoDano:undefined});
+        CombatJuiceSystem.checarVidaCritica(this,this.hp,this.maxHp);
+      }
+    }
+    return r;
   }
 
   updateAbility(dt){
@@ -17530,6 +17572,7 @@ function collide(){
             x:e.x,y:e.y,alvo:e,arma:p.weapon?.type||'basico',
             cooldown:defJ?campaignWeaponCooldown(defJ,p.weapon.rarity,p.owner,p.weapon):(p.owner?.atkCd||0),
             dano:finalDmg,critico:!!p.owner?._lastAttackWasCrit,
+            angulo:typeof p.angle==='number'?p.angle:Math.atan2(p.vy||0,p.vx||1),
             elemento:typeof campaignWeaponElement==='function'?campaignWeaponElement(p.weapon?.type||''):'physical',
             matou:Number(e.hp||0)<=0,
             attackEventId:p._runAttackEventId||null,
@@ -18952,7 +18995,13 @@ if(typeof CombatJuiceSystem!=='undefined'){
     getPreferencias:()=>(typeof GameSettings!=='undefined'&&GameSettings.getCombatFx)
       ?GameSettings.getCombatFx()
       :{intensidade:'normal',shake:0.8,reduzirMovimento:false,reduzirFlashes:false},
-    spawnParts:(x,y,cor,n,vel)=>spawnParts(x,y,cor,n,vel),
+    /* O array `parts` so' existe depois de beginGame(). Sem esta guarda,
+       qualquer efeito disparado fora de uma run — a galeria de depuracao,
+       por exemplo — quebrava dentro do spawnParts. */
+    spawnParts:(x,y,cor,n,vel)=>{
+      if(typeof parts==='undefined'||!Array.isArray(parts))return;
+      spawnParts(x,y,cor,n,vel);
+    },
     aplicarShake:(forca,dur)=>triggerScreenShake(forca,dur),
     getW:()=>W, getH:()=>H,
     // Nao gastar particula com o que ninguem vai ver (item 46).
@@ -19301,7 +19350,10 @@ function loop(ts){
   drawBossWarning(t);
   // Feedback de combate: aneis de impacto e numeros de dano. Vem antes
   // dos avisos de onda, que precisam continuar por cima de tudo.
-  if(typeof CombatJuiceSystem!=='undefined')CombatJuiceSystem.desenhar(ctx);
+  if(typeof CombatJuiceSystem!=='undefined'){
+    CombatJuiceSystem.desenharVinheta(ctx,W,H);
+    CombatJuiceSystem.desenhar(ctx);
+  }
   drawLevelNotices();
   // Draw pet companion and wild pet boss
   if(currentPet) currentPet.draw(t);

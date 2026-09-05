@@ -123,6 +123,16 @@ const GameSettings = (function(){
     save(); renderControls();
   }
 
+  function renderCombatFx(){
+    const rot={baixa:'BAIXA',normal:'NORMAL',alta:'ALTA'};
+    const bt=document.getElementById('settings-fx-intensity');
+    if(bt)bt.textContent=rot[data.combatFxIntensity||'normal'];
+    const sl=document.getElementById('settings-fx-shake');
+    if(sl)sl.value=Math.round((typeof data.combatFxShake==='number'?data.combatFxShake:0.8)*100);
+    setToggle('settings-fx-motion',data.combatFxReduceMotion,'ATIVADO','DESATIVADO');
+    setToggle('settings-fx-flash',data.combatFxReduceFlashes,'ATIVADO','DESATIVADO');
+  }
+
   function setToggle(id,on,onText,offText){
     const button=document.getElementById(id); if(!button) return;
     button.classList.toggle('is-on',on);
@@ -142,6 +152,7 @@ const GameSettings = (function(){
   }
   function renderControls(){
     setToggle('settings-auto-attack-toggle',data.autoAttack,'ATIVADO','MANUAL');
+    renderCombatFx();
     const hint=document.getElementById('settings-attack-hint');
     if(hint) hint.textContent=data.autoAttack
       ?'O herói ataca o inimigo mais próximo automaticamente.'
@@ -401,6 +412,21 @@ const GameSettings = (function(){
         reduzirFlashes:!!data.combatFxReduceFlashes,
       };
     },
+    /* Acoes da UI. Ficam aqui, junto do resto das configuracoes, para nao
+       espalhar manipulacao de estado pelo index. */
+    cycleCombatFxIntensity(){
+      const ordem=['baixa','normal','alta'];
+      const i=ordem.indexOf(data.combatFxIntensity||'normal');
+      data.combatFxIntensity=ordem[(i+1)%ordem.length];
+      save(); renderCombatFx();
+    },
+    setCombatFxShake(valor){
+      data.combatFxShake=Math.max(0,Math.min(1,(Number(valor)||0)/100));
+      save(); renderCombatFx();
+    },
+    toggleCombatFxMotion(){ data.combatFxReduceMotion=!data.combatFxReduceMotion; save(); renderCombatFx(); },
+    toggleCombatFxFlashes(){ data.combatFxReduceFlashes=!data.combatFxReduceFlashes; save(); renderCombatFx(); },
+    renderCombatFx(){ renderCombatFx(); },
     setCombatFx(parcial){
       if(!parcial||typeof parcial!=='object')return;
       if(parcial.intensidade&&['baixa','normal','alta'].includes(parcial.intensidade))

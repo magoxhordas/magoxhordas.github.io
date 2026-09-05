@@ -56,6 +56,7 @@
        veneno ao mesmo tempo. */
     MAX_NUMEROS:34,
     MAX_ANEIS:12,
+    MAX_MARCAS:16,
     /* O teto de particulas quem manda e' o spawnParts (600, com pool).
        Aqui so' limito quantas EU peco por quadro. */
     MAX_PARTICULAS_POR_QUADRO:60,
@@ -109,6 +110,22 @@
       clarao:150, pausa:150, bursts:[180,300,420,540], burstParticulas:14,
       shakeEm:300, shakeForca:7, anelEm:400, anelRaio:120, fim:900,
     },
+    /* ── JOGADOR ── */
+    JOGADOR:{
+      danoLeve:{shake:2.5, vinheta:0.16, dur:180},
+      danoPesado:{shake:5, vinheta:0.34, dur:320},
+      fracaoPesado:0.22,          // >=22% da vida maxima = golpe pesado
+      vidaCriticaEm:0.25,         // avisa uma vez ao cruzar para baixo
+      vidaCriticaVolta:0.32,      // e' rearmado so' ao subir de novo
+      curaParticulas:7,
+    },
+    /* Cor do dash por classe. Discreta: identidade, nao fantasia. */
+    DASH:{
+      shake:1.2, particulas:9,
+      cores:{mage:'#b46bff',archer:'#6fe08a',viking:'#ffb347',warrior:'#ff7d6b',
+             necromancer:'#7ad9a0',padrao:'#8fb6ff'},
+    },
+
     /* Impacto acumulado no chefe: ataques rapidos so' fazem micro flash;
        quando uma fatia significativa da vida cai numa janela curta, sai um
        impacto pesado. E' o que faz build forte ser PERCEBIDA sem um shake
@@ -131,6 +148,51 @@
     blood:   {cores:['#c74343','#7d1f1f'],espalha:0.9},
   };
 
+  /* ── IDENTIDADE POR CATEGORIA ──
+     Trinta e duas armas nao podem virar trinta e duas implementacoes. O que
+     as separa e' a FAMILIA do golpe, e ela e' declarada aqui, fora do
+     desenho: espada corta, machado esmaga largo, martelo levanta poeira,
+     lanca perfura em linha, arco risca fino, besta crava, cajado descarrega
+     energia, necromante e' espectral.
+
+     A regra e' de padrao no ID, e nao uma lista de 32 nomes: arma nova da
+     mesma familia entra sozinha. */
+  const CATEGORIAS=[
+    /* A ordem importa: a primeira regra que casar vence. `chainblade` tem
+       "chain" E "blade" — e' uma corrente (golpe semicircular), entao a
+       regra da corrente precisa vir ANTES da regra de lamina. */
+    [/chain/,                            'corrente'],
+    [/sword|blade|longsword|greatsword/, 'espada'],
+    [/axe/,                              'machado'],
+    [/hammer|mace/,                      'martelo'],
+    [/spear|lance/,                      'lanca'],
+    [/crossbow/,                         'besta'],
+    [/bow/,                              'arco'],
+    [/staff/,                            'cajado'],
+    [/shield/,                           'escudo'],
+    [/necromancer|profane|soul|bone/,    'necro'],
+  ];
+  /* Assinatura visual de cada familia. "marca" e' a forma curta desenhada
+     no ponto de contato; nada aqui muda area, alcance ou dano. */
+  const ASSINATURAS={
+    espada:  {marca:'corte',   arco:0.85, comprimento:26, espessura:2,   fragmentos:0.7},
+    machado: {marca:'corte',   arco:1.35, comprimento:30, espessura:3.5, fragmentos:1.4},
+    martelo: {marca:'poeira',  arco:0,    comprimento:0,  espessura:0,   fragmentos:1.2},
+    lanca:   {marca:'linha',   arco:0,    comprimento:34, espessura:2,   fragmentos:0.6},
+    arco:    {marca:'risco',   arco:0,    comprimento:16, espessura:1,   fragmentos:0.5},
+    besta:   {marca:'crava',   arco:0,    comprimento:20, espessura:2.5, fragmentos:1.1},
+    cajado:  {marca:'energia', arco:0,    comprimento:0,  espessura:0,   fragmentos:1.0},
+    escudo:  {marca:'poeira',  arco:0,    comprimento:0,  espessura:0,   fragmentos:0.8},
+    corrente:{marca:'corte',   arco:1.6,  comprimento:28, espessura:2,   fragmentos:0.9},
+    necro:   {marca:'espectro',arco:0,    comprimento:0,  espessura:0,   fragmentos:1.0},
+    generico:{marca:'',        arco:0,    comprimento:0,  espessura:0,   fragmentos:1.0},
+  };
+  function categoriaDaArma(id){
+    const s=String(id||'');
+    for(const [re,cat] of CATEGORIAS) if(re.test(s)) return cat;
+    return 'generico';
+  }
+
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
   const num=v=>(typeof v==='number'&&isFinite(v)?v:0);
 
@@ -141,11 +203,13 @@
   /* Estado proprio do modulo. Nada de gameplay mora aqui. */
   const numeros=[];        // numeros de dano flutuantes
   const aneis=[];          // aneis de impacto
+  const marcas=[];         // assinatura visual da familia da arma
   const eventos=new Map(); // attackEventId -> agregado do ciclo
   const fantasmas=[];      // mortes visuais (nunca entidades de gameplay)
   const chefesMortos=[];   // sequencias de morte de chefe em andamento
   const acumuloChefe=new Map(); // chefe -> dano recente, para o impacto pesado
   let multikill={contagem:0,ate:0,x:0,y:0};
+  const vinheta={forca:0,ate:0,dir:null};
   let pausaAte=0;          // pseudo-hitstop: ate' quando enfatizar
   let pausaForca=0;
   let ultimoShakeEm=-1e9;
@@ -365,7 +429,16 @@
 
     // ── feedback LOCAL: sempre, por alvo ──
     flashAlvo(info.alvo,perfil,elemento,critico);
-    particulas(x,y,elemento,CONFIG.PERFIS[perfil].particulas,ORDEM.indexOf(perfil));
+    /* Assinatura da familia da arma. E' o que faz espada, machado, martelo
+       e arco nao parecerem a mesma coisa com cor diferente. */
+    if(origem!=='dot'&&origem!=='pet'){
+      marcaDeArma(x,y,info.categoria||categoriaDaArma(info.arma),
+        num(info.angulo),ORDEM.indexOf(perfil),corDoElemento(elemento));
+    }
+    {
+      const assin=ASSINATURAS[info.categoria||categoriaDaArma(info.arma)]||ASSINATURAS.generico;
+      particulas(x,y,elemento,Math.round(CONFIG.PERFIS[perfil].particulas*assin.fragmentos),ORDEM.indexOf(perfil));
+    }
     if(info.dano>0){
       const classe=origem==='dot'?'dot':(critico?'critico':(perfil==='heavy'||perfil==='massive'?'pesado':'normal'));
       numero(x,y-14,info.dano,classe);
@@ -387,6 +460,19 @@
         shake:CONFIG.PERFIS[perfil].shake,particulas:CONFIG.PERFIS[perfil].particulas,
         critico,matou:!!info.matou,alvosNoCiclo:ag?ag.alvos:1,evento:info.attackEventId||'—'};
     }
+  }
+
+  /* Marca da familia no ponto de contato. Curta (140-190ms) e sempre
+     ATRAS dos numeros e da HUD: assinatura, nao poluicao. */
+  function marcaDeArma(x,y,categoria,angulo,forca,cor){
+    const p=prefs();
+    const a=ASSINATURAS[categoria]||ASSINATURAS.generico;
+    if(!a.marca)return;
+    if(marcas.length>=CONFIG.MAX_MARCAS)marcas.shift();
+    marcas.push({tipo:a.marca,x,y,ang:num(angulo),
+      arco:a.arco,comp:a.comprimento*(0.8+forca*0.12)*p.intensidade,
+      esp:a.espessura,cor:cor||'#ffffff',nasceu:agora(),
+      dur:a.marca==='poeira'?190:150});
   }
 
   function corDoElemento(el){
@@ -510,6 +596,92 @@
   }
 
   // ═══════════════════════════════════════════════════════
+  // JOGADOR
+  // ═══════════════════════════════════════════════════════
+
+  /* Dano no jogador. Precisa ser o feedback mais claro do jogo: quem
+     apanha tem de saber na hora, e de onde veio. Mas NAO cobrindo a tela
+     de vermelho — vinheta curta nas bordas, nunca um filtro cheio. */
+  function danoNoJogador(info){
+    if(!info)return;
+    const p=prefs();
+    const max=Math.max(1,num(info.vidaMaxima));
+    const pesado=num(info.quantidade)/max>=CONFIG.JOGADOR.fracaoPesado;
+    const cfg=pesado?CONFIG.JOGADOR.danoPesado:CONFIG.JOGADOR.danoLeve;
+    shake(cfg.shake,cfg.dur);
+    if(!p.reduzirFlashes){
+      vinheta.forca=Math.max(vinheta.forca,cfg.vinheta*p.intensidade);
+      vinheta.ate=agora()+cfg.dur;
+      // direcao de onde veio o golpe, quando o chamador souber
+      vinheta.dir=(typeof info.angulo==='number')?info.angulo:null;
+    }
+    particulas(num(info.x),num(info.y),'blood',pesado?9:5,pesado?2:1);
+    som('dano',pesado?'heavy':'medium',false);
+    if(pesado)enfase(45,2);
+  }
+
+  /* Vida critica: avisa UMA vez ao cruzar para baixo, e so' rearma quando
+     o jogador se recupera. Nada de pulsar para sempre. */
+  function checarVidaCritica(jogador,hp,maxHp){
+    if(!jogador)return false;
+    const frac=num(hp)/Math.max(1,num(maxHp));
+    if(frac<=CONFIG.JOGADOR.vidaCriticaEm&&!jogador._juiceVidaBaixa){
+      jogador._juiceVidaBaixa=true;
+      vinheta.forca=Math.max(vinheta.forca,0.28);
+      vinheta.ate=agora()+520;
+      vinheta.dir=null;
+      som('vida_critica','heavy',false);
+      return true;
+    }
+    if(frac>=CONFIG.JOGADOR.vidaCriticaVolta)jogador._juiceVidaBaixa=false;
+    return false;
+  }
+
+  /* Cura REAL. Overheal nao mostra numero falso: quem chama passa o
+     efetivo, e zero nao desenha nada. */
+  function cura(x,y,quantidade){
+    const v=Math.round(num(quantidade));
+    if(v<=0)return;
+    particulas(x,y,'poison',CONFIG.JOGADOR.curaParticulas,1);
+    numero(x,y-16,v,'cura');
+  }
+
+  /* Dash. Rapido e preciso, nao pesado: tremor pequeno e cor da classe.
+     Nao mexe em hitbox, velocidade nem invulnerabilidade. */
+  function dash(info){
+    const cor=CONFIG.DASH.cores[info?.classe]||CONFIG.DASH.cores.padrao;
+    particulas(num(info?.x),num(info?.y),'physical',CONFIG.DASH.particulas,1);
+    if(typeof deps.spawnParts==='function')deps.spawnParts(num(info?.x),num(info?.y),cor,CONFIG.DASH.particulas,52);
+    shake(CONFIG.DASH.shake,110);
+    som('dash','light',false);
+  }
+
+  /* Vinheta: so' as bordas. Desenhada por cima do mundo e por baixo da
+     HUD. Se o golpe teve direcao, a borda daquele lado fica mais forte. */
+  function desenharVinheta(ctx,W,H){
+    const t=agora();
+    if(t>=vinheta.ate||vinheta.forca<=0.01)return;
+    const resta=clamp((vinheta.ate-t)/320,0,1);
+    const a=vinheta.forca*resta;
+    ctx.save();
+    const g=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.32,W/2,H/2,Math.max(W,H)*0.62);
+    g.addColorStop(0,'rgba(0,0,0,0)');
+    g.addColorStop(1,`rgba(150,20,20,${a.toFixed(3)})`);
+    ctx.fillStyle=g;
+    ctx.fillRect(0,0,W,H);
+    if(vinheta.dir!==null&&typeof vinheta.dir==='number'){
+      // reforco do lado de onde veio o golpe
+      const dx=Math.cos(vinheta.dir), dy=Math.sin(vinheta.dir);
+      const gx=W/2+dx*W*0.5, gy=H/2+dy*H*0.5;
+      const g2=ctx.createRadialGradient(gx,gy,0,gx,gy,Math.max(W,H)*0.45);
+      g2.addColorStop(0,`rgba(190,40,40,${(a*0.8).toFixed(3)})`);
+      g2.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
+    }
+    ctx.restore();
+  }
+
+  // ═══════════════════════════════════════════════════════
   // ATUALIZACAO E DESENHO
   // ═══════════════════════════════════════════════════════
 
@@ -590,7 +762,53 @@
 
   function desenhar(ctx){
     if(!ctx)return;
-    // aneis primeiro: ficam ATRAS dos numeros
+    // marcas de arma primeiro, bem atras de tudo
+    const tm=agora();
+    for(let i=marcas.length-1;i>=0;i--){
+      const m=marcas[i];
+      const prog=(tm-m.nasceu)/m.dur;
+      if(prog>=1){ marcas.splice(i,1); continue; }
+      const a=1-prog;
+      ctx.save();
+      ctx.globalAlpha=a*0.8;
+      ctx.strokeStyle=m.cor; ctx.fillStyle=m.cor;
+      ctx.lineWidth=Math.max(1,m.esp*a);
+      ctx.translate(m.x,m.y); ctx.rotate(m.ang);
+      if(m.tipo==='corte'){
+        // arco de corte que se abre: espada fino, machado largo
+        ctx.beginPath();
+        ctx.arc(0,0,m.comp*(0.55+prog*0.45),-m.arco/2,m.arco/2);
+        ctx.stroke();
+      }else if(m.tipo==='linha'||m.tipo==='crava'){
+        // perfuracao: risco reto no eixo do golpe
+        ctx.beginPath();
+        ctx.moveTo(-m.comp*0.3,0); ctx.lineTo(m.comp*(0.4+prog*0.6),0);
+        ctx.stroke();
+      }else if(m.tipo==='risco'){
+        ctx.beginPath();
+        ctx.moveTo(-m.comp*0.5,0); ctx.lineTo(m.comp*0.5,0);
+        ctx.stroke();
+      }else if(m.tipo==='poeira'){
+        // martelo: poeira baixa se abrindo no chao
+        ctx.globalAlpha=a*0.45;
+        ctx.beginPath();
+        ctx.ellipse(0,4,10+prog*20,3+prog*6,0,0,Math.PI*2);
+        ctx.stroke();
+      }else if(m.tipo==='energia'){
+        ctx.globalAlpha=a*0.7;
+        for(let k=0;k<3;k++){
+          const ang=prog*3+k*2.1;
+          ctx.fillRect(Math.cos(ang)*(6+prog*12)-1,Math.sin(ang)*(6+prog*12)-1,2,2);
+        }
+      }else if(m.tipo==='espectro'){
+        ctx.globalAlpha=a*0.55;
+        ctx.beginPath();
+        ctx.arc(0,-prog*8,7+prog*9,0,Math.PI*2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    // aneis depois, ainda atras dos numeros
     for(const a of aneis){
       ctx.save();
       ctx.globalAlpha=Math.max(0,a.vida)*0.75;
@@ -623,10 +841,12 @@
   function limpar(){
     numeros.length=0;
     aneis.length=0;
+    marcas.length=0;
     fantasmas.length=0;
     chefesMortos.length=0;
     acumuloChefe.clear();
     multikill={contagem:0,ate:0,x:0,y:0};
+    vinheta.forca=0; vinheta.ate=0; vinheta.dir=null;
     eventos.clear();
     pausaAte=0; pausaForca=0;
     ultimoShakeEm=-1e9;
@@ -638,23 +858,38 @@
   // ── Depuracao (item 58). Fora da UI normal. ──
   function definirDepuracao(v){ depurando=!!v; }
   function estadoDepuracao(){ return ultimoDebug; }
+  /* Galeria de impactos: dispara qualquer feedback sem precisar jogar uma
+     run inteira. E' a ferramenta de balanceamento — nao aparece na UI. */
   function depurar(tipo){
     const x=num(deps.getW?deps.getW()/2:320), y=num(deps.getH?deps.getH()/2:240);
-    const mapa={
-      'light':{cooldown:520},'medium':{cooldown:900},'heavy':{cooldown:1650},
-      'critical-heavy':{cooldown:1650,critico:true},
-      'massive':{perfilForcado:'massive'},
-    };
-    impacto(Object.assign({x,y,elemento:'physical',dano:120,attackEventId:'debug-'+agora()},mapa[tipo]||mapa.medium));
+    const alvo={x,y,_ultimoQuadro:null};
+    switch(String(tipo||'medium')){
+      case 'light':          return impacto({x,y,alvo,cooldown:520,arma:'archer_shortbow',dano:15,elemento:'physical',attackEventId:'dbg'+agora()});
+      case 'medium':         return impacto({x,y,alvo,cooldown:900,arma:'warrior_spear',dano:40,elemento:'physical',attackEventId:'dbg'+agora()});
+      case 'heavy':          return impacto({x,y,alvo,cooldown:1650,arma:'viking_colossalaxe',dano:120,elemento:'physical',attackEventId:'dbg'+agora()});
+      case 'critical-heavy': return impacto({x,y,alvo,cooldown:1650,arma:'viking_colossalaxe',dano:300,critico:true,elemento:'physical',attackEventId:'dbg'+agora()});
+      case 'massive':        return impacto({x,y,alvo,perfilForcado:'massive',dano:500,elemento:'fire',attackEventId:'dbg'+agora()});
+      case 'death':          return morte({x,y,alvo,dano:40,hpRestante:10});
+      case 'elite-death':    return morte({x,y,alvo,elite:true,dano:90,hpRestante:60});
+      case 'boss-death':     return morteDeChefe({x,y,alvo});
+      case 'player-hit':     return danoNoJogador({x,y,quantidade:8,vidaMaxima:100});
+      case 'player-heavy':   return danoNoJogador({x,y,quantidade:40,vidaMaxima:100,angulo:Math.PI});
+      case 'dash':           return dash({x,y,classe:'viking'});
+      case 'heal':           return cura(x,y,18);
+      default:               return impacto({x,y,alvo,cooldown:900,dano:40,attackEventId:'dbg'+agora()});
+    }
   }
+  const GALERIA=['light','medium','heavy','critical-heavy','massive','death','elite-death',
+                 'boss-death','player-hit','player-heavy','dash','heal'];
 
   global.CombatJuiceSystem=Object.freeze({
     CONFIG,ELEMENTOS,
     configurar,impacto,morte,morteDeChefe,danoNoChefe,multikillAtual,desenharFantasmas,
+    danoNoJogador,checarVidaCritica,cura,dash,desenharVinheta,
     particulas,anel,shake,enfase,numero,som,
     atualizar,desenhar,desenharFlash,enfaseAtual,
     limpar,
-    definirDepuracao,estadoDepuracao,depurar,
-    _forcaDoAtaque:forcaDoAtaque,_subir:subir,
+    definirDepuracao,estadoDepuracao,depurar,GALERIA,
+    _forcaDoAtaque:forcaDoAtaque,_subir:subir,_categoriaDaArma:categoriaDaArma,ASSINATURAS,
   });
 })(typeof window!=='undefined'?window:globalThis);

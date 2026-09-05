@@ -301,4 +301,98 @@ function bancada(preferencias){
   exigir(/RASTRO_MS/.test(hud),'a duracao do rastro precisa ser configuravel');
 }
 
+// ═══════════════════════════════════════════════════════
+// FASES 3-5 — identidade por arma, jogador e acessibilidade
+// ═══════════════════════════════════════════════════════
+
+// ── 20. Toda arma do catalogo cai numa familia, e as familias diferem ──
+{
+  const b=bancada();
+  const dados=ler('src/weapons/weapon-data.js');
+  const ids=[...dados.matchAll(/\['([a-z_]+)','[^']+'/g)].map(m=>m[1]);
+  exigir(ids.length>=32,`o catalogo deveria expor ao menos 32 armas, achei ${ids.length}`);
+  const semFamilia=ids.filter(id=>b.J._categoriaDaArma(id)==='generico');
+  exigir(semFamilia.length===0,`toda arma precisa de familia (sem: ${semFamilia.slice(0,4)})`);
+
+  // chainblade tem "chain" E "blade": a ordem das regras precisa resolver
+  exigir(b.J._categoriaDaArma('warrior_chainblade')==='corrente',
+    'a Corrente com Lamina precisa cair em corrente, nao em espada');
+
+  // e as assinaturas nao podem ser todas iguais
+  const A=b.J.ASSINATURAS;
+  exigir(A.espada.marca==='corte'&&A.martelo.marca==='poeira'&&A.lanca.marca==='linha',
+    'cada familia precisa de uma marca visual propria');
+  exigir(A.machado.arco>A.espada.arco,'o machado corta mais largo que a espada');
+  exigir(A.machado.fragmentos>A.arco.fragmentos,'o machado espalha mais fragmentos que o arco');
+}
+
+// ── 21. Dash e' movimento, nao impacto ──
+{
+  const d=bancada(), h=bancada();
+  d.J.dash({x:1,y:1,classe:'viking'});
+  h.J.impacto({x:1,y:1,cooldown:1650,dano:90,attackEventId:'h'});
+  exigir(d.total()<h.total(),'o dash nao pode tremer tanto quanto um golpe pesado');
+  exigir(d.total()>0,'o dash ainda precisa de alguma resposta');
+  const b=bancada();
+  const cores=b.J.CONFIG.DASH.cores;
+  exigir(new Set([cores.mage,cores.archer,cores.viking,cores.warrior]).size===4,
+    'cada classe precisa da propria cor de dash');
+}
+
+// ── 22. Dano no jogador e' o feedback mais claro ──
+{
+  const leve=bancada(), pesado=bancada(), golpe=bancada();
+  leve.J.danoNoJogador({x:1,y:1,quantidade:5,vidaMaxima:100});
+  pesado.J.danoNoJogador({x:1,y:1,quantidade:30,vidaMaxima:100});
+  golpe.J.impacto({x:1,y:1,cooldown:1650,dano:90,attackEventId:'g'});
+  exigir(pesado.total()>leve.total(),'golpe pesado no jogador precisa doer mais que um arranhao');
+  exigir(leve.total()>=golpe.total()*0.6,
+    'apanhar precisa ser tao ou mais perceptivel que acertar');
+}
+
+// ── 23. Vida critica avisa UMA vez, e rearma so apos recuperar ──
+{
+  const b=bancada();
+  const p={};
+  exigir(b.J.checarVidaCritica(p,20,100)===true,'precisa avisar ao cruzar para baixo');
+  exigir(b.J.checarVidaCritica(p,18,100)===false,'nao pode repetir o aviso a cada quadro');
+  b.J.checarVidaCritica(p,40,100);
+  exigir(b.J.checarVidaCritica(p,20,100)===true,'precisa rearmar depois de o jogador se recuperar');
+}
+
+// ── 24. Cura mostra valor real; overheal nao inventa numero ──
+{
+  const b=bancada();
+  b.J.cura(1,1,0);
+  exigir(b.registro.particulas===0,'cura de zero (overheal) nao pode gerar feedback');
+  b.J.cura(1,1,18);
+  exigir(b.registro.particulas>0,'cura real precisa aparecer');
+}
+
+// ── 25. Galeria de depuracao funciona sem uma run ──
+{
+  const b=bancada();
+  exigir(Array.isArray(b.J.GALERIA)&&b.J.GALERIA.length>=8,'a galeria precisa cobrir os casos principais');
+  for(const tipo of b.J.GALERIA) b.J.depurar(tipo);   // nao pode lancar
+  exigir(!html.includes('GALERIA'),'a galeria de depuracao nao pode aparecer na UI do jogador');
+}
+
+// ── 26. Configuracoes tem UI de verdade, no painel existente ──
+{
+  for(const id of ['settings-fx-intensity','settings-fx-shake','settings-fx-motion','settings-fx-flash'])
+    exigir(html.includes(id),`falta o controle ${id} na tela de configuracoes`);
+  exigir(/data-settings-panel="video"/.test(html),'os controles precisam morar num painel existente');
+  for(const fn of ['cycleCombatFxIntensity','setCombatFxShake','toggleCombatFxMotion','toggleCombatFxFlashes'])
+    exigir(settings.includes(fn),`GameSettings precisa expor ${fn}`);
+}
+
+// ── 27. O juice nao pode esconder telegrafo nem quebrar fora de run ──
+{
+  exigir(html.includes("typeof parts==='undefined'"),
+    'o spawnParts do juice precisa de guarda: `parts` so existe dentro de uma run');
+  // a vinheta e' de BORDA: nao pode ser um retangulo cheio opaco
+  exigir(/createRadialGradient/.test(modulo),'a vinheta precisa ser gradiente de borda, nao tela cheia');
+  exigir(!/fillRect\(0,0,W,H\);?\s*\/\/\s*tela cheia/.test(modulo),'nada de cobrir a tela');
+}
+
 console.log(`OK: feedback de combate verificado (${checagens} checagens).`);
