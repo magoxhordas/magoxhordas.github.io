@@ -863,6 +863,228 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
     linear-gradient(180deg,#06040e 0%,#0c0818 50%,#060410 100%);
 }
 /* ══════════════════════════════════════════════════════
+   MENUS — estilo compartilhado
+
+   A tela de herois definiu a linguagem: fundo de cena com veu, titulo
+   ornamentado, cartoes que reagem, botoes chanfrados e casca de
+   aplicativo (titulo e botoes fixos, so' o miolo rola).
+
+   Estas classes tiram isso de la' para que MODO DE JOGO e DIFICULDADE
+   nao repitam o CSS. Onde a tela de herois tinha regra propria, ela
+   continua — trocar tudo de uma vez seria risco sem ganho.
+   ══════════════════════════════════════════════════════ */
+
+/* ── Fundo em duas camadas, para cruzar sem piscar ── */
+.mn-bg{
+  position:absolute; inset:0; z-index:0;
+  background-size:cover; background-position:center;
+  opacity:0; transition:opacity .55s ease; transform:scale(1.04);
+}
+.mn-bg.ativa{ opacity:1; }
+.mn-veu{
+  position:absolute; inset:0; z-index:1; pointer-events:none;
+  background:
+    linear-gradient(180deg, rgba(8,5,14,.88) 0%, rgba(8,5,14,.52) 30%, rgba(8,5,14,.74) 66%, rgba(6,4,10,.95) 100%),
+    radial-gradient(ellipse at 50% 40%, rgba(8,5,14,0) 0%, rgba(8,5,14,.52) 78%);
+}
+
+/* ── Casca: titulo e botoes fixos, miolo rolando ── */
+.mn-palco{
+  position:relative; z-index:2; width:100%; height:100%;
+  display:grid; grid-template-rows:auto minmax(0,1fr) auto;
+  justify-items:center; align-content:stretch;
+  gap:clamp(8px,1.4vh,18px);
+  padding:clamp(12px,2.6vh,30px) clamp(14px,3.4vw,48px);
+  box-sizing:border-box; overflow:hidden;
+}
+.mn-rolavel{
+  width:100%; min-height:0; overflow-y:auto; overscroll-behavior:contain;
+  display:grid; align-content:center; justify-items:center;
+  gap:clamp(10px,1.8vh,22px); padding:clamp(4px,.8vh,10px) 0;
+}
+
+/* ── Titulo ornamentado ── */
+.mn-cabecalho{ display:grid; justify-items:center; gap:6px; text-align:center; }
+.mn-ornamento{ display:flex; align-items:center; gap:10px; }
+.mn-orn-linha{
+  display:block; width:clamp(34px,7vw,92px); height:1px;
+  background:linear-gradient(90deg, transparent, rgba(200,168,75,.62), transparent);
+}
+.mn-orn-losango{
+  display:block; width:9px; height:9px; transform:rotate(45deg);
+  border:1px solid rgba(200,168,75,.75); background:rgba(200,168,75,.16);
+  box-shadow:0 0 10px rgba(200,168,75,.35);
+}
+.mn-titulo{
+  margin:0; font-size:clamp(20px,2.9vw,36px); font-weight:bold;
+  letter-spacing:clamp(5px,1.2vw,14px); color:#f4e6bd;
+  text-shadow:0 2px 20px rgba(0,0,0,.92), 0 0 34px rgba(200,168,75,.26);
+}
+.mn-legenda{
+  margin:2px 0 0; display:flex; align-items:center; gap:10px;
+  font-size:clamp(8px,.92vw,11px); letter-spacing:clamp(2px,.5vw,5px);
+  text-transform:uppercase; color:#9a8fae;
+}
+.mn-leg-linha{
+  display:block; width:clamp(18px,4vw,54px); height:1px;
+  background:linear-gradient(90deg, transparent, rgba(154,143,174,.5), transparent);
+}
+
+/* ── Cartoes ──
+   O RETANGULO E' INTEIRO: a imagem entra como fundo do proprio cartao,
+   coberta por um veu, em vez de uma faixa recortada no topo. Assim a
+   moldura fecha em volta de tudo e nada aparece cortado. */
+.mn-cartoes{
+  display:grid; gap:clamp(10px,1.8vw,24px);
+  width:100%; justify-items:stretch;
+}
+.mn-cartoes.de-2{ grid-template-columns:repeat(2,minmax(0,1fr)); max-width:760px; }
+.mn-cartoes.de-3{ grid-template-columns:repeat(3,minmax(0,1fr)); max-width:940px; }
+
+.mn-cartao{
+  position:relative; isolation:isolate; overflow:hidden;
+  display:grid; align-content:start; justify-items:center;
+  gap:clamp(5px,.9vh,10px);
+  padding:clamp(14px,2.4vh,26px) clamp(10px,1.6vw,20px) clamp(13px,2.2vh,22px);
+  min-height:clamp(150px,26vh,250px);
+  border:1px solid rgba(120,104,150,.24); border-radius:12px;
+  background:#0b0714; cursor:pointer;
+  transition:transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+/* imagem do cartao: cobre o retangulo inteiro */
+.mn-cartao-fundo{
+  position:absolute; inset:0; z-index:-2;
+  background-size:cover; background-position:center;
+  transform:scale(1.02); transition:transform .35s ease, filter .25s ease;
+  filter:saturate(.85) brightness(.72);
+}
+.mn-cartao-veu{
+  position:absolute; inset:0; z-index:-1; pointer-events:none;
+  background:linear-gradient(180deg, rgba(6,4,12,.42) 0%, rgba(6,4,12,.72) 52%, rgba(5,3,10,.92) 100%);
+  transition:background .25s ease;
+}
+.mn-cartao:hover, .mn-cartao.selecionado{
+  transform:translateY(-4px);
+  border-color:color-mix(in srgb, var(--cc) 66%, transparent);
+  box-shadow:0 10px 30px rgba(0,0,0,.5), 0 0 22px color-mix(in srgb, var(--cc) 22%, transparent);
+}
+.mn-cartao:hover .mn-cartao-fundo, .mn-cartao.selecionado .mn-cartao-fundo{
+  transform:scale(1.07); filter:saturate(1) brightness(.86);
+}
+.mn-cartao.selecionado .mn-cartao-veu{
+  background:linear-gradient(180deg, rgba(6,4,12,.30) 0%, rgba(6,4,12,.64) 52%, rgba(5,3,10,.90) 100%);
+}
+.mn-cartao:focus-visible{ outline:2px solid var(--cc); outline-offset:3px; }
+/* fio da cor, so' no selecionado */
+.mn-cartao::after{
+  content:""; position:absolute; left:12%; right:12%; bottom:0; height:2px;
+  background:var(--cc); opacity:0; transition:opacity .2s ease; border-radius:2px;
+}
+.mn-cartao.selecionado::after{ opacity:1; }
+
+.mn-cartao-icone{
+  display:grid; place-items:center;
+  width:clamp(34px,4.4vw,54px); height:clamp(34px,4.4vw,54px);
+  border-radius:50%; margin-bottom:2px;
+  background:radial-gradient(circle, color-mix(in srgb, var(--cc) 34%, transparent) 0%, rgba(0,0,0,.42) 72%);
+  border:1px solid color-mix(in srgb, var(--cc) 40%, transparent);
+}
+.mn-cartao-nome{
+  font-size:clamp(13px,1.5vw,21px); font-weight:bold; color:#f4e6bd; letter-spacing:1.5px;
+  text-shadow:0 2px 10px rgba(0,0,0,.9);
+}
+.mn-cartao-desc{
+  margin:0; font-size:clamp(9px,.92vw,12px); line-height:1.5; color:#c9bfda;
+  text-align:center; text-shadow:0 1px 6px rgba(0,0,0,.9);
+}
+.mn-cartao-linhas{ display:grid; gap:3px; justify-items:center; margin-top:2px; }
+.mn-cartao-linha{
+  font-size:clamp(8px,.85vw,11px); letter-spacing:.5px; color:var(--cc);
+  text-shadow:0 1px 6px rgba(0,0,0,.9);
+}
+.mn-cartao-linha.neutra{ color:#a99ec0; }
+
+/* ── Botoes chanfrados ── */
+.mn-rodape{
+  z-index:3; display:grid; grid-auto-flow:column; gap:clamp(9px,1.4vw,18px);
+  justify-content:center; justify-self:stretch;
+  padding:clamp(10px,1.6vh,18px) 0 clamp(4px,.8vh,10px);
+  background:linear-gradient(180deg, rgba(6,4,10,0) 0%, rgba(6,4,10,.82) 42%, rgba(6,4,10,.94) 100%);
+}
+.mn-btn{
+  position:relative; font-family:inherit; cursor:pointer;
+  font-size:clamp(9px,.98vw,13px); letter-spacing:clamp(2px,.35vw,4px);
+  text-transform:uppercase; font-weight:bold;
+  min-width:clamp(120px,17vw,210px);
+  padding:clamp(9px,1.5vh,15px) clamp(16px,2.2vw,30px);
+  color:#b9aecb; background:linear-gradient(180deg, rgba(20,14,32,.92), rgba(10,7,18,.96));
+  border:1px solid rgba(130,112,166,.36);
+  clip-path:polygon(11px 0, 100% 0, 100% calc(100% - 11px), calc(100% - 11px) 100%, 0 100%, 0 11px);
+  transition:color .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
+}
+.mn-btn:hover:not(:disabled){
+  color:#f2e3b8; border-color:rgba(200,168,75,.62);
+  background:linear-gradient(180deg, rgba(34,24,52,.95), rgba(16,11,26,.98));
+}
+.mn-btn:focus-visible{ outline:2px solid rgba(200,168,75,.7); outline-offset:3px; }
+.mn-btn-principal{
+  color:#8ff0b4; border-color:rgba(90,220,140,.55);
+  background:linear-gradient(180deg, rgba(12,30,20,.94), rgba(6,16,11,.97));
+  box-shadow:0 0 16px rgba(70,210,130,.18), inset 0 0 22px rgba(70,210,130,.10);
+}
+.mn-btn-principal:hover:not(:disabled){
+  color:#c8ffdd; border-color:rgba(120,245,175,.85);
+  background:linear-gradient(180deg, rgba(18,46,30,.96), rgba(9,24,16,.98));
+  box-shadow:0 0 26px rgba(70,210,130,.34), inset 0 0 26px rgba(70,210,130,.16);
+}
+.mn-btn:disabled{ opacity:.42; cursor:not-allowed; box-shadow:none; }
+
+/* ── Nivel de ameaca, no estilo dos menus ── */
+.mn-ameaca{
+  display:grid; justify-items:center; gap:7px;
+  padding:clamp(9px,1.4vh,15px) clamp(14px,2vw,26px);
+  background:rgba(10,7,18,.66); border:1px solid rgba(120,104,150,.22);
+  border-radius:10px;
+}
+.mn-ameaca-titulo{
+  display:flex; align-items:center; gap:9px;
+  font-size:clamp(8px,.75vw,10px); letter-spacing:3px; text-transform:uppercase; color:#8b7f9e;
+}
+.mn-ameaca-linha{ display:flex; align-items:center; gap:clamp(10px,1.6vw,20px); }
+.mn-ameaca-valor{
+  font-size:clamp(18px,2.2vw,28px); font-weight:bold; color:#f4e6bd; min-width:1.6em; text-align:center;
+}
+.mn-ameaca-detalhe{ font-size:clamp(8px,.82vw,11px); color:#9d92b2; text-align:center; }
+.mn-passo{
+  width:clamp(26px,3vw,34px); height:clamp(26px,3vw,34px);
+  font-family:inherit; font-size:15px; cursor:pointer; color:#cfc4e2;
+  background:rgba(20,14,32,.9); border:1px solid rgba(130,112,166,.4); border-radius:6px;
+  transition:border-color .18s ease, color .18s ease;
+}
+.mn-passo:hover:not(:disabled){ color:#f2e3b8; border-color:rgba(200,168,75,.6); }
+.mn-passo:disabled{ opacity:.35; cursor:not-allowed; }
+
+/* ── Telas estreitas ── */
+@media (max-width:820px){
+  .mn-cartoes.de-3{ grid-template-columns:1fr; max-width:420px; }
+  .mn-cartao{ min-height:0; }
+}
+@media (max-width:620px){
+  .mn-cartoes.de-2{ grid-template-columns:1fr; max-width:400px; }
+  .mn-rodape{ grid-auto-flow:row; width:100%; max-width:420px; justify-self:center; }
+  .mn-btn{ width:100%; min-width:0; }
+}
+@media (max-height:560px){
+  .mn-titulo{ font-size:clamp(16px,2vw,22px); }
+  .mn-cartao{ min-height:0; padding:clamp(9px,1.6vh,14px) 10px; }
+  .mn-cartao-icone{ width:30px; height:30px; }
+}
+@media (prefers-reduced-motion:reduce){
+  .mn-bg,.mn-cartao,.mn-cartao-fundo,.mn-btn{ transition:none; }
+}
+
+/* ══════════════════════════════════════════════════════
    TELA DE HEROIS
 
    Uma tela so'. Escolher um heroi nao abre outra janela: DESCE UMA ABA
@@ -5402,60 +5624,71 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
 <!-- ══════════════════════════════════
      PLAY MENU
 ═══════════════════════════════════ -->
+<!-- ══════════════════════════════════
+     MODO DE JOGO
+═══════════════════════════════════ -->
+<div class="screen" id="mode-menu" style="display:none">
+  <div class="mn-bg ativa" style="background-image:url('assets/menu/bg-modo-jogo.jpg')"></div>
+  <div class="mn-veu"></div>
+
+  <div class="mn-palco">
+    <header class="mn-cabecalho">
+      <span class="mn-ornamento" aria-hidden="true">
+        <i class="mn-orn-linha"></i><i class="mn-orn-losango"></i><i class="mn-orn-linha"></i>
+      </span>
+      <h1 class="mn-titulo">MODO DE JOGO</h1>
+      <p class="mn-legenda"><i class="mn-leg-linha"></i><span>COMO VOCÊ VAI ENFRENTAR AS HORDAS</span><i class="mn-leg-linha"></i></p>
+    </header>
+
+    <div class="mn-rolavel">
+      <div class="mn-cartoes de-2" id="mode-cards" role="listbox" aria-label="Modo de jogo"></div>
+    </div>
+
+    <footer class="mn-rodape">
+      <button class="mn-btn mn-btn-principal" id="mode-confirm" onclick="confirmarModo()">CONTINUAR</button>
+      <button class="mn-btn" onclick="goMainMenu()">VOLTAR</button>
+    </footer>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     DIFICULDADE
+═══════════════════════════════════ -->
 <div class="screen" id="play-menu" style="display:none">
-  <h2 class="pm-title">✦ ESCOLHA SUA JORNADA ✦</h2>
-  <div class="pm-sub">— Alianças &amp; Provação —</div>
+  <div class="mn-bg" id="dif-bg-a"></div>
+  <div class="mn-bg" id="dif-bg-b"></div>
+  <div class="mn-veu"></div>
 
-  <div class="section-title">Heróis</div>
-  <div class="choice-cards" style="margin-bottom:18px;">
-    <div class="choice-card selected" id="mode-1p" onclick="selectMode(1)">
-      <div class="c-icon"><span class="pixel-icon-slot" data-pixel-icon="wizard" data-pixel-size="46"></span></div>
-      <div class="c-name" style="color:#f0d080;">Solitário</div>
-      <div class="c-desc">1 herói<br><span class="c-tag pixel-inline"><span class="pixel-icon-slot" data-pixel-icon="keyboard" data-pixel-size="15"></span> WASD</span></div>
-    </div>
-    <div class="choice-card" id="mode-2p" onclick="selectMode(2)">
-      <div class="c-icon"><span class="pixel-icon-slot" data-pixel-icon="sword" data-pixel-size="40"></span><span class="pixel-icon-slot" data-pixel-icon="bow" data-pixel-size="40"></span></div>
-      <div class="c-name" style="color:#88ccff;">Aliança</div>
-      <div class="c-desc">2 heróis · coop local<br><span class="c-tag pixel-inline"><span class="pixel-icon-slot" data-pixel-icon="keyboard" data-pixel-size="15"></span> WASD</span> <span class="c-tag pixel-inline"><span class="pixel-icon-slot" data-pixel-icon="keyboard" data-pixel-size="15"></span> Setas</span></div>
-    </div>
-  </div>
+  <div class="mn-palco">
+    <header class="mn-cabecalho">
+      <span class="mn-ornamento" aria-hidden="true">
+        <i class="mn-orn-linha"></i><i class="mn-orn-losango"></i><i class="mn-orn-linha"></i>
+      </span>
+      <h1 class="mn-titulo">DIFICULDADE</h1>
+      <p class="mn-legenda"><i class="mn-leg-linha"></i><span>AJUSTE O DESAFIO DA SUA JORNADA</span><i class="mn-leg-linha"></i></p>
+    </header>
 
-  <div class="section-title">Dificuldade</div>
-  <div class="choice-cards" style="margin-bottom:20px;">
-    <div class="choice-card easy" id="diff-easy" onclick="selectDiff('easy')">
-      <div class="c-icon"><span class="pixel-icon-slot" data-pixel-icon="leaf" data-pixel-size="44"></span></div>
-      <div class="c-name" style="color:#33cc55;">Aprendiz</div>
-      <div class="c-desc">Hordas leves<br><span class="c-stat pixel-inline" style="color:#5fdc82;"><span class="pixel-icon-slot" data-pixel-icon="heart" data-pixel-size="16"></span> +20% vida · <span class="pixel-icon-slot" data-pixel-icon="coin" data-pixel-size="16"></span> +8% moedas</span></div>
-    </div>
-    <div class="choice-card medium selected" id="diff-medium" onclick="selectDiff('medium')">
-      <div class="c-icon"><span class="pixel-icon-slot" data-pixel-icon="sword" data-pixel-size="44"></span></div>
-      <div class="c-name" style="color:#ccaa22;">Guerreiro</div>
-      <div class="c-desc">Equilíbrio padrão<br><span class="c-stat pixel-inline" style="color:#e8c860;"><span class="pixel-icon-slot" data-pixel-icon="heart" data-pixel-size="16"></span> vida padrão · <span class="pixel-icon-slot" data-pixel-icon="coin" data-pixel-size="16"></span> −8% moedas</span></div>
-    </div>
-    <div class="choice-card hard" id="diff-hard" onclick="selectDiff('hard')">
-      <div class="c-icon"><span class="pixel-icon-slot pixel-icon-danger" data-pixel-icon="skull" data-pixel-size="44"></span></div>
-      <div class="c-name" style="color:#cc3322;">Lendário</div>
-      <div class="c-desc">Hordas brutais<br><span class="c-stat pixel-inline" style="color:#ff8870;"><span class="pixel-icon-slot" data-pixel-icon="heart" data-pixel-size="16"></span> −15% vida · <span class="pixel-icon-slot" data-pixel-icon="coin" data-pixel-size="16"></span> −22% moedas</span></div>
-    </div>
-  </div>
+    <div class="mn-rolavel">
+      <div class="mn-cartoes de-3" id="diff-cards" role="listbox" aria-label="Dificuldade"></div>
 
-  <div id="threat-block" style="display:none;margin-bottom:18px;">
-    <div class="section-title">Nível de Ameaça</div>
-    <div class="threat-row">
-      <button class="threat-btn" id="threat-minus" onclick="mudarAmeaca(-1)" aria-label="Diminuir ameaça">−</button>
-      <div class="threat-core">
-        <div class="threat-number" id="threat-value">0</div>
+      <div class="mn-ameaca" id="threat-block" style="display:none">
+        <div class="mn-ameaca-titulo">
+          <i class="mn-leg-linha"></i><span>NÍVEL DE AMEAÇA</span><i class="mn-leg-linha"></i>
+        </div>
+        <div class="mn-ameaca-linha">
+          <button class="mn-passo" id="threat-minus" onclick="mudarAmeaca(-1)" aria-label="Diminuir ameaça">−</button>
+          <span class="mn-ameaca-valor" id="threat-value">0</span>
+          <button class="mn-passo" id="threat-plus" onclick="mudarAmeaca(1)" aria-label="Aumentar ameaça">+</button>
+        </div>
+        <div class="mn-ameaca-detalhe" id="threat-detail">Chefões se comportam normalmente.</div>
         <div class="threat-pips" id="threat-pips" aria-hidden="true"></div>
       </div>
-      <button class="threat-btn" id="threat-plus" onclick="mudarAmeaca(1)" aria-label="Aumentar ameaça">+</button>
     </div>
-    <div class="threat-detail" id="threat-detail">Chefões se comportam normalmente.</div>
-    <div class="threat-help">Chefões recebem modificadores sorteados que mudam seus ataques e a arena. Quanto maior a ameaça, maior o bônus de moedas do chefão.</div>
-  </div>
 
-  <div class="pm-actions" style="display:flex;gap:12px;justify-content:center;align-items:stretch;">
-    <button class="menu-btn primary pm-go" id="start-btn" onclick="goCharSelect()"><span class="pixel-btn-content"><span class="pixel-icon-slot" data-pixel-icon="sword" data-pixel-size="22"></span> ESCOLHER HERÓI →</span></button>
-    <button class="menu-btn pm-back" onclick="goMainMenu()">Voltar</button>
+    <footer class="mn-rodape">
+      <button class="mn-btn mn-btn-principal" id="start-btn" onclick="goCharSelect()">CONFIRMAR</button>
+      <button class="mn-btn" onclick="voltarAoModo()">VOLTAR</button>
+    </footer>
   </div>
 </div>
 
@@ -5934,13 +6167,15 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
 
 <!-- ══ BOSS RUSH MODE ══ -->
 <div class="screen" id="bossrush-screen" style="display:none">
-  <div class="br-title"><span class="pixel-icon-slot pixel-icon-danger" data-pixel-icon="sword" data-pixel-size="38"></span> MODO CHEFÃO</div>
-  <div class="br-sub">— Boss Rush · Desafio Extremo —</div>
-  <div style="font-size:14px;color:#e8a888;letter-spacing:1px;margin-bottom:14px;text-align:center;">
+  <div class="mn-bg ativa" style="background-image:url('assets/menu/bg-chefao.jpg')"></div>
+  <div class="mn-veu"></div>
+  <div class="br-title" style="position:relative;z-index:2"><span class="pixel-icon-slot pixel-icon-danger" data-pixel-icon="sword" data-pixel-size="38"></span> MODO CHEFÃO</div>
+  <div class="br-sub" style="position:relative;z-index:2">— Boss Rush · Desafio Extremo —</div>
+  <div style="position:relative;z-index:2;font-size:14px;color:#e8a888;letter-spacing:1px;margin-bottom:14px;text-align:center;">
     Enfrente os chefões em sequência. Sem ondas normais. Prove sua força!
   </div>
-  <div class="br-boss-list" id="br-boss-list"></div>
-  <div class="paired-action-row">
+  <div class="br-boss-list" id="br-boss-list" style="position:relative;z-index:2"></div>
+  <div class="paired-action-row" style="position:relative;z-index:2">
     <button class="br-start-btn paired-action-btn" id="br-start-btn" onclick="startBossRush()">INICIAR BOSS RUSH</button>
     <button class="menu-btn paired-action-btn" onclick="showScreen('main-menu')">Voltar</button>
   </div>
@@ -6214,7 +6449,9 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
   'use strict';
 
   const DEFAULT_SCREENS=[
-    'main-menu','play-menu','pause-menu','shop','gameover','char-select',
+    // 'mode-menu' e' a entrada da campanha: escolher solo ou cooperativo
+    // antes da dificuldade. Sem estar nesta lista a tela nunca aparece.
+    'main-menu','mode-menu','play-menu','pause-menu','shop','gameover','char-select',
     'temple-screen','hub-screen','collection-screen','bossrush-screen',
     'dungeon-screen','settings-screen'
   ];
@@ -10672,11 +10909,11 @@ function openCampaignSetup(){
   if(raf){ cancelAnimationFrame(raf); raf=null; }
   if(typeof cleanupCampaignRuntime==='function')cleanupCampaignRuntime('campaign-setup');
   closeCampaignChapterOverlay();
+  // Jogar abre primeiro o MODO DE JOGO; a dificuldade e' a tela seguinte.
   resetBossRushState(false);
   state='menu';
-  showScreen('play-menu');
-  selectMode(1);
-  selectDiff('medium');
+  showScreen('mode-menu');
+  buildModeMenu();
 }
 
 function openBossRushMenu(){
@@ -10697,6 +10934,7 @@ function cancelCharSelect(){
     return;
   }
   showScreen('play-menu');
+  buildDiffMenu();
 }
 
 /* ══ TELA DE HEROIS ══
@@ -10862,17 +11100,135 @@ function confirmCharSelect(){
   }
 }
 
+/* ══ MENUS: MODO DE JOGO e DIFICULDADE ══
+   Eram uma tela so' com tudo empilhado. Agora sao duas, cada uma com um
+   assunto, na mesma linguagem da tela de herois. */
+
+const MODOS=[
+  {id:1, nome:'Solitário', cor:'#c8a84b', icone:'wizard',
+   desc:'Um herói contra as hordas.', linhas:['1 jogador','WASD + Mouse']},
+  {id:2, nome:'Aliança', cor:'#7cc4ff', icone:'sword',
+   desc:'Dois heróis, cooperativo local.', linhas:['2 jogadores','WASD e Setas']},
+];
+
+const DIFICULDADES=[
+  {id:'easy',   nome:'Aprendiz',  cor:'#5fdc82', icone:'leaf',  fundo:'bg-dif-easy',
+   desc:'Para quem está começando.', linhas:['+20% vida','+8% moedas']},
+  {id:'medium', nome:'Guerreiro', cor:'#e8c860', icone:'sword', fundo:'bg-dif-medium',
+   desc:'Equilíbrio perfeito.',      linhas:['Vida padrão','—8% moedas']},
+  {id:'hard',   nome:'Lendário',  cor:'#ff6a55', icone:'skull', fundo:'bg-dif-hard',
+   desc:'Apenas para os mais corajosos.', linhas:['−15% vida','+22% moedas']},
+];
+
+let difBgAtual='a';
+
+function mnIcone(nome,tam){
+  return `<span class="pixel-icon-slot" data-pixel-icon="${nome}" data-pixel-size="${tam}"></span>`;
+}
+
+/* Fundo da tela de dificuldade: mesma tecnica da tela de herois, duas
+   camadas que se cruzam para a troca nao piscar. */
+function difTrocarFundo(arquivo){
+  const a=document.getElementById('dif-bg-a'), b=document.getElementById('dif-bg-b');
+  if(!a||!b)return;
+  const entra=difBgAtual==='a'?b:a, sai=difBgAtual==='a'?a:b;
+  const url=`assets/menu/${arquivo}.jpg`;
+  const img=new Image();
+  img.onload=()=>{
+    entra.style.backgroundImage=`url("${url}")`;
+    entra.classList.add('ativa'); sai.classList.remove('ativa');
+    difBgAtual=difBgAtual==='a'?'b':'a';
+  };
+  img.src=url;
+}
+
+/* ── MODO DE JOGO ── */
+function buildModeMenu(){
+  const alvo=document.getElementById('mode-cards');
+  if(!alvo)return;
+  alvo.innerHTML=MODOS.map(m=>`
+    <div class="mn-cartao" data-modo="${m.id}" style="--cc:${m.cor}" tabindex="0"
+         role="option" aria-selected="false" aria-label="${m.nome}">
+      <div class="mn-cartao-fundo" style="background-image:url('assets/menu/bg-modo-jogo.jpg')"></div>
+      <div class="mn-cartao-veu"></div>
+      <span class="mn-cartao-icone">${mnIcone(m.icone,26)}</span>
+      <span class="mn-cartao-nome">${m.nome}</span>
+      <p class="mn-cartao-desc">${m.desc}</p>
+      <div class="mn-cartao-linhas">
+        ${m.linhas.map((l,i)=>`<span class="mn-cartao-linha${i?' neutra':''}">${l}</span>`).join('')}
+      </div>
+    </div>`).join('');
+
+  alvo.querySelectorAll('.mn-cartao').forEach(c=>{
+    const escolher=()=>selectMode(Number(c.dataset.modo));
+    c.addEventListener('click',escolher);
+    c.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();escolher();} });
+  });
+  // Os icones sao slots que precisam ser hidratados depois de inseridos.
+  if(typeof hydrateGamePixelIcons==='function')hydrateGamePixelIcons(alvo);
+  selectMode(_selMode||1);
+}
+
 function selectMode(n){
   _selMode=n;
-  document.getElementById('mode-1p').classList.toggle('selected',n===1);
-  document.getElementById('mode-2p').classList.toggle('selected',n===2);
-  atualizarAmeaca();
+  document.querySelectorAll('#mode-cards .mn-cartao').forEach(c=>{
+    const meu=Number(c.dataset.modo)===n;
+    c.classList.toggle('selecionado',meu);
+    c.setAttribute('aria-selected',meu?'true':'false');
+  });
 }
+
+function confirmarModo(){
+  gameMode=_selMode;
+  showScreen('play-menu');
+  buildDiffMenu();
+}
+
+function voltarAoModo(){
+  showScreen('mode-menu');
+  buildModeMenu();
+}
+
+/* ── DIFICULDADE ── */
+function buildDiffMenu(){
+  const alvo=document.getElementById('diff-cards');
+  if(!alvo)return;
+  alvo.innerHTML=DIFICULDADES.map(d=>`
+    <div class="mn-cartao" data-dif="${d.id}" style="--cc:${d.cor}" tabindex="0"
+         role="option" aria-selected="false" aria-label="${d.nome}">
+      <div class="mn-cartao-fundo" style="background-image:url('assets/menu/${d.fundo}.jpg')"></div>
+      <div class="mn-cartao-veu"></div>
+      <span class="mn-cartao-icone">${mnIcone(d.icone,26)}</span>
+      <span class="mn-cartao-nome">${d.nome}</span>
+      <p class="mn-cartao-desc">${d.desc}</p>
+      <div class="mn-cartao-linhas">
+        ${d.linhas.map(l=>`<span class="mn-cartao-linha">${l}</span>`).join('')}
+      </div>
+    </div>`).join('');
+
+  alvo.querySelectorAll('.mn-cartao').forEach(c=>{
+    const escolher=()=>selectDiff(c.dataset.dif);
+    c.addEventListener('click',escolher);
+    c.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();escolher();} });
+  });
+  // Os icones sao slots que precisam ser hidratados depois de inseridos.
+  if(typeof hydrateGamePixelIcons==='function')hydrateGamePixelIcons(alvo);
+  selectDiff(_selDiff||'medium');
+}
+
 function selectDiff(d){
   _selDiff=d;
-  ['easy','medium','hard'].forEach(x=>document.getElementById('diff-'+x).classList.toggle('selected',x===d));
-  atualizarAmeaca();
+  difficulty=d;
+  document.querySelectorAll('#diff-cards .mn-cartao').forEach(c=>{
+    const meu=c.dataset.dif===d;
+    c.classList.toggle('selecionado',meu);
+    c.setAttribute('aria-selected',meu?'true':'false');
+  });
+  const ficha=DIFICULDADES.find(x=>x.id===d);
+  if(ficha)difTrocarFundo(ficha.fundo);
+  if(typeof atualizarAmeaca==='function')atualizarAmeaca();
 }
+
 function atualizarAmeaca(){
   const bloco=document.getElementById('threat-block');
   const sistema=typeof BossModifierSystem!=='undefined'?BossModifierSystem:null;
