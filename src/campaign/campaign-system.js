@@ -8,6 +8,7 @@ function campaignArenaForWave(nextWave){
 }
 
 function resetCampaignMapObjects(){
+  if(typeof BossModifierSystem!=='undefined')BossModifierSystem.limpar('map-reset');
   if(typeof campaignEvents!=='undefined')campaignEvents.cleanup('chapter');
   if(typeof campaignObjectives!=='undefined')campaignObjectives.cleanup('chapter');
   enemies=[]; projs=[]; coins=[]; parts=[]; meleeAnims=[]; firePatches=[];
@@ -168,6 +169,8 @@ function updateCampaignBiomeAndBoss(wildPetFight){
       bossMajor.shieldHp=bossMajor.shieldMax;
     }
     if(typeof campaignObjectives!=='undefined')campaignObjectives.onBossSpawn(bossMajor,wave);
+    // O sorteio ocorre uma única vez por encontro e somente na campanha.
+    if(typeof BossModifierSystem!=='undefined')BossModifierSystem.aoNascerChefe(bossMajor);
     CampProgressionSystem.onBossStarted([player,player2],bossMajor);
     if(typeof Audio!=='undefined'){
       const bossTheme={5:'skeleton_king',10:'aracne',15:'frost',20:'sandworm',25:'balrog',30:'brute'}[wave]||bossMajor.type||'default';

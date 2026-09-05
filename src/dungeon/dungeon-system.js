@@ -750,6 +750,45 @@ const DNG={
   ownedRelics:new Set(),
   _vamp:0,_crit:0,_shCd:undefined,_shActive:false,
   _aoe:false,_goldMult:1,_regenT:undefined,
+  /* A Masmorra usa paletas procedurais. As marcas abaixo aplicam a mesma
+     leitura elemental da campanha sem trocar a silhueta das entidades. */
+  _CORES_EL:{fire:'#ff3a10',poison:'#3ac24d',ice:'#7fd4ff',electric:'#ffe66a',shadow:'#5a12a8'},
+  _marcarEl(alvo,el,ms){
+    if(!alvo)return;
+    alvo.elementFx=alvo.elementFx||{};
+    const ate=(typeof performance!=='undefined'?performance.now():Date.now())+(ms||900);
+    alvo.elementFx[el]=Math.max(alvo.elementFx[el]||0,ate);
+  },
+  _elAtivo(alvo){
+    const fx=alvo&&alvo.elementFx;if(!fx)return null;
+    const agora=(typeof performance!=='undefined'?performance.now():Date.now());
+    for(const k of Object.keys(fx)){if(fx[k]>agora)return k;delete fx[k];}
+    return null;
+  },
+  _paletaEl(pal,cor,forca){
+    const alvo=[parseInt(cor.slice(1,3),16),parseInt(cor.slice(3,5),16),parseInt(cor.slice(5,7),16)];
+    const out={};
+    for(const k in pal){
+      const v=pal[k];
+      if(typeof v!=='string'||v[0]!=='#'||v.length<7){out[k]=v;continue;}
+      const origem=[parseInt(v.slice(1,3),16),parseInt(v.slice(3,5),16),parseInt(v.slice(5,7),16)];
+      out[k]='#'+[0,1,2].map(i=>Math.round(origem[i]+(alvo[i]-origem[i])*forca).toString(16).padStart(2,'0')).join('');
+    }
+    return out;
+  },
+  _faiscasEl(ctx,el,sx,sy,raio,ts){
+    const cor={fire:'#ffb040',poison:'#a8f07e',ice:'#dff4ff',electric:'#fff59a',shadow:'#a06be0'}[el];
+    if(!cor)return;
+    const sobe=el==='ice'?-.5:1.3,vel=el==='fire'?.0009:.0005;
+    ctx.save();ctx.fillStyle=cor;
+    for(let i=0;i<3;i++){
+      const p=((ts*vel+i/3+sx*.01)%1);
+      ctx.globalAlpha=(1-p)*.8;
+      ctx.fillRect(Math.round(sx+Math.sin(sx*.1+i*2.6+p*3.1)*raio*.42),Math.round(sy-p*raio*sobe),2,2);
+    }
+    ctx.restore();
+  },
+
   _webTimer:0,_chestCd:false,_barrelCd:false,
   // Responsive
   dW:640,dH:480,dScale:1,
@@ -2431,9 +2470,12 @@ const DNG={
       } else if(this.pInvTimer<=0&&Math.hypot(p.x-this.px,p.y-this.py)<14){
         // Projétil INIMIGO — colide com jogador
         this._takeDmg(p.dmg);
-        if(p._freeze){this._webTimer=Math.max(this._webTimer||0,1600);this._ft(this.px,this.py-36,'❄️ CONGELADO!','#88ddff');}
-        if(p._poison&&Math.random()<0.5){this._takeDmg(p.dmg*0.4);this._ft(this.px,this.py-36,'☠️ VENENO!','#44ff44');}
-        if(p._fire){this._parts(this.px,this.py,'#ff6600',8,35);}
+        if(p._freeze){this._webTimer=Math.max(this._webTimer||0,1600);this._marcarEl(this,'ice',1600);this._ft(this.px,this.py-36,'❄️ CONGELADO!','#88ddff');}
+        if(p._poison){
+          this._marcarEl(this,'poison',1800);
+          if(Math.random()<.5){this._takeDmg(p.dmg*.4);this._ft(this.px,this.py-36,'☠️ VENENO!','#44ff44');}
+        }
+        if(p._fire){this._marcarEl(this,'fire',1100);this._parts(this.px,this.py,'#ff6600',8,35);}
         this.projectiles.splice(i,1);
       }
     }
@@ -2509,12 +2551,13 @@ const DNG={
     // ── Biome: Swamp poison tick ──
     if(this._biome===BIOMES.swamp){
       this._poisonTimer=(this._poisonTimer||0)-dt;
-      if(this._poisonTimer<=0){ this._poisonTimer=2200; if(this.pInvTimer<=0){this._takeDmg(this._biome.poisonDmg);this._ft(this.px,this.py-28,'☠ veneno','#44ff44');} }
+      if(this._poisonTimer<=0){ this._poisonTimer=2200; if(this.pInvTimer<=0){this._takeDmg(this._biome.poisonDmg);this._marcarEl(this,'poison',2200);this._ft(this.px,this.py-28,'☠ veneno','#44ff44');} }
     }
     // ── Biome: Ice slow enemies (apply once) ──
     if(this._biome===BIOMES.ice){
       for(const e of this.entities){
         if(!e.dead&&!e._iceSlowed){ e.spd=(e.spd||e.speed)*0.65; e._iceSlowed=true; }
+        if(!e.dead&&e._iceSlowed)this._marcarEl(e,'ice',900);
       }
     } else {
       // Reset ice slow when leaving ice biome
@@ -3146,7 +3189,9 @@ const DNG={
         }
       }
       ctx.globalAlpha=0.12+lf*0.88;
-      drawSpriteAt(sprArr,e.palFn(),esx,esy+e.r,e.dir==='right',e.sc);
+      const elE=this._elAtivo(e);
+      drawSpriteAt(sprArr,elE?this._paletaEl(e.palFn(),this._CORES_EL[elE]||'#ffffff',.55):e.palFn(),esx,esy+e.r,e.dir==='right',e.sc);
+      if(elE)this._faiscasEl(ctx,elE,esx,esy,(e.r||16)*(e.sc||1),ts);
       ctx.restore();
       if(lf>0.15){
         drawHPBar(esx,esy-e.r*e.sc-14,e.hp/e.maxHp,Math.round(30*e.sc));
@@ -3237,8 +3282,14 @@ const DNG={
         if(this.pFrameIdx>0||this._pMoving) heroState='walk';
       }
       const heroVisual=getHeroVisual(classId,direction,frameIdx,heroPal,null,heroState,heroArg);
-      if(!drawHeroVisual(heroVisual,psx,psy+14,flipX))
-        drawSpriteAt(heroVisual.sprite,heroVisual.pal,psx,psy+14,flipX,1);
+      const elP=this._elAtivo(this);
+      if(!drawHeroVisual(heroVisual,psx,psy+14,flipX)){
+        drawSpriteAt(heroVisual.sprite,elP?this._paletaEl(heroVisual.pal,this._CORES_EL[elP]||'#ffffff',.55):heroVisual.pal,psx,psy+14,flipX,1);
+      }else if(elP&&typeof tingirHeroi==='function'){
+        const w=heroVisual.imgFrame||(typeof HERO_IMG_FRAME!=='undefined'?HERO_IMG_FRAME:48);
+        tingirHeroi(ctx,{img:heroVisual.img,w,h:w,flip:flipX,dx:Math.round(psx-w/2),dy:Math.round((psy+14)-(heroVisual.imgFeet||(typeof HERO_IMG_FEET!=='undefined'?HERO_IMG_FEET:42)))},this._CORES_EL[elP]||'#ffffff',.42);
+      }
+      if(elP)this._faiscasEl(ctx,elP,psx,psy,16,ts);
       if(this.pAttackAnim>0&&typeof drawHeroSkinAttackEffect==='function'){
         const skinAttackProgress=1-this.pAttackAnim/this.pAttackAnimMax;
         drawHeroSkinAttackEffect(ctx,psx,psy,{progress:skinAttackProgress,direction:this.pDir,scale:1});

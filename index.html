@@ -50,6 +50,17 @@ body {
 #necromancer-resource-hud .necro-resource-guide{flex-basis:100%;text-align:center;color:#79b98c;font-size:9px;letter-spacing:.35px;white-space:nowrap}
 #necromancer-resource-hud .necro-resource.expiring b{color:#ffcb78;text-shadow:0 0 7px rgba(255,150,70,.5)}
 body.campaign-chapter-active #necromancer-resource-hud{display:none!important}
+.threat-row{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:8px}
+.threat-btn{width:38px;height:38px;font:bold 20px 'Courier New',monospace;color:#e8c860;background:linear-gradient(180deg,#241a12,#150f0a);border:2px solid #6a4f22;border-radius:6px;cursor:pointer;transition:.12s}
+.threat-btn:hover:not(:disabled){border-color:#c8a84b;color:#ffd98a;transform:translateY(-1px)}
+.threat-btn:disabled{opacity:.32;cursor:default}
+.threat-core{min-width:132px;text-align:center}
+.threat-number{font:bold 30px 'Courier New',monospace;color:#ff9a4a;text-shadow:0 0 10px rgba(255,110,30,.45);line-height:1}
+.threat-pips{display:flex;justify-content:center;gap:5px;margin-top:6px}
+.threat-pip{display:block;width:8px;height:8px;border:1px solid #4b392e;background:#1d1714;transform:rotate(45deg)}
+.threat-pip.on{border-color:#ff9a4a;background:#ff6f2a;box-shadow:0 0 7px rgba(255,110,30,.65)}
+.threat-detail{text-align:center;font-size:12px;color:#c8b48a;letter-spacing:.5px;margin-bottom:5px;min-height:30px}
+.threat-help{text-align:center;font-size:10px;color:#7a6a52;letter-spacing:.4px;max-width:430px;margin:0 auto;line-height:1.5}
 .stat-box {
   background:rgba(8,6,15,0.85); border:1px solid #7a5c1a;
   padding:3px 12px; border-radius:2px; text-align:center; min-width:74px;
@@ -5167,6 +5178,20 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
       <div class="c-name" style="color:#cc3322;">Lendário</div>
       <div class="c-desc">Hordas brutais<br><span class="c-stat pixel-inline" style="color:#ff8870;"><span class="pixel-icon-slot" data-pixel-icon="heart" data-pixel-size="16"></span> −15% vida · <span class="pixel-icon-slot" data-pixel-icon="coin" data-pixel-size="16"></span> −22% moedas</span></div>
     </div>
+  </div>
+
+  <div id="threat-block" style="display:none;margin-bottom:18px;">
+    <div class="section-title">Nível de Ameaça</div>
+    <div class="threat-row">
+      <button class="threat-btn" id="threat-minus" onclick="mudarAmeaca(-1)" aria-label="Diminuir ameaça">−</button>
+      <div class="threat-core">
+        <div class="threat-number" id="threat-value">0</div>
+        <div class="threat-pips" id="threat-pips" aria-hidden="true"></div>
+      </div>
+      <button class="threat-btn" id="threat-plus" onclick="mudarAmeaca(1)" aria-label="Aumentar ameaça">+</button>
+    </div>
+    <div class="threat-detail" id="threat-detail">Chefões se comportam normalmente.</div>
+    <div class="threat-help">Chefões recebem modificadores sorteados que mudam seus ataques e a arena. Quanto maior a ameaça, maior o bônus de moedas do chefão.</div>
   </div>
 
   <div class="pm-actions" style="display:flex;gap:12px;justify-content:center;align-items:stretch;">
@@ -10448,15 +10473,42 @@ function selectMode(n){
   _selMode=n;
   document.getElementById('mode-1p').classList.toggle('selected',n===1);
   document.getElementById('mode-2p').classList.toggle('selected',n===2);
+  atualizarAmeaca();
 }
 function selectDiff(d){
   _selDiff=d;
   ['easy','medium','hard'].forEach(x=>document.getElementById('diff-'+x).classList.toggle('selected',x===d));
+  atualizarAmeaca();
+}
+function atualizarAmeaca(){
+  const bloco=document.getElementById('threat-block');
+  const sistema=typeof BossModifierSystem!=='undefined'?BossModifierSystem:null;
+  if(!bloco||!sistema)return;
+  const permite=sistema.dificuldadePermite(_selDiff);
+  bloco.style.display=permite?'':'none';
+  if(!permite){_selThreat=0;return;}
+  _selThreat=sistema.ajustarNivel(_selThreat,_selDiff);
+  const teto=sistema.limitePara(_selDiff);
+  const valor=document.getElementById('threat-value');if(valor)valor.textContent=_selThreat;
+  const pips=document.getElementById('threat-pips');
+  if(pips){pips.replaceChildren(...Array.from({length:teto},(_,i)=>{const pip=document.createElement('span');pip.className='threat-pip'+(i<_selThreat?' on':'');return pip;}));}
+  const detalhe=document.getElementById('threat-detail');
+  if(detalhe){
+    const bonus=Math.round(((BossModifierData.CONFIG.BONUS_RECOMPENSA[_selThreat])||0)*100);
+    detalhe.textContent=_selThreat===0?'Chefões se comportam normalmente.':`${_selThreat} modificador${_selThreat>1?'es':''} por chefão · +${bonus}% de moedas`;
+  }
+  const menos=document.getElementById('threat-minus'),mais=document.getElementById('threat-plus');
+  if(menos)menos.disabled=_selThreat<=0;if(mais)mais.disabled=_selThreat>=teto;
+}
+function mudarAmeaca(delta){
+  if(typeof BossModifierSystem==='undefined'||!BossModifierSystem.dificuldadePermite(_selDiff))return;
+  _selThreat=BossModifierSystem.ajustarNivel(_selThreat+delta,_selDiff);atualizarAmeaca();
 }
 function goMainMenu(){
   if(raf){cancelAnimationFrame(raf);raf=null;}
   if(typeof cleanupCampaignRuntime==='function')cleanupCampaignRuntime('main-menu');
   closeCampaignChapterOverlay();
+  if(typeof BossModifierSystem!=='undefined')BossModifierSystem.limpar('main-menu');
   resetBossRushState(false);
   document.body.classList.remove('campaign-hud-active','campaign-coop-active');
   state='menu';
@@ -11919,11 +11971,17 @@ function buildFuseUI(){
 // ═══════════════════════════════════════════════════════
 // UI UPDATE
 // ═══════════════════════════════════════════════════════
+function txtSeMudou(el,valor){
+  if(!el)return;
+  const v=String(valor);
+  if(el.textContent!==v)el.textContent=v;
+}
+
 function updateUI(){
   const hpValue=document.getElementById('hpv');
   const hpNow=Math.max(0,Math.ceil(player.hp));
   const hpMax=Math.max(1,Math.ceil(player.maxHp));
-  hpValue.textContent=hpNow;
+  txtSeMudou(hpValue,hpNow);
   hpValue.dataset.max=hpMax;
   const healthFill=document.getElementById('campaign-health-fill');
   if(healthFill){
@@ -11931,19 +11989,19 @@ function updateUI(){
     healthFill.style.width=healthPct+'%';
     healthFill.classList.toggle('danger',healthPct<=25);
   }
-  document.getElementById('wav').textContent=wave;
-  document.getElementById('kiv').textContent=kills;
-  document.getElementById('lev').textContent=player.level;
+  txtSeMudou(document.getElementById('wav'),wave);
+  txtSeMudou(document.getElementById('kiv'),kills);
+  txtSeMudou(document.getElementById('lev'),player.level);
   const campaignBossWave=!bossRushMode&&wave>=5&&wave%5===0;
   const s=Math.max(0,Math.ceil(waveTimer/1000));
-  document.getElementById('tiv').textContent=campaignBossWave?'BOSS':`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+  txtSeMudou(document.getElementById('tiv'),campaignBossWave?'BOSS':`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`);
   document.getElementById('xp-bar').style.width=(player.xp/player.xpToNext*100)+'%';
-  document.getElementById('coin-display').textContent=totalCoins;
+  txtSeMudou(document.getElementById('coin-display'),totalCoins);
   if(gameMode===2&&player2){
     const hpValue2=document.getElementById('hpv2');
     const hpNow2=Math.max(0,Math.ceil(player2.hp));
     const hpMax2=Math.max(1,Math.ceil(player2.maxHp));
-    hpValue2.textContent=hpNow2;
+    txtSeMudou(hpValue2,hpNow2);
     hpValue2.dataset.max=hpMax2;
     const healthFill2=document.getElementById('campaign-health-fill-p2');
     if(healthFill2){
@@ -11951,7 +12009,7 @@ function updateUI(){
       healthFill2.style.width=healthPct2+'%';
       healthFill2.classList.toggle('danger',healthPct2<=25);
     }
-    document.getElementById('lev2').textContent=player2.level;
+    txtSeMudou(document.getElementById('lev2'),player2.level);
     document.getElementById('xp2-bar').style.width=(player2.xp/player2.xpToNext*100)+'%';
   }
   const necroHud=document.getElementById('necromancer-resource-hud');
@@ -11964,13 +12022,13 @@ function updateUI(){
     necroHud.style.display=gameplayVisible&&necroPlayers.length?'flex':'none';
     const snapshots=necroPlayers.map(pl=>({player:pl,hud:NecromancerSystem.getHud(pl)})).filter(item=>item.hud);
     const resourceText=(key,capKey)=>snapshots.map(({player:pl,hud})=>`${gameMode===2?`P${pl.idx+1} `:''}${hud[key]}/${hud[capKey]}`).join(' · ');
-    document.getElementById('necro-souls').textContent=resourceText('souls','soulCap');
-    document.getElementById('necro-corpses').textContent=resourceText('corpses','corpseCap');
-    document.getElementById('necro-army').textContent=resourceText('permanent','permanentCap');
+    txtSeMudou(document.getElementById('necro-souls'),resourceText('souls','soulCap'));
+    txtSeMudou(document.getElementById('necro-corpses'),resourceText('corpses','corpseCap'));
+    txtSeMudou(document.getElementById('necro-army'),resourceText('permanent','permanentCap'));
     const armyTemp=document.getElementById('necro-army-temp');
     if(armyTemp){
       const temporary=snapshots.filter(({hud})=>Number(hud.temporary)>0).map(({player:pl,hud})=>`${gameMode===2?`P${pl.idx+1} `:''}+${Number(hud.temporary)||0}/${Number(hud.temporaryCap)||3} TEMP`).join(' · ');
-      armyTemp.textContent=temporary;
+      txtSeMudou(armyTemp,temporary);
     }
   }
 }
@@ -12168,10 +12226,17 @@ function allTargets(enemies){
     ...(bossOrc&&!bossOrc.dead?[bossOrc]:[]),
     ...(bossSkel&&!bossSkel.dead?[bossSkel]:[]),
     ...(bossSpider&&!bossSpider.dead?[bossSpider]:[]),
-    ...(bossMajor&&!bossMajor.dead?[bossMajor]:[]),
+    ...(bossMajor&&!bossMajor.dead&&!(typeof BossModifierSystem!=='undefined'&&BossModifierSystem.chefeOculto(bossMajor))?[bossMajor]:[]),
     ...(petBoss&&!petBoss.dead&&!petBoss.tamed?[petBoss]:[]),
     ...(typeof campaignObjectiveTargets==='function'?campaignObjectiveTargets():[]),
+    ...(typeof BossModifierSystem!=='undefined'?BossModifierSystem.alvosAtivos():[]),
   ];
+}
+
+function consumirLentidaoDeAmeaca(pl){
+  const valor=pl&&pl._ameacaLentidao;
+  if(pl)pl._ameacaLentidao=0;
+  return valor||0;
 }
 
 function nearestWeaponTargets(player,enemies,range,limit=1,exclude=[]){
@@ -15447,17 +15512,21 @@ function drawDashCooldownBar(x,y,pct,w=44){
   ctx.fillRect(x-w/2,y,Math.floor(w*safePct),1);
 }
 
-function drawFrozenPlayerCube(pl,t){
-  const x=Math.round(pl.x), top=Math.round(pl.y-34), bottom=Math.round(pl.y+19);
-  const left=x-23, right=x+23, depth=9;
+function drawFrozenPlayerCube(pl,t,medidas){
+  const meia=Math.max(9,Math.round(medidas?.meia??23));
+  const alto=Math.round(medidas?.alto??34);
+  const baixo=Math.round(medidas?.baixo??19);
+  const x=Math.round(pl.x),top=Math.round(pl.y-alto),bottom=Math.round(pl.y+baixo);
+  const left=x-meia,right=x+meia,depth=Math.max(4,Math.round(meia*.39));
   const pulse=0.72+0.18*Math.sin(t*0.012+(pl.idx||0));
   const shimmer=((t*0.045)%58)-18;
   ctx.save();
   // Brilho frio atrás do personagem, mantendo o herói visível dentro do gelo.
-  const glow=ctx.createRadialGradient(x,pl.y-5,3,x,pl.y-5,38);
+  const raioBrilho=meia*1.65;
+  const glow=ctx.createRadialGradient(x,pl.y-5,3,x,pl.y-5,raioBrilho);
   glow.addColorStop(0,'rgba(205,250,255,0.24)');
   glow.addColorStop(1,'rgba(80,205,255,0)');
-  ctx.fillStyle=glow; ctx.fillRect(x-42,top-16,84,82);
+  ctx.fillStyle=glow;ctx.fillRect(x-raioBrilho,top-16,raioBrilho*2,(bottom-top)+depth+32);
 
   // Face frontal translúcida.
   ctx.globalAlpha=0.34;
@@ -15506,7 +15575,7 @@ function drawFrozenPlayerCube(pl,t){
   ctx.fillRect(right-18,bottom-4,10,6); ctx.fillRect(right-7,bottom-2,13,4);
   for(let i=0;i<5;i++){
     const a=t*0.0025+i*1.27;
-    const px=x+Math.cos(a)*(27+i%2*5), py=pl.y-7+Math.sin(a)*(25+i%3*3);
+    const px=x+Math.cos(a)*(meia*1.17+i%2*5),py=pl.y-7+Math.sin(a)*(meia*1.09+i%3*3);
     ctx.globalAlpha=0.45+0.1*(i%3); ctx.fillRect(Math.round(px),Math.round(py),i%2?3:2,i%2?3:2);
   }
   ctx.restore();
@@ -15638,7 +15707,8 @@ class Player {
     // prazo em Date.now() ele expirava sozinho com o jogo pausado.
     if(this.venenoT>0) this.venenoT-=dt*1000;
     const objectiveMove=typeof campaignObjectives!=='undefined'?campaignObjectives.movementMultiplier(this):1;
-    const moveMult=(this.webbed?0.32:(this.slowed?0.55:1))*CampProgressionSystem.movementMultiplier(this)*objectiveMove;
+    const threatSlow=1-consumirLentidaoDeAmeaca(this);
+    const moveMult=(this.webbed?0.32:(this.slowed?0.55:1))*CampProgressionSystem.movementMultiplier(this)*objectiveMove*threatSlow;
     this.x+=dx*this.speed*moveMult*dt; this.y+=dy*this.speed*moveMult*dt;
     this.x=Math.max(38,Math.min(W-38,this.x));
     this.y=Math.max(205,Math.min(H-24,this.y));
@@ -15735,13 +15805,7 @@ class Player {
       const isViking=this.classId==='viking';
       const meleeR=(isViking?95:110)*(1+(isViking?(getCampaignShopEffect(this).meleeArea||0):0));
       const arc=Math.PI*0.95;
-      const targets=[...enemies,
-        ...(bossOrc&&!bossOrc.dead?[bossOrc]:[]),
-        ...(bossSkel&&!bossSkel.dead?[bossSkel]:[]),
-        ...(bossSpider&&!bossSpider.dead?[bossSpider]:[]),
-        ...(bossMajor&&!bossMajor.dead?[bossMajor]:[]),
-        ...(petBoss&&!petBoss.dead&&!petBoss.tamed?[petBoss]:[]),
-      ];
+      const targets=allTargets(enemies);
       let hits=0;
       for(const e of targets){
         if(e.dead) continue;
@@ -15865,8 +15929,16 @@ class Player {
     } else { sclY=1+0.018*Math.sin(t*0.004+(this.idx||0)*2); }
     ctx.save();
     ctx.translate(this.x, feetY); ctx.scale(sclX, sclY); ctx.translate(-this.x, -feetY);
-    if(!drawHeroVisual(heroVisual, this.x, feetY+bobY, flipX))
-      drawSpriteAt(sprites[fi], heroVisual.pal, this.x, feetY+bobY, flipX, 1);
+    const heroRendered=drawHeroVisual(heroVisual,this.x,feetY+bobY,flipX);
+    if(!heroRendered){
+      this._ultimoQuadroHeroi=null;
+      drawSpriteAt(sprites[fi],heroVisual.pal,this.x,feetY+bobY,flipX,1);
+    }else{
+      const frameSize=heroVisual.imgFrame||HERO_IMG_FRAME;
+      this._ultimoQuadroHeroi={img:heroVisual.img,w:frameSize,h:frameSize,flip:flipX,
+        dx:Math.round(this.x-frameSize/2),dy:Math.round((feetY+bobY)-(heroVisual.imgFeet||HERO_IMG_FEET)),
+        cx:this.x,feetY,sclX,sclY};
+    }
     ctx.restore();
     if(this.isCasting&&typeof drawHeroSkinAttackEffect==='function'){
       const attackProgress=Math.max(0,Math.min(1,1-this.castTimer/(this.castMaxTimer||280)));
@@ -16444,8 +16516,12 @@ class Enemy {
         estado='walk'; q=Math.floor(this._passo/I.PX_POR_QUADRO);
       }
       this._andouX=this.x; this._andouY=this.y;
-      if(I.desenhar(ctx,this.type,this.x,this.y+this.radius,this.dir,estado,q,fl,this.scale)) return;
+      if(I.desenhar(ctx,this.type,this.x,this.y+this.radius,this.dir,estado,q,fl,this.scale)){
+        this._ultimoQuadro={tipo:this.type,x:this.x,pesY:this.y+this.radius,dir:this.dir,estado,idx:q,flip:fl,escala:this.scale};
+        return;
+      }
     }
+    this._ultimoQuadro=null;
     switch(this.type){
       // ── Bioma 1 ──
       case 'runner_goblin':
@@ -16871,6 +16947,7 @@ let bossHudCobrindo=false;
 /* Desenha um chefe silenciando o proprio rotulo dele quando o painel do
    topo ja' cuida disso. */
 function desenharChefe(chefe,t){
+  if(typeof BossModifierSystem!=='undefined'&&BossModifierSystem.chefeOculto(chefe))return;
   const cobre=(typeof BossHUD!=='undefined')&&BossHUD.cobre(chefe);
   if(cobre) bossHudCobrindo=true;
   try{ chefe.draw(t); } finally { bossHudCobrindo=false; }
@@ -17063,7 +17140,7 @@ class EnemyProj {
     ctx.fillStyle='#c9c3a6'; ctx.fillRect(-10,-3,3,3); ctx.fillRect(-10,1,3,3);
     ctx.restore();
   }
-  hitPlayer(pl){ const d=Math.hypot(pl.x-this.x,pl.y-this.y); if(d<pl.radius+this.radius){ pl.takeDmg(this.dmg); this.dead=true; return true; } return false; }
+  hitPlayer(pl){ const d=Math.hypot(pl.x-this.x,pl.y-this.y); if(d<pl.radius+this.radius){ pl.takeDmg(this.dmg); marcarElemento(pl,this.tipo==='lava'?'fire':'physical',this.tipo==='lava'?900:400); this.dead=true; return true; } return false; }
 }
 
 class WebShotProj {
@@ -17199,7 +17276,7 @@ class AcidShotProj {
     ctx.beginPath(); ctx.ellipse(2.4+Math.sin(this.onda)*0.7,-1.5,1.5,1.0,-0.5,0,Math.PI*2); ctx.fill();
     ctx.restore();
   }
-  hitPlayer(pl){ const d=Math.hypot(pl.x-this.x,pl.y-this.y); if(d<pl.radius+this.radius){ pl.takeDmg(this.dmg); this.dead=true; spawnParts(this.x,this.y,'#42f044',9,38); return true; } return false; }
+  hitPlayer(pl){ const d=Math.hypot(pl.x-this.x,pl.y-this.y); if(d<pl.radius+this.radius){ pl.takeDmg(this.dmg); marcarElemento(pl,'poison',1400); this.dead=true; spawnParts(this.x,this.y,'#42f044',9,38); return true; } return false; }
 }
 
 class HomingFireball {
@@ -17250,7 +17327,7 @@ class HomingFireball {
     ctx.fillStyle='#fff3c0'; ctx.fillRect(-2,-2,3,3);
     ctx.restore();
   }
-  hitPlayer(pl){ const d=Math.hypot(pl.x-this.x,pl.y-this.y); if(d<pl.radius+this.radius){ pl.takeDmg(this.dmg); this.dead=true; spawnParts(this.x,this.y,'#ff6600',8,50); return true; } return false; }
+  hitPlayer(pl){ const d=Math.hypot(pl.x-this.x,pl.y-this.y); if(d<pl.radius+this.radius){ pl.takeDmg(this.dmg); marcarElemento(pl,'fire',900); this.dead=true; spawnParts(this.x,this.y,'#ff6600',8,50); return true; } return false; }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -17285,7 +17362,10 @@ function hitCampaignObjectiveWithProjectile(p,target){
     p.hitTargets.add(target);markEnemyWeaponStatus(target,p.weapon);
     p.weapon.damageDone=(p.weapon.damageDone||0)+damage;
     applyClassHitEffect({owner,dmg:damage,weapon:p.weapon},target);
-  }else applyClassHitEffect(p,target);
+  }else{
+    applyClassHitEffect(p,target);
+    markEnemyWeaponStatus(target,p.weapon||p.element||'physical');
+  }
   const canContinue=p.isCampaignWeaponProj&&p.pierce>0;
   if(canContinue)p.pierce--;else p.dead=true;
   spawnParts(target.x,target.y,p.color||'#f0d080',5,34);
@@ -17349,6 +17429,10 @@ function collide(){
         if(hitCampaignObjectiveWithProjectile(p,target))break;
       }
     }
+    // Runas e rituais absorvem o impacto e podem ser destruídos por qualquer classe.
+    if(!p.dead&&typeof BossModifierSystem!=='undefined'&&BossModifierSystem.acertarObjetos(p.x,p.y,p.radius||4,p.dmg||10)){
+      if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
+    }
     // Player projectiles hit bosses
     if(!p.dead&&bossOrc&&!bossOrc.dead&&Math.hypot(p.x-bossOrc.x,p.y-bossOrc.y)<p.radius+bossOrc.radius){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossOrc,p.weapon||null):p.dmg;
@@ -17362,7 +17446,7 @@ function collide(){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossSpider,p.weapon||null):p.dmg;
       const before=bossSpider.hp;bossSpider.takeDmg(dmg); if(p.owner?.classId==='necromancer'){NecromancerSystem.onBossDamaged(p.owner,bossSpider,before,bossSpider.hp);NecromancerSystem.onProjectileHit(p,bossSpider,dmg);} if(p.isCampaignWeaponProj){markEnemyWeaponStatus(bossSpider,p.weapon);p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossSpider);}else applyClassHitEffect(p,bossSpider); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
     }
-    if(!p.dead&&bossMajor&&!bossMajor.dead&&Math.hypot(p.x-bossMajor.x,p.y-bossMajor.y)<p.radius+(bossMajor.radius||36)){
+    if(!p.dead&&bossMajor&&!bossMajor.dead&&!(typeof BossModifierSystem!=='undefined'&&BossModifierSystem.chefeOculto(bossMajor))&&Math.hypot(p.x-bossMajor.x,p.y-bossMajor.y)<p.radius+(bossMajor.radius||36)){
       const dmg=typeof applyCardCrit==='function'?applyCardCrit(p.owner||player,p.dmg,bossMajor,p.weapon||null):p.dmg;
       const before=bossMajor.hp;bossMajor.takeDmg(dmg); if(p.owner?.classId==='necromancer'){NecromancerSystem.onBossDamaged(p.owner,bossMajor,before,bossMajor.hp);NecromancerSystem.onProjectileHit(p,bossMajor,dmg);} if(p.isCampaignWeaponProj){markEnemyWeaponStatus(bossMajor,p.weapon);p.weapon.damageDone=(p.weapon.damageDone||0)+dmg;applyClassHitEffect({owner:p.owner,dmg,weapon:p.weapon},bossMajor);}else applyClassHitEffect(p,bossMajor); if(!p.isCampaignWeaponProj||p.pierce<=0)p.dead=true;else p.pierce--;
     }
@@ -17402,6 +17486,7 @@ function collide(){
         // um inimigo comum. Renova a cada picada e continua fora de contato.
         if(e.isScorpion&&!pl.dead){
           pl.venenoT=Math.max(pl.venenoT||0,3000);
+          marcarElemento(pl,'poison',3000);
           if(Math.random()<0.10) spawnParts(pl.x,pl.y-6,'#7ee06a',2,26);
         }
         // Toque de Gelo do Zumbi. A bandeira iceTouch existia na configuracao
@@ -17432,8 +17517,8 @@ function collide(){
   if(bossSpider&&!bossSpider.dead){
     for(const pl of allPlayers) if(Math.hypot(pl.x-bossSpider.x,pl.y-bossSpider.y)<pl.radius+bossSpider.radius) pl.takeDmg(bossSpider.damage*0.016,true);
   }
-  if(bossMajor&&!bossMajor.dead){
-    for(const pl of allPlayers) if(Math.hypot(pl.x-bossMajor.x,pl.y-bossMajor.y)<pl.radius+(bossMajor.radius||40)) pl.takeDmg((bossMajor.damage||30)*0.016,true);
+  if(bossMajor&&!bossMajor.dead&&!(typeof BossModifierSystem!=='undefined'&&BossModifierSystem.chefeOculto(bossMajor))){
+    for(const pl of allPlayers) if(Math.hypot(pl.x-bossMajor.x,pl.y-bossMajor.y)<pl.radius+(bossMajor.radius||40)) danoChefe(bossMajor,pl,(bossMajor.damage||30)*0.016,true);
   }
   // Structure projectiles (BeaconArrow, BallistaBolt) hit enemies
   for(const p of projs){
@@ -18458,13 +18543,66 @@ function templeChoose(choice){
   <script src="src/campaign/campaign-runtime.js"></script>
   <script src="src/campaign/chapter-data.js"></script>
   <script src="src/campaign/campaign-system.js"></script>
+  <script src="src/campaign/boss-modifier-data.js?v=20260904-threat1"></script>
+  <script src="src/campaign/boss-modifiers.js?v=20260904-threat1"></script>
   <script src="src/ui/campaign-overlays.js"></script>
   <script src="src/ui/boss-hud.js"></script>
   <script>
 // GAME LOOP
 // ═══════════════════════════════════════════════════════
+if(typeof BossModifierSystem!=='undefined'){
+  BossModifierSystem.configurar({
+    getPlayers:()=>[player,player2].filter(Boolean),
+    getEnemies:()=>enemies,
+    getW:()=>W,getH:()=>H,
+    getArenaBounds:()=>CAMPAIGN_ARENA_BOUNDS[currentArena]||CAMPAIGN_ARENA_BOUNDS.castle,
+    clampEntity:(entity,padding)=>clampCampaignEntity(entity,padding),
+    spawnParts:(...args)=>spawnParts(...args),
+    spawnNotice:(...args)=>spawnLevelUpNotice(...args),
+    spawnEnemy:(tipo,x,y,origem)=>campaignSpawnEnemy(tipo||pickType(wave),x,y,origem),
+    getSpawnCap:()=>((DIFF[difficulty]||DIFF.medium).spawnMax||14),
+    creditarBonus:xpExtra=>{
+      const d=DIFF[difficulty]||DIFF.medium;
+      const mult=getCardGoldMult(player)*getCampaignShopGoldMult()*(d.coinMult||1);
+      const moedas=Math.max(0,Math.round((xpExtra||0)*(d.coinFactor||.22)*mult));
+      totalCoins+=moedas;
+      return moedas;
+    },
+  });
+}
 // Elemental damage feedback shared by normal enemies and every campaign boss.
-function drawEnemyStatusFx(e,t){
+function marcarElemento(alvo,elemento,dur=700){
+  if(!alvo||alvo.dead)return;
+  alvo.elementFx=alvo.elementFx||{};
+  const agora=typeof performance!=='undefined'?performance.now():Date.now();
+  alvo.elementFx[elemento]=Math.max(alvo.elementFx[elemento]||0,agora+dur);
+}
+
+let _auxHeroi=null,_auxHeroiCtx=null;
+function tingirHeroi(ctx2,q,cor,forca){
+  if(!q||!q.img||typeof document==='undefined')return false;
+  const w=q.w,h=q.h;
+  if(!(w>0&&h>0))return false;
+  if(!_auxHeroi){_auxHeroi=document.createElement('canvas');_auxHeroiCtx=_auxHeroi.getContext('2d');}
+  if(_auxHeroi.width!==w||_auxHeroi.height!==h){_auxHeroi.width=w;_auxHeroi.height=h;}
+  _auxHeroiCtx.clearRect(0,0,w,h);
+  _auxHeroiCtx.imageSmoothingEnabled=false;
+  _auxHeroiCtx.globalCompositeOperation='source-over';
+  _auxHeroiCtx.drawImage(q.img,0,0,w,h);
+  _auxHeroiCtx.globalCompositeOperation='source-atop';
+  _auxHeroiCtx.fillStyle=cor;_auxHeroiCtx.fillRect(0,0,w,h);
+  _auxHeroiCtx.globalCompositeOperation='source-over';
+  ctx2.save();ctx2.globalAlpha=forca;ctx2.imageSmoothingEnabled=false;
+  if(Number.isFinite(q.cx)&&Number.isFinite(q.feetY)){
+    ctx2.translate(q.cx,q.feetY);ctx2.scale(q.sclX||1,q.sclY||1);ctx2.translate(-q.cx,-q.feetY);
+  }
+  if(q.flip){ctx2.translate(q.dx+w,q.dy);ctx2.scale(-1,1);ctx2.drawImage(_auxHeroi,0,0);}
+  else ctx2.drawImage(_auxHeroi,q.dx,q.dy);
+  ctx2.restore();
+  return true;
+}
+
+function drawLegacyEnemyStatusFx(e,t){
   if(!e||e.dead)return;
   const now=typeof performance!=='undefined'?performance.now():Date.now();
   const fx=e.elementFx||{};
@@ -18472,7 +18610,7 @@ function drawEnemyStatusFx(e,t){
   const active=key=>(fx[key]||0)>now;
   const fire=active('fire')||e.weaponBurn?.timer>0;
   const ice=active('ice')||e.frozen||e.slowed;
-  const poison=active('poison')||Boolean(e.weaponPoisons?.length);
+  const poison=active('poison')||Boolean(e.weaponPoisons?.length)||e.venenoT>0;
   if(!fire&&!ice&&!poison&&!active('electric')&&!active('shadow')&&!active('arcane')
      &&!active('solar')&&!active('wind')&&!active('blood')&&!active('physical'))return;
 
@@ -18667,6 +18805,92 @@ function drawEnemyStatusFx(e,t){
   ctx.restore();
 }
 
+/* Usa a propria silhueta quando o quadro exato esta disponivel. Chefes e
+   desenhos procedurais continuam no efeito anterior como reserva. */
+function drawEnemyStatusFx(e,t){
+  if(!e||e.dead)return;
+  const now=typeof performance!=='undefined'?performance.now():Date.now();
+  const fx=e.elementFx||{};
+  for(const key of Object.keys(fx))if(fx[key]<=now)delete fx[key];
+  const active=key=>(fx[key]||0)>now;
+  const fire=active('fire')||e.weaponBurn?.timer>0;
+  const ice=active('ice')||e.frozen||e.slowed;
+  const poison=active('poison')||Boolean(e.weaponPoisons?.length)||e.venenoT>0;
+  const electric=active('electric'),shadow=active('shadow'),arcane=active('arcane');
+  const solar=active('solar'),wind=active('wind'),blood=active('blood'),physical=active('physical');
+  if(!fire&&!ice&&!poison&&!electric&&!shadow&&!arcane&&!solar&&!wind&&!blood&&!physical)return;
+
+  const I=window.InimigosNormais;
+  const temObjeto=e._ultimoObjeto&&typeof CampaignObjectives!=='undefined'&&CampaignObjectives.tingirObjeto;
+  const temQuadro=e._ultimoQuadro&&I?.tingir;
+  const temHeroi=e._ultimoQuadroHeroi;
+  if(!temObjeto&&!temQuadro&&!temHeroi&&!e.frozen){
+    drawLegacyEnemyStatusFx(e,t);
+    return;
+  }
+
+  const r=Math.max(10,Math.min(58,e.radius||16));
+  const seed=(e.x*.7+e.y*1.3)%6.283,cx=e.x,cy=e.y;
+  const pulso=.5+.5*Math.sin(t*.006+seed);
+  const tingir=(cor,forca)=>{
+    if(temHeroi)return tingirHeroi(ctx,e._ultimoQuadroHeroi,cor,forca);
+    if(temQuadro)return I.tingir(ctx,e._ultimoQuadro,cor,forca);
+    if(temObjeto)return CampaignObjectives.tingirObjeto(ctx,e._ultimoObjeto,cor,forca);
+    return false;
+  };
+  const faiscas=(cor,qtd,vel,subida,espalha,tam=2)=>{
+    ctx.fillStyle=cor;
+    for(let i=0;i<qtd;i++){
+      const p=((t*vel+i/qtd+seed)%1);
+      ctx.globalAlpha=(1-p)*.8;
+      ctx.fillRect(Math.round(cx+Math.sin(seed+i*2.6+p*3.1)*r*espalha),Math.round(cy+r*.25-p*r*subida),tam,tam);
+    }
+    ctx.globalAlpha=1;
+  };
+
+  ctx.save();
+  if(ice){
+    const jaTemCubo=e.freezeFx==='iceCube';
+    if(e.frozen&&!jaTemCubo)drawFrozenPlayerCube(e,t,{meia:r*1.12,alto:r*1.7,baixo:r*.62});
+    else if(!e.frozen){tingir('#7fd4ff',.30+.10*pulso);faiscas('#dff4ff',2,.0004,-.5,.5);}
+  }
+  if(fire){tingir('#ff3a10',.34+.12*pulso);faiscas('#ffb040',3,.0009,1.5,.42);}
+  if(poison){tingir('#3ac24d',.34+.10*pulso);faiscas('#a8f07e',2,.0005,1.3,.38);}
+  if(electric){
+    tingir('#ffe66a',.30+.16*(Math.floor(t/70)%2));
+    ctx.strokeStyle='#fff59a';ctx.lineWidth=1.3;ctx.lineCap='round';
+    for(let i=0;i<3;i++){
+      const a=seed+i*2.09+Math.floor(t/80)*.9,rr=r*1.02;
+      ctx.globalAlpha=.55+.35*((i+Math.floor(t/80))%2);
+      const x0=cx+Math.cos(a)*rr,y0=cy+Math.sin(a)*rr*.85;
+      const x1=cx+Math.cos(a+.5)*rr*1.28,y1=cy+Math.sin(a+.5)*rr*1.05;
+      ctx.beginPath();ctx.moveTo(x0,y0);
+      ctx.lineTo((x0+x1)/2+Math.cos(a+1.57)*r*.16,(y0+y1)/2+Math.sin(a+1.57)*r*.16);
+      ctx.lineTo(x1,y1);ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+  }
+  if(shadow){tingir('#5a12a8',.36+.10*pulso);faiscas('#a06be0',2,.0004,1.1,.34);}
+  if(arcane){
+    tingir('#a34cff',.30+.10*pulso);ctx.fillStyle='#e0b0ff';
+    for(let i=0;i<2;i++){const a=t*.0022+i*Math.PI+seed;ctx.globalAlpha=.8;ctx.fillRect(Math.round(cx+Math.cos(a)*r*.95),Math.round(cy+Math.sin(a)*r*.6),2,2);}
+    ctx.globalAlpha=1;
+  }
+  if(solar){tingir('#ffc21e',.34+.12*pulso);faiscas('#fff0a8',3,.0012,1.6,.34);}
+  if(wind){
+    tingir('#8fe8ff',.24+.08*pulso);
+    const p=((t*.0016+seed)%1),yy=cy-r*.5+p*r*1.1,w=r*(.3+.5*Math.sin(p*Math.PI));
+    ctx.globalAlpha=Math.sin(p*Math.PI)*.7;ctx.strokeStyle='#d6faff';ctx.lineWidth=1.2;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(cx-w,yy);ctx.lineTo(cx+w,yy);ctx.stroke();ctx.globalAlpha=1;
+  }
+  if(blood){tingir('#a81622',.32+.08*pulso);faiscas('#ff4450',2,.0006,-.9,.3);}
+  if(physical&&!tingir('#ffffff',.35)){
+    ctx.globalAlpha=.4;ctx.strokeStyle='#fff6e2';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(cx-r*.5,cy-r*.42);ctx.lineTo(cx+r*.45,cy+r*.35);ctx.stroke();
+  }
+  ctx.restore();
+}
+
 // Bottom HUD: shows active class ability status
 function drawAbilityHUD(t){
   if(!player||player.dead) return;
@@ -18794,7 +19018,9 @@ function loop(ts){
     }
     if(!campaignEventActive)updateCampaignBiomeAndBoss(wildPetFight);
     // Update bossMajor
-    if(bossMajor&&!bossMajor.dead){ bossMajor.update(dt,player.x,player.y); clampCampaignEntity(bossMajor,bossMajor.radius||40); }
+    const bossThreatHidden=bossMajor&&typeof BossModifierSystem!=='undefined'&&BossModifierSystem.chefeOculto(bossMajor);
+    if(bossMajor&&!bossMajor.dead&&!bossThreatHidden){bossMajor.update(dt,player.x,player.y);clampCampaignEntity(bossMajor,bossMajor.radius||40);}
+    if(typeof BossModifierSystem!=='undefined')BossModifierSystem.update(dt);
     // Depois de TODOS os chefes se moverem. Colocado antes, nao adiantava:
     // eles perseguem o jogador e voltavam a pisar em cima no mesmo quadro.
     separarDosCorpos();
@@ -18854,8 +19080,8 @@ function loop(ts){
     ...(bossSpider&&!bossSpider.dead?[{y:bossSpider.y,fn:()=>{desenharChefe(bossSpider,t);}}]:[]),
     ...(bossMajor&&!bossMajor.dead?[{y:bossMajor.y,fn:()=>{desenharChefe(bossMajor,t);}}]:[]),
     ...structures.map(s=>({y:s.y,fn:()=>s.draw(t)})),
-    {y:player.y,fn:()=>player.draw(t)},
-    ...(gameMode===2&&player2?[{y:player2.y,fn:()=>player2.draw(t)}]:[]),
+    {y:player.y,fn:()=>{player.draw(t);drawEnemyStatusFx(player,t);}},
+    ...(gameMode===2&&player2?[{y:player2.y,fn:()=>{player2.draw(t);drawEnemyStatusFx(player2,t);}}]:[]),
   ].sort((a,b)=>a.y-b.y);
   for(const e of ents) e.fn();
   for(const p of projs) p.draw();
@@ -18863,6 +19089,10 @@ function loop(ts){
   for(const m of meleeAnims) m.draw(t);
   for(const p of parts) p.draw();
   campaignObjectives.drawOverlay(ctx,t,W,H);
+  if(campaignObjectives.getTodosAlvos){
+    for(const alvo of campaignObjectives.getTodosAlvos())drawEnemyStatusFx(alvo,t);
+  }
+  if(typeof BossModifierSystem!=='undefined')BossModifierSystem.draw(ctx,t);
   // Painel do chefe: um so', no alto. Vem depois do mundo para nada passar
   // por cima dele, e antes dos avisos de onda, que precisam ficar acima.
   if(typeof BossHUD!=='undefined'){
@@ -19006,6 +19236,8 @@ function drawForestAmbient(t){
 // ═══════════════════════════════════════════════════════
 function beginGame(){
   gameMode=_selMode; difficulty=_selDiff;
+  // O Modo Chefão permanece idêntico; ameaça só existe na campanha.
+  if(typeof BossModifierSystem!=='undefined')BossModifierSystem.iniciarRun(bossRushMode?0:_selThreat,difficulty);
   campaignCompletionPending=false;
   resetCampaignChapters();
   hideAllScreens();
@@ -19084,6 +19316,7 @@ function beginGame(){
 }
 
 function endGame(){
+  if(typeof BossModifierSystem!=='undefined')BossModifierSystem.limpar('run-end');
   CampProgressionSystem.endRun([player,player2]);
   runCookingBuffs=[];
   cleanupCampaignRuntime('death');

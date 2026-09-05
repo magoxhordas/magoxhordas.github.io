@@ -53,6 +53,8 @@ function hideAllScreens(){
 
 // ── Menu helpers ──
 let _selMode=1, _selDiff='medium';
+// Escolhido no menu e congelado quando a campanha começa.
+let _selThreat=0;
 
 // ═══════════════════════════════════════════════════════
 // SHOP INVENTORY PANEL — Brotato style

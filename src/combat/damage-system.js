@@ -39,20 +39,21 @@
     }
 
     function damagePlayer(player,amount,continuous){
-      if(player.dead)return;
+      if(player.dead)return 0;
       // Contact, trails and puddles use their own short cadence instead of
       // granting the full invulnerability window that protects big attacks.
       if(continuous){
-        if(player.inv||(player.chipT||0)>0)return;
+        if(player.inv||(player.chipT||0)>0)return 0;
         player.chipT=300;
       }else if(player.inv){
         if(player._dashActive)notifyBlessingDashAvoid(player);
-        return;
+        return 0;
       }
-      if(shouldBlessingDodge(player))return;
-      if(shouldCampProgressionDodge(player))return;
-      if(shouldCampaignShopBlock(player))return;
+      if(shouldBlessingDodge(player))return 0;
+      if(shouldCampProgressionDodge(player))return 0;
+      if(shouldCampaignShopBlock(player))return 0;
       const reduced=calculatePlayerDamage(player,amount);
+      const damageDealt=Math.min(Math.max(0,player.hp),Math.max(0,reduced));
       player.hp-=reduced;
       if(!continuous){
         player.inv=true;
@@ -65,8 +66,8 @@
       spawnParts(player.x,player.y,'#ff4444',8,65);
       triggerScreenShake(6,220);
       if(player.hp<=0){
-        if(shouldCampProgressionPreventDeath(player))return;
-        if(shouldBlessingPreventDeath(player))return;
+        if(shouldCampProgressionPreventDeath(player))return damageDealt;
+        if(shouldBlessingPreventDeath(player))return damageDealt;
         if((player._revivesLeft||0)>0){
           player._revivesLeft--;
           player.hp=Math.max(1,Math.round(player.maxHp*0.35));
@@ -74,13 +75,14 @@
           player.invT=2500;
           spawnParts(player.x,player.y,'#77ffbb',24,95);
           spawnLevelUpNotice(player.x,player.y-36,`FIO DO DESTINO · ${player._revivesLeft} RESTANTE`,player.idx);
-          return;
+          return damageDealt;
         }
         player.hp=0;
         player.dead=true;
         triggerScreenShake(14,400);
         if(shouldEndGame())endGame();
       }
+      return damageDealt;
     }
 
     function damageEnemy(target,amount,onDeath){
