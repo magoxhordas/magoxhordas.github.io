@@ -516,6 +516,32 @@ const BRUTE_BACK=[makeBruteBackFrame(0),makeBruteBackFrame(1)];
 const BRUTE_RUN=[makeBruteSideFrameV2(0),makeBruteSideFrameV2(1)];
 const BRUTE_ROCK_LIFT=makeBruteFrontFrame(0,'lift');
 const BRUTE_ROCK_THROW=makeBruteSideFrameV2(0,true);
+
+// Centraliza o dano dos seis chefes. O retorno de takeDmg informa o dano
+// realmente aplicado, portanto bloqueios, esquivas e invulnerabilidade não
+// alimentam o modificador Vampírico.
+function danoChefe(chefe,jogador,dano,continuo=false){
+  if(!jogador||typeof jogador.takeDmg!=='function')return 0;
+  if(typeof BossModifierSystem!=='undefined'&&typeof BossModifierSystem.causarDano==='function'){
+    return BossModifierSystem.causarDano(chefe,jogador,dano,continuo);
+  }
+  return jogador.takeDmg(dano,continuo)||0;
+}
+
+function claraoChefe(x,y,raio,cor,forca){
+  if(!(forca>0))return;
+  const r=Math.max(1,raio*1.15),a=Math.max(0,Math.min(1,forca))*.34;
+  const grad=ctx.createRadialGradient(x,y,0,x,y,r);
+  grad.addColorStop(0,cor);grad.addColorStop(.55,cor);grad.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=a;ctx.fillStyle=grad;
+  ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.restore();
+}
+
+function pagarAmeacaDoChefe(chefe){
+  if(typeof BossModifierSystem==='undefined'||!chefe)return false;
+  return BossModifierSystem.pagarBonus(chefe.xpVal,chefe.x,chefe.y);
+}
+
 function drawBossGrid(frame, pal, x, y, px, flipX=false){
   const Wd=frame.reduce((max,row)=>Math.max(max,row.length),0), Hd=frame.length;
   const ox=Math.round(x-Wd*px/2), oy=Math.round(y-Hd*px/2);
@@ -858,7 +884,7 @@ class BossSkeletonKing {
       spawnParts(this.x,this.y,'#aabbff',20,80);
       return;
     }
-    if(this.hp<=0&&this.resurrected){ this.dead=true; this._dropLoot(); return; }
+    if(this.hp<=0&&this.resurrected){ pagarAmeacaDoChefe(this); this.dead=true; this._dropLoot(); return; }
     this._updateBoomerang(dt);
     // Move toward player
     const dx=px-this.x, dy=py-this.y, d=Math.hypot(dx,dy);
@@ -885,7 +911,8 @@ class BossSkeletonKing {
       if(this.spinDur<=0){
         this.isSpinning=false;
         const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead);
-        for(const pl of allPl) if(Math.hypot(pl.x-this.x,pl.y-this.y)<this.spinRadius) pl.takeDmg(this.damage*0.9);
+        for(const pl of allPl) if(Math.hypot(pl.x-this.x,pl.y-this.y)<this.spinRadius) danoChefe(this,pl,this.damage*.9);
+        if(typeof BossModifierSystem!=='undefined')BossModifierSystem.golpeForte(this,this.x,this.y,this.damage*.9);
         spawnParts(this.x,this.y,'#aabbff',16,75);
         this._throwBoomerang(allPl);
       }
@@ -911,7 +938,7 @@ class BossSkeletonKing {
             da=Math.atan2(Math.sin(da),Math.cos(da));
             if(Math.abs(da)>1.15) continue;
           }   // so acerta quem esta na frente
-          pl.takeDmg(this.damage);
+          danoChefe(this,pl,this.damage);
         }
         spawnParts(this.x+Math.cos(face)*30,this.y+Math.sin(face)*30,'#ffd76a',10,60);
       }
@@ -954,7 +981,7 @@ class BossSkeletonKing {
     for(const pl of allPl){
       const key=pl===player2?'p2':'p1';
       if(!sw.hitPlayers.has(key)&&Math.hypot(pl.x-sw.x,pl.y-sw.y)<pl.radius+20){
-        sw.hitPlayers.add(key);pl.takeDmg(this.damage*0.75);
+        sw.hitPlayers.add(key);danoChefe(this,pl,this.damage*.75);
         spawnParts(sw.x,sw.y,'#f5f7fb',8,38);
       }
     }
@@ -970,8 +997,9 @@ class BossSkeletonKing {
     }
     spawnParts(this.x,this.y,'#d0d0ff',12,60);
   }
-  takeDmg(a){ if(this.phase2Triggered&&!this.resurrected) return; this.hp-=a; this.flashTimer=100; spawnParts(this.x,this.y,'#d0c8e0',4,35); }
+  takeDmg(a){if(this.phase2Triggered&&!this.resurrected)return;if(typeof BossModifierSystem!=='undefined')a=BossModifierSystem.levouDano(this,a);this.hp-=a;this.flashTimer=100;spawnParts(this.x,this.y,'#d0c8e0',4,35);if(this.hp<=0&&this.resurrected&&typeof BossModifierSystem!=='undefined')BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y);}
   _dropLoot(){
+    if(typeof BossModifierSystem!=='undefined')BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y);
     kills+=6;
     CampProgressionSystem.awardCampaignArtifact('coroa_quebrada',this);
     for(let i=0;i<8;i++) spawnCoin(this.x+(Math.random()-0.5)*50,this.y+(Math.random()-0.5)*30,Math.floor(this.xpVal/8));
@@ -1002,7 +1030,7 @@ class BossSkeletonKing {
       }
       ctx.restore();
     }
-    if(this.flashTimer>0){ ctx.save(); ctx.globalAlpha=this.flashTimer/800*0.7; ctx.fillStyle=this.resurrected?'#cc44ff':'#bbccff'; ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+    if(this.flashTimer>0)claraoChefe(this.x,this.y,this.radius,this.resurrected?'#cc44ff':'#bbccff',this.flashTimer/800*.7);
     // Arte real do chefe, com o grid antigo de reserva.
     // A arte de perfil olha para a esquerda, entao espelha quando ele vai
     // para a direita. O giro nao usa direcao: as 8 rotacoes da arte sao o
@@ -1295,7 +1323,7 @@ function drawAracneAncestralBoss(b,t){
     ctx.restore();
   }
   for(const eg of b.eggs){ if(!eg.hatched){ drawAracneEgg(eg,t); eg.drawn=true; } else eg.drawn=true; }
-  if(b.flashTimer>0){ ctx.save(); ctx.globalAlpha=b.flashTimer/100*0.5; ctx.fillStyle='#b05bd0'; ctx.beginPath(); ctx.arc(drawX,drawY,b.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+  if(b.flashTimer>0)claraoChefe(drawX,drawY,b.radius,'#b05bd0',b.flashTimer/100*.5);
   // O sprite novo e mais alto que o grid antigo: a barra acompanha, senao
   // ela cai em cima do corpo.
   const spriteTop=b._usouArte ? drawY+34-Math.round(33*b.aracneEscala)
@@ -1333,7 +1361,7 @@ class BossAracne {
     this.isMoving=false;
   }
   update(dt,px,py){
-    if(this.hp<=0){ this.dead=true; this._dropLoot(); return; }
+    if(this.hp<=0){ pagarAmeacaDoChefe(this); this.dead=true; this._dropLoot(); return; }
     if(this.jumpState==='ground'){
       const dx=px-this.x, dy=py-this.y, d=Math.hypot(dx,dy);
       if(this.hitAnim<=0){        // congela a mira durante a mordida
@@ -1362,7 +1390,7 @@ class BossAracne {
               da=Math.atan2(Math.sin(da),Math.cos(da));
               if(Math.abs(da)>1.15) continue;
             }
-            pl.takeDmg(this.damage*0.6);
+            danoChefe(this,pl,this.damage*.6);
           }
           spawnParts(this.x+Math.cos(face)*26,this.y+Math.sin(face)*26,'#e6dcc0',10,52);
           this.hitFx=220; this.hitFxAng=face;   // rasgo de presas, no draw
@@ -1404,11 +1432,12 @@ class BossAracne {
         this.x=Math.max(40,Math.min(W-40,this.jumpTarget.x));
         this.y=Math.max(205,Math.min(H-40,this.jumpTarget.y));
         this.jumpState='landing'; this.jumpLandTimer=400;
+        if(typeof BossModifierSystem!=='undefined')BossModifierSystem.golpeForte(this,this.jumpTarget.x,this.jumpTarget.y,this.damage);
         const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead);
         this.jumpHit=false;
         for(const pl of allPl){
           if(Math.hypot(pl.x-this.jumpTarget.x,pl.y-this.jumpTarget.y)<80){
-            this.jumpHit=true;pl.takeDmg(this.damage*1.2);
+            this.jumpHit=true;danoChefe(this,pl,this.damage*1.2);
           }
         }
         spawnParts(this.x,this.y,'#888840',16,70);
@@ -1456,7 +1485,7 @@ class BossAracne {
       spawnParts(ex,ey,'#888840',5,25);
     }
   }
-  takeDmg(a){ this.hp-=a; this.flashTimer=100; spawnParts(this.x,this.y,'#888840',4,35); }
+  takeDmg(a){if(typeof BossModifierSystem!=='undefined')a=BossModifierSystem.levouDano(this,a);this.hp-=a;this.flashTimer=100;spawnParts(this.x,this.y,'#888840',4,35);if(this.hp<=0&&typeof BossModifierSystem!=='undefined')BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y);}
   _dropLoot(){ kills+=8; CampProgressionSystem.awardCampaignArtifact('olho_aracne',this); for(let i=0;i<10;i++) spawnCoin(this.x+(Math.random()-0.5)*60,this.y+(Math.random()-0.5)*35,Math.floor(this.xpVal/10)); const bl=['semente_erva','semente_tomate','madeira','pedra']; for(let bi=0;bi<5;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*40,this.y,it);} showInvNotif('Aracne Ancestral derrotada!'); savePersistentData(); spawnParts(this.x,this.y,'#888840',22,90); triggerScreenShake(16,480); }
   draw(t){
     drawAracneAncestralBoss(this,t);
@@ -1542,7 +1571,7 @@ class BossAracne {
     for(const eg of this.eggs){
       if(!eg.hatched){ const pct=1-(eg.timer/eg.maxTimer); ctx.save(); ctx.globalAlpha=0.9; ctx.fillStyle='#888840'; ctx.beginPath(); ctx.ellipse(eg.x,eg.y,12,9,0,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#aaaa60'; ctx.beginPath(); ctx.ellipse(eg.x-4,eg.y-3,5,4,0,0,Math.PI*2); ctx.fill(); ctx.strokeStyle=pct>0.7?'#ff3300':'#888840'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(eg.x,eg.y,14,0,Math.PI*2*pct); ctx.stroke(); ctx.restore(); eg.drawn=true; } else { eg.drawn=true; }
     }
-    if(this.flashTimer>0){ ctx.save(); ctx.globalAlpha=this.flashTimer/100*0.5; ctx.fillStyle='#888840'; ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+    if(this.flashTimer>0)claraoChefe(this.x,this.y,this.radius,'#888840',this.flashTimer/100*.5);
     drawHPBar(this.x,this.y-this.radius*this.scale-20,this.hp/this.maxHp,95);
     ctx.fillStyle='#cc66ff'; ctx.font='bold 9px Courier New'; ctx.textAlign='center';
     if(typeof BossHUD!=='undefined') BossHUD.ancorar(this,this.x,this.y-this.radius*this.scale-24); if(typeof bossHudCobrindo==='undefined'||!bossHudCobrindo) ctx.fillText('🕷 ARACNE ANCESTRAL',this.x,this.y-this.radius*this.scale-24); ctx.textAlign='left';
@@ -1923,7 +1952,7 @@ function drawFrostGiantBoss(b,t){
   const core=ctx.createRadialGradient(x,y+8+bob,1,x,y+8+bob,22);
   core.addColorStop(0,'rgba(236,251,255,0.85)');core.addColorStop(0.45,'rgba(78,233,255,0.35)');core.addColorStop(1,'rgba(0,0,0,0)');
   ctx.fillStyle=core;ctx.beginPath();ctx.arc(x,y+8+bob,22,0,Math.PI*2);ctx.fill();
-  if(b.flashTimer>0){ctx.save();ctx.globalAlpha=b.flashTimer/100*0.5;ctx.fillStyle='#bcefff';ctx.beginPath();ctx.arc(x,y,b.radius,0,Math.PI*2);ctx.fill();ctx.restore();}
+  if(b.flashTimer>0)claraoChefe(x,y,b.radius,'#bcefff',b.flashTimer/100*.5);
   // O topo muda com a arte: a barra de vida acompanha, senao ela invade
   // a cabeca do boneco novo, que e mais alto que o grid antigo.
   const spriteTop=b._usouArte ? y+42-Math.round(42*b.golemEscala)
@@ -1953,7 +1982,7 @@ class BossFrostBehemoth {
     this.halfShieldTriggered=false; this.shieldPhase='initial';
     this.iceLineCd=8000; this.iceLineTimer=5000;
     this.iceLines=[]; this.eruptionHitPlayers=new Set();
-    this.eruptionAnim=0;
+    this.eruptionAnim=0; this.eruptionThreatTriggered=false;
     this.blizzardCd=12000; this.blizzardTimer=9000;
     this.blizzardActive=false; this.blizzardDur=0; this.blizzardDir=0;
     this.pushForce=0;
@@ -1969,7 +1998,7 @@ class BossFrostBehemoth {
     this.golemEscala=3.0;   // quadro de 64px; equivale ao tamanho antigo
   }
   update(dt,px,py){
-    if(this.hp<=0){ this.dead=true; this._dropLoot(); return; }
+    if(this.hp<=0){ pagarAmeacaDoChefe(this); this.dead=true; this._dropLoot(); return; }
     // Shield regenerates HP while active
     if(this.shieldActive){
       this.hp=Math.min(this.maxHp,this.hp+18*dt);
@@ -2002,7 +2031,7 @@ class BossFrostBehemoth {
             da=Math.atan2(Math.sin(da),Math.cos(da));
             if(Math.abs(da)>1.1) continue;
           }
-          pl.takeDmg(this.damage*0.7);
+          danoChefe(this,pl,this.damage*.7);
           pl.frozen=true; pl.frozenTimer=600; pl.freezeFx='iceCube';
         }
         triggerScreenShake(6,170);
@@ -2016,6 +2045,10 @@ class BossFrostBehemoth {
     this.iceLineTimer-=dt*1000;
     if(this.iceLineTimer<=0){ this.iceLineTimer=this.iceLineCd; this._spawnIceLines(); }
     for(const il of this.iceLines){ il.life-=dt*1000; il.active=il.life<il.warnTime; }
+    if(!this.eruptionThreatTriggered&&this.iceLines.some(il=>il.active)){
+      this.eruptionThreatTriggered=true;
+      if(typeof BossModifierSystem!=='undefined')BossModifierSystem.golpeForte(this,this.x,this.y,this.damage);
+    }
     this.iceLines=this.iceLines.filter(il=>il.life>-800);
     // Deal ice line damage — continuous while active (check every frame)
     for(const il of this.iceLines){
@@ -2029,7 +2062,7 @@ class BossFrostBehemoth {
         const cx=il.x1+dx*Math.max(0,Math.min(1,t2));
         const cy=il.y1+dy*Math.max(0,Math.min(1,t2));
         if(Math.hypot(pl.x-cx,pl.y-cy)<28){
-          pl.takeDmg(this.damage*0.6);
+          danoChefe(this,pl,this.damage*.6);
           pl.frozen=true; pl.frozenTimer=1000; pl.freezeFx='iceCube';
           this.eruptionHitPlayers.add(playerKey);
           spawnParts(pl.x,pl.y,'#88eeff',6,40);
@@ -2058,7 +2091,7 @@ class BossFrostBehemoth {
   }
   _spawnIceLines(){
     this.eruptionHitPlayers.clear();
-    this.eruptionAnim=2200;
+    this.eruptionAnim=2200;this.eruptionThreatTriggered=false;
     spawnLevelUpNotice(this.x,this.y-60,'❄ ERUPÇÃO GLACIAL — DESVIE!',0);
     spawnParts(this.x,this.y,'#88ddff',10,60);
     const angles=[0,Math.PI/3,Math.PI*2/3];
@@ -2068,6 +2101,7 @@ class BossFrostBehemoth {
     }
   }
   takeDmg(a){
+    if(typeof BossModifierSystem!=='undefined')a=BossModifierSystem.levouDano(this,a);
     if(this.shieldActive){
       this.shieldHp-=a;
       if(this.shieldHp<=0){
@@ -2089,6 +2123,7 @@ class BossFrostBehemoth {
       triggerScreenShake(10,320);
     }
     this.flashTimer=100; spawnParts(this.x,this.y,'#88ccff',4,35);
+    if(this.hp<=0&&typeof BossModifierSystem!=='undefined')BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y);
   }
   _dropLoot(){ kills+=10; CampProgressionSystem.awardCampaignArtifact('coracao_congelado',this); for(let i=0;i<12;i++) spawnCoin(this.x+(Math.random()-0.5)*70,this.y+(Math.random()-0.5)*40,Math.floor(this.xpVal/12)); const bl=['semente_erva','pedra','madeira']; for(let bi=0;bi<6;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*40,this.y,it);} showInvNotif('Gigante de Gelo derrotado! +6 itens!'); savePersistentData(); spawnParts(this.x,this.y,'#88ddff',28,100); triggerScreenShake(20,600); }
   draw(t){
@@ -2200,7 +2235,7 @@ class BossFrostBehemoth {
       ctx.beginPath(); ctx.arc(x+(f2%2?6:-6)*sc*fp*2, y+bob-4*sc+fp*16, 1.8+fp*3.2, 0, Math.PI*2); ctx.fill();
     }
     ctx.globalAlpha=1;
-    if(this.flashTimer>0){ ctx.save(); ctx.globalAlpha=this.flashTimer/100*0.5; ctx.fillStyle='#aaddff'; ctx.beginPath(); ctx.arc(x,y,this.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+    if(this.flashTimer>0)claraoChefe(x,y,this.radius,'#aaddff',this.flashTimer/100*.5);
     drawHPBar(x,y-this.radius*this.scale/1.4-18,this.hp/this.maxHp,98);
     ctx.fillStyle='#88ddff'; ctx.font='bold 9px Courier New'; ctx.textAlign='center';
     if(typeof BossHUD!=='undefined') BossHUD.ancorar(this,x,y-this.radius*this.scale/1.4-22); if(typeof bossHudCobrindo==='undefined'||!bossHudCobrindo) ctx.fillText('❄ GIGANTE DE GELO',x,y-this.radius*this.scale/1.4-22); ctx.textAlign='left';
@@ -2471,7 +2506,7 @@ function drawDevourerBoss(b,t){
   const headAngle=diving?Math.max(-.28,Math.min(.28,heading*.18)):Math.sin(t*.006+b.phase)*.045;
   drawDevourerSpriteCentered(DEVOURER_HEAD_FRAMES[frame],b.x,b.y+headBob,diving?1.45:1.5,headAngle,dirX<0);
   }
-  if(b.flashTimer>0){ctx.save();ctx.globalAlpha=b.flashTimer/100*.55;ctx.fillStyle='#fff09a';ctx.beginPath();ctx.arc(b.x,b.y,44,0,Math.PI*2);ctx.fill();ctx.restore();}
+  if(b.flashTimer>0)claraoChefe(b.x,b.y,44,'#fff09a',b.flashTimer/100*.55);
   // Com a arte nova o corpo cabe num quadro so', entao o topo sai dele; o
   // reserva continua olhando o segmento mais alto da fila.
   // A altura muda muito entre as vistas (o perfil tem 28..44 linhas, a de
@@ -2510,7 +2545,7 @@ class BossSandworm {
     this.vermeEscala=2.6;        // quadro de 64px
   }
   update(dt,px,py){
-    if(this.hp<=0){ this.dead=true; this._dropLoot(); return; }
+    if(this.hp<=0){ pagarAmeacaDoChefe(this); this.dead=true; this._dropLoot(); return; }
     // guarda onde ele estava, para o desenho saber se andou neste quadro
     this._ultimoX=this.x; this._ultimoY=this.y;
     // Cuspe ácido não teleguiado. Ao atingir ou perder força, vira uma poça temporária.
@@ -2520,7 +2555,7 @@ class BossSandworm {
       const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead);
       for(const pl of allPl){
         if(!impact&&Math.hypot(pl.x-shot.x,pl.y-shot.y)<pl.radius+shot.r){
-          pl.takeDmg(this.damage*0.35);impact=true;
+          danoChefe(this,pl,this.damage*.35);impact=true;
         }
       }
       if(impact&&!shot.dead){
@@ -2551,7 +2586,7 @@ class BossSandworm {
       for(const pl of allPl){
         const key=pl===player2?'p2':'p1';
         if(!this.diveHitPlayers.has(key)&&Math.hypot(pl.x-this.x,pl.y-this.y)<this.radius+pl.radius){
-          this.diveHitPlayers.add(key);pl.takeDmg(this.damage*this.diveDamageMult);spawnParts(this.x,this.y,'#c8a840',8,50);
+          this.diveHitPlayers.add(key);danoChefe(this,pl,this.damage*this.diveDamageMult);spawnParts(this.x,this.y,'#c8a840',8,50);
         }
       }
       this._updateBodyTrail(dt);
@@ -2564,13 +2599,13 @@ class BossSandworm {
     this.x=Math.max(44,Math.min(W-44,this.x)); this.y=Math.max(210,Math.min(H-44,this.y));
     // Sinkhole
     this.sinkholeTimer-=dt*1000;
-    if(this.sinkholeTimer<=0){ this.sinkholeTimer=this.sinkholeCd; this.sinkhole={x:W/2,y:H/2,power:40,timer:3200,range:this.sinkholeRange}; spawnLevelUpNotice(W/2,H/2-50,'🌀 SUMIDOURO!',0); }
+    if(this.sinkholeTimer<=0){ this.sinkholeTimer=this.sinkholeCd; this.sinkhole={x:W/2,y:H/2,power:40,timer:3200,range:this.sinkholeRange}; if(typeof BossModifierSystem!=='undefined')BossModifierSystem.golpeForte(this,this.x,this.y,this.damage);spawnLevelUpNotice(W/2,H/2-50,'🌀 SUMIDOURO!',0); }
     if(this.sinkhole){
       this.sinkhole.timer-=dt*1000;
       const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead);
       for(const pl of allPl){
         const sd=Math.hypot(pl.x-this.sinkhole.x,pl.y-this.sinkhole.y);
-        if(sd<this.sinkholeRange){ const ang=Math.atan2(this.sinkhole.y-pl.y,this.sinkhole.x-pl.x),knock=getCampaignShopKnockbackMultiplier(pl); pl.x+=Math.cos(ang)*this.sinkhole.power*dt*knock; pl.y+=Math.sin(ang)*this.sinkhole.power*dt*knock; if(sd<40) pl.takeDmg(this.damage*0.08,true); }
+        if(sd<this.sinkholeRange){ const ang=Math.atan2(this.sinkhole.y-pl.y,this.sinkhole.x-pl.x),knock=getCampaignShopKnockbackMultiplier(pl); pl.x+=Math.cos(ang)*this.sinkhole.power*dt*knock; pl.y+=Math.sin(ang)*this.sinkhole.power*dt*knock; if(sd<40)danoChefe(this,pl,this.damage*.08,true); }
       }
       if(this.sinkhole.timer<=0) this.sinkhole=null;
     }
@@ -2580,7 +2615,7 @@ class BossSandworm {
     for(const ap of this.acidPuddles){
       ap.timer-=dt*1000;
       const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead);
-      for(const pl of allPl) if(Math.hypot(pl.x-ap.x,pl.y-ap.y)<ap.r+pl.radius){ pl.takeDmg(this.damage*0.012,true); }
+      for(const pl of allPl) if(Math.hypot(pl.x-ap.x,pl.y-ap.y)<ap.r+pl.radius){danoChefe(this,pl,this.damage*.012,true);}
     }
     this.acidPuddles=this.acidPuddles.filter(ap=>ap.timer>0);
     // Cuspe ácido adicional entre as chuvas.
@@ -2603,7 +2638,7 @@ class BossSandworm {
             da=Math.atan2(Math.sin(da),Math.cos(da));
             if(Math.abs(da)>1.15) continue;
           }
-          pl.takeDmg(this.damage*0.6);
+          danoChefe(this,pl,this.damage*.6);
         }
         triggerScreenShake(6,160);
         spawnParts(this.x+Math.cos(face)*30,this.y+Math.sin(face)*30,'#d8c27a',12,58);
@@ -2669,7 +2704,7 @@ class BossSandworm {
     this.diveVx=Math.cos(angle)*650;this.diveVy=Math.sin(angle)*650;
     this.divePassTimer=1400;this._resetBodyTrail(angle);
   }
-  takeDmg(a){ this.hp-=a; this.flashTimer=100; spawnParts(this.x,this.y,'#c8a840',4,35); }
+  takeDmg(a){if(typeof BossModifierSystem!=='undefined')a=BossModifierSystem.levouDano(this,a);this.hp-=a;this.flashTimer=100;spawnParts(this.x,this.y,'#c8a840',4,35);if(this.hp<=0&&typeof BossModifierSystem!=='undefined')BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y);}
   _dropLoot(){ kills+=12; CampProgressionSystem.awardCampaignArtifact('presa_fossil',this); for(let i=0;i<14;i++) spawnCoin(this.x+(Math.random()-0.5)*80,this.y+(Math.random()-0.5)*45,Math.floor(this.xpVal/14)); const bl=['semente_erva','pedra','madeira','semente_tomate']; for(let bi=0;bi<7;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*50,this.y,it);} showInvNotif('Verme Devorador derrotado! +7 itens!'); savePersistentData(); spawnParts(this.x,this.y,'#c8a840',30,110); triggerScreenShake(22,650); }
   draw(t){
     drawDevourerBoss(this,t);
@@ -2774,12 +2809,9 @@ class BossSandworm {
     // Acid drip from mouth
     for(let d=0;d<3;d++){
       const da=(((t*0.04)+d*30)%40)/40;
-      ctx.save(); ctx.globalAlpha=(1-da)*0.8;
-      ctx.fillStyle='#88ff22';
-      ctx.beginPath(); ctx.arc(x+(d-1)*8,y+8+da*12,2.5,0,Math.PI*2); ctx.fill();
-      ctx.restore();
+      claraoChefe(x+(d-1)*8,y+8+da*12,2.5,'#88ff22',(1-da)*0.8);
     }
-    if(this.flashTimer>0){ ctx.save(); ctx.globalAlpha=this.flashTimer/100*0.5; ctx.fillStyle='#88ff44'; ctx.beginPath(); ctx.arc(x,y,this.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+    if(this.flashTimer>0)claraoChefe(x,y,this.radius,'#88ff44',this.flashTimer/100*.5);
     drawHPBar(x,y-this.radius*1.8-18,this.hp/this.maxHp,100);
     ctx.fillStyle='#aeff44'; ctx.font='bold 9px Courier New'; ctx.textAlign='center';
     if(typeof BossHUD!=='undefined') BossHUD.ancorar(this,x,y-this.radius*1.8-22); if(typeof bossHudCobrindo==='undefined'||!bossHudCobrindo) ctx.fillText('🪱 VERME DEVORADOR',x,y-this.radius*1.8-22); ctx.textAlign='left';
@@ -2814,7 +2846,7 @@ class BossBalrog {
     this.balrogEscala=3.2;       // quadro de 64px; equivale ao tamanho antigo
   }
   update(dt,px,py){
-    if(this.hp<=0){ this.dead=true; this._dropLoot(); return; }
+    if(this.hp<=0){ pagarAmeacaDoChefe(this); this.dead=true; this._dropLoot(); return; }
     // Phase 2 trigger at 30% HP
     if(!this.phase2&&this.hp<this.maxHp*0.3){
       this.phase2=true; this.speed*=2; spawnLevelUpNotice(W/2,H/2-40,'💥 FÚRIA DESPERTA!',0); spawnParts(this.x,this.y,'#ff4400',25,100); this.roarTimer=800;
@@ -2831,7 +2863,7 @@ class BossBalrog {
     this.x=Math.max(50,Math.min(W-50,this.x)); this.y=Math.max(215,Math.min(H-50,this.y));
     // Fire trail in phase 2
     if(this.phase2){ this.fireTrail.push({x:this.x,y:this.y,timer:3000}); }
-    for(const ft of this.fireTrail){ ft.timer-=dt*1000; const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead); for(const pl of allPl) if(Math.hypot(pl.x-ft.x,pl.y-ft.y)<28) pl.takeDmg(this.damage*0.012,true); }
+    for(const ft of this.fireTrail){ft.timer-=dt*1000;const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead);for(const pl of allPl)if(Math.hypot(pl.x-ft.x,pl.y-ft.y)<28)danoChefe(this,pl,this.damage*.012,true);}
     this.fireTrail=this.fireTrail.filter(ft=>ft.timer>0);
     // Whip attack
     this.whipTimer-=dt*1000;
@@ -2849,10 +2881,11 @@ class BossBalrog {
       // esticar, entao o jogador levava o golpe sem ver de onde veio.
       if(!this.whipAcertou&&1-Math.max(0,this.whipAnim)/600>=0.72){
         this.whipAcertou=true;
+        if(typeof BossModifierSystem!=='undefined')BossModifierSystem.golpeForte(this,this.x,this.y,this.damage);
         const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead);
         for(const pl of allPl){
           if((this.whipSide===1&&pl.x>this.x-50)||(this.whipSide===-1&&pl.x<this.x+50)){
-            if(Math.abs(pl.y-this.y)<110) pl.takeDmg(this.damage*1.5);
+            if(Math.abs(pl.y-this.y)<110)danoChefe(this,pl,this.damage*1.5);
           }
         }
         spawnParts(this.x+this.whipSide*150,this.y,'#ff4400',15,70);
@@ -2862,7 +2895,7 @@ class BossBalrog {
     // Meteor
     this.meteorTimer-=dt*1000;
     if(this.meteorTimer<=0){ this.meteorTimer=this.meteorCd; this.lavaAnim=900; spawnLevelUpNotice(this.x,this.y-60,'☄ METEORO!',0); for(let i=0;i<5;i++) this.meteors.push({x:80+Math.random()*(W-160),y:230+Math.random()*(H-270),warnTimer:2000,active:false}); }
-    for(const m of this.meteors){ m.warnTimer-=dt*1000; if(m.warnTimer<=0&&!m.active){ m.active=true; spawnParts(m.x,m.y,'#ff4400',20,80); const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead); for(const pl of allPl) if(Math.hypot(pl.x-m.x,pl.y-m.y)<70) pl.takeDmg(this.damage*1.8); } }
+    for(const m of this.meteors){m.warnTimer-=dt*1000;if(m.warnTimer<=0&&!m.active){m.active=true;spawnParts(m.x,m.y,'#ff4400',20,80);const allPl=[player,...(gameMode===2&&player2&&!player2.dead?[player2]:[])].filter(p=>!p.dead);for(const pl of allPl)if(Math.hypot(pl.x-m.x,pl.y-m.y)<70)danoChefe(this,pl,this.damage*1.8);}}
     this.meteors=this.meteors.filter(m=>!(m.active&&m.warnTimer<-500));
     // Ataque basico: chicotada curta. O dano sai perto do fim, so' em quem
     // esta no arco da frente, e ele fica parado durante o golpe.
@@ -2885,7 +2918,7 @@ class BossBalrog {
             da=Math.atan2(Math.sin(da),Math.cos(da));
             if(Math.abs(da)>1.15) continue;
           }
-          pl.takeDmg(this.damage*0.55);
+          danoChefe(this,pl,this.damage*.55);
         }
         triggerScreenShake(7,180);
         spawnParts(this.x+Math.cos(face)*36,this.y+Math.sin(face)*36,'#ff7a1a',13,65);
@@ -2897,7 +2930,7 @@ class BossBalrog {
     this.frameTick+=dt*1000; if(this.frameTick>150){this.frameTick=0;this.frameIdx=(this.frameIdx+1)%3;}
     if(this.flashTimer>0) this.flashTimer-=dt*1000;
   }
-  takeDmg(a){ this.hp-=a; this.flashTimer=120; spawnParts(this.x,this.y,'#ff4400',5,40); }
+  takeDmg(a){if(typeof BossModifierSystem!=='undefined')a=BossModifierSystem.levouDano(this,a);this.hp-=a;this.flashTimer=120;spawnParts(this.x,this.y,'#ff4400',5,40);if(this.hp<=0&&typeof BossModifierSystem!=='undefined')BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y);}
   _dropLoot(){ kills+=20; CampProgressionSystem.awardCampaignArtifact('nucleo_infernal',this); for(let i=0;i<18;i++) spawnCoin(this.x+(Math.random()-0.5)*100,this.y+(Math.random()-0.5)*55,Math.floor(this.xpVal/18)); const bl=['semente_erva','pedra','madeira','semente_tomate','semente_trigo']; for(let bi=0;bi<10;bi++){const it=bl[Math.floor(Math.random()*bl.length)];globalInventory[it]=(globalInventory[it]||0)+1;spawnLootFlyAnim(this.x+(Math.random()-0.5)*60,this.y,it);} showInvNotif('BALROG DERROTADO! +10 itens!'); savePersistentData(); spawnParts(this.x,this.y,'#ff4400',40,120); spawnParts(this.x,this.y,'#ffcc00',20,80); triggerScreenShake(28, 800); }
   draw(t){
     const x=this.x, y=this.y;
@@ -2998,11 +3031,7 @@ class BossBalrog {
       flipB=this.facing<0;
     }
     // fúria (fase 2): tinge o corpo de vermelho por trás
-    if(this.phase2){
-      ctx.save(); ctx.globalAlpha=0.35+0.2*Math.sin(t*0.01);
-      ctx.fillStyle='#ff2200'; ctx.beginPath(); ctx.arc(x,bodyY,45,0,Math.PI*2); ctx.fill();
-      ctx.restore();
-    }
+    if(this.phase2)claraoChefe(x,bodyY,45,'#ff2200',0.35+0.2*Math.sin(t*0.01));
     if(this.isMoving&&this.phase2){
       ctx.save();ctx.globalAlpha=.3;ctx.fillStyle='#ff6411';
       const trailDir=this.facing>0?-1:1;
@@ -3082,7 +3111,7 @@ class BossBalrog {
       ctx.fillStyle='#ff4400'; ctx.font=`bold ${Math.round(14+6*(1-this.roarTimer/800))}px Courier New`;
       ctx.textAlign='center'; ctx.fillText('GRAAAAH!',x,y-85); ctx.restore(); ctx.textAlign='left';
     }
-    if(this.flashTimer>0){ ctx.save(); ctx.globalAlpha=this.flashTimer/120*0.55; ctx.fillStyle='#ff6600'; ctx.beginPath(); ctx.arc(x,y,this.radius,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+    if(this.flashTimer>0)claraoChefe(x,y,this.radius,'#ff6600',this.flashTimer/120*.55);
     drawHPBar(x,y-this.radius*this.scale/2-26,this.hp/this.maxHp,104);
     ctx.fillStyle=this.phase2?'#ff2200':'#ff6600'; ctx.font='bold 9px Courier New'; ctx.textAlign='center';
     if(typeof BossHUD!=='undefined') BossHUD.ancorar(this,x,y-this.radius*this.scale/2-30);
@@ -3114,9 +3143,9 @@ class BossBrute {
     this.hitCd=2200; this.hitTimer=1800; this.hitAnim=0; this.hitAcertou=false;
     this.hitAlcance=this.radius+38;
   }
-  takeDmg(a){ this.hp-=a; this.flashTimer=100; spawnParts(this.x,this.y,'#7ab048',4,35); }
+  takeDmg(a){if(typeof BossModifierSystem!=='undefined')a=BossModifierSystem.levouDano(this,a);this.hp-=a;this.flashTimer=100;spawnParts(this.x,this.y,'#7ab048',4,35);if(this.hp<=0&&typeof BossModifierSystem!=='undefined')BossModifierSystem.pagarBonus(this.xpVal,this.x,this.y);}
   update(dt,px,py){
-    if(this.hp<=0){ this.dead=true; this._dropLoot(); return; }
+    if(this.hp<=0){ pagarAmeacaDoChefe(this); this.dead=true; this._dropLoot(); return; }
     const ms=dt*1000;
     this.flashTimer=Math.max(0,this.flashTimer-ms);
     this.rockThrowAnim=Math.max(0,this.rockThrowAnim-ms);
@@ -3165,7 +3194,8 @@ class BossBrute {
         const allP=[player,...(gameMode===2&&player2?[player2]:[])].filter(p=>p&&!p.dead);
         const hitRadius=finalJump?105:90;
         const hitMult=finalJump?1.35:0.9;
-        for(const pl of allP){ if(Math.hypot(pl.x-this.x,pl.y-this.y)<hitRadius) pl.takeDmg(this.damage*hitMult); }
+        for(const pl of allP){if(Math.hypot(pl.x-this.x,pl.y-this.y)<hitRadius)danoChefe(this,pl,this.damage*hitMult);}
+        if(typeof BossModifierSystem!=='undefined')BossModifierSystem.golpeForte(this,this.x,this.y,this.damage*hitMult);
         this.leapChain--;
         if(this.leapChain>0){
           this.leapState='wind'; this.leapWind=this.leapWindMax=280; this.leapTarget={x:px,y:py};
@@ -3203,7 +3233,7 @@ class BossBrute {
               da=Math.atan2(Math.sin(da),Math.cos(da));
               if(Math.abs(da)>1.1) continue;
             }
-            pl.takeDmg(this.damage*0.6);
+            danoChefe(this,pl,this.damage*.6);
           }
           triggerScreenShake(7,180);
           spawnParts(this.x+Math.cos(face)*32,this.y+Math.sin(face)*32,'#c8b070',11,60);
@@ -3249,7 +3279,7 @@ class BossBrute {
       rk.x+=rk.vx*dt*60; rk.y+=rk.vy*dt*60; rk.life-=ms; rk.rot+=dt*7;
       const allP=[player,...(gameMode===2&&player2?[player2]:[])].filter(p=>p&&!p.dead);
       for(const pl of allP){
-        if(Math.hypot(pl.x-rk.x,pl.y-rk.y)<pl.radius+rk.r){ pl.takeDmg(this.damage*(rk.damageMult||0.8)); rk.life=0; spawnParts(rk.x,rk.y,'#5a5c6e',14,55); }
+        if(Math.hypot(pl.x-rk.x,pl.y-rk.y)<pl.radius+rk.r){danoChefe(this,pl,this.damage*(rk.damageMult||.8));rk.life=0;spawnParts(rk.x,rk.y,'#5a5c6e',14,55);}
       }
     }
     this.rocks=this.rocks.filter(r=>r.life>0);
@@ -3308,7 +3338,9 @@ class BossBrute {
     // O Brutamontes tem os DOIS ataques da pasta: Salto Esmagador e
     // arremesso de pedra. O estado escolhe o conjunto de quadros.
     let usouArte=false;
-    if(window.OrcSprites&&this.flashTimer<=0){
+    // O sprite real continua visivel quando o chefe recebe dano. O flash e
+    // desenhado por cima, sem fazer o Brutamontes voltar ao desenho antigo.
+    if(window.OrcSprites){
       const NA=window.OrcSprites.N_ATK;
       let estado='idle', q=0, dirArte='down', flipArte=false;
       if(this.rockWind>0||this.rockThrowAnim>0){
@@ -3351,7 +3383,12 @@ class BossBrute {
                                           this.bruteEscala,flipArte);
     }
     if(usouArte){
-      /* arte nova ja desenhada */
+      if(this.flashTimer>0){
+        ctx.save();ctx.globalAlpha=Math.min(1,this.flashTimer/100)*.5;
+        ctx.fillStyle='#ffd2a6';
+        ctx.beginPath();ctx.arc(this.x,groundY-gh*.45,this.radius*.95,0,Math.PI*2);ctx.fill();
+        ctx.restore();
+      }
     } else if(this.flashTimer>0){
       ctx.save(); ctx.globalAlpha=0.85;
       drawBossGrid(frame, Object.fromEntries(Object.keys(PAL_BOSS_BRUTE).map(k=>[k,'#ffffff'])), this.x, cy, pxs,flip);

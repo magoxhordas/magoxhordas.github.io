@@ -201,13 +201,14 @@
     target._lastDamageOwner=owner;target._lastDamageSource=meta.summoned?'summon':'direct';
     target._lastNecroWeapon=meta.weaponType||'';
     if(typeof target.takeDmg==='function')target.takeDmg(damage);
-    const dealt=Math.max(0,Math.min(before,damage));
+    const dealt=Math.max(0,before-Number(target.hp||0));
     if(meta.summoned){
       const state=stateFor(owner);
       const inheritedLifeSteal=Math.max(0,Number(owner?.lifeSteal||0))*.20;
       if(state&&inheritedLifeSteal>0)summonHeal(state,dealt*inheritedLifeSteal);
     }
     if(isBoss(target))onBossDamaged(owner,target,before,Number(target.hp||0));
+    deps.notifyDamage?.(owner,target,dealt,meta);
     if(deps.notifyHit&&Math.random()<(meta.summoned?CFG.summonProcCoefficient:1)){
       const procWeapon=meta.weapon||(owner._necromancerSummonWeapon||(owner._necromancerSummonWeapon={type:'necromancer_summon',rarity:'common',damageDone:0}));
       deps.notifyHit(owner,target,dealt,procWeapon);
@@ -509,12 +510,38 @@
     return true;
   }
 
+  /* O brilho de almas e invocacoes era recalculado com shadowBlur para cada
+     entidade e cada quadro. Pre-renderizamos os poucos circulos usados e
+     apenas copiamos o resultado durante o combate. */
+  const brilhos=new Map();
+  function brilho(cor,raio,desfoque){
+    if(typeof document==='undefined')return null;
+    const chave=cor+'|'+raio+'|'+desfoque;
+    let cv=brilhos.get(chave);
+    if(!cv){
+      const lado=Math.ceil((raio+desfoque)*2)+4;
+      cv=document.createElement('canvas');cv.width=cv.height=lado;
+      const c=cv.getContext('2d');
+      c.shadowColor=cor;c.shadowBlur=desfoque;c.fillStyle=cor;
+      c.beginPath();c.arc(lado/2,lado/2,raio,0,Math.PI*2);c.fill();
+      brilhos.set(chave,cv);
+    }
+    return cv;
+  }
+  function porBrilho(ctx,cor,raio,desfoque,x,y){
+    const cv=brilho(cor,raio,desfoque);
+    if(!cv)return false;
+    ctx.drawImage(cv,Math.round(x-cv.width/2),Math.round(y-cv.height/2));
+    return true;
+  }
+
   function draw(ctx,time=Date.now()){
     if(!ctx)return;
     ctx.save();
     for(const state of states.values()){
       for(const orb of state.soulOrbs){
-        const pulse=1+Math.sin(time*.008+orb.phase)*.16;ctx.globalAlpha=clamp(orb.ttl/800,0,1);ctx.shadowColor='#64ffc0';ctx.shadowBlur=10;
+        const pulse=1+Math.sin(time*.008+orb.phase)*.16;ctx.globalAlpha=clamp(orb.ttl/800,0,1);
+        if(!porBrilho(ctx,'#64ffc0',4.2,10,orb.x,orb.y)){ctx.shadowColor='#64ffc0';ctx.shadowBlur=10;}
         ctx.fillStyle='#79e8d0';ctx.beginPath();ctx.arc(orb.x,orb.y,4.2*pulse,0,Math.PI*2);ctx.fill();ctx.fillStyle='#e8fff4';ctx.fillRect(orb.x-1,orb.y-2,2,4);ctx.shadowBlur=0;
       }
       for(const totem of state.totems){
@@ -527,15 +554,19 @@
           ctx.strokeStyle='#9b5cff';ctx.lineWidth=1.5;ctx.shadowColor='#7d35dc';ctx.shadowBlur=8;
           ctx.beginPath();ctx.ellipse(summon.x,summon.y+10,6+spawnProgress*9,2+spawnProgress*4,0,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;
         }
-        if(summon.hurtAnim>0)ctx.filter='brightness(1.8) saturate(1.4)';
+        const comFiltro=summon.hurtAnim>0;
+        if(comFiltro)ctx.filter='brightness(1.8) saturate(1.4)';
         const rendered=deps.drawSummon?.(ctx,summon,time)===true;
         if(!rendered){
-          const bob=Math.sin(time*.006+summon.phase)*1.5;ctx.globalAlpha*=summon.type==='spirit'?.72:1;ctx.shadowColor=summon.color;ctx.shadowBlur=summon.type==='spirit'?12:4;
+          const bob=Math.sin(time*.006+summon.phase)*1.5;ctx.globalAlpha*=summon.type==='spirit'?.72:1;
+          const desf=summon.type==='spirit'?12:4;
+          if(!porBrilho(ctx,summon.color,7,desf,summon.x,summon.y-1)){ctx.shadowColor=summon.color;ctx.shadowBlur=desf;}
           ctx.fillStyle='rgba(0,0,0,.32)';ctx.beginPath();ctx.ellipse(summon.x,summon.y+11,10,4,0,0,Math.PI*2);ctx.fill();
           ctx.fillStyle=summon.color;ctx.fillRect(summon.x-6,summon.y-7+bob,12,10);ctx.fillRect(summon.x-4,summon.y+3+bob,3,8);ctx.fillRect(summon.x+1,summon.y+3+bob,3,8);
           ctx.fillStyle='#18231d';ctx.fillRect(summon.x-3,summon.y-4+bob,2,2);ctx.fillRect(summon.x+2,summon.y-4+bob,2,2);ctx.shadowBlur=0;
         }
-        ctx.filter='none';ctx.globalAlpha=1;ctx.shadowBlur=0;
+        if(comFiltro)ctx.filter='none';
+        ctx.globalAlpha=1;ctx.shadowBlur=0;
         const barWidth=summon.type==='abomination'||summon.type==='death_knight'?24:20;
         ctx.fillStyle='rgba(4,2,9,.78)';ctx.fillRect(summon.x-barWidth/2,summon.y-18,barWidth,3);
         ctx.fillStyle='#9b5cff';ctx.fillRect(summon.x-barWidth/2,summon.y-18,barWidth*clamp(summon.hp/summon.maxHp,0,1),3);

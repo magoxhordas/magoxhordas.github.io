@@ -46,11 +46,11 @@ includesAll(combatSource,[
   'incrementKills()',
 ],'pipeline de dano extraido');
 
-// Critico atual: a implementacao V3 sobrescreve o helper inicial e deve manter
-// chance, multiplicador base, estado do ultimo golpe e retorno do dano calculado.
+// Crítico atual: o motor canônico limita a chance, preserva o multiplicador
+// base, registra o último golpe e devolve o dano calculado.
 includesAll(combatSource,[
-  'const didCrit=force||Math.random()<Math.max(0,chance)',
-  'let critMult=2.5',
+  'const didCrit=!!e.forceCrit||Math.random()<clamp(chance,0,.95)',
+  'let mult=Math.max(2.5,e.critMult||0)',
   'pl._lastAttackWasCrit=didCrit',
   'return damage',
 ],'critico');
