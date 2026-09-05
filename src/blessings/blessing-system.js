@@ -87,9 +87,11 @@ return livingTargets().filter(target=>target!==exclude&&Math.hypot((target.x||0)
 function secondaryDamage(pl,target,amount,color='#b9d7ff',label='secondary'){
 if(!target||target.dead||!(amount>0))return 0;
 target._lastDamageOwner=pl;target._blessingSecondary=label;
+target._lastDamageSource='blessing';target._lastRunBlessing=label;target._runStatsAttackEventId=pl?._runAttackEventId||null;
 const before=Number(target.hp)||0;
 try{if(typeof target.takeDmg==='function')target.takeDmg(amount);else target.hp=Math.max(0,before-amount);}catch(_){target.hp=Math.max(0,before-amount);}
 particles(target.x||pl.x,target.y||pl.y,color,6,40);
+if(global.RunStats)global.RunStats.recordDamage({playerIndex:pl?.idx||0,hpBefore:before,hpAfter:Number(target.hp)||0,amount,sourceType:'blessing',sourceId:label,sourceName:'Bênçãos',targetType:isBossTarget(target)?'boss':target.type||'enemy',attackEventId:pl?._runAttackEventId||null});
 if((target.hp||0)<=0||target.dead){target.dead=true;if(global.notifyBlessingKill)global.notifyBlessingKill(pl,target,null);}
 return Math.max(0,before-(Number(target.hp)||0));
 }
@@ -263,6 +265,7 @@ skipCardOffer=function(){if(currentOfferIsAscension)return false;legacySkipCardO
 global.confirmCardOffer=function(){
 const card=selectedCardOffer;if(!card||activeCards().some(owned=>owned.id===card.id))return;
 for(const pl of allGamePlayers())applyDeityBoon(pl,card);activeCards().push(card);try{if(typeof updateBlessingsHUD==='function')updateBlessingsHUD();}catch(_){}
+if(global.RunStats)global.RunStats.recordBlessing({id:card.id,name:card.name,description:card.desc,deity:card.deityId||card.god,rarity:card.rarity,ascension:!!card.isAscension,playerIndex:0});
 const x=typeof W!=='undefined'?W/2:320,y=typeof H!=='undefined'?H/2-50:190;try{if(typeof spawnLevelUpNotice==='function')spawnLevelUpNotice(x,y,card.isAscension?`${card.icon} ASCENSÃO: ${card.name}!`:`${card.icon} ${card.name}!`,0);}catch(_){}
 particles(x,y,card.isAscension?'#fff1a8':RARITY_META[card.rarity]?.color||'#ffd35a',card.isAscension?42:24,card.isAscension?130:95);
 if(selectedCardElement)selectedCardElement.classList.add('confirmed');selectedCardOffer=null;selectedCardElement=null;
@@ -392,6 +395,7 @@ try{if(typeof getCampaignShopDamageBonus==='function')damage*=1+getCampaignShopD
 try{if(typeof CampProgressionSystem!=='undefined'&&CampProgressionSystem?.damageBonus)damage*=1+CampProgressionSystem.damageBonus(pl,target);}catch(_){}
 let chance=(e.critChance||0)+(e.morosPity||0);try{if(typeof getCampaignShopCritBonus==='function')chance+=getCampaignShopCritBonus(pl);}catch(_){}
 const didCrit=!!e.forceCrit||Math.random()<clamp(chance,0,.95);if(didCrit){let mult=Math.max(2.5,e.critMult||0)+(e.critMultBonus||0);const fated=boon(pl,'moros_fated_crit'),sealed=ascension(pl,'moros_asc_sealed_fate');if(e._usingMorosFated&&fated)mult+=bv(fated);if(sealed&&(e._usingMorosFated||e._usingMorosSealed)){mult+=sealed.critBonus||.50;e.morosSealedProc=true;}damage*=mult;e.morosPity=0;if(e._usingFatebreak)e.morosFatebreakHits=Math.max(0,(e.morosFatebreakHits||0)-1);const phantom=boon(pl,'nazgul_phantom_blade');if(phantom){e.nazgulPhantomChance=bv(phantom);e.nazgulPhantomUntil=now()+bv(phantom,'duration');pl._dashCd=Math.max(0,(pl._dashCd||0)-bv(phantom,'dashCut'));}const witch=ascension(pl,'nazgul_asc_witch_king');if(witch)pl._dashCd=Math.max(0,(pl._dashCd||0)-(witch.dashCut||250));particles(pl.x,pl.y-10,'#ffd35a',7,48);}else{const inevitable=boon(pl,'moros_inevitable');if(inevitable)e.morosPity=Math.min(bv(inevitable,'cap'),(e.morosPity||0)+bv(inevitable));}
+if(didCrit&&global.RunStats)global.RunStats.recordCritical({playerIndex:pl.idx||0,attackEventId:pl._runAttackEventId||null});
 e.attackBonus=0;e.forceCrit=false;e._usingMorosFated=false;e._usingMorosSealed=false;e._usingFatebreak=false;pl._lastAttackWasCrit=didCrit;if(target){target._lastDamageOwner=pl;target._lastHitCrit=didCrit;}
 try{if(typeof campaignModifyOutgoingDamage==='function')damage=campaignModifyOutgoingDamage(pl,target,damage);}catch(_){}
 return damage;

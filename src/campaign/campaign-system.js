@@ -169,6 +169,11 @@ function updateCampaignBiomeAndBoss(wildPetFight){
       bossMajor.shieldHp=bossMajor.shieldMax;
     }
     if(typeof campaignObjectives!=='undefined')campaignObjectives.onBossSpawn(bossMajor,wave);
+    if(typeof RunStats!=='undefined'){
+      const runBossId={5:'skeleton_king',10:'aracne',15:'ice_giant',20:'worm',25:'balrog',30:'brute'}[wave]||bossMajor.type||'boss';
+      const runBossName={5:'Rei Cadáver',10:'Aracne',15:'Gigante de Gelo',20:'Verme Devorador',25:'Balrog',30:'Brutamontes'}[wave]||bossMajor.name||bossMajor.constructor?.name||'Chefão';
+      RunStats.recordBossStart({id:runBossId,name:runBossName});
+    }
     // O sorteio ocorre uma única vez por encontro e somente na campanha.
     if(typeof BossModifierSystem!=='undefined')BossModifierSystem.aoNascerChefe(bossMajor);
     CampProgressionSystem.onBossStarted([player,player2],bossMajor);
@@ -255,6 +260,7 @@ function endWave(){
   if(wave>=5&&wave%5===0&&bossMajor&&!bossMajor.dead) return false;
   if(typeof campaignObjectives!=='undefined'&&!campaignObjectives.canEndWave(wave)) return false;
   if(typeof campaignObjectives!=='undefined')campaignObjectives.onWaveEnd(wave);
+  if(typeof RunStats!=='undefined')RunStats.recordWaveCompleted({wave});
   state='endwave';
   totalWavesSurvived++;
   growFarm(1);
@@ -262,6 +268,7 @@ function endWave(){
   const d=DIFF[difficulty]||DIFF.medium;
   const waveBonus=Math.max(1,Math.round(d.waveBonusBase+wave*d.waveBonusRate));
   totalCoins += waveBonus;
+  if(typeof RunStats!=='undefined')RunStats.recordCoins({amount:waveBonus,playerIndex:0});
   spawnLevelUpNotice(W/2, H/2-52, `🏆 ONDA ${wave} · +${waveBonus}🪙`, 0);
   // Card blessings — wave regen
   if(typeof applyCardWaveRegen==='function') applyCardWaveRegen();

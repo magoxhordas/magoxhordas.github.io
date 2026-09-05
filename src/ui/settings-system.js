@@ -187,12 +187,13 @@ const GameSettings = (function(){
     if(typeof window.drawMenuHero==='function') window.drawMenuHero();
     if(typeof DNG!=='undefined'&&typeof DNG._updateHUD==='function') DNG._updateHUD();
   }
-  function render(){ renderAudio(); renderControls(); renderVideo(); renderSkins(); setTab(activeTab); }
+  function render(){ renderAudio(); renderControls(); renderVideo(); renderSkins(); if(typeof AchievementSystem!=='undefined')AchievementSystem.renderSettings?.(); setTab(activeTab); }
 
   function setTab(tab){
     activeTab=tab;
     document.querySelectorAll('[data-settings-tab]').forEach(el=>el.classList.toggle('active',el.dataset.settingsTab===tab));
     document.querySelectorAll('[data-settings-panel]').forEach(el=>el.classList.toggle('active',el.dataset.settingsPanel===tab));
+    if(tab==='achievements'&&typeof AchievementSystem!=='undefined') AchievementSystem.renderSettings?.();
   }
   function open(){
     const visible=[...document.querySelectorAll('.screen')].find(el=>getComputedStyle(el).display!=='none'&&el.id!=='settings-screen');
@@ -313,7 +314,9 @@ const GameSettings = (function(){
     const completed=new Set((queue||[]).map(item=>item.id));
     if(required.length&&required.every(item=>completed.has(item.id))){
       skinProgress.bossRushComplete=true; saveSkinProgress(); notifySkinUnlock('rune_warrior'); renderSkins();
+      return true;
     }
+    return false;
   }
   function recordDungeonBoss(isHyper){
     skinProgress.dungeonBossKills=Math.max(0,Number(skinProgress.dungeonBossKills)||0)+1;
@@ -322,6 +325,7 @@ const GameSettings = (function(){
     if(skinProgress.dungeonBossKills>=20) notifySkinUnlock('imperial_time');
     if(isHyper) notifySkinUnlock('urban_chrono');
     renderSkins();
+    return skinProgress.dungeonBossKills;
   }
 
   function queueManualAttack(mode,aim){
@@ -376,6 +380,7 @@ const GameSettings = (function(){
     setResolution,getRenderScale,getDisplaySize,
     queueManualAttack,hasManualAttack,clearManualAttack,consumeManualAttack,playAttackSound,
     recordBossRushVictory,recordDungeonBoss,refreshSkinUnlocks,getSkinRequirementState,
+    getProgressSnapshot(){return JSON.parse(JSON.stringify(skinProgress));},
     get autoAttack(){ return data.autoAttack; },
     get skinId(){ return data.skinId; },
     get controls(){ return {...data.controls}; }

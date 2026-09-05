@@ -1336,6 +1336,8 @@ const DNG={
 
   start(){
     this.pClassId=(typeof selectedClass!=='undefined'&&selectedClass.p1)||'mage';
+    if(typeof RunStats!=='undefined')RunStats.start({mode:'dungeon',difficulty:typeof difficulty!=='undefined'?difficulty:'medium',players:[{classId:this.pClassId,skinId:typeof GameSettings!=='undefined'?GameSettings.skinId:'classic'}]});
+    if(typeof AchievementSystem!=='undefined')AchievementSystem.notify('dungeonEntered');
     this.floor=1;this.pHp=100;this.pMaxHp=100;this.pDmg=18;this.pSpeed=1.9;
     if(this.pClassId==='necromancer'){this.pMaxHp=90;this.pHp=90;this.pDmg=16;this.pSpeed=1.85;}
     this._necroReset();
@@ -1640,7 +1642,12 @@ const DNG={
           summon.attackTimer=summon.attackCd;summon.attackAnim=260;summon.facing=dx<0?'left':'right';
           const damage=summon.damage*(target.type==='boss'?.85:1),before=target.hp;
           target.hp-=damage;target.flash=180;this._necroBossDamage(target,before,target.hp);
-          this._necroHeal(Math.min(before,damage)*.20);this._applyKill(target,null,damage,'summon');this._parts(target.x,target.y,'#70d98b',3,22);
+          const attackEventId=typeof RunStats!=='undefined'?RunStats.createAttackEvent(0):null;
+          if(typeof RunStats!=='undefined'){
+            if(target.type==='boss')RunStats.recordBossStart({id:target._hyper?'hyper_boss':String(target.name||'dungeon-boss').toLowerCase().replace(/\W+/g,'_'),name:target.name});
+            RunStats.recordDamage({playerIndex:0,hpBefore:before,hpAfter:target.hp,sourceType:'summon',sourceId:'necromancer-summon',sourceName:'Invocações',targetType:target.type,attackEventId});
+          }
+          this._necroHeal(Math.min(before,damage)*.20);this._applyKill(target,null,damage,'summon',attackEventId);this._parts(target.x,target.y,'#70d98b',3,22);
         }
       }else if(Math.hypot(this.px-summon.x,this.py-summon.y)>70){
         const dx=this.px-summon.x,dy=this.py-summon.y,d=Math.max(1,Math.hypot(dx,dy));
@@ -1703,7 +1710,12 @@ const DNG={
       document.getElementById('dng-pause-overlay')?.remove();
       if(typeof openSettings==='function') openSettings();
     };
-    document.getElementById('dng-quit-btn').onclick=()=>{this.stop();showScreen('main-menu');};
+    document.getElementById('dng-quit-btn').onclick=()=>{
+      const floor=this.floor;
+      this.stop();
+      if(typeof PostRunScreen!=='undefined')PostRunScreen.finishAndOpen('abandoned',{wave:floor,chapter:floor,level:floor});
+      else showScreen('main-menu');
+    };
   },
 
   _recalcGear(){
@@ -1727,6 +1739,7 @@ const DNG={
   _giveGear(it){
     if(this.gearBag.length>=12){
       const v=(DNG_GEAR_VAL[it.rarity]||4)+this.floor;this.pCoins+=v;
+      if(typeof RunStats!=='undefined')RunStats.recordCoins({playerIndex:0,amount:v});
       this._ft(this.px,this.py-40,`🎒 cheia! ${it.icon} vendido +${v}🪙`,'#c8a84b');this._updateHUD();return;
     }
     this.gearBag.push(it);
@@ -2014,7 +2027,7 @@ const DNG={
           self.gear[key]=item;self._recalcGear();selBag=-1;rebuild();
         };
         document.getElementById('deq-do-sell').onclick=()=>{
-          self.gearBag.splice(selBag,1);self.pCoins+=v;self._updateHUD();selBag=-1;rebuild();
+          self.gearBag.splice(selBag,1);self.pCoins+=v;if(typeof RunStats!=='undefined')RunStats.recordCoins({playerIndex:0,amount:v});self._updateHUD();selBag=-1;rebuild();
         };
       } else {
         det.innerHTML='<div style="font-size:11.5px;color:#5a9a6e;letter-spacing:1px;">Selecione um item da mochila para equipar ou vender.</div>';
@@ -2161,7 +2174,7 @@ const DNG={
       document.getElementById('dng-shop-reroll').onclick=()=>{
         const rc2=rerollCost();
         if(self.pCoins<rc2) return;
-        self.pCoins-=rc2; items=rollItems(); self._updateHUD(); renderShop();
+        self.pCoins-=rc2;if(typeof RunStats!=='undefined')RunStats.recordCoins({playerIndex:0,amount:rc2,spent:true}); items=rollItems(); self._updateHUD(); renderShop();
       };
       const grid=document.getElementById('dng-shop-grid');
       items.forEach(item=>{
@@ -2175,7 +2188,7 @@ const DNG={
           card.onmouseleave=()=>card.style.borderColor='rgba(200,168,75,0.4)';
           card.onclick=()=>{
             if(self.pCoins<item.price)return;
-            self.pCoins-=item.price;item.apply(self);
+            self.pCoins-=item.price;if(typeof RunStats!=='undefined')RunStats.recordCoins({playerIndex:0,amount:item.price,spent:true});item.apply(self);
             if(item.id)self.ownedRelics.add(item.id);
             self._updateHUD();
             const sc=document.getElementById('dng-shop-coins');if(sc)sc.textContent=self.pCoins;
@@ -2209,6 +2222,7 @@ const DNG={
   },
 
   _update(dt,ts){
+    if(typeof RunStats!=='undefined')RunStats.tick(dt,{inCombat:true,players:[{hp:this.pHp,maxHp:this.pMaxHp}]});
     // ── Freeze frame ──
     if(this._freeze>0){ this._freeze-=dt; return; } // halt all updates during freeze
     // ── Screen shake update ──
@@ -2310,7 +2324,8 @@ const DNG={
         dmg=Math.round(dmg*(1+0.1*(MVP.upg.ferreiro||0)));   // Fio da Lamina Arcana
         if(this._dmgBuff>0) dmg=Math.round(dmg*(1+this._dmgBuff));
         const isCrit=((this._crit||0)+(this._critBuff||0))>0&&Math.random()<((this._crit||0)+(this._critBuff||0));
-        if(isCrit){dmg*=2;if(best&&!dngManualAim)this._ft(best.x,best.y-28,'💥CRÍTICO!','#ffcc00');}
+        const runAttackEventId=typeof RunStats!=='undefined'?RunStats.createAttackEvent(0):null;
+        if(isCrit){dmg*=2;if(typeof RunStats!=='undefined')RunStats.recordCritical({playerIndex:0,attackEventId:runAttackEventId});if(best&&!dngManualAim)this._ft(best.x,best.y-28,'💥CRÍTICO!','#ffcc00');}
 
         if(isRanged){
           // ── RANGED: dispara projétil que voa até o alvo ──
@@ -2327,7 +2342,7 @@ const DNG={
             vx:Math.cos(ang)*projSpd, vy:Math.sin(ang)*projSpd,
             dmg:_dmgFinal, r:projR, life:projLife, col:projCol,
             secondaryCol:skinAttack?.secondary||'#ffffff',
-            _rangedWpn:true, _targetRef, _isCrit,
+            _rangedWpn:true, _targetRef, _isCrit, _runAttackEventId:runAttackEventId,
           };
           this.projectiles.push(proj);
           // Feedback de disparo (sem aplicar dano ainda — o dano é na colisão)
@@ -2339,6 +2354,10 @@ const DNG={
         } else if(best) {
           // ── MELEE: hit instantâneo ──
           const beforeHp=best.hp;best.hp-=dmg;best.flash=300;this._necroBossDamage(best,beforeHp,best.hp);
+          if(typeof RunStats!=='undefined'){
+            if(best.type==='boss')RunStats.recordBossStart({id:best._hyper?'hyper_boss':String(best.name||'dungeon-boss').toLowerCase().replace(/\W+/g,'_'),name:best.name});
+            RunStats.recordDamage({playerIndex:0,hpBefore:beforeHp,hpAfter:best.hp,sourceType:equip?'weapon':'direct',sourceId:equip?.defId||'dungeon-basic',sourceName:equip?.name||'Ataque básico',rarity:equip?.rarity,targetType:best.type,attackEventId:runAttackEventId});
+          }
           const impAng=Math.atan2(best.y-this.py,best.x-this.px);
           if(!best._shadowBound){
             const kbF=isCrit?80:50;
@@ -2358,7 +2377,7 @@ const DNG={
           this._bloodParts.push({x:best.x,y:best.y,vx:0,vy:0,col:isCrit?'#ffcc00':'#ffffff',r:isCrit?22:14,life:120,maxLife:120,ring:true,grav:0});
           this._ft(best.x,best.y-18,`${dmg}`,'#ffcc44');
           if(this._vamp){const heal=Math.ceil(dmg*this._vamp);this.pHp=Math.min(this.pMaxHp,this.pHp+heal);if(heal>0)this._ft(this.px,this.py-28,`+${heal}❤️`,'#44ff88');}
-          this._applyKill(best,equip,dmg);
+          this._applyKill(best,equip,dmg,'direct',runAttackEventId);
         }
         const meleeSkinAttack=typeof getHeroSkinAttackColors==='function'?getHeroSkinAttackColors():null;
         this.meleeSwings.push({x:this.px,y:this.py,ang:this.pFacing,life:200,max:200,col:meleeSkinAttack?.primary,secondaryCol:meleeSkinAttack?.secondary});this._updateHUD();
@@ -2455,6 +2474,10 @@ const DNG={
           if(Math.hypot(p.x-e.x,p.y-e.y)<(e.r||12)+p.r){
             // Aplica dano
             const beforeHp=e.hp;e.hp-=p.dmg; e.flash=300;this._necroBossDamage(e,beforeHp,e.hp);
+            if(typeof RunStats!=='undefined'){
+              if(e.type==='boss')RunStats.recordBossStart({id:e._hyper?'hyper_boss':String(e.name||'dungeon-boss').toLowerCase().replace(/\W+/g,'_'),name:e.name});
+              RunStats.recordDamage({playerIndex:0,hpBefore:beforeHp,hpAfter:e.hp,sourceType:'weapon',sourceId:this.inv[this.equippedIdx]?.defId||'dungeon-ranged',sourceName:this.inv[this.equippedIdx]?.name||'Arma de distância',rarity:this.inv[this.equippedIdx]?.rarity,targetType:e.type,attackEventId:p._runAttackEventId});
+            }
             // Efeito impacto
             this._parts(e.x,e.y,p.col,8,45);
             const impAng=Math.atan2(e.y-this.py,e.x-this.px);
@@ -2462,7 +2485,7 @@ const DNG={
             this._ft(e.x,e.y-18,`${p.dmg}`,'#ffcc44');
             if(this._vamp){const heal=Math.ceil(p.dmg*this._vamp);this.pHp=Math.min(this.pMaxHp,this.pHp+heal);if(heal>0)this._ft(this.px,this.py-28,`+${heal}❤️`,'#44ff88');}
             const equip2=this.inv[this.equippedIdx];
-            this._applyKill(e,equip2,p.dmg);
+            this._applyKill(e,equip2,p.dmg,'direct',p._runAttackEventId);
             hit=true; break;
           }
         }
@@ -2490,7 +2513,7 @@ const DNG={
     if(tile===T_CHEST&&!this._chestCd){
       this._chestCd=true;setTimeout(()=>this._chestCd=false,500);
       const gm=this._goldMult||1;const g=Math.ceil((4+Math.floor(Math.random()*6)+this.floor*2)*gm); // BALANCE v6
-      this.pCoins+=g;const h=Math.floor(this.pMaxHp*0.14);this.pHp=Math.min(this.pMaxHp,this.pHp+h);
+      this.pCoins+=g;if(typeof RunStats!=='undefined')RunStats.recordCoins({playerIndex:0,amount:g});const h=Math.floor(this.pMaxHp*0.14),hpBefore=this.pHp;this.pHp=Math.min(this.pMaxHp,this.pHp+h);if(typeof RunStats!=='undefined')RunStats.recordHeal({playerIndex:0,hpBefore,hpAfter:this.pHp,maxHp:this.pMaxHp});
       this._parts(this.px,this.py,'#f0d080',14,50);this.map[ity*MW+itx]=T_FLOOR;
       this._ft(this.px,this.py-30,`+${g}🪙 +${h}❤️`,'#f0d080');
       if(Math.random()<0.45){ this._giveGear(rollDngGear(this.floor)); }
@@ -2577,26 +2600,32 @@ const DNG={
     if(typeof DNG._dngDashTick==='function') DNG._dngDashTick(dt);
   },
 
-  _applyKill(best, equip, dmg, source='direct'){
+  _applyKill(best, equip, dmg, source='direct',attackEventId=null){
     if(best.hp>0||best.dead) return;
     best.dead=true; this.pKills++;
+    if(best.type==='boss'){
+      if(typeof RunStats!=='undefined')RunStats.recordBossEnd({id:best._hyper?'hyper_boss':String(best.name||'dungeon-boss').toLowerCase().replace(/\W+/g,'_'),name:best.name,playerIndex:0,victory:true});
+    }else if(typeof RunStats!=='undefined')RunStats.recordKill({playerIndex:0,sourceType:source==='summon'?'summon':equip?'weapon':'direct',sourceId:source==='summon'?'necromancer-summon':equip?.defId||'dungeon-basic',sourceName:source==='summon'?'Invocações':equip?.name||'Ataque básico',attackEventId});
     this._necroOnKill(best,source);
     if(best.type==='boss') mvpOnKill('boss'); else mvpOnKill('enemy');   // progresso de missoes
     const bloodCol=best.type==='boss'?'#dd00ff':'#cc2200';
     for(let b=0;b<16;b++){const ba=Math.random()*Math.PI*2,bs=2+Math.random()*4;this._bloodParts.push({x:best.x,y:best.y,vx:Math.cos(ba)*bs,vy:Math.sin(ba)*bs-1,col:bloodCol,r:2+Math.random()*3,life:500+Math.random()*500,maxLife:1000,grav:0.1});}
     this._shake={x:0,y:0,t:300,mag:best.type==='boss'?10:5};
     this._freeze=best.type==='boss'?150:80;
-    if(this._aoe){for(const e2 of this.entities){if(e2.dead)continue;if(Math.hypot(e2.x-best.x,e2.y-best.y)<60){e2.hp-=Math.floor((equip?equip.dmg:this.pDmg)*0.5);e2.flash=150;if(e2.hp<=0){e2.dead=true;this.pKills++;}}}}
+    if(this._aoe){const aoeEvent=typeof RunStats!=='undefined'?RunStats.createAttackEvent(0):null;for(const e2 of this.entities){if(e2.dead)continue;if(Math.hypot(e2.x-best.x,e2.y-best.y)<60){const before=e2.hp;e2.hp-=Math.floor((equip?equip.dmg:this.pDmg)*0.5);e2.flash=150;if(typeof RunStats!=='undefined')RunStats.recordDamage({playerIndex:0,hpBefore:before,hpAfter:e2.hp,sourceType:'blessing',sourceId:'dungeon-aoe-relic',sourceName:'Relíquia de Área',targetType:e2.type,attackEventId:aoeEvent});if(e2.hp<=0){e2.dead=true;this.pKills++;if(typeof RunStats!=='undefined'&&e2.type!=='boss')RunStats.recordKill({playerIndex:0,sourceType:'blessing',sourceId:'dungeon-aoe-relic',sourceName:'Relíquia de Área',attackEventId:aoeEvent});}}}}
     const gn=best.coin?Math.ceil(best.coin*(this._goldMult||1)):0;
-    if(gn>0){this.pCoins+=gn;this._ft(best.x,best.y-32,`+${gn}🪙`,'#f0d080');this._updateHUD();}
+    if(gn>0){this.pCoins+=gn;if(typeof RunStats!=='undefined')RunStats.recordCoins({playerIndex:0,amount:gn});this._ft(best.x,best.y-32,`+${gn}🪙`,'#f0d080');this._updateHUD();}
     if(best.type==='boss'){
-      if(typeof GameSettings!=='undefined'&&typeof GameSettings.recordDungeonBoss==='function') GameSettings.recordDungeonBoss(!!best._hyper);
+      let dungeonBossTotal;
+      if(typeof GameSettings!=='undefined'&&typeof GameSettings.recordDungeonBoss==='function') dungeonBossTotal=GameSettings.recordDungeonBoss(!!best._hyper);
+      if(typeof AchievementSystem!=='undefined')AchievementSystem.notify('dungeonBossKilled',{hyper:!!best._hyper,total:dungeonBossTotal});
       if(typeof Audio!=='undefined'){
         Audio.playBossDefeat();
         setTimeout(()=>{if(typeof DNG!=='undefined'&&DNG.running)Audio.playCombatMusic('dungeon');},650);
       }
       const bonusCoins=best._hyper?Math.round(120+this.floor*16):Math.round(18+this.floor*8); // hiper paga ~6×
       this.pCoins+=bonusCoins;
+      if(typeof RunStats!=='undefined')RunStats.recordCoins({playerIndex:0,amount:bonusCoins});
       this._ft(best.x,best.y-50,`+${bonusCoins}🪙 ${best._hyper?'HIPER BOSS!':'BOSS!'}`,best._hyper?'#ff9a20':'#ffcc00');
       this._updateHUD();
       const bossRar=best.bossRar||BOSS_RARITY_TABLE[0];
@@ -2628,7 +2657,9 @@ const DNG={
       this._ft(this.px,this.py-28,'✨ ESQUIVOU!','#88ffcc'); return; }
     // Armor damage reduction
     const reduced = Math.max(1, dmg - (this._armor||0));
+    const hpBefore=this.pHp;
     this.pHp -= reduced; this.pInvTimer=500;
+    if(typeof RunStats!=='undefined')RunStats.recordDamageTaken({playerIndex:0,hpBefore,hpAfter:this.pHp});
     // Player hit feedback
     this._shake={x:0,y:0,t:200,mag:4};
     this._freeze=25; // tiny freeze on player hit
@@ -2864,14 +2895,14 @@ const DNG={
       document.getElementById('dng-merch-reroll').onclick=()=>{
         const rc2=rerollCost();
         if(self.pCoins<rc2)return;
-        self.pCoins-=rc2; offers=rollOffers(); self._updateHUD(); render();
+        self.pCoins-=rc2;if(typeof RunStats!=='undefined')RunStats.recordCoins({playerIndex:0,amount:rc2,spent:true}); offers=rollOffers(); self._updateHUD(); render();
       };
       document.getElementById('dng-merch-close').onclick=()=>window._dngMerchClose();
     };
     window._dngMerchBuy=(i)=>{
       const o=offers[i];if(!o||o.sold)return;
       if(self.pCoins<o.price){self._msg('🪙 Moedas insuficientes!',1500);return;}
-      self.pCoins-=o.price; o.sold=true;
+      self.pCoins-=o.price;if(typeof RunStats!=='undefined')RunStats.recordCoins({playerIndex:0,amount:o.price,spent:true}); o.sold=true;
       self._updateHUD();
       self._giveWeapon(o.wpn);
       self._ft(self.px,self.py-30,`${o.wpn.icon} COMPRADO!`,rarCol[o.wpn.rarity]);
@@ -2906,7 +2937,10 @@ const DNG={
     this._parts(this.px,this.py,'#ff4444',20,80);
     this._parts(this.px,this.py,'#ff8800',15,60);
     // Render one last frame then show game over after brief delay
-    setTimeout(()=>this._showGameOver(), 1200);
+    setTimeout(()=>{
+      if(typeof PostRunScreen!=='undefined')PostRunScreen.finishAndOpen('defeat',{wave:this.floor,chapter:this.floor,level:this.floor,defeatedBy:'Dungeon'});
+      else this._showGameOver();
+    }, 1200);
   },
 
   _showGameOver(){
