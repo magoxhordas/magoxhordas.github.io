@@ -54,7 +54,24 @@
   }
   function progressTab(){
     const unlocked=current.achievementsUnlocked||[];const achSummary=global.AchievementSystem?.getSummary?.()||{unlocked:0,total:60,percent:0};
-    return`<section class="pr-progress-summary">${stat('Conquistas',`${achSummary.unlocked} / ${achSummary.total}`,`${achSummary.percent}% concluído`)}${stat('Pets',current.progress?.pets?`+${current.progress.pets}`:'—','novos nesta run')}${stat('Códex',current.progress?.codex?`+${current.progress.codex}`:'—','entradas nesta run')}${stat('Recordes',`+${current.records?.length||0}`,'novos pessoais')}</section><h2>CONQUISTAS DESBLOQUEADAS NESTA RUN</h2><section class="pr-unlocks">${unlocked.length?unlocked.slice(0,3).map(item=>`<article><span>${item.icon}</span><div><small>CONQUISTA DESBLOQUEADA</small><b>${esc(item.name)}</b><p>${esc(item.description)}</p><time>${esc(new Intl.DateTimeFormat('pt-BR').format(new Date(item.unlockedAt)))}</time></div></article>`).join(''):'<p class="pr-empty">Nenhuma conquista nova nesta run. Veja a lista em Configurações para escolher o próximo objetivo.</p>'}</section>${unlocked.length>3?`<button class="pr-inline-btn" onclick="PostRunScreen.showAllAchievements()">VER TODAS (${unlocked.length})</button>`:''}`;
+    return`<section class="pr-progress-summary">${stat('Conquistas',`${achSummary.unlocked} / ${achSummary.total}`,`${achSummary.percent}% concluído`)}${stat('Pets',current.progress?.pets?`+${current.progress.pets}`:'—','novos nesta run')}${stat('Códex',current.progress?.codex?`+${current.progress.codex}`:'—','entradas nesta run')}${stat('Recordes',`+${current.records?.length||0}`,'novos pessoais')}</section><h2>CONQUISTAS DESBLOQUEADAS NESTA RUN</h2><section class="pr-unlocks">${unlocked.length?unlocked.slice(0,3).map(item=>`<article><span>${item.icon}</span><div><small>CONQUISTA DESBLOQUEADA</small><b>${esc(item.name)}</b><p>${esc(item.description)}</p><time>${esc(new Intl.DateTimeFormat('pt-BR').format(new Date(item.unlockedAt)))}</time></div></article>`).join(''):'<p class="pr-empty">Nenhuma conquista nova nesta run. Veja a lista em Configurações para escolher o próximo objetivo.</p>'}</section>${unlocked.length>3?`<button class="pr-inline-btn" onclick="PostRunScreen.showAllAchievements()">VER TODAS (${unlocked.length})</button>`:''}${contractsSection()}`;
+  }
+  function contractsSection(){
+    const sistema=global.ContractsSystem;
+    if(!sistema||typeof sistema.estado!=='function')return'';
+    let prontos=[],ativos=[];
+    try{ prontos=sistema.concluidosDetalhados(); ativos=sistema.ativosDetalhados(); }catch(_){ return''; }
+    if(!prontos.length&&!ativos.length)return'';
+    const premio=c=>{
+      const partes=[];
+      if(c.recompensa?.moedas)partes.push(`${formatNumber(c.recompensa.moedas)} moedas`);
+      for(const [item,q] of Object.entries(c.recompensa?.itens||{}))partes.push(`${q}× ${item.replace(/_/g,' ')}`);
+      return partes.join(' + ');
+    };
+    const feitos=prontos.map(c=>`<article class="pr-contract done"><span>✓</span><div><b>${esc(c.nome)}</b><small>CONCLUÍDO · ${esc(premio(c))}</small></div></article>`).join('');
+    const abertos=ativos.map(c=>`<article class="pr-contract"><span>◇</span><div><b>${esc(c.nome)}</b><small>EM ANDAMENTO · ${esc(c.desc)}</small></div></article>`).join('');
+    const rodape=prontos.length?'<p class="pr-empty">Retire as recompensas no Quadro de Contratos, no acampamento.</p>':'';
+    return`<h2>CONTRATOS</h2><section class="pr-contracts">${feitos}${abertos}</section>${rodape}`;
   }
   function content(){return{summary:summaryTab,build:buildTab,combat:combatTab,progress:progressTab}[activeTab]();}
   function render(){

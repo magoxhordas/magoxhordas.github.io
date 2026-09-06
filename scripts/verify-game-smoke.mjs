@@ -108,7 +108,8 @@ const campModules=[
 const campEntryAt=html.indexOf('window.CampV2 = (function(){');
 assert(campEntryAt>=0,'CampV2 nao foi registrado');
 for(const [file,globalName] of campModules){
-  const tag=`src="${file}"`;
+  // O modulo pode ter ?v=... para furar o cache do GitHub Pages.
+  const tag=`src="${file}`;
   const tagAt=html.indexOf(tag);
   assert(tagAt>=0,`modulo do acampamento nao e carregado: ${file}`);
   assert(tagAt<campEntryAt,`modulo do acampamento carrega depois de CampV2: ${file}`);

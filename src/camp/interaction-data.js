@@ -13,6 +13,9 @@
     {id:'portal',  fx:.497, fy:.825, raio:90, rotulo:'Iniciar Expedicao',   cor:'#6ad8f0'},
     {id:'lago',    fx:.678, fy:.248, raio:62, rotulo:'Pescar',              cor:'#7ab8ff'},
     {id:'arqueiro',fx:.452, fy:.560, raio:58, rotulo:'Falar com o Arqueiro', cor:'#9fe08a'},
+    {id:'contratos',fx:.480,fy:.253, raio:58, rotulo:'Quadro de Contratos', cor:'#e0b060'},
+    /* Os circulos se cruzam; o CampV2 escolhe o ponto mais proximo. */
+    {id:'guerreiro',fx:.487,fy:.283, raio:46, rotulo:'Falar com o Guerreiro', cor:'#d0d8e0'},
   ];
 
   function create(actions){

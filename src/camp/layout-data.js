@@ -22,6 +22,12 @@
   // Posicao visual/interativa do arqueiro. Mantida exatamente como no CampV2.
   const ARQ = {fx:.452, fy:.560};
 
+  /* Quadro de Contratos e o Guerreiro que toma conta dele.
+     Ficam na faixa aberta entre a plantacao e a lagoa, no lado esquerdo do
+     caminho central, para o mural nao bloquear a passagem ate o pier. */
+  const QUADRO    = {fx:.480, fy:.245};
+  const GUERREIRO = {fx:.487, fy:.281};
+
   // Limpeza visual da loja do Merlin: estes upgrades antigos nao possuem efeito
   // de runtime e nao devem mais ocupar espaco na interface.
   const HIDDEN_MERLIN_UPGRADE_IDS=new Set(['arma_sword','arma_bow','arma_axe','farm_parcelas']);
@@ -238,5 +244,5 @@
   installNecromancerShadowPerformanceFix();
   installNecromancerCpuPerformanceFix();
 
-  global.CampLayoutData=Object.freeze({HORTA,LUZES_ACAMPAMENTO,ARQ});
+  global.CampLayoutData=Object.freeze({HORTA,LUZES_ACAMPAMENTO,ARQ,QUADRO,GUERREIRO});
 })(window);
