@@ -195,7 +195,11 @@
         const corte=bruto.match(/^(.*?)\s*[·\-]\s*(\d+)\s*\D*$/);
         const nome=corte?corte[1]:bruto;
         const preco=corte?corte[2]:null;
-        const neutra=!preco&&!option.costly;
+        /* O destaque neutro e' intencional e explicito. Inferir pelo preco
+           transformava toda escolha sem custo (altares, fonte e espirito) em
+           um botao de largura total, embora apenas "Seguir viagem" seja a
+           acao secundaria do mercador. */
+        const neutra=option.neutral===true;
         button.className=`campaign-choice-option${option.costly?' costly':''}${neutra?' neutra':''}`;
         const optionTitle=doc.createElement('span');optionTitle.className='campaign-choice-option-title';optionTitle.textContent=nome;
         button.append(optionTitle);

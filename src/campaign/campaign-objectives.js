@@ -594,9 +594,6 @@
       falarDe(target,'solto',2800);
       current.data.gritoT=6000;
     }
-    /* O resgatado: anda atras do jogador mais proximo e bate em quem chega
-       perto. Nao leva dano — ele e' recompensa pelo resgate, e nao um novo
-       objeto de escolta. */
     /* == O ALIADO DA TEMPESTADE ==
        Antes ele grudava no heroi e dava um soco generico de 74px, igual para
        todas as classes: parecia um enfeite que andava junto. Agora

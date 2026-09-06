@@ -23,6 +23,7 @@ import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const ler=a=>fs.readFileSync(path.join(root,a),'utf8').replace(/\r\n/g,'\n');
 const objetivos=ler('src/campaign/campaign-objectives.js');
+const events=ler('src/campaign/campaign-events.js');
 const ui=ler('src/campaign/campaign-ui.js');
 const runtime=ler('src/campaign/campaign-runtime.js');
 const html=ler('index.html');
@@ -210,6 +211,10 @@ exigir(/#campaign-choice-ornamento/.test(ui),'o ornamento de losango sumiu da te
 exigir(/campaign-choice-option-price/.test(ui),'a etiqueta de preco sumiu');
 exigir(/\.campaign-choice-option\.neutra\{[^}]*grid-column:1\/-1/.test(ui),
   '"Seguir viagem" deixou de ocupar a linha inteira');
+exigir(/const neutra=option\.neutral===true/.test(ui),
+  'opcoes gratuitas voltaram a ser confundidas com a acao neutra do mercador');
+exigir(/id:'leave',title:'Seguir viagem'[^\n]*neutral:true/.test(events),
+  '"Seguir viagem" perdeu a marcacao neutra explicita');
 exigir(/#campaign-choice-title\{[^}]*letter-spacing/.test(ui),'o titulo perdeu a tipografia dos menus');
 
 /* ── 4. O efeito eletrico em corpo grande ── */

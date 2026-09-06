@@ -121,7 +121,7 @@
       ];
       deps.showChoice({kicker:'OFERTAS TEMPORÁRIAS · 25% DE DESCONTO',title:'Mercador Perdido',body:`Moedas disponíveis: ${deps.getCoins()} · escolha uma oferta ou siga viagem.`,options:[
         ...offers.map(offer=>({id:offer.id,title:offer.title,detail:offer.detail,onChoose:()=>buyMerchantOffer(offer)})),
-        {id:'leave',title:'Seguir viagem',detail:'Não comprar nada.',onChoose:ignore},
+        {id:'leave',title:'Seguir viagem',detail:'Não comprar nada.',neutral:true,onChoose:ignore},
       ]});
     }
     function buyMerchantOffer(offer){
