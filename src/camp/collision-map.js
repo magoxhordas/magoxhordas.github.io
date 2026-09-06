@@ -29,6 +29,7 @@
     // o Arqueiro. Alto o bastante p/ pegar o teste de pe do jogador,
     // que acontece 6px ABAIXO da posicao dele (ver livre()).
     F(.4430,.5511,.0180,.0258),
+    F(.466, .225, .030, .026),   // Quadro de Contratos: somente a base dos postes
 
     // ── nordeste: lago e pier ──
     F(.612, .070, .312, .042),   // lago: faixa norte

@@ -18,22 +18,22 @@ const bossRushSource=fs.readFileSync(path.join(root,'src','campaign','boss-rush-
 const bossSystemSource=fs.readFileSync(path.join(root,'src','campaign','boss-system.js'),'utf8');
 const campaignSystemSource=fs.readFileSync(path.join(root,'src','campaign','campaign-system.js'),'utf8');
 const campaignSource=[html,bossDataSource,bossRushSource,bossSystemSource,campaignSystemSource].join('\n');
-assert(html.includes('<script src=\"src/camp/collision-map.js\"></script>'),'index nao carrega o modulo externo de colisao');
-assert(html.indexOf('<script src=\"src/camp/collision-map.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'modulo de colisao precisa carregar antes do CampV2');
-assert(html.includes('<script src=\"src/camp/layout-data.js\"></script>'),'index nao carrega os dados de layout do acampamento');
-assert(html.indexOf('<script src=\"src/camp/layout-data.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'layout do acampamento precisa carregar antes do CampV2');
-assert(html.includes('<script src=\"src/camp/farming-data.js\"></script>'),'index nao carrega os dados puros da horta');
-assert(html.indexOf('<script src=\"src/camp/farming-data.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'dados da horta precisam carregar antes do CampV2');
-assert(html.includes('<script src=\"src/camp/farming-system.js\"></script>'),'index nao carrega o comportamento externo da horta');
-assert(html.indexOf('<script src=\"src/camp/farming-system.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'farming-system precisa carregar antes do CampV2');
-assert(html.includes('<script src=\"src/camp/interaction-data.js\"></script>'),'index nao carrega os pontos de interacao externos');
-assert(html.indexOf('<script src=\"src/camp/interaction-data.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'pontos de interacao precisam carregar antes do CampV2');
-assert(html.includes('<script src=\"src/camp/environment-renderer.js\"></script>'),'index nao carrega o renderer ambiental externo');
-assert(html.indexOf('<script src=\"src/camp/environment-renderer.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'renderer ambiental precisa carregar antes do CampV2');
-assert(html.includes('<script src=\"src/camp/pet-system.js\"></script>'),'index nao carrega o sistema externo do pet');
-assert(html.indexOf('<script src=\"src/camp/pet-system.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'pet-system precisa carregar antes do CampV2');
-assert(html.includes('<script src=\"src/camp/archer-system.js\"></script>'),'index nao carrega o renderer externo do arqueiro');
-assert(html.indexOf('<script src=\"src/camp/archer-system.js\"></script>')<html.indexOf('window.CampV2 = (function(){'),'archer-system precisa carregar antes do CampV2');
+assert(html.includes('<script src=\"src/camp/collision-map.js'),'index nao carrega o modulo externo de colisao');
+assert(html.indexOf('<script src=\"src/camp/collision-map.js')<html.indexOf('window.CampV2 = (function(){'),'modulo de colisao precisa carregar antes do CampV2');
+assert(html.includes('<script src=\"src/camp/layout-data.js'),'index nao carrega os dados de layout do acampamento');
+assert(html.indexOf('<script src=\"src/camp/layout-data.js')<html.indexOf('window.CampV2 = (function(){'),'layout do acampamento precisa carregar antes do CampV2');
+assert(html.includes('<script src=\"src/camp/farming-data.js'),'index nao carrega os dados puros da horta');
+assert(html.indexOf('<script src=\"src/camp/farming-data.js')<html.indexOf('window.CampV2 = (function(){'),'dados da horta precisam carregar antes do CampV2');
+assert(html.includes('<script src=\"src/camp/farming-system.js'),'index nao carrega o comportamento externo da horta');
+assert(html.indexOf('<script src=\"src/camp/farming-system.js')<html.indexOf('window.CampV2 = (function(){'),'farming-system precisa carregar antes do CampV2');
+assert(html.includes('<script src=\"src/camp/interaction-data.js'),'index nao carrega os pontos de interacao externos');
+assert(html.indexOf('<script src=\"src/camp/interaction-data.js')<html.indexOf('window.CampV2 = (function(){'),'pontos de interacao precisam carregar antes do CampV2');
+assert(html.includes('<script src=\"src/camp/environment-renderer.js'),'index nao carrega o renderer ambiental externo');
+assert(html.indexOf('<script src=\"src/camp/environment-renderer.js')<html.indexOf('window.CampV2 = (function(){'),'renderer ambiental precisa carregar antes do CampV2');
+assert(html.includes('<script src=\"src/camp/pet-system.js'),'index nao carrega o sistema externo do pet');
+assert(html.indexOf('<script src=\"src/camp/pet-system.js')<html.indexOf('window.CampV2 = (function(){'),'pet-system precisa carregar antes do CampV2');
+assert(html.includes('<script src=\"src/camp/archer-system.js'),'index nao carrega o renderer externo do arqueiro');
+assert(html.indexOf('<script src=\"src/camp/archer-system.js')<html.indexOf('window.CampV2 = (function(){'),'archer-system precisa carregar antes do CampV2');
 
 function assert(condition,message){
   if(!condition) throw new Error(message);

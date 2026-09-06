@@ -31,7 +31,7 @@ window.recursoLigado = function(nome){
 };
 </script>
 <link rel="icon" type="image/png" href="assets/heroes/mage/icon.png">
-<link rel="stylesheet" href="src/ui/post-run.css?v=20260905-postrun6">
+<link rel="stylesheet" href="src/ui/post-run.css?v=20260906-contracts1">
 <link rel="stylesheet" href="src/progression/achievements.css?v=20260905-achievements2">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -6693,7 +6693,7 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
 <script src="src/core/run-stats-system.js?v=20260905-postrun3"></script>
 <script src="src/progression/achievement-data.js?v=20260905-dungeon-off"></script>
 <script src="src/progression/achievement-system.js?v=20260905-dungeon-off"></script>
-<script src="src/ui/post-run-system.js?v=20260905-postrun6"></script>
+<script src="src/ui/post-run-system.js?v=20260906-contracts1"></script>
 <script src="src/camp/meta-progression-system.js?v=20260826-camp-progression"></script>
   <script>
 (function(global){
@@ -21797,14 +21797,33 @@ function closeFishing(){
 }
 
 </script>
-  <script src="src/camp/collision-map.js"></script>
-  <script src="src/camp/layout-data.js"></script>
+  <script src="src/camp/collision-map.js?v=20260906-contracts1"></script>
+  <script src="src/camp/layout-data.js?v=20260906-contracts1"></script>
   <script src="src/camp/farming-data.js"></script>
   <script src="src/camp/farming-system.js"></script>
-  <script src="src/camp/interaction-data.js"></script>
+  <script src="src/camp/interaction-data.js?v=20260906-contracts1"></script>
   <script src="src/camp/environment-renderer.js"></script>
   <script src="src/camp/pet-system.js"></script>
   <script src="src/camp/archer-system.js"></script>
+  <script src="src/camp/contracts-data.js?v=20260906-contracts1"></script>
+  <script src="src/camp/contracts-system.js?v=20260906-contracts1"></script>
+  <script src="src/camp/contract-board-renderer.js?v=20260906-contracts1"></script>
+  <script src="src/camp/contracts-ui.js?v=20260906-contracts1"></script>
+  <script>
+  /* As moedas e o inventário usam `let` no script principal e, portanto,
+     não ficam disponíveis como propriedades de window. O sistema recebe
+     funções explícitas para creditar e salvar as recompensas. */
+  ContractsSystem.configurar({
+    adicionarMoedas:(v)=>{
+      totalCoins+=Math.max(0,Number(v)||0);
+      const cd=document.getElementById('coin-display');
+      if(cd) cd.innerHTML=`<span class="pixel-inline">${gamePixelIconHtml('coin',18)} ${totalCoins}</span>`;
+    },
+    adicionarItem:(item,qtd)=>{ globalInventory[item]=(globalInventory[item]||0)+Math.max(0,Number(qtd)||0); },
+    notificar:(texto)=>{ if(typeof showInvNotif==='function') showInvNotif(texto); },
+    salvar:()=>{ if(typeof savePersistentData==='function') savePersistentData(true); },
+  });
+  </script>
 <script>
 // Start on first interaction (browser requires it)
 function _audioStart(){
@@ -22450,6 +22469,8 @@ window.CampV2 = (function(){
   // para o gramado acima/direita da cabana, onde nenhuma parede corta o acesso.
   // O solo e desenhado por cima do fundo, formando uma horta coesa e legivel.
   const HORTA=window.CampLayoutData.HORTA;
+  const QUADRO=window.CampLayoutData.QUADRO;
+  const GUERREIRO=window.CampLayoutData.GUERREIRO;
 
 
   const PONTOS=window.CampInteractionData.create({
@@ -22462,6 +22483,8 @@ window.CampV2 = (function(){
     portal:()=>openExpeditionMap(),
     lago:()=>openFishing(),
     arqueiro:()=>window.ArqueiroNPC.abrir(),
+    contratos:()=>window.ContractsUI.abrir(),
+    guerreiro:()=>window.ContractsUI.falar(),
   });
 
   const SEMENTES=window.CampFarmingData.SEMENTES;
@@ -22567,6 +22590,13 @@ window.CampV2 = (function(){
   const ARQ=window.CampLayoutData.ARQ;
   const {desenharArqueiro}=window.CampArcherSystem.create({
     S,ARQ,
+    getWorldSize:()=>({width:MW,height:MH}),
+    getHeroImageSets:()=>typeof HERO_IMG_SETS==='undefined'?null:HERO_IMG_SETS,
+    getHeroImage:()=>typeof heroImg==='function'?heroImg:null,
+  });
+
+  const {desenharQuadro,desenharGuerreiro}=window.CampContractBoard.create({
+    S,QUADRO,GUERREIRO,
     getWorldSize:()=>({width:MW,height:MH}),
     getHeroImageSets:()=>typeof HERO_IMG_SETS==='undefined'?null:HERO_IMG_SETS,
     getHeroImage:()=>typeof heroImg==='function'?heroImg:null,
@@ -22740,12 +22770,16 @@ window.CampV2 = (function(){
     const cls=(typeof selectedClass!=='undefined'&&selectedClass.p1)||'mage';
     const dir=S.dir==='up'?'up':(S.dir==='down'?'down':'side');
     if(ARQ.fy*MH <= S.y) desenharArqueiro(c,t);   // profundidade: quem esta atras sai antes
+    if(QUADRO.fy*MH <= S.y) desenharQuadro(c,t);
+    if(GUERREIRO.fy*MH <= S.y) desenharGuerreiro(c,t);
     const petAtras = S.pet && S.pet.y <= S.y;      // quem esta mais ao norte sai antes
     if(petAtras) desenharPet(c,t);
     c.fillStyle='rgba(0,0,0,.34)'; c.beginPath(); c.ellipse(hx,hy+7,11,4,0,0,Math.PI*2); c.fill();
     desenharHeroi(c,cls,dir,S.dir==='right',hx,hy+8,S.andando,t);
     if(!petAtras) desenharPet(c,t);
     if(ARQ.fy*MH > S.y) desenharArqueiro(c,t);
+    if(QUADRO.fy*MH > S.y) desenharQuadro(c,t);
+    if(GUERREIRO.fy*MH > S.y) desenharGuerreiro(c,t);
 
     // HUD por cima, na camada de alta resolucao (texto nitido)
     const hud=document.getElementById('camp2-hud');
@@ -22783,10 +22817,11 @@ window.CampV2 = (function(){
 
   function pausar(){ S.ativo=false; if(S.raf){cancelAnimationFrame(S.raf);S.raf=null;} S.teclas={}; }
   function retomar(){ if(S.ativo) return; S.ativo=true; S.ultimo=0; S.raf=requestAnimationFrame(loop); }
-  function abrir(){
+  function abrir(novaVisita=true){
     if(typeof hideAllScreens==='function') hideAllScreens();
     if(typeof state!=='undefined') state='hub';
     const el=document.getElementById('camp2-screen'); if(el) el.style.display='flex';
+    if(novaVisita && typeof ContractsSystem!=='undefined') ContractsSystem.aoEntrarNoAcampamento();
     dimensionar();
     reposicionarSeBloqueado();
     retomar();
@@ -22815,7 +22850,8 @@ window.CampV2 = (function(){
   function painelAberto(){
     for(const sel of ['#crafting-panel','#collection-screen','#pet-sanctuary',
                       '#farm-panel','#cooking-panel','#workshop-panel','#meta-shop',
-                      '#expmap-screen','#fishing-screen','#char-select','#play-menu','#cookmini','#camp-arq-overlay']){
+                      '#expmap-screen','#fishing-screen','#char-select','#play-menu','#cookmini','#camp-arq-overlay',
+                      '#contracts-overlay','#warrior-talk']){
       const o=document.querySelector(sel);
       if(o && getComputedStyle(o).display!=='none' && o.offsetHeight>0) return true;
     }
@@ -22825,7 +22861,7 @@ window.CampV2 = (function(){
   document.addEventListener('keydown',aoTeclar);
   document.addEventListener('keyup',aoSoltar);
   setInterval(()=>{
-    if(S.voltarAoFechar && !painelAberto()){ S.voltarAoFechar=false; abrir(); return; }
+    if(S.voltarAoFechar && !painelAberto()){ S.voltarAoFechar=false; abrir(false); return; }
     if(S.voltarAoFechar) return;
     if(!S.ativo && acampamentoNaFrente()) retomar();
     else if(S.ativo && !acampamentoNaFrente()) pausar();

@@ -195,10 +195,10 @@ assert(html.includes("cell.state='plowed'; cell.tilled=true;"),
 assert(html.includes("cell.state = 'empty'; cell.tilled = false;"),
   'colheita nao restaura o estado visual nao arado');
 
-const ids=['fazenda','cozinha','merlin','oficina','santuario','fogueira','portal','lago','arqueiro'];
+const ids=['fazenda','cozinha','merlin','oficina','santuario','fogueira','portal','lago','arqueiro','contratos','guerreiro'];
 const actions=Object.fromEntries(ids.map(id=>[id,()=>id]));
 const pontos=sandbox.CampInteractionData.create(actions);
-assert(pontos.length===9,'quantidade de pontos de interacao foi alterada');
+assert(pontos.length===11,'quantidade de pontos de interacao foi alterada');
 for(const id of ids){
   const ponto=pontos.find(item=>item.id===id);
   assert(ponto,`ponto de interacao ausente: ${id}`);
@@ -210,5 +210,11 @@ assert(merlin.fx===.835&&merlin.fy===.590&&merlin.raio===82&&merlin.rotulo==='Fa
 const arqueiro=pontos.find(item=>item.id==='arqueiro');
 assert(arqueiro.fx===.452&&arqueiro.fy===.560&&arqueiro.raio===58&&arqueiro.rotulo==='Falar com o Arqueiro',
   'dados de interacao do Arqueiro foram alterados');
+const contratos=pontos.find(item=>item.id==='contratos');
+assert(contratos.fx===.480&&contratos.fy===.253&&contratos.raio===58&&contratos.rotulo==='Quadro de Contratos',
+  'dados de interacao do Quadro de Contratos foram alterados');
+const guerreiro=pontos.find(item=>item.id==='guerreiro');
+assert(guerreiro.fx===.487&&guerreiro.fy===.283&&guerreiro.raio===46&&guerreiro.rotulo==='Falar com o Guerreiro',
+  'dados de interacao do Guerreiro foram alterados');
 
 console.log('OK: modulos do acampamento preservam colisao, layout, farming, ambiente visual e interacoes.');
