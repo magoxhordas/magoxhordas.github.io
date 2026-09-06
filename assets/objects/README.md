@@ -15,3 +15,29 @@ posição, colisão ou regras: `altar_demoniaco.png`, `bau_antigo.png`,
 `obelisco_deserto_off.png`, `obelisco_deserto_on.png` e
 `fissura_infernal.png`. A fissura é centralizada como decalque de chão; as
 demais artes ficam imóveis e recebem apenas brilho, sem pulsação de escala.
+
+## Espírito Errante, Mercador Perdido e Casulo do Sobrevivente
+
+Três artes entregues pelo usuário em `Downloads/objetos/fotos`, tratadas assim:
+
+- **Fundo.** O casulo veio em chroma key verde e os outros dois em branco. A
+  remoção é por preenchimento a partir das BORDAS, não por "apague toda cor X":
+  assim os olhos brancos do fantasma e o interior claro do casulo continuam
+  inteiros. No casulo ainda passa uma limpeza da franja verde.
+- **Redução com alfa pré-multiplicado.** É precaução, não conserto: medido
+  nestes três arquivos, o resultado com e sem pré-multiplicação difere em 6
+  pixels, todos totalmente transparentes. Não havia halo porque o recorte
+  deixa o alfa binário (0 ou 255). O passo fica porque uma arte futura com
+  borda suave produziria, aí sim, contorno escuro sem ele.
+- **Tamanho igual ao de desenho.** `desenharObjeto` desenha com
+  `imageSmoothingEnabled=false`, então reduzir na tela comeria os fios da teia.
+  Cada PNG já sai na medida em que é desenhado: fantasma 36, mercador 44,
+  casulo 30 px de largura.
+- **Sombra.** O fantasma veio com sombra assada; `drawNode` já desenha a dele,
+  e duas sombras ficariam sujas. A sombra da arte foi cortada.
+
+O `espirito_errante` só entra fora do capítulo 5: no vulcão e a partir da onda
+21 a aparição continua sendo o necromante, que é proposital. Em todos os casos
+o desenho a mão permanece como reserva para o quadro em que a imagem ainda não
+carregou — `arteObjeto` devolve nulo até a primeira carga terminar.
+

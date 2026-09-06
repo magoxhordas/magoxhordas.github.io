@@ -119,7 +119,10 @@ ok(fs.existsSync(path.join(root,'assets/objects/santuario.png')),'arte transpare
 const templeScene=html.slice(html.indexOf('function drawTempleCampfire(){'),html.indexOf('function templeChoose(choice){'));
 ok(!templeScene.includes("desenharObjeto(c,'santuario'"),'altar do evento reapareceu na tela de descanso do Templo Antigo');
 ok(!source.includes('localStorage')&&!source.includes('SaveSystem'),'evento temporário não deve persistir no save');
-ok(html.includes('<script src="src/campaign/campaign-events.js"></script>'),'index não carrega campaign-events.js');
+// Casa pelo CAMINHO, nao pela tag inteira: a marca de cache (?v=...) muda
+// sempre que o arquivo e' editado, e prender a tag exata quebrava aqui sem
+// que nada estivesse errado no jogo.
+ok(/<script src="src\/campaign\/campaign-events\.js(\?[^"]*)?"><\/script>/.test(html),'index não carrega campaign-events.js');
 ok(bossRush.includes("cleanupCampaignRuntime('boss-rush-start')")&&bossRush.includes("cleanupCampaignRuntime('boss-rush-end')"),'Boss Rush não limpa eventos/objetivos');
 ok(dungeon.includes("cleanupCampaignRuntime('dungeon')"),'Dungeon não limpa eventos/objetivos');
 

@@ -233,7 +233,34 @@
       const x=node.x,y=node.y,pulse=.5+.5*Math.sin(time*.006+node.phase),color=eventColor(active.id);ctx.save();
       ctx.globalAlpha=.28;ctx.fillStyle='#000';ctx.beginPath();ctx.ellipse(x,y+17,30,9,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
       if(node.kind==='merchant'){
+        // Mesma linguagem do Altar dos Deuses: arte dedicada quando ela ja'
+        // carregou, blocos a mao enquanto nao.
+        const arteMercador=deps.drawObject?.(ctx,'mercador_perdido',x,y+19,44);
+        if(arteMercador){
+          /* A lanterna e' a unica fonte de luz do mercador. Ela treme como
+             chama, nao como um pulso senoidal limpo: duas senoides de
+             periodos que nao se dividem, entao o pico nunca se repete igual. */
+          const tremor=.72+.18*Math.sin(time*.011)+.10*Math.sin(time*.027);
+          const lx=x+11, ly=y-7, raio=26*tremor+8;   // posicao da lanterna na arte
+          ctx.save();
+          ctx.globalCompositeOperation='lighter';
+          const halo=ctx.createRadialGradient(lx,ly,0,lx,ly,raio);
+          halo.addColorStop(0,`rgba(255,214,120,${(.55*tremor).toFixed(3)})`);
+          halo.addColorStop(.45,`rgba(240,160,60,${(.22*tremor).toFixed(3)})`);
+          halo.addColorStop(1,'rgba(0,0,0,0)');
+          ctx.fillStyle=halo;ctx.beginPath();ctx.arc(lx,ly,raio,0,Math.PI*2);ctx.fill();
+          // brasas subindo: nascem na lanterna e apagam antes do chapeu
+          for(let i=0;i<3;i++){
+            const t=((time*.0006)+i/3)%1;
+            ctx.globalAlpha=(1-t)*.7*tremor;
+            ctx.fillStyle='#ffd27a';
+            ctx.fillRect(Math.round(lx+Math.sin(time*.003+i*2.1)*3),Math.round(ly-t*16),1,1);
+          }
+          ctx.restore();
+        }
+        if(!arteMercador){
         ctx.fillStyle='#5a3c2a';ctx.fillRect(x-10,y-14,20,31);ctx.fillStyle='#c49458';ctx.fillRect(x-8,y-26,16,13);ctx.fillStyle='#513b70';ctx.fillRect(x-14,y-15,28,12);ctx.fillStyle='#e4c06b';ctx.fillRect(x-18,y+7,11,12);ctx.fillRect(x+7,y+7,11,12);
+        }
       }else if(node.kind==='god_altar'){
         // A quinta arte escolhida pelo usuario ja existe recortada no pacote.
         // O evento usa exatamente esse santuario, sem o placeholder circular.
@@ -251,6 +278,30 @@
           desenhado=!!deps.drawHero?.(ctx,'necromancer',x,y+23,'down','idle',0);ctx.restore();
           if(desenhado){ctx.globalAlpha=.42;ctx.strokeStyle='#9f6cff';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y+16,18,6,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;}
         }
+        // Fora do capitulo 5 (onde o necromante e' a aparicao proposital),
+        // o espirito tem arte propria. A sombra ja' foi desenhada acima, por
+        // isso a arte entregue veio sem a sombra assada dela.
+        if(!desenhado) desenhado=!!deps.drawObject?.(ctx,'espirito_errante',x,y+23,36);
+        /* Aura fria e motas subindo. Sao desenhadas pela fase do proprio no',
+           nao pelo pool de particulas do jogo: assim nao competem com o
+           combate por particulas nem sobrevivem ao fim do evento. */
+        ctx.save();
+        ctx.globalCompositeOperation='lighter';
+        const ax=x, ay=y-6, araio=34+6*pulse;
+        const aura=ctx.createRadialGradient(ax,ay,0,ax,ay,araio);
+        aura.addColorStop(0,`rgba(183,164,255,${(.30+.12*pulse).toFixed(3)})`);
+        aura.addColorStop(.5,`rgba(120,96,220,${(.14+.06*pulse).toFixed(3)})`);
+        aura.addColorStop(1,'rgba(0,0,0,0)');
+        ctx.fillStyle=aura;ctx.beginPath();ctx.arc(ax,ay,araio,0,Math.PI*2);ctx.fill();
+        for(let i=0;i<7;i++){
+          const t=((time*.00045)+i/7+node.phase*.16)%1;   // sobe e reaparece embaixo
+          const orbita=13+Math.sin(i*2.7)*5;
+          ctx.globalAlpha=Math.sin(t*Math.PI)*.85;        // nasce e some sem piscar
+          ctx.fillStyle=i%3?'#d9ccff':'#ffffff';
+          const lado=i%3?1:2;
+          ctx.fillRect(Math.round(ax+Math.cos(time*.0016+i*.9)*orbita),Math.round(ay+18-t*34),lado,lado);
+        }
+        ctx.restore();
         if(!desenhado){ctx.globalAlpha=.70;ctx.fillStyle='#c9baff';ctx.beginPath();ctx.arc(x,y-12,12,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.moveTo(x-13,y-6);ctx.quadraticCurveTo(x-18,y+16,x-5,y+23);ctx.lineTo(x,y+14);ctx.lineTo(x+7,y+23);ctx.quadraticCurveTo(x+18,y+14,x+13,y-6);ctx.fill();ctx.fillStyle='#fff';ctx.fillRect(x-5,y-15,3,3);ctx.fillRect(x+3,y-15,3,3);ctx.globalAlpha=1;}
       }
       const glow=ctx.createRadialGradient(x,y,0,x,y,48);glow.addColorStop(0,`${color}44`);glow.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=glow;ctx.fillRect(x-50,y-50,100,100);ctx.restore();
@@ -260,12 +311,23 @@
       for(const reward of active.rewards){const bob=Math.sin(time*.008+reward.phase)*3;ctx.save();ctx.shadowBlur=10;ctx.shadowColor='#ffd765';ctx.fillStyle='#f5c64d';ctx.beginPath();ctx.arc(reward.x,reward.y+bob,reward.radius,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff2a8';ctx.fillRect(reward.x-2,reward.y+bob-5,4,5);ctx.restore();}
     }
 
+    /* Os objetos do evento barram quem anda: sao coisas fisicas no chao.
+       O fantasma tambem barra — nao por fisica, mas porque a alternativa e'
+       o heroi e os inimigos passarem POR DENTRO dele, que e' pior de olhar.
+       O raio e' o do proprio no' (24), e a interacao alcanca raio+64, entao
+       continua sobrando espaco para conversar encostado. */
+    const NOS_SOLIDOS=Object.freeze(['merchant','god_altar','fountain','cursed_chest','profaned_treasure','spirit']);
+    function getSolidBodies(){
+      if(!active||!active.node||active.node.dead)return [];
+      return NOS_SOLIDOS.indexOf(active.node.kind)>=0?[active.node]:[];
+    }
+
     function isActive(){return !!active;}
     function blocksNormalWave(){return !!active;}
     function debugSnapshot(){return active?{id:active.id,phase:active.phase,wave:active.wave,enemies:livingEventEnemies().length,rewards:active.rewards.length,history:[...history],completedCount}:{id:null,history:[...history],completedCount};}
     function debugWeights(){return Object.fromEntries(EVENT_DEFS.map(definition=>[definition.id,eventWeight(definition)]));}
 
-    return Object.freeze({resetRun,tryStartAfterWave,forceStart,update,draw,cleanup,isActive,blocksNormalWave,handleActionDown,handleActionUp,debugSnapshot,debugWeights});
+    return Object.freeze({resetRun,tryStartAfterWave,forceStart,update,draw,cleanup,isActive,blocksNormalWave,getSolidBodies,handleActionDown,handleActionUp,debugSnapshot,debugWeights});
   }
 
   global.CampaignEvents=Object.freeze({create,EVENT_DEFS,EVENT_CHANCE,MAX_EVENTS_PER_RUN});
