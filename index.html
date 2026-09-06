@@ -34,7 +34,7 @@ window.recursoLigado = function(nome){
 </script>
 <link rel="icon" type="image/png" href="assets/heroes/mage/icon.png">
 <link rel="stylesheet" href="src/ui/post-run.css?v=20260906-contracts1">
-<link rel="stylesheet" href="src/progression/achievements.css?v=20260905-achievements2">
+<link rel="stylesheet" href="src/progression/achievements.css?v=20260906-settings1">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 :root {
@@ -4589,51 +4589,57 @@ canvas, img {
   color:#b8d8c1;
 }
 .settings-shell{
+  --settings-title-size:18px;--settings-text-size:13px;--settings-control-size:11px;
   width:min(980px,96vw);max-height:min(820px,92dvh);display:flex;flex-direction:column;
   border:1px solid #23643d;border-radius:8px;overflow:hidden;
   background:linear-gradient(145deg,rgba(2,15,11,.97),rgba(5,10,12,.98));
   box-shadow:0 0 0 5px rgba(7,48,29,.28),0 26px 80px #000b;
-  font-family:'Courier New',monospace;
+  font-family:'Courier New',monospace;font-size:var(--settings-text-size);line-height:1.5;
 }
+.settings-shell button,.settings-shell input,.settings-shell select,.settings-shell output{font-family:inherit}
 .settings-head{display:flex;align-items:center;gap:20px;padding:24px 30px 18px;border-bottom:1px solid #154a2d}
 .settings-rune{display:grid;place-items:center;width:58px;height:58px;border:1px solid #d0aa4a;color:#f0ce74;font-size:30px;background:#09140f;box-shadow:inset 0 0 18px #9d702022}
-.settings-head h1{margin:0;color:#f0d17d;font-size:clamp(25px,3vw,40px);font-weight:500;letter-spacing:7px}
-.settings-head p{margin:7px 0 0;color:#4f9a69;font-size:12px;letter-spacing:5px}
-.settings-tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:12px 30px;border-bottom:1px solid #123e27;background:#020b08}
+.settings-head h1{margin:0;color:#f0d17d;font-size:clamp(26px,3vw,34px);font-weight:700;line-height:1.1;letter-spacing:7px}
+.settings-head p{margin:7px 0 0;color:#4f9a69;font-size:11px;line-height:1.4;letter-spacing:4px}
+.settings-tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;padding:12px 30px;border-bottom:1px solid #123e27;background:#020b08}
 .settings-tab,.settings-close,.settings-control-head button{
   border:1px solid #205d39;background:#07150f;color:#79b88c;padding:12px 16px;
-  font:700 14px 'Courier New',monospace;letter-spacing:2px;cursor:pointer;transition:.18s ease;
+  font-size:var(--settings-control-size);font-weight:700;line-height:1.35;letter-spacing:2px;cursor:pointer;transition:.18s ease;
 }
 .settings-tab:hover,.settings-tab.active{border-color:#71e89a;color:#baffce;background:#0e2a1b;box-shadow:inset 0 -2px #64d98d}
-.settings-body{overflow:auto;min-height:0;padding:22px 30px;scrollbar-color:#287847 #04110b}
+.settings-body{overflow:auto;min-height:0;padding:22px 30px;font-size:var(--settings-text-size);line-height:1.5;scrollbar-color:#287847 #04110b}
 .settings-panel{display:none;animation:settingsIn .18s ease}.settings-panel.active{display:block}
 @keyframes settingsIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
 .settings-card{display:grid;grid-template-columns:minmax(240px,1fr) auto;gap:18px 28px;align-items:center;padding:20px;margin-bottom:14px;border:1px solid #174f30;background:linear-gradient(100deg,#06140d,#050b0a)}
-.settings-card-copy h2,.settings-control-head h2{margin:0 0 5px;color:#e5cd83;font-size:20px;letter-spacing:2px}
-.settings-card-copy p{margin:0;color:#71947b;line-height:1.5}
-.settings-toggle{display:flex;align-items:center;gap:10px;min-width:146px;padding:8px 11px;border:1px solid #5b3737;background:#160b0d;color:#ae6969;cursor:pointer;font:700 11px 'Courier New',monospace;letter-spacing:1px}
+.settings-card-copy h2,.settings-control-head h2,.settings-panel>h2,#settings-mobile-wrap>h2,.settings-skin-head h2{margin:0 0 6px;color:#e5cd83;font-size:var(--settings-title-size);font-weight:700;line-height:1.3;letter-spacing:2px}
+.settings-card-copy p,#settings-mobile-wrap>p,.settings-skin-head p{margin:0;color:#71947b;font-size:var(--settings-text-size);line-height:1.5}
+.settings-toggle{display:flex;align-items:center;gap:10px;min-width:146px;padding:8px 11px;border:1px solid #5b3737;background:#160b0d;color:#ae6969;cursor:pointer;font-size:var(--settings-control-size);font-weight:700;line-height:1.35;letter-spacing:1px}
 .settings-toggle span{width:32px;height:16px;border-radius:12px;background:#51282d;position:relative;transition:.2s}
 .settings-toggle span::after{content:'';position:absolute;width:12px;height:12px;left:2px;top:2px;border-radius:50%;background:#c98787;transition:.2s}
 .settings-toggle.is-on{border-color:#2c8a51;background:#071b10;color:#75e59a}
 .settings-toggle.is-on span{background:#267d48}.settings-toggle.is-on span::after{left:18px;background:#a6ffc0}
-.settings-volume{grid-column:1/-1;display:grid;grid-template-columns:80px 1fr 52px;gap:14px;align-items:center;color:#84a98f;font-size:13px}
+.settings-volume{grid-column:1/-1;display:grid;grid-template-columns:80px 1fr 52px;gap:14px;align-items:center;color:#84a98f;font-size:var(--settings-text-size);line-height:1.35}
 .settings-volume input{width:100%;accent-color:#5fe18b}.settings-volume output{text-align:right;color:#efcf78}
 .settings-control-head{display:flex;align-items:center;justify-content:space-between;margin:24px 0 10px}
-.settings-control-head button{padding:8px 11px;font-size:11px}
+.settings-control-head button{padding:8px 11px}
 .settings-key-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.settings-key-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 14px;border:1px solid #153f29;background:#050f0b;color:#91b29a}
-.settings-key{min-width:126px;border:1px solid #3a7650;background:#0a1d12;color:#b9f4c9;padding:9px 10px;font:700 12px 'Courier New',monospace;cursor:pointer}
+.settings-key-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 14px;border:1px solid #153f29;background:#050f0b;color:#91b29a;font-size:var(--settings-text-size);line-height:1.35}
+.settings-key{min-width:126px;border:1px solid #3a7650;background:#0a1d12;color:#b9f4c9;padding:9px 10px;font-size:var(--settings-control-size);font-weight:700;line-height:1.35;cursor:pointer}
 .settings-key.listening{border-color:#e5b948;color:#ffe39a;animation:keyListen .7s alternate infinite}
 @keyframes keyListen{to{box-shadow:0 0 14px #dba62b88}}
-.settings-help{margin:17px 2px 0;color:#568367;font-size:12px;line-height:1.6}
+.settings-help{margin:17px 2px 0;color:#568367;font-size:var(--settings-control-size);line-height:1.6}
 .settings-resolution-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.settings-resolution{display:flex;flex-direction:column;gap:7px;text-align:left;padding:22px;border:1px solid #1b5031;background:#06130d;color:#b0cab6;cursor:pointer;font-family:'Courier New',monospace}
-.settings-resolution span{color:#d9c37f;font-size:20px;font-weight:700}.settings-resolution small{color:#678b71}
+.settings-resolution{display:flex;flex-direction:column;gap:7px;text-align:left;padding:22px;border:1px solid #1b5031;background:#06130d;color:#b0cab6;cursor:pointer;font-size:var(--settings-text-size);line-height:1.4}
+.settings-resolution span{color:#d9c37f;font-size:var(--settings-title-size);font-weight:700}.settings-resolution small{color:#678b71;font-size:var(--settings-control-size);line-height:1.45}
 .settings-resolution:hover,.settings-resolution.selected{border-color:#67df8e;background:#0c2517;box-shadow:inset 4px 0 #64e58e}
 .settings-resolution.selected::after{content:'SELECIONADA';color:#76e89b;font-size:10px;letter-spacing:2px;margin-top:5px}
+.settings-row{display:grid;grid-template-columns:minmax(210px,1fr) auto;gap:16px;align-items:center;padding:12px 14px;margin-top:8px;border:1px solid #153f29;background:#050f0b;color:#91b29a;font-size:var(--settings-text-size);line-height:1.4}
+#settings-mobile-card>h3{margin:18px 0 8px;color:#e5cd83;font-size:var(--settings-text-size);font-weight:700;line-height:1.35;letter-spacing:1.5px;text-transform:uppercase}
+#settings-mobile-card>h3:first-child{margin-top:18px}
+#settings-mobile-card{grid-column:1/-1}
+.settings-section-title{margin-top:18px!important}
 .settings-skin-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin:0 0 16px;padding:0 2px}
-.settings-skin-head h2{margin:0 0 7px;color:#e5cd83;font-size:22px;letter-spacing:2px}
-.settings-skin-head p{max-width:690px;margin:0;color:#71947b;line-height:1.55;font-size:13px}
+.settings-skin-head p{max-width:690px}
 .settings-skin-head>span{flex:none;border:1px solid #286c43;background:#071b10;color:#78c995;padding:7px 10px;font-size:9px;letter-spacing:2px}
 .settings-skin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .settings-skin-card{
@@ -6413,9 +6419,8 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
         <div class="settings-control-head"><h2>Comandos</h2><button onclick="GameSettings.resetControls()">Restaurar padrão</button></div>
         <div class="settings-key-grid" id="settings-key-grid"></div>
         <p class="settings-help">Clique em uma tecla para alterá-la. Com o ataque automático desligado, use o botão esquerdo do mouse.</p>
-              <article class="settings-card" id="settings-mobile-wrap">
-          <h2>Controles no celular</h2>
-          <p>Só aparecem em aparelhos com tela sensível ao toque.</p>
+        <article class="settings-card" id="settings-mobile-wrap">
+          <div class="settings-card-copy"><h2>Controles no celular</h2><p>Só aparecem em aparelhos com tela sensível ao toque.</p></div>
           <div id="settings-mobile-card"></div>
         </article>
 </div>
@@ -6424,7 +6429,7 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
         <div class="settings-resolution-grid" id="settings-resolution-grid"></div>
         <p class="settings-help">A área do jogo permanece em 4:3. A opção muda a nitidez interna sem alterar gráficos ou jogabilidade.</p>
 
-        <h2 style="margin-top:18px">Efeitos de combate</h2>
+        <h2 class="settings-section-title">Efeitos de combate</h2>
         <div class="settings-row">
           <span>Intensidade</span>
           <button class="settings-toggle" id="settings-fx-intensity" onclick="GameSettings.cycleCombatFxIntensity()"><span></span><b>NORMAL</b></button>
@@ -6701,7 +6706,7 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
 <script src="src/core/save-system.js"></script>
 <script src="src/core/run-stats-system.js?v=20260905-postrun3"></script>
 <script src="src/progression/achievement-data.js?v=20260905-dungeon-off"></script>
-<script src="src/progression/achievement-system.js?v=20260905-dungeon-off"></script>
+<script src="src/progression/achievement-system.js?v=20260906-settings1"></script>
 <script src="src/ui/post-run-system.js?v=20260906-contracts1"></script>
 <script src="src/camp/meta-progression-system.js?v=20260826-camp-progression"></script>
   <script>
