@@ -142,7 +142,7 @@
   color:#c9a86a;text-transform:uppercase;display:flex;align-items:center;gap:9px;}
 .gr-secao > h3::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,${COR}55,transparent);}
 .gr-lista{display:grid;gap:calc(14px * var(--gr-k));
-  grid-template-columns:repeat(auto-fill,minmax(calc(280px * var(--gr-k)),1fr));}
+  grid-template-columns:repeat(auto-fit,minmax(calc(280px * var(--gr-k)),1fr));}
 .gr-card{position:relative;display:flex;flex-direction:column;gap:calc(9px * var(--gr-k));
   background:rgba(26,16,8,.85);border:2px solid var(--cc,${COR}66);border-radius:calc(8px * var(--gr-k));
   padding:calc(11px * var(--gr-k)) calc(14px * var(--gr-k)) calc(12px * var(--gr-k));

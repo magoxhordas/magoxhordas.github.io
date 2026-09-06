@@ -352,6 +352,8 @@ const retrato=(extra={})=>({
   exigir(ui.includes('CONCLUÍDO'),'a interface nao marca contrato concluido');
   exigir(ui.includes('.gr-cnome{font-size:calc(18px * var(--gr-k))'),'o nome do contrato voltou a usar fonte pequena');
   exigir(ui.includes('.gr-cdesc{margin:0;font-size:calc(14px * var(--gr-k))'),'a descricao do contrato voltou a usar fonte pequena');
+  exigir(ui.includes('grid-template-columns:repeat(auto-fit,minmax(calc(280px * var(--gr-k)),1fr))'),
+    'a grade nao distribui as ofertas igualmente por toda a largura');
 
   /* A interface segue o MOLDE DA CONVERSA DO ARQUEIRO — foi pedido assim.
      Estes itens sao o que define aquele molde; se sumirem, o Guerreiro
