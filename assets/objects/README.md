@@ -41,3 +41,17 @@ O `espirito_errante` só entra fora do capítulo 5: no vulcão e a partir da ond
 o desenho a mão permanece como reserva para o quadro em que a imagem ainda não
 carregou — `arteObjeto` devolve nulo até a primeira carga terminar.
 
+## Tesouro Profano
+
+`tesouro_profano.png` (48×32) sai do mesmo tratamento das três anteriores, com
+uma diferença: a arte veio com **sombra cinza assada** além do fundo branco, e
+a sombra não sai por preenchimento de borda — a tolerância que a alcançava
+vazava para dentro da arca. Ela é removida por cor, pela regra "cinza
+dessaturado e claro": a arca é saturada (laranja) ou muito escura, então
+nenhum pixel dela cai na regra. `drawNode` já desenha a própria sombra; manter
+a assada deixaria duas.
+
+A arte vale **só** para o Tesouro Profano. O Baú Amaldiçoado divide o mesmo
+ramo de desenho e continua à mão: usar a mesma imagem nos dois apagaria a
+diferença entre um evento bom e um ruim.
+

@@ -121,6 +121,24 @@ const campaignEvents=CampaignEvents.create({
   addTimedModifier:modifier=>campaignObjectives.addTimedModifier(modifier),
   drawHero:drawCampaignHero,
   drawObject:(ctx2,nome,x,yBase,largura)=>CampaignObjectives.desenharObjeto(ctx2,nome,x,yBase,largura),
+  /* O aliado da tempestade atira com a arma da propria classe. Reaproveita o
+     projetil amigo do pet (EnemyProj com isFriendly), que ja' tem colisao com
+     inimigos resolvida em checkPetProjCollisions — inventar um segundo tipo de
+     projetil amigo criaria duas regras de acerto para manter. */
+  /* Fabrica da moeda para o Tesouro Profano. Devolve uma Coin SOLTA, de
+     proposito: ela nao entra no array `coins` do jogo, senao a coleta padrao e
+     a do evento disputariam a mesma moeda e o jogador receberia duas vezes. */
+  criarMoeda:(x,y,valor)=>{
+    try{ return new Coin(x,y,valor); }catch(_){ return null; }
+  },
+  spawnAllyProjectile:(x,y,ang,dano,cor)=>{
+    try{
+      const p=new EnemyProj(x,y,ang,Math.max(1,Math.round(dano)),cor||'#ffe6a8','flecha');
+      p.isFriendly=true;
+      projs.push(p);
+      return true;
+    }catch(_){ return false; }
+  },
   now:()=>performance.now(),
 });
 

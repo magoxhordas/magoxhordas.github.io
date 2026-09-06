@@ -369,10 +369,15 @@
         // morrer: e' recompensa, nao mais um objeto para o jogador defender.
         const salvo=buffs.heroiResgatado;
         if(salvo){
+          // Ele APANHA. Um companheiro invulneravel nao gera tensao nenhuma:
+          // o jogador ignorava a briga dele porque ela nao tinha consequencia.
+          const vida=Math.round(120+(Number(deps.getWave())||18)*7);
           current.data.aliado=makeTarget({kind:'hero_ally',label:salvo.nome,x:320,y:330,radius:14,
             damageable:false,autoTarget:false,interactive:false,heroi:salvo,
+            hp:vida,maxHp:vida,
             golpeT:900,passo:0,olhando:'down',atacando:0,customUpdate:updateHeroAlly});
           deps.spawnNotice(320,196,`${salvo.nome.toUpperCase()} VEIO AJUDAR`,0);
+          falarDe(current.data.aliado,'chegada',3000);
         }
       }else if(definition.id==='tremors'){
         current.data.nextTremor=4200;current.data.tremor=null;
@@ -585,34 +590,121 @@
       target._destroyed=false;target.dead=false;target.hp=120;target.maxHp=120;target.radius=15;target.flashTimer=0;
       current.data.survivorAggroSerial=0;
       runtime.parts(target.x,target.y,'#e8eee6',18,65);deps.spawnNotice(target.x,target.y-34,'DEFENDA O SOBREVIVENTE!',0);
+      target.fala=null; target._ultimaFala=null;
+      falarDe(target,'solto',2800);
+      current.data.gritoT=6000;
     }
-    /* O resgatado: anda atras do jogador mais proximo e bate em quem chega
-       perto. Nao leva dano — ele e' recompensa pelo resgate, e nao um novo
-       objeto de escolta. */
+    /* == O ALIADO DA TEMPESTADE ==
+       Antes ele grudava no heroi e dava um soco generico de 74px, igual para
+       todas as classes: parecia um enfeite que andava junto. Agora
+         . vai atras dos INIMIGOS, nao do jogador;
+         . briga com o golpe da PROPRIA classe (resgatado Arqueiro atira,
+           resgatado Viking gira);
+         . tem vida, apanha e pode cair.
+       'alcance' e' onde ele para de andar e comeca a bater; 'recuo' e' a
+       distancia minima que um atirador tenta manter: sem isso o mago ficava
+       no corpo a corpo, que e' o oposto da classe dele. */
+    const ALIADO_PERFIL=Object.freeze({
+      mage:        {alcance:150, recuo:82, cadencia:1000, tipo:'tiro',  cor:'#7fd4ff', dano:.90},
+      archer:      {alcance:170, recuo:92, cadencia:820,  tipo:'tiro2', cor:'#8effa8', dano:.62},
+      necromancer: {alcance:140, recuo:82, cadencia:1050, tipo:'tiro',  cor:'#b98cff', dano:.95},
+      warrior:     {alcance:46,  recuo:0,  cadencia:900,  tipo:'arco',  cor:'#ffd08a', dano:1.15},
+      viking:      {alcance:42,  recuo:0,  cadencia:820,  tipo:'giro',  cor:'#ffb066', dano:1.00},
+    });
+    const perfilAliado=target=>ALIADO_PERFIL[target&&target.heroi&&target.heroi.id]||ALIADO_PERFIL.warrior;
+
+    function golpeDoAliado(target,perfil,alvo,vivos){
+      const base=(16+(Number(deps.getWave())||18)*1.6)*perfil.dano;
+      const ang=Math.atan2(alvo.y-target.y,alvo.x-target.x);
+      if(perfil.tipo==='tiro'||perfil.tipo==='tiro2'){
+        const tiros=perfil.tipo==='tiro2'?2:1;
+        let saiu=false;
+        for(let i=0;i<tiros;i++){
+          const desvio=tiros>1?(i-.5)*.13:0;
+          saiu=deps.spawnAllyProjectile?.(target.x,target.y-6,ang+desvio,base,perfil.cor)||saiu;
+        }
+        runtime.parts(target.x,target.y-6,perfil.cor,4,30);
+        /* Sem projetil disponivel o aliado ficaria so' fazendo pose. Neste caso
+           o tiro vira acerto direto, para ele nunca parar de contribuir. */
+        if(!saiu){ alvo.takeDmg?.(base); runtime.parts(alvo.x,alvo.y,perfil.cor,5,34); }
+        return;
+      }
+      const raio=perfil.tipo==='giro'?54:60;
+      for(const e of vivos){
+        if(distance(e,target)>raio)continue;
+        if(perfil.tipo==='arco'){
+          const a=Math.atan2(e.y-target.y,e.x-target.x);
+          const dif=Math.abs(((a-ang+Math.PI*3)%(Math.PI*2))-Math.PI);
+          if(dif>1.15)continue;      // o arco do guerreiro so' pega quem esta na frente
+        }
+        e.takeDmg?.(base);
+        runtime.parts(e.x,e.y,perfil.cor,5,34);
+      }
+    }
+
+    function danificarAliado(target,bruto){
+      if(!target||target.dead)return 0;
+      const dano=Math.max(1,Math.min(14,(Number(bruto)||6)*.45));
+      target.hp=Math.max(0,target.hp-dano); target.flashTimer=180;
+      runtime.parts(target.x,target.y,'#ef625c',6,34);
+      if(target.hp<=0){
+        target.dead=true;
+        target.fala=null;
+        runtime.parts(target.x,target.y,'#ef625c',20,70);
+        deps.spawnNotice(target.x,target.y-34,`${(target.label||'ALIADO').toUpperCase()} CAIU`,0);
+        return dano;
+      }
+      // Abaixo de um terco da vida ele passa a pedir ajuda, com intervalo
+      // proprio: sem o intervalo, cada tiquinho de dano geraria um balao.
+      target._queixaT=(target._queixaT||0)-1;
+      if(target.hp/target.maxHp<.34&&target._queixaT<=0){
+        target._queixaT=6; falarDe(target,'apanha',2000);
+      }
+      return dano;
+    }
+
     function updateHeroAlly(target,dt){
-      const alvoJogador=players().sort((a,b)=>distance(a,target)-distance(b,target))[0];
-      if(alvoJogador){
-        const dx=alvoJogador.x-target.x,dy=alvoJogador.y-target.y,d=Math.hypot(dx,dy);
-        if(d>52){
-          const v=132*dt;target.x+=dx/d*v;target.y+=dy/d*v;
-          target.passo+=Math.hypot(dx/d*v,dy/d*v);
-          target.olhando=Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up');
+      if(target.dead)return;
+      const perfil=perfilAliado(target);
+      const vivos=enemies().filter(e=>e&&!e.dead);
+      const alvo=vivos.slice().sort((a,b)=>distance(a,target)-distance(b,target))[0];
+
+      target.andando=false;
+      if(alvo){
+        const dx=alvo.x-target.x,dy=alvo.y-target.y,d=Math.hypot(dx,dy)||1;
+        let passo=0;
+        if(d>perfil.alcance) passo=138*dt;                    // fecha a distancia
+        else if(perfil.recuo&&d<perfil.recuo) passo=-96*dt;    // atirador nao briga colado
+        if(passo!==0){
+          target.x+=dx/d*passo; target.y+=dy/d*passo;
+          target.passo+=Math.abs(passo);
           target.andando=true;
-        } else target.andando=false;
+        }
+        if(!(target.atacando>0))
+          target.olhando=Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up');
       }
       target.x=clamp(target.x,30,610);target.y=clamp(target.y,208,452);
+
       if(target.atacando>0)target.atacando-=dt*1000;
       target.golpeT-=dt*1000;
       if(target.golpeT<=0){
-        const perto=enemies().filter(e=>distance(e,target)<74)
-          .sort((a,b)=>distance(a,target)-distance(b,target))[0];
-        if(perto){
-          target.golpeT=900;target.atacando=340;
-          const dx=perto.x-target.x,dy=perto.y-target.y;
+        if(alvo&&distance(alvo,target)<=perfil.alcance+14){
+          target.golpeT=perfil.cadencia;target.atacando=340;
+          const dx=alvo.x-target.x,dy=alvo.y-target.y;
           target.olhando=Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up');
-          perto.takeDmg?.(16+(Number(deps.getWave())||18)*1.6);
-          runtime.parts(perto.x,perto.y,'#ffe6a8',5,34);
-        } else target.golpeT=280;
+          golpeDoAliado(target,perfil,alvo,vivos);
+          // De vez em quando, nao a cada golpe: falar em todo ataque viraria
+          // um balao piscando sem parar.
+          if(Math.random()<.12) falarDe(target,'briga',1500);
+        } else target.golpeT=200;
+      }
+
+      // Inimigos encostados o machucam, na mesma cadencia do sobrevivente.
+      for(const e of vivos){
+        if(e.frozen||(e.isSpecter&&e.phased)||e.burrowState==='burrowing')continue;
+        if(distance(e,target)>=e.radius+target.radius+3)continue;
+        e._aliadoHitT=(e._aliadoHitT||0)-dt*1000;
+        if(e._aliadoHitT<=0){ e._aliadoHitT=800; danificarAliado(target,e.damage); if(target.dead)return; }
       }
     }
 
@@ -637,6 +729,10 @@
     function updateSurvivor(dt){
       const target=current.data.survivor;if(!target||current.data.stage!=='defend')return;
       current.data.remaining-=dt*1000;
+      current.data.gritoT=(current.data.gritoT||0)-dt*1000;
+      if(current.data.gritoT<=0&&enemies().some(e=>!e.dead&&distance(e,target)<150)){
+        current.data.gritoT=5200; falarDe(target,'defesa',2200);
+      }
       for(const enemy of enemies()){
         /* A escolha de alvo precisa ser estavel. Antes dependia de x+y em
            TODO quadro; ao caminhar, o mesmo inimigo alternava entre heroi e
@@ -775,7 +871,16 @@
       for(const target of current.targets)if(target&&!target.dead)target.update(dt);
       updateSpawners(dt);
       if(current.id==='dark_choice'&&!current.data.revealed&&current.elapsed>=current.data.revealAt)revealDarkAltar();
-      if(current.id==='webbed_survivor')updateSurvivor(dt);
+      if(current.id==='webbed_survivor'){
+        updateSurvivor(dt);
+        // Preso no casulo ele chama por ajuda; e' o que transforma um objeto
+        // de cenario em alguem que o jogador decide salvar.
+        const preso=current.data.survivor;
+        if(preso&&!preso.dead&&current.data.stage==='web'){
+          current.data.gritoT=(current.data.gritoT||0)-dt*1000;
+          if(current.data.gritoT<=0){ current.data.gritoT=4200; falarDe(preso,'preso',2400); }
+        }
+      }
       if(current.id==='freezing_cold')updateFreezing(dt);
       if(current.id==='tremors')updateTremor(dt);
       if(current.id==='last_stand')updateLastStand(dt);
@@ -906,10 +1011,13 @@
       if(current.id==='lost_fires')return {...base,detail:`Segure a interação para acender · ${current.data.lit}/3`,progress:current.data.lit/3};
       if(current.id==='ancient_obelisks')return {...base,detail:current.data.activated<4?`Ative os obeliscos · ${current.data.activated}/4 · cada um chama uma emboscada`:'Abra o baú ancestral.',progress:current.data.activated/4};
       if(current.id==='sandstorm'){
-        const salvo=current.data.aliado?.heroi;
-        return {...base,detail:salvo
-          ? `${salvo.nome} luta ao seu lado e abre a névoa. Inimigos emergem sob marcas de areia.`
-          : 'Permaneça perto do outro herói. Inimigos emergem sob marcas de areia.'};
+        const aliado=current.data.aliado;
+        const salvo=aliado?.heroi;
+        if(!salvo)return {...base,detail:'Permaneça perto do outro herói. Inimigos emergem sob marcas de areia.'};
+        if(aliado.dead)return {...base,detail:`${salvo.nome} caiu. Inimigos emergem sob marcas de areia.`};
+        return {...base,detail:`${salvo.nome} luta ao seu lado e abre a névoa. Inimigos emergem sob marcas de areia.`,
+          meters:[{label:salvo.nome.toUpperCase(),value:aliado.hp/aliado.maxHp,
+                   text:`${Math.ceil(aliado.hp)}/${aliado.maxHp}`,danger:aliado.hp/aliado.maxHp<.3}]};
       }
       if(current.id==='tremors')return {...base,detail:'Saia da faixa marcada antes da passagem do Devorador.'};
       if(current.id==='infernal_fissures')return {...base,detail:`Sele as fissuras · ${living.length}/3 restantes`,progress:(3-living.length)/3};
@@ -938,6 +1046,67 @@
 
     function getSolidTargets(){
       return alive(current.targets).filter(target=>SOLIDOS.indexOf(target.kind)>=0);
+    }
+
+    /* == BALAO DE FALA ==
+       O sobrevivente pede socorro dentro do casulo e agradece ao ser solto; o
+       aliado avisa que chegou e reclama quando apanha. Sem isso eles eram
+       bonecos mudos: o jogador nao tinha por que se importar com nenhum dos
+       dois. O texto vive no proprio alvo e expira sozinho, entao nao existe
+       fila nem estado global para vazar entre ondas. */
+    /* As frases sao curtas de proposito: o balao fica sobre a cabeca, no meio
+       da briga, e qualquer coisa mais longa vira parede de texto ilegivel. */
+    const FALAS=Object.freeze({
+      preso:   ['Me tira daqui!','Socorro!','Tem alguem ai?','Nao consigo me soltar!'],
+      solto:   ['Obrigado!','Voce me salvou!','Eu devia estar morto...'],
+      defesa:  ['Cuidado atras!','Nao me deixa!','Eles vem de novo!'],
+      chegada: ['Vim ajudar!','Nao te devo mais nada depois dessa!','Deixa comigo!'],
+      briga:   ['Toma!','Vem!','Peguei um!'],
+      apanha:  ['Ai!','Preciso de ajuda!','Me cobre!'],
+      caindo:  ['Nao aguento mais...','Desculpa...'],
+    });
+    function falarDe(target,grupo,duracaoMs){
+      const linhas=FALAS[grupo];
+      if(!linhas||!linhas.length)return;
+      // Nunca repete a frase anterior do mesmo personagem: repeticao imediata
+      // e' o que faz um NPC parecer um gravador.
+      let escolha=linhas[Math.floor(Math.random()*linhas.length)];
+      if(linhas.length>1&&target&&target._ultimaFala===escolha)
+        escolha=linhas[(linhas.indexOf(escolha)+1)%linhas.length];
+      if(target)target._ultimaFala=escolha;
+      falar(target,escolha,duracaoMs);
+    }
+    function falar(target,texto,duracaoMs){
+      if(!target||target.dead||!texto)return;
+      target.fala={texto:String(texto),ate:deps.now()+(duracaoMs||2600)};
+    }
+    function desenharBalao(ctx,target,x,y){
+      const fala=target&&target.fala;
+      if(!fala)return;
+      const restante=fala.ate-deps.now();
+      if(restante<=0){ target.fala=null; return; }
+      const texto=fala.texto;
+      /* Fonte pequena e caixa medida pelo texto: um balao de largura fixa ou
+         cortava a frase ou sobrava vazio. */
+      ctx.save();
+      ctx.font='7px "Press Start 2P", monospace';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      const larg=Math.max(38,ctx.measureText(texto).width+14), alt=15;
+      // some suave nos ultimos 400ms, para nao piscar de uma vez
+      ctx.globalAlpha=Math.max(0,Math.min(1,restante/400));
+      const bx=x-larg/2, by=y-alt;
+      ctx.fillStyle='rgba(12,9,18,.92)';
+      ctx.fillRect(bx,by,larg,alt);
+      ctx.strokeStyle='#c8a84b'; ctx.lineWidth=1;
+      ctx.strokeRect(Math.round(bx)+.5,Math.round(by)+.5,Math.round(larg)-1,alt-1);
+      // rabicho apontando para quem fala
+      ctx.fillStyle='rgba(12,9,18,.92)';
+      ctx.beginPath();ctx.moveTo(x-4,by+alt);ctx.lineTo(x+4,by+alt);ctx.lineTo(x,by+alt+5);ctx.closePath();ctx.fill();
+      ctx.strokeStyle='#c8a84b';
+      ctx.beginPath();ctx.moveTo(x-4,by+alt);ctx.lineTo(x,by+alt+5);ctx.lineTo(x+4,by+alt);ctx.stroke();
+      ctx.fillStyle='#ffe9b0';
+      ctx.fillText(texto,x,by+alt/2+1);
+      ctx.restore();
     }
 
     function drawHunterGround(ctx,target){
@@ -1169,8 +1338,11 @@
       }else if(target.kind==='survivor_web'){
         // Arte dedicada, ancorada pela base. O desenho a mao continua de
         // reserva para o quadro em que a imagem ainda nao carregou.
-        if(desenharObjeto(ctx,'casulo_sobrevivente',x,y+28,30,target)){ctx.restore();return;}
+        // O balao vai nos DOIS caminhos: este ramo sai cedo quando a arte
+        // carregou, e so' na saida de baixo o pedido de socorro nunca aparecia.
+        if(desenharObjeto(ctx,'casulo_sobrevivente',x,y+28,30,target)){desenharBalao(ctx,target,x,y-34);ctx.restore();return;}
         ctx.strokeStyle='#e0ebe4';ctx.lineWidth=2;for(let i=0;i<7;i++){const a=i*Math.PI/7;ctx.beginPath();ctx.ellipse(x,y,21-i*2,28-i*2,a,0,Math.PI*2);ctx.stroke();}ctx.fillStyle='#865b47';ctx.fillRect(x-5,y-8,10,21);ctx.fillStyle='#d7b08a';ctx.fillRect(x-4,y-15,8,8);
+        desenharBalao(ctx,target,x,y-34);
       }else if(target.kind==='survivor'||target.kind==='hero_ally'){
         const aliado=target.kind==='hero_ally';
         const lado=aliado?(target.olhando==='left'||target.olhando==='right'?'side':(target.olhando==='up'?'up':'down')):'down';
@@ -1187,13 +1359,16 @@
           ctx.fillStyle='#77533d';ctx.fillRect(x-6,y-10,12,24);ctx.fillStyle='#d8b08a';ctx.fillRect(x-5,y-18,10,9);ctx.fillStyle='#e8d378';ctx.fillRect(x-7,y+9,5,9);ctx.fillRect(x+2,y+9,5,9);
         }
         ctx.restore();
-        if(!aliado){
+        /* A barra vale para os DOIS agora. O aliado passou a apanhar, e um
+           companheiro que perde vida sem mostrar quanto so' gera susto. */
+        {
           const vida=clamp(target.hp/target.maxHp,0,1),largura=34;
           ctx.fillStyle='#18090b';ctx.fillRect(x-largura/2-1,y-51,largura+2,6);
           ctx.fillStyle='#5a1417';ctx.fillRect(x-largura/2,y-50,largura,4);
           ctx.fillStyle=vida>.3?'#70cf67':'#ef4d54';ctx.fillRect(x-largura/2,y-50,largura*vida,4);
         }
         if(aliado){ctx.globalAlpha=.5+.2*Math.sin(time*.005);ctx.strokeStyle='#ffdf9a';ctx.lineWidth=1.4;ctx.beginPath();ctx.ellipse(x,y+14,15,6,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;}
+        desenharBalao(ctx,target,x,y-56);
       }else if(target.kind==='hunter_spider'){
         const emFase=target.combatState==='phase_wind',golpe=target.combatState==='phase_strike';
         const prepara=target.combatState==='charge_wind',tecendo=target.combatState==='silk_wind',recupera=target.combatState==='charge_recover';
