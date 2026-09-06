@@ -1012,6 +1012,7 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 
 .mn-cartao{
   position:relative; isolation:isolate; overflow:hidden;
+  touch-action:manipulation;   /* o toque duplo escolhe, nao amplia a pagina */
   display:grid; align-content:start; justify-items:center;
   gap:clamp(5px,.9vh,10px);
   padding:clamp(14px,2.4vh,26px) clamp(10px,1.6vw,20px) clamp(13px,2.2vh,22px);
@@ -1257,6 +1258,7 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 }
 .cs-heroi{
   position:relative; display:grid; grid-template-rows:1fr auto auto;
+  touch-action:manipulation;   /* o toque duplo escolhe, nao amplia a pagina */
   gap:5px; justify-items:center;
   padding:clamp(8px,1.3vh,15px) 6px clamp(8px,1.3vh,13px);
   background:linear-gradient(180deg, rgba(16,11,26,.62), rgba(10,7,18,.9));
@@ -11252,6 +11254,34 @@ function csAnimarRetrato(canvas, classe, atacando, fill){
   })();
 }
 
+/* ══ DUPLO CLIQUE = CONTINUAR ══
+   Nas tres telas de escolha (modo, dificuldade e heroi) o primeiro clique
+   marca o cartao e o segundo, se vier logo em seguida NO MESMO cartao, ja'
+   avanca — o mesmo que apertar CONTINUAR, sem ter de mirar no botao la'
+   embaixo.
+   Feito na mao em cima do 'click' em vez de usar o evento 'dblclick' porque
+   no celular o navegador nao dispara dblclick de forma confiavel enquanto a
+   pagina puder ser ampliada: o toque duplo vira zoom. O CSS dos cartoes tira
+   esse zoom (touch-action:manipulation) e aqui a dupla e' contada pelo tempo,
+   valendo igual para o mouse e para o dedo. */
+const DUPLO_MS=400;
+let _duploAlvo=null, _duploEm=0, _duploTravaAte=0;
+
+function duploConfirmar(cartao, escolher, confirmar){
+  escolher();
+  const agora=performance.now();
+  const dupla = _duploAlvo===cartao && agora-_duploEm<=DUPLO_MS && agora>=_duploTravaAte;
+  _duploAlvo = cartao;
+  _duploEm   = agora;
+  if(!dupla) return;
+  /* Quem confirma fecha a porta por um instante. E' esta trava — e so' ela —
+     que impede o impulso de continuar sozinho: o terceiro e o quarto clique
+     da mesma rajada nao podem confirmar de novo, nem neste cartao nem na tela
+     seguinte, que ja' nasceu debaixo do cursor. */
+  _duploTravaAte = agora+DUPLO_MS;
+  confirmar();
+}
+
 function buildCharSelectUI(playerIdx){
   csJogadorAtual=playerIdx;
   csHeroiEscolhido=null;
@@ -11279,7 +11309,7 @@ function buildCharSelectUI(playerIdx){
       <span class="cs-heroi-nome">${def.name}</span>
       <span class="cs-heroi-badge">${def.badge}</span>`;
 
-    cartao.addEventListener('click',()=>csEscolher(cid));
+    cartao.addEventListener('click',()=>duploConfirmar(cartao,()=>csEscolher(cid),confirmCharSelect));
     cartao.addEventListener('keydown',e=>{
       if(e.key==='Enter'||e.key===' '){ e.preventDefault(); csEscolher(cid); }
     });
@@ -11576,7 +11606,7 @@ function buildModeMenu(){
 
   alvo.querySelectorAll('.mn-cartao').forEach(c=>{
     const escolher=()=>selectMode(Number(c.dataset.modo));
-    c.addEventListener('click',escolher);
+    c.addEventListener('click',()=>duploConfirmar(c,escolher,confirmarModo));
     c.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();escolher();} });
   });
   selectMode(_selMode||1);
@@ -11622,7 +11652,7 @@ function buildDiffMenu(){
 
   alvo.querySelectorAll('.mn-cartao').forEach(c=>{
     const escolher=()=>selectDiff(c.dataset.dif);
-    c.addEventListener('click',escolher);
+    c.addEventListener('click',()=>duploConfirmar(c,escolher,goCharSelect));
     c.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();escolher();} });
   });
   selectDiff(_selDiff||'medium');
