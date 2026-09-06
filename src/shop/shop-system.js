@@ -382,7 +382,12 @@ function renderShopGrid(){
   if(titleEl&&def){
     const titleIcons={mage:'orb',warrior:'sword',archer:'bow',viking:'axe',necromancer:'skull'};
     const p2Title=gameMode===2?` + ${CLASS_DEFS[selectedClass.p2]?.name||'P2'}`:'';
-    titleEl.innerHTML=`<span class="pixel-inline">${gamePixelIconHtml(titleIcons[cid]||'hammer',26)} Arsenal da ${def.name}${p2Title}</span>`;
+    /* O artigo estava fixo no feminino e as cinco classes sao masculinas:
+       a loja abria como "Arsenal da Mago", "Arsenal da Guerreiro". Fica no
+       masculino por padrao e a classe pode declarar o proprio artigo se um
+       dia entrar uma feminina (Feiticeira, Cacadora...). */
+    const artigo=def.artigo||'do';
+    titleEl.innerHTML=`<span class="pixel-inline">${gamePixelIconHtml(titleIcons[cid]||'hammer',26)} Arsenal ${artigo} ${def.name}${p2Title}</span>`;
   }
   for(let i=0;i<SHOP_OPTION_COUNT;i++){
     const item=shopPool[i];

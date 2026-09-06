@@ -16771,7 +16771,11 @@ function triggerDash(pl){
   if(isP1&&typeof InputManager!=='undefined'&&InputManager.getMovementVector){
     const v=InputManager.getMovementVector();
     if(v.magnitude>0.25){ dx+=v.x; dy+=v.y; }
-    else if(dx===0&&dy===0&&InputManager.hasAnalogMovement?.()){
+    /* hasAnalogMovement responde "ha' vetor de movimento", nao "ha' dedo no
+       joystick": dentro da zona morta a fonte e' REMOVIDA, entao com o polegar
+       parado no centro ele ja' devolve false — justamente o caso que este ramo
+       existe para atender. Quem sabe do dedo e' o sensor. */
+    else if(dx===0&&dy===0&&(InputManager.hasAnalogMovement?.()||window.MobileTouchSensor?.isMoving?.())){
       const u=InputManager.getLastMovementDirection();
       dx+=u.x; dy+=u.y;
     }
@@ -22196,7 +22200,11 @@ window.visualViewport?.addEventListener('resize',scheduleResponsiveLayout,{passi
     const action=button.dataset.mobileAction;
     button.addEventListener('pointerdown',e=>{
       e.preventDefault();
-      button.setPointerCapture?.(e.pointerId);
+      /* setPointerCapture LANCA quando o ponteiro ja' saiu (toque rapidissimo,
+         ponteiro cancelado pelo sistema). O `?.` so' protege do metodo ausente,
+         nao da excecao — e a excecao aqui matava o Dash em silencio, porque o
+         resto do handler nunca rodava. */
+      try{ button.setPointerCapture?.(e.pointerId); }catch(_){}
       if(action==='context'){ pressContext(button); return; }
       button.classList.add('pressed');
       if(action==='dash'){
@@ -22261,6 +22269,37 @@ function updateMobileControls(){
   if(!active&&typeof releaseMobileControls==='function') releaseMobileControls();
 }
 window.updateMobileControls=updateMobileControls;
+
+/* ══ O ESTADO DA PARTIDA E' OBSERVADO, NAO AVISADO ══
+   updateMobileControls tinha uma LISTA de gatilhos: trocar de tela, girar o
+   aparelho, abrir a mochila, redimensionar. A lista estava incompleta e do
+   pior jeito possivel: a abertura do capitulo termina DENTRO do laco do
+   jogo — 'chapter' vira 'playing' sem passar por showScreen e sem mexer nos
+   filhos de <body>, que e' o que o MutationObserver enxerga.
+
+   Resultado no celular: a partida comecava com os botoes escondidos e o
+   joystick desligado (ele exige a classe mobile-gameplay-active). Um arrasto
+   inteiro na tela dava vetor zero — o heroi simplesmente nao andava, ate' que
+   algo sem relacao (a barra de endereco recolhendo, uma rotacao, abrir a
+   mochila) disparasse um dos gatilhos por acaso.
+
+   Acrescentar mais um gatilho so' adiaria o proximo furo. Aqui o estado e'
+   VIGIADO: uma comparacao de texto por quadro, e o DOM so' e' tocado quando
+   ele realmente muda. Vale para todas as transicoes — capitulo, pausa,
+   subida de nivel, fim de jogo — inclusive as que ainda nao existem. */
+(function vigiarEstadoDoJogo(){
+  if(!getResponsiveViewport().coarse) return;   // no desktop nao ha o que ligar
+  let anterior=null;
+  (function tique(){
+    requestAnimationFrame(tique);
+    const dng=typeof DNG!=='undefined'&&DNG.running
+      ? (DNG.paused?'p':DNG.menuOpen?'m':DNG.mapOpen?'a':'r') : '-';
+    const atual=(typeof state!=='undefined'?state:'?')+'|'+dng;
+    if(atual===anterior) return;
+    anterior=atual;
+    updateMobileControls();
+  })();
+})();
 
 const mobileShowScreen=window.showScreen;
 window.showScreen=function(){
