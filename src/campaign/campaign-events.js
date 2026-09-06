@@ -182,7 +182,14 @@
       deps.spawnNotice(320,200,'20 SEGUNDOS · COLETE O QUE PUDER',0);
     }
     function spawnRewardOrb(){
-      active.rewards.push({x:160+deps.random()*320,y:245+deps.random()*170,radius:8,life:6500,phase:deps.random()*Math.PI*2,dead:false,value:2});
+      /* A recompensa E' a moeda do jogo, nao mais uma bolinha de luz propria.
+         O objeto do evento continua mandando nas REGRAS (valor, tempo de vida,
+         raio de coleta); a moeda cuida da queda e do desenho. Assim existe uma
+         moeda so' no jogo inteiro — se ela mudar de arte, esta muda junto. */
+      const x=160+deps.random()*320, y=245+deps.random()*170;
+      const recompensa={x,y,radius:8,life:6500,phase:deps.random()*Math.PI*2,dead:false,value:2};
+      recompensa.moeda=deps.criarMoeda?.(x,y,recompensa.value)||null;
+      active.rewards.push(recompensa);
     }
     function updateProfaned(dt){
       const data=active.data,ms=dt*1000;data.remaining-=ms;data.rewardTimer-=ms;data.spawnTimer-=ms;
@@ -190,6 +197,10 @@
       if(data.spawnTimer<=0&&livingEventEnemies().length<6){const types=arenaEnemies();spawnEventEnemy(types[Math.floor(deps.random()*types.length)],80+deps.random()*480,220+deps.random()*220);data.spawnTimer=2700;}
       for(const reward of active.rewards){
         reward.life-=ms;if(reward.life<=0){reward.dead=true;continue;}
+        /* A moeda salta e assenta sozinha; a posicao dela manda na do objeto
+           para que a coleta aconteca ONDE o jogador ve a moeda, e nao onde
+           ela nasceu. */
+        if(reward.moeda){ reward.moeda.update(); reward.x=reward.moeda.x; reward.y=reward.moeda.y; }
         for(const pl of players())if(distance(pl,reward)<pl.radius+reward.radius+5){reward.dead=true;deps.addCoins(reward.value);deps.addXp(2);deps.spawnParts(reward.x,reward.y,'#f4cc61',6,36);break;}
       }
       active.rewards=active.rewards.filter(reward=>!reward.dead);
@@ -269,7 +280,14 @@
       }else if(node.kind==='fountain'){
         ctx.fillStyle='#354d57';ctx.beginPath();ctx.ellipse(x,y+8,27,12,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#6ba9b2';ctx.beginPath();ctx.ellipse(x,y+5,21,8,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#b7fff1';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y+3);ctx.quadraticCurveTo(x+10,y-27,x,y-33);ctx.quadraticCurveTo(x-10,y-27,x,y+3);ctx.stroke();
       }else if(node.kind==='cursed_chest'||node.kind==='profaned_treasure'){
+        /* So' o tesouro profano tem arte dedicada. O bau amaldicoado e' outra
+           coisa (roxo, maldicao) e continua no desenho a mao ate' ganhar a
+           propria arte — usar a mesma imagem para os dois apagaria a diferenca
+           entre um evento bom e um ruim. */
+        const arteArca=node.kind==='profaned_treasure'&&deps.drawObject?.(ctx,'tesouro_profano',x,y+18,48);
+        if(!arteArca){
         ctx.fillStyle='#32192f';ctx.fillRect(x-24,y-10,48,28);ctx.fillStyle=node.kind==='cursed_chest'?'#7e328d':'#8a3527';ctx.fillRect(x-21,y-16,42,28);ctx.fillStyle=color;ctx.fillRect(x-3,y-4,6,12);ctx.strokeStyle=color;ctx.lineWidth=2;ctx.strokeRect(x-21,y-16,42,28);
+        }
       }else if(node.kind==='spirit'){
         const necromanteDaQuinta=deps.getArena()==='volcano'||active.wave>=21;
         let desenhado=false;
@@ -308,7 +326,13 @@
     }
     function draw(ctx,time){
       if(!active||!ctx)return;drawNode(ctx,time,active.node);
-      for(const reward of active.rewards){const bob=Math.sin(time*.008+reward.phase)*3;ctx.save();ctx.shadowBlur=10;ctx.shadowColor='#ffd765';ctx.fillStyle='#f5c64d';ctx.beginPath();ctx.arc(reward.x,reward.y+bob,reward.radius,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff2a8';ctx.fillRect(reward.x-2,reward.y+bob-5,4,5);ctx.restore();}
+      for(const reward of active.rewards){
+        // A moeda desenha a si mesma, com o giro e o brilho que ela ja' tem.
+        if(reward.moeda){ reward.moeda.draw(time); continue; }
+        // Reserva: se a moeda nao pode ser criada, a bolinha antiga volta —
+        // uma recompensa invisivel seria pior que uma recompensa feia.
+        const bob=Math.sin(time*.008+reward.phase)*3;ctx.save();ctx.shadowBlur=10;ctx.shadowColor='#ffd765';ctx.fillStyle='#f5c64d';ctx.beginPath();ctx.arc(reward.x,reward.y+bob,reward.radius,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff2a8';ctx.fillRect(reward.x-2,reward.y+bob-5,4,5);ctx.restore();
+      }
     }
 
     /* Os objetos do evento barram quem anda: sao coisas fisicas no chao.
