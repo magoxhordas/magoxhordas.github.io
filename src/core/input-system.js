@@ -82,35 +82,182 @@
 
   function releaseAll(reason){
     virtualSources.clear();
+    resetAnalog();
     scopes.forEach(scope=>Object.keys(scope.state).forEach(key=>{ scope.state[key]=false; }));
     if(global.GameEvents) global.GameEvents.emit('input:released',{reason:reason||'manual'});
   }
 
-  // Controle mobile: sensor/joystick flutuante para movimento, com Dash e Pausa
-  // preservados como os unicos botoes fixos durante o gameplay touch.
+  /* ══════════════════════════════════════════════════════
+     MOVIMENTO ANALOGICO
+
+     O toque NAO vira mais W/A/S/D. Antes o joystick convertia o dedo em
+     quatro teclas digitais: o personagem so' andava em 8 direcoes, sempre
+     em velocidade cheia, e para compensar a rigidez havia um multiplicador
+     de 1,85x colado por cima do Player e da Dungeon. Isso escondia o
+     problema — o input e' que era grosso, nao a velocidade que era baixa.
+
+     Agora o toque publica um VETOR (x, y, magnitude) aqui, e cada modo
+     (campanha, Dungeon, acampamento) le' esse vetor e decide a propria
+     velocidade. O InputManager fornece INTENCAO; quem decide quao rapido o
+     personagem anda continua sendo o gameplay.
+
+     `pressVirtual` segue existindo para BOTOES virtuais (Dash, Pausa,
+     interagir) — o que saiu foi so' o movimento.
+     ══════════════════════════════════════════════════════ */
+  const AJUSTE_ANALOGICO={
+    /* Zona morta RADIAL (fracao do raio). Pequena de proposito: o jogador
+       precisa sentir resposta quase imediata. */
+    ZONA_MORTA:0.10,
+    /* Curva aplicada depois da zona morta. Abaixo de 1 o comeco responde
+       mais rapido; 0.80 da' ~46% de velocidade com meio curso. */
+    CURVA:0.80,
+    /* Constantes de tempo da suavizacao, em ms. Sao TEMPOS, nao fatores
+       por quadro: a conta usa exp(-dt/tau), entao 30 e 120 fps chegam ao
+       mesmo lugar. */
+    ACELERACAO_MS:55,
+    DESACELERACAO_MS:40,
+    /* Virar mais de 90 graus usa metade do tempo de aceleracao — e' o que
+       faz o giro de 180 parecer imediato. */
+    FATOR_INVERSAO:0.5,
+  };
+
+  const analogico={
+    fontes:new Map(),                 // fonte -> {x,y} cru, ja' com curva aplicada
+    alvoX:0, alvoY:0,                 // soma das fontes
+    x:0, y:0,                         // vetor suavizado, o que o jogo consome
+    ultimaDirX:0, ultimaDirY:1,       // ultima direcao valida (para o Dash)
+    ultimoTique:0,
+  };
+
+  const agora=()=>(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
+
+  function recomputarAlvo(){
+    let x=0,y=0;
+    for(const v of analogico.fontes.values()){ x+=v.x; y+=v.y; }
+    const tamanho=Math.hypot(x,y);
+    if(tamanho>1){ x/=tamanho; y/=tamanho; }   // nunca passa de 1: diagonal nao corre mais
+    analogico.alvoX=x; analogico.alvoY=y;
+  }
+
+  /* Suavizacao exponencial, avancada no MAXIMO uma vez por quadro: se o
+     Player e a Dungeon lerem no mesmo quadro, o segundo ve dt~0 e nao
+     adianta o estado duas vezes. */
+  function avancarAnalogico(){
+    const t=agora();
+    let dt=analogico.ultimoTique?t-analogico.ultimoTique:16;
+    analogico.ultimoTique=t;
+    dt=Math.max(0,Math.min(64,dt));
+    if(dt<=0) return;
+
+    const magAlvo=Math.hypot(analogico.alvoX,analogico.alvoY);
+    const magAtual=Math.hypot(analogico.x,analogico.y);
+    let tau=magAlvo>=magAtual?AJUSTE_ANALOGICO.ACELERACAO_MS:AJUSTE_ANALOGICO.DESACELERACAO_MS;
+    // troca brusca de direcao responde mais rapido que uma aceleracao comum
+    if(magAlvo>0.01&&magAtual>0.01){
+      const cos=(analogico.alvoX*analogico.x+analogico.alvoY*analogico.y)/(magAlvo*magAtual);
+      if(cos<0) tau*=AJUSTE_ANALOGICO.FATOR_INVERSAO;
+    }
+    const k=tau>0?1-Math.exp(-dt/tau):1;
+    analogico.x+=(analogico.alvoX-analogico.x)*k;
+    analogico.y+=(analogico.alvoY-analogico.y)*k;
+    if(Math.hypot(analogico.x,analogico.y)<0.004){ analogico.x=0; analogico.y=0; }
+  }
+
+  function setAnalogMovement(fonte,x,y){
+    const nx=Number(x)||0, ny=Number(y)||0;
+    const tamanho=Math.hypot(nx,ny);
+    if(tamanho<=0){ clearAnalogMovement(fonte); return; }
+    analogico.fontes.set(String(fonte||'touch'),{x:nx,y:ny});
+    analogico.ultimaDirX=nx/tamanho; analogico.ultimaDirY=ny/tamanho;
+    recomputarAlvo();
+  }
+
+  function clearAnalogMovement(fonte){
+    if(fonte===undefined) analogico.fontes.clear();
+    else analogico.fontes.delete(String(fonte));
+    recomputarAlvo();
+  }
+
+  function getMovementVector(){
+    avancarAnalogico();
+    /* Magnitude REAL, sem Math.min. Antes o getter devolvia o valor
+       limitado enquanto x e y podiam passar de 1: quem lesse a magnitude
+       via 1, quem lesse o vetor via 1.41, e a diagonal andaria mais rapido
+       sem nada acusar. Quem limita e' recomputarAlvo, na entrada. */
+    const magnitude=Math.hypot(analogico.x,analogico.y);
+    return {x:analogico.x,y:analogico.y,magnitude,active:magnitude>0.001};
+  }
+  function getMovementMagnitude(){ return getMovementVector().magnitude; }
+  function hasAnalogMovement(){ return analogico.fontes.size>0; }
+  function getLastMovementDirection(){ return {x:analogico.ultimaDirX,y:analogico.ultimaDirY}; }
+
+  /* Soma a intencao do toque a' do teclado e limita o resultado a 1.
+     Vive aqui para a regra existir em UM lugar so' — campanha, Dungeon e
+     acampamento chamam a mesma funcao. Somar (em vez de substituir) faz
+     teclado e toque conviverem em aparelho hibrido. */
+  function combinarMovimento(dx,dy){
+    const v=getMovementVector();
+    let x=(Number(dx)||0)+(v.active?v.x:0);
+    let y=(Number(dy)||0)+(v.active?v.y:0);
+    const tamanho=Math.hypot(x,y);
+    if(tamanho>1){ x/=tamanho; y/=tamanho; }
+    return {dx:x,dy:y};
+  }
+
+  /* Direcao VISUAL a partir do vetor fisico. A fisica e' 360 graus, mas os
+     sprites tem quatro direcoes: escolher pelo eixo dominante evita que
+     qualquer dx minusculo vire 'esquerda/direita' o tempo todo. */
+  function direcaoVisual(dx,dy,atual){
+    if(Math.abs(dx)<1e-4&&Math.abs(dy)<1e-4) return atual;
+    if(Math.abs(dx)>=Math.abs(dy)) return dx<0?'left':'right';
+    return dy<0?'up':'down';
+  }
+
+  function resetAnalog(){
+    analogico.fontes.clear();
+    analogico.alvoX=analogico.alvoY=0;
+    analogico.x=analogico.y=0;
+  }
+
+  /* ══════════════════════════════════════════════════════
+     JOYSTICK FLUTUANTE
+
+     Nasce sob o polegar dentro da METADE ESQUERDA da tela durante o
+     gameplay, publica o vetor acima e some rapido ao soltar. O Dash e a
+     Pausa ficam do lado direito com os pointers deles — cada dedo tem
+     dono, entao os dois funcionam ao mesmo tempo.
+     ══════════════════════════════════════════════════════ */
   const mobileSensor=(()=>{
-    const SOURCE='mobile-sensor';
-    const DEAD_ZONE=3;
-    const AXIS_THRESHOLD=.18;
-    const VISUAL_RADIUS=46;
-    const MOVEMENT_BOOST=1.85;
-    const keys=new Set();
-    let pointerId=null,startX=0,startY=0;
+    const FONTE='touch';
+    const AJUSTE={
+      RAIO_MIN:48, RAIO_MAX:68, RAIO_VW:0.062,   // raio confortavel para o polegar
+      ZONA_MOVIMENTO:0.48,                        // fracao esquerda da tela
+      SEGUE_CENTRO:0.5,                           // quanto o centro cede ao passar do raio
+      SUMICO_MS:140,
+    };
+    let pointerId=null,centroX=0,centroY=0,raio=56,escala=1;
     let sensorEl=null,knobEl=null,installed=false;
+    let vibrarLigado=true;
+
+    function raioAtual(){
+      const largura=Number(global.innerWidth)||360;
+      const base=Math.max(AJUSTE.RAIO_MIN,Math.min(AJUSTE.RAIO_MAX,largura*AJUSTE.RAIO_VW));
+      return base*escala;   // Pequeno/Medio/Grande das Configuracoes
+    }
+    function definirEscala(valor){
+      const v=Number(valor);
+      escala=Number.isFinite(v)&&v>0?Math.max(0.6,Math.min(1.5,v)):1;
+    }
 
     function isCoarseDevice(){
       const media=typeof global.matchMedia==='function'&&global.matchMedia('(pointer: coarse)').matches;
       const touches=Number(global.navigator?.maxTouchPoints||0)>0;
       return !!(media||touches);
     }
-
     function isGameplayActive(){
       return !!global.document?.body?.classList?.contains('mobile-gameplay-active');
     }
-
-    function isMoving(){
-      return pointerId!==null&&keys.size>0;
-    }
+    function isMoving(){ return pointerId!==null; }
 
     function blockedTarget(target){
       if(!target||typeof target.closest!=='function')return false;
@@ -122,31 +269,35 @@
       );
     }
 
+    /* A zona existe para que o dedo do Dash nunca vire movimento e o
+       jogador nao cubra a arena com a mao inteira. */
+    function dentroDaZona(event){
+      const largura=Number(global.innerWidth)||0;
+      if(!largura) return true;
+      return (Number(event?.clientX)||0)<=largura*AJUSTE.ZONA_MOVIMENTO;
+    }
+
     function shouldCapture(event){
       if(!isCoarseDevice()||!isGameplayActive())return false;
-      if(event?.isPrimary===false||event?.pointerType==='mouse')return false;
+      if(event?.pointerType==='mouse')return false;
+      // isPrimary NAO e' consultado: o segundo dedo precisa poder assumir o
+      // movimento quando o primeiro esta' segurando o Dash.
+      if(pointerId!==null)return false;
+      if(!dentroDaZona(event))return false;
       return !blockedTarget(event?.target);
     }
 
-    function directionForDelta(dx,dy){
-      const distance=Math.hypot(Number(dx)||0,Number(dy)||0);
-      if(distance<DEAD_ZONE)return [];
-      const nx=dx/distance,ny=dy/distance,out=[];
-      if(nx<=-AXIS_THRESHOLD)out.push('a');
-      else if(nx>=AXIS_THRESHOLD)out.push('d');
-      if(ny<=-AXIS_THRESHOLD)out.push('w');
-      else if(ny>=AXIS_THRESHOLD)out.push('s');
-      return out;
-    }
-
-    function syncDirection(nextKeys){
-      const next=new Set(nextKeys);
-      for(const key of [...keys])if(!next.has(key)){
-        releaseVirtual(SOURCE,key);keys.delete(key);
-      }
-      for(const key of next)if(!keys.has(key)){
-        pressVirtual(SOURCE,key);keys.add(key);
-      }
+    /* Vetor cru -> vetor de jogo: zona morta RADIAL (uniforme em todas as
+       direcoes, ao contrario de uma zona morta por eixo) e curva de
+       magnitude. A direcao sai intacta; so' a intensidade e' remapeada. */
+    function vetorDoDelta(dx,dy,r){
+      const distancia=Math.hypot(dx,dy);
+      if(distancia<=0) return {x:0,y:0,magnitude:0};
+      const bruta=Math.min(1,distancia/(r||raio));
+      if(bruta<=AJUSTE_ANALOGICO.ZONA_MORTA) return {x:0,y:0,magnitude:0};
+      const ajustada=(bruta-AJUSTE_ANALOGICO.ZONA_MORTA)/(1-AJUSTE_ANALOGICO.ZONA_MORTA);
+      const magnitude=Math.pow(Math.max(0,Math.min(1,ajustada)),AJUSTE_ANALOGICO.CURVA);
+      return {x:(dx/distancia)*magnitude,y:(dy/distancia)*magnitude,magnitude};
     }
 
     function ensureVisual(){
@@ -156,10 +307,16 @@
       style.textContent=`
         :root{--mobile-controls-height:0px!important}
         body.mobile-gameplay-active #canvas{transform:none!important}
+        /* Durante o gameplay o navegador nao pode rolar, dar zoom nem
+           puxar-para-atualizar em cima do jogo. Menus continuam livres. */
+        body.mobile-gameplay-active{overscroll-behavior:none;touch-action:none;
+          -webkit-user-select:none;user-select:none}
+        body.mobile-gameplay-active #canvas{touch-action:none}
 
         /* No mobile ficam apenas Dash + Pausa. As setas, Criar/Acao e Itens somem. */
         #mobile-controls{
-          inset:auto max(10px,var(--safe-right,0px)) max(10px,var(--safe-bottom,0px)) auto!important;
+          inset:auto max(10px,var(--safe-right,0px))
+            calc(max(10px,var(--safe-bottom,0px)) + var(--mobile-dash-extra,0px)) auto!important;
           left:auto!important;right:max(10px,var(--safe-right,0px))!important;
           width:auto!important;padding:0!important;transform:none!important;
           align-items:center!important;justify-content:flex-end!important;
@@ -173,22 +330,68 @@
         }
         #mobile-controls [data-mobile-action="context"],
         #mobile-controls [data-mobile-action="menu"]{display:none!important}
-        #mobile-controls [data-mobile-action="dash"],
+        #mobile-controls [data-mobile-action="dash"]{
+          display:flex!important;min-width:76px!important;min-height:68px!important;
+          padding:10px 12px!important;touch-action:none!important;opacity:.86;
+        }
+        /* Pausa no ALTO a direita: embaixo ela disputava o polegar com o
+           Dash, e errar o botao no meio de uma horda e' caro. */
         #mobile-controls [data-mobile-action="pause"]{
-          display:flex!important;min-width:64px!important;min-height:52px!important;
-          padding:8px 10px!important;
+          display:flex!important;position:fixed!important;
+          top:max(10px,var(--safe-top,0px))!important;
+          right:max(10px,var(--safe-right,0px))!important;
+          min-width:52px!important;min-height:52px!important;
+          padding:8px 10px!important;touch-action:none!important;opacity:.62;
+        }
+        #mobile-controls [data-mobile-action="pause"].pressed{opacity:1;transform:scale(.94)}
+        #mobile-controls [data-mobile-action="dash"].pressed{
+          transform:scale(.94);filter:brightness(1.35);
         }
 
-        #mobile-touch-sensor{position:fixed;left:0;top:0;width:94px;height:94px;z-index:46;
-          display:none;pointer-events:none;border-radius:50%;border:1px solid rgba(240,208,128,.34);
-          background:radial-gradient(circle,rgba(240,208,128,.08),rgba(8,6,15,.10) 60%,rgba(8,6,15,.22));
-          box-shadow:0 0 18px rgba(0,0,0,.28),inset 0 0 12px rgba(240,208,128,.06);
-          transform:translate(-50%,-50%);touch-action:none}
-        #mobile-touch-sensor.active{display:block}
-        #mobile-touch-sensor-knob{position:absolute;left:50%;top:50%;width:32px;height:32px;border-radius:50%;
-          border:1px solid rgba(240,208,128,.68);background:rgba(200,168,75,.20);
-          box-shadow:0 0 10px rgba(240,208,128,.18);transform:translate(-50%,-50%)}
-        @media (hover:hover) and (pointer:fine){#mobile-touch-sensor{display:none!important}}
+        #mobile-touch-sensor{position:fixed;left:0;top:0;z-index:46;
+          display:none;pointer-events:none;border-radius:50%;
+          border:1px solid rgba(240,208,128,.30);
+          background:radial-gradient(circle,rgba(240,208,128,.07),rgba(8,6,15,.10) 60%,rgba(8,6,15,.20));
+          box-shadow:0 0 18px rgba(0,0,0,.26),inset 0 0 12px rgba(240,208,128,.05);
+          transform:translate(-50%,-50%);touch-action:none;
+          opacity:0;transition:opacity ${AJUSTE.SUMICO_MS}ms ease}
+        #mobile-touch-sensor.active{display:block;opacity:1}
+        #mobile-touch-sensor-knob{position:absolute;left:50%;top:50%;
+          width:38%;height:38%;border-radius:50%;
+          border:1px solid rgba(240,208,128,.72);background:rgba(200,168,75,.24);
+          box-shadow:0 0 10px rgba(240,208,128,.16);
+          transform:translate(-50%,-50%);will-change:transform}
+        /* Retrato durante o gameplay: a arena foi desenhada deitada, e em
+           pe' sobra pouca altura util. O aviso cobre so' o JOGO — menus
+           continuam acessiveis em pe'. */
+        #mobile-girar{position:fixed;inset:0;z-index:60;display:none;
+          align-items:center;justify-content:center;text-align:center;
+          background:linear-gradient(180deg,rgba(6,4,12,.94),rgba(3,2,8,.97));
+          font-family:'Courier New',monospace;color:#e8d5a8;padding:24px}
+        #mobile-girar.ativo{display:flex}
+        #mobile-girar span{display:block;font-size:40px;margin-bottom:14px;
+          animation:girarDica 2.4s ease-in-out infinite}
+        #mobile-girar b{display:block;font-size:15px;letter-spacing:3px;text-transform:uppercase}
+        #mobile-girar small{display:block;font-size:11px;letter-spacing:1.5px;color:#9a8560;margin-top:8px}
+        @keyframes girarDica{0%,100%{transform:rotate(0)}50%{transform:rotate(-90deg)}}
+
+        /* Botao contextual: so' existe quando ha' algo perto para usar.
+           Fica ACIMA do Dash, com area de toque maior que o desenho. */
+        #mobile-context-btn{position:fixed;z-index:47;display:none;
+          right:max(10px,var(--safe-right,0px));
+          bottom:calc(max(10px,var(--safe-bottom,0px)) + 84px);
+          min-width:68px;min-height:60px;padding:10px 14px;
+          border-radius:12px;border:2px solid rgba(140,240,170,.7);
+          background:linear-gradient(180deg,rgba(18,44,26,.92),rgba(8,20,12,.95));
+          color:#d8f2de;font-family:'Courier New',monospace;font-size:13px;
+          letter-spacing:1.5px;text-transform:uppercase;text-align:center;
+          box-shadow:0 0 18px rgba(0,0,0,.5),0 0 14px rgba(90,220,130,.18);
+          touch-action:none;pointer-events:auto;
+          transition:transform .12s,filter .12s,opacity .15s;opacity:.9}
+        #mobile-context-btn.ativo{display:block}
+        #mobile-context-btn.pressed{transform:scale(.94);filter:brightness(1.3)}
+        @media (hover:hover) and (pointer:fine){
+          #mobile-touch-sensor,#mobile-context-btn{display:none!important}}
       `;
       global.document.head?.appendChild(style);
       sensorEl=global.document.createElement('div');
@@ -200,6 +403,66 @@
       global.document.body.appendChild(sensorEl);
     }
 
+    /* ── BOTAO CONTEXTUAL ──
+       Aparece so' quando o modo publica uma acao disponivel, e executa a
+       MESMA funcao que a tecla usa — nada de regra de gameplay duplicada
+       aqui dentro. */
+    let contextoEl=null, contextoAtual=null, contextoRotulo='';
+    function garantirContexto(){
+      if(contextoEl||!global.document?.body)return;
+      contextoEl=global.document.createElement('button');
+      contextoEl.id='mobile-context-btn';
+      contextoEl.type='button';
+      contextoEl.setAttribute('aria-label','Interagir');
+      contextoEl.addEventListener('pointerdown',ev=>{
+        ev.preventDefault?.(); ev.stopPropagation?.();
+        contextoEl.classList.add('pressed');
+        if(vibrarLigado) try{ global.navigator?.vibrate?.(10); }catch(_){}
+        try{ contextoAtual?.executar?.(); }catch(_){}
+      });
+      const soltar=()=>contextoEl.classList.remove('pressed');
+      contextoEl.addEventListener('pointerup',soltar);
+      contextoEl.addEventListener('pointercancel',soltar);
+      contextoEl.addEventListener('lostpointercapture',soltar);
+      global.document.body.appendChild(contextoEl);
+    }
+    /* Chamado uma vez por quadro pelo modo. So' toca no DOM quando o rotulo
+       muda — escrever texto todo quadro forcaria layout a' toa. */
+    function publicarContexto(acao){
+      if(!isCoarseDevice())return;
+      garantirContexto();
+      if(!contextoEl)return;
+      contextoAtual=acao&&typeof acao.executar==='function'?acao:null;
+      const rotulo=contextoAtual?String(contextoAtual.rotulo||'Interagir'):'';
+      if(rotulo!==contextoRotulo){
+        contextoRotulo=rotulo;
+        contextoEl.textContent=rotulo;
+        contextoEl.classList.toggle('ativo',!!rotulo);
+      }
+    }
+    function limparContexto(){ publicarContexto(null); }
+
+    /* ── AVISO DE ORIENTACAO ── */
+    let girarEl=null;
+    function garantirGirar(){
+      if(girarEl||!global.document?.body)return;
+      girarEl=global.document.createElement('div');
+      girarEl.id='mobile-girar';
+      girarEl.setAttribute('aria-hidden','true');
+      girarEl.innerHTML='<div><span>📱</span><b>Gire o dispositivo</b>'
+        +'<small>a arena foi feita para a tela deitada</small></div>';
+      global.document.body.appendChild(girarEl);
+    }
+    function conferirOrientacao(){
+      if(!isCoarseDevice())return;
+      garantirGirar(); if(!girarEl)return;
+      const emPe=(Number(global.innerHeight)||0)>(Number(global.innerWidth)||0);
+      const jogando=isGameplayActive();
+      const mostrar=emPe&&jogando;
+      girarEl.classList.toggle('ativo',mostrar);
+      if(mostrar) release();          // em pe' o joystick nao fica preso
+    }
+
     function configureLegacyControls(){
       const legacy=global.document?.getElementById?.('mobile-controls');
       if(!legacy)return;
@@ -207,67 +470,65 @@
       legacy.querySelector?.('.mobile-dpad')?.remove?.();
       legacy.querySelector?.('[data-mobile-action="context"]')?.remove?.();
       legacy.querySelector?.('[data-mobile-action="menu"]')?.remove?.();
-      // Dash e Pausa permanecem com os handlers originais do setupMobileControls.
       global.document?.documentElement?.style?.setProperty('--mobile-controls-height','0px');
     }
 
-    function showVisual(x,y){
-      ensureVisual();if(!sensorEl)return;
-      sensorEl.style.left=`${x}px`;sensorEl.style.top=`${y}px`;
-      sensorEl.classList.add('active');
-      if(knobEl)knobEl.style.transform='translate(-50%,-50%)';
-    }
-
-    // Reposiciona so' o circulo, sem mexer no estado de ativacao.
-    function recenterVisual(x,y){
+    function posicionar(x,y){
       if(!sensorEl)return;
-      sensorEl.style.left=`${x}px`;sensorEl.style.top=`${y}px`;
+      const d=raio*2;
+      sensorEl.style.width=`${d}px`; sensorEl.style.height=`${d}px`;
+      sensorEl.style.left=`${x}px`; sensorEl.style.top=`${y}px`;
     }
-
-    function moveVisual(dx,dy){
+    /* So' transform no knob: mexer em left/top a cada pointermove forcaria
+       layout em todo movimento do dedo. */
+    function moverKnob(dx,dy,magnitude){
       if(!knobEl)return;
-      const distance=Math.hypot(dx,dy)||1;
-      const scale=Math.min(1,VISUAL_RADIUS/distance);
-      const x=dx*scale,y=dy*scale;
-      knobEl.style.transform=`translate(calc(-50% + ${x}px),calc(-50% + ${y}px))`;
+      const distancia=Math.hypot(dx,dy)||1;
+      const escala=Math.min(1,raio/distancia);
+      knobEl.style.transform=`translate(calc(-50% + ${dx*escala}px),calc(-50% + ${dy*escala}px))`;
+      knobEl.style.opacity=String(0.55+0.45*Math.min(1,magnitude));
     }
 
     function release(){
-      syncDirection([]);
-      releaseSource(SOURCE);
+      clearAnalogMovement(FONTE);
       pointerId=null;
       sensorEl?.classList.remove('active');
-      if(knobEl)knobEl.style.transform='translate(-50%,-50%)';
+      if(knobEl){ knobEl.style.transform='translate(-50%,-50%)'; knobEl.style.opacity='0.55'; }
     }
 
     function onPointerDown(event){
-      if(pointerId!==null||!shouldCapture(event))return;
+      if(!shouldCapture(event))return;
       pointerId=event.pointerId;
-      startX=Number(event.clientX)||0;startY=Number(event.clientY)||0;
+      raio=raioAtual();
+      centroX=Number(event.clientX)||0; centroY=Number(event.clientY)||0;
       event.preventDefault?.();
-      event.target?.setPointerCapture?.(event.pointerId);
-      showVisual(startX,startY);
-      syncDirection([]);
+      ensureVisual();
+      posicionar(centroX,centroY);
+      sensorEl?.classList.add('active');
+      moverKnob(0,0,0);
+      clearAnalogMovement(FONTE);
     }
 
     function onPointerMove(event){
       if(event.pointerId!==pointerId)return;
       event.preventDefault?.();
       const px=Number(event.clientX)||0, py=Number(event.clientY)||0;
-      let dx=px-startX, dy=py-startY;
-      // O centro segue o dedo quando ele passa do raio. Sem isso o centro
-      // ficava cravado no ponto do primeiro toque: depois de um arrasto longo
-      // era preciso desfazer o arrasto inteiro para inverter a direcao, e o
-      // controle parecia preso. Assim, virar custa a zona morta e mais nada.
+      let dx=px-centroX, dy=py-centroY;
+      /* Soft follow: passando do raio, o centro cede PARTE do excesso em vez
+         de grudar no dedo. Assim o polegar nunca perde o alcance, e inverter
+         a direcao continua custando so' a zona morta — nao o arrasto inteiro
+         de volta. */
       const distancia=Math.hypot(dx,dy);
-      if(distancia>VISUAL_RADIUS){
-        const sobra=(distancia-VISUAL_RADIUS)/distancia;
-        startX+=dx*sobra; startY+=dy*sobra;
-        dx=px-startX; dy=py-startY;
-        recenterVisual(startX,startY);
+      if(distancia>raio){
+        const excesso=(distancia-raio)*AJUSTE.SEGUE_CENTRO/distancia;
+        centroX+=dx*excesso; centroY+=dy*excesso;
+        dx=px-centroX; dy=py-centroY;
+        posicionar(centroX,centroY);
       }
-      syncDirection(directionForDelta(dx,dy));
-      moveVisual(dx,dy);
+      const v=vetorDoDelta(dx,dy,raio);
+      if(v.magnitude>0) setAnalogMovement(FONTE,v.x,v.y);
+      else clearAnalogMovement(FONTE);
+      moverKnob(dx,dy,v.magnitude);
     }
 
     function onPointerUp(event){
@@ -276,63 +537,35 @@
       release();
     }
 
-    function installMovementBoosts(){
-      try{
-        if(typeof Player!=='undefined'&&Player?.prototype?.update&&!Player.prototype.update.__mobileTouchSpeedBoost){
-          const original=Player.prototype.update;
-          const wrapped=function(){
-            if(!isMoving()||!Number.isFinite(this?.speed))return original.apply(this,arguments);
-            const baseSpeed=this.speed;
-            this.speed=baseSpeed*MOVEMENT_BOOST;
-            try{return original.apply(this,arguments);}
-            finally{this.speed=baseSpeed;}
-          };
-          wrapped.__mobileTouchSpeedBoost=true;
-          wrapped.__originalMobileTouchPlayerUpdate=original;
-          Player.prototype.update=wrapped;
-        }
-      }catch(_){}
-
-      const dng=global.DNG;
-      if(dng?._update&&!dng._update.__mobileTouchSpeedBoost){
-        const original=dng._update;
-        const wrapped=function(){
-          if(!isMoving()||!Number.isFinite(this?.pSpeed))return original.apply(this,arguments);
-          const baseSpeed=this.pSpeed;
-          this.pSpeed=baseSpeed*MOVEMENT_BOOST;
-          try{return original.apply(this,arguments);}
-          finally{this.pSpeed=baseSpeed;}
-        };
-        wrapped.__mobileTouchSpeedBoost=true;
-        wrapped.__originalMobileTouchDungeonUpdate=original;
-        dng._update=wrapped;
-      }
-    }
-
     function install(){
       if(installed||!isCoarseDevice()||!global.document)return false;
       installed=true;
-      configureLegacyControls();ensureVisual();installMovementBoosts();
-      // No touch o combate permanece automatico: o gesto inteiro fica reservado
-      // para locomocao, sem clique/ataque manual concorrendo com o dedo.
-      if(global.GameSettings?.autoAttack===false&&typeof global.GameSettings.toggleAutoAttack==='function')
-        global.GameSettings.toggleAutoAttack();
+      configureLegacyControls();ensureVisual();
+      /* No touch o combate segue automatico: o gesto inteiro fica para a
+         locomocao. Isso e' um override de RUNTIME — a preferencia salva do
+         jogador nao e' reescrita. */
+      if(global.GameSettings) global.GameSettings.mobileAutoAttackOverride=true;
       global.document.addEventListener('pointerdown',onPointerDown,{passive:false});
       global.document.addEventListener('pointermove',onPointerMove,{passive:false});
       global.document.addEventListener('pointerup',onPointerUp,{passive:false});
       global.document.addEventListener('pointercancel',onPointerUp,{passive:false});
       global.addEventListener?.('blur',release);
+      global.addEventListener?.('orientationchange',()=>{release();conferirOrientacao();});
+      global.addEventListener?.('resize',conferirOrientacao);
+      conferirOrientacao();
       global.document.addEventListener('visibilitychange',()=>{if(global.document.hidden)release();});
       return true;
     }
 
     return {
-      install,release,shouldCapture,directionForDelta,isCoarseDevice,isMoving,
-      get movementMultiplier(){return MOVEMENT_BOOST;},
-      installMovementBoosts
+      install,release,shouldCapture,isCoarseDevice,isMoving,
+      vetorDoDelta,dentroDaZona,publicarContexto,limparContexto,definirEscala,conferirOrientacao,
+      get vibrarLigado(){return vibrarLigado;},
+      set vibrarLigado(v){vibrarLigado=v!==false;},
+      get ajuste(){return {...AJUSTE,...AJUSTE_ANALOGICO};},
+      get raio(){return raio;},
     };
   })();
-
   function bind(){
     if(bound) return;
     bound=true;
@@ -355,7 +588,18 @@
     releaseSource,
     releaseAll,
     normalizeKey,
-    onPointerAttack(handler){ pointerHandlers.add(handler); return ()=>pointerHandlers.delete(handler); }
+    onPointerAttack(handler){ pointerHandlers.add(handler); return ()=>pointerHandlers.delete(handler); },
+    // ── intencao de movimento analogica ──
+    setAnalogMovement,
+    clearAnalogMovement,
+    getMovementVector,
+    getMovementMagnitude,
+    getLastMovementDirection,
+    hasAnalogMovement,
+    resetAnalog,
+    combinarMovimento,
+    direcaoVisual,
+    AJUSTE_ANALOGICO,
   };
   global.MobileTouchSensor=mobileSensor;
 

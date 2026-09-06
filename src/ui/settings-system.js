@@ -16,6 +16,10 @@ const GameSettings = (function(){
     combatFxShake:0.8,
     combatFxReduceMotion:false,
     combatFxReduceFlashes:false,
+    /* Controles de toque. O padrao ja' foi escolhido para funcionar bem sem
+       ninguem mexer; estas opcoes existem para polegar grande, mao pequena
+       e quem nao quer vibracao. */
+    mobile:{ joystick:'medio', dashAlto:false, vibrar:true },
     controls:{
       moveUp:'KeyW', moveDown:'KeyS', moveLeft:'KeyA', moveRight:'KeyD',
       dash:'ShiftLeft', inventory:'KeyI', map:'KeyM', crafting:'KeyT', pause:'Escape'
@@ -166,6 +170,37 @@ const GameSettings = (function(){
       `<div class="settings-key-row"><span>${label}</span><button class="settings-key ${listeningAction===action?'listening':''}" data-action="${action}" onclick="GameSettings.listenForKey('${action}')">${listeningAction===action?'PRESSIONE UMA TECLA':codeLabel(data.controls[action])}</button></div>`
     ).join('');
   }
+  const TAMANHOS_JOYSTICK={pequeno:0.82,medio:1,grande:1.18};
+  function renderMobile(){
+    const raiz=document.getElementById('settings-mobile-card'); if(!raiz) return;
+    const m=data.mobile||{};
+    const opcao=(campo,valor,rotulo)=>
+      `<button class="settings-resolution ${String(m[campo])===String(valor)?'selected':''}" `
+      +`onclick="GameSettings.setMobileOption('${campo}',${typeof valor==='string'?`'${valor}'`:valor})">`
+      +`<span>${rotulo}</span></button>`;
+    raiz.innerHTML=
+      `<h3>Tamanho do joystick</h3><div class="settings-resolution-grid">`
+      +opcao('joystick','pequeno','Pequeno')+opcao('joystick','medio','Médio')+opcao('joystick','grande','Grande')
+      +`</div><h3>Posição do Dash</h3><div class="settings-resolution-grid">`
+      +opcao('dashAlto',false,'Normal')+opcao('dashAlto',true,'Mais alto')
+      +`</div><h3>Vibração</h3><div class="settings-resolution-grid">`
+      +opcao('vibrar',true,'Ligada')+opcao('vibrar',false,'Desligada')
+      +`</div>`;
+  }
+  /* Aplica as escolhas no sensor e no CSS. Quem guarda a preferencia e' o
+     GameSettings; quem sabe usar e' o input — por isso a ponte e' so' um
+     valor, nao a regra inteira. */
+  function aplicarMobile(){
+    const m=data.mobile||{};
+    try{ window.MobileTouchSensor?.definirEscala?.(TAMANHOS_JOYSTICK[m.joystick]||1); }catch(_){}
+    document.documentElement.style.setProperty('--mobile-dash-extra',m.dashAlto?'72px':'0px');
+    if(window.MobileTouchSensor) window.MobileTouchSensor.vibrarLigado=m.vibrar!==false;
+  }
+  function setMobileOption(campo,valor){
+    data.mobile={...(data.mobile||{}),[campo]:valor};
+    save(); renderMobile(); aplicarMobile();
+  }
+
   function renderVideo(){
     const grid=document.getElementById('settings-resolution-grid'); if(!grid) return;
     grid.innerHTML=resolutions.map(([value,title,desc])=>
@@ -184,6 +219,7 @@ const GameSettings = (function(){
   }
   function renderSkins(){
     const grid=document.getElementById('settings-skin-grid'); if(!grid) return;
+    if(!recursoLigado('skins')){ grid.innerHTML=''; return; }   // recurso desligado: nem desenha
     refreshSkinUnlocks(true);
     const skins=(Array.isArray(window.HERO_SKINS)?window.HERO_SKINS:[]).filter(sk=>skinDisponivel(sk.id));
     const classId=(typeof selectedClass!=='undefined'&&selectedClass.p1)||'mage';
@@ -219,9 +255,22 @@ const GameSettings = (function(){
     if(typeof window.drawMenuHero==='function') window.drawMenuHero();
     if(typeof DNG!=='undefined'&&typeof DNG._updateHUD==='function') DNG._updateHUD();
   }
-  function render(){ renderAudio(); renderControls(); renderVideo(); renderSkins(); if(typeof AchievementSystem!=='undefined')AchievementSystem.renderSettings?.(); setTab(activeTab); }
+  function render(){ renderAudio(); renderControls(); renderVideo(); renderSkins(); renderMobile(); aplicarMobile(); aplicarRecursos(); if(typeof AchievementSystem!=='undefined')AchievementSystem.renderSettings?.(); setTab(activeTab); }
+
+  const recursoLigado=nome=>typeof window.recursoLigado!=='function'||window.recursoLigado(nome);
+
+  /* Aba de recurso desligado some do topo e ninguem cai nela nem pelo
+     estado salvo. Botao e painel continuam no HTML — ao religar voltam
+     sozinhos, sem mexer em markup. Mesma tecnica da aba do Codex. */
+  function aplicarRecursos(){
+    const skins=recursoLigado('skins');
+    document.querySelector('[data-settings-tab="skins"]')?.style.setProperty('display',skins?'':'none');
+    if(!skins) document.querySelector('[data-settings-panel="skins"]')?.classList.remove('active');
+    return {skins};
+  }
 
   function setTab(tab){
+    if(tab==='skins'&&!recursoLigado('skins')) tab='audio';
     activeTab=tab;
     document.querySelectorAll('[data-settings-tab]').forEach(el=>el.classList.toggle('active',el.dataset.settingsTab===tab));
     document.querySelectorAll('[data-settings-panel]').forEach(el=>el.classList.toggle('active',el.dataset.settingsPanel===tab));
@@ -413,7 +462,16 @@ const GameSettings = (function(){
     queueManualAttack,hasManualAttack,clearManualAttack,consumeManualAttack,playAttackSound,
     recordBossRushVictory,recordDungeonBoss,refreshSkinUnlocks,getSkinRequirementState,
     getProgressSnapshot(){return JSON.parse(JSON.stringify(skinProgress));},
-    get autoAttack(){ return data.autoAttack; },
+    /* Override de RUNTIME do mobile: no touch o gesto inteiro e' da
+       locomocao, entao o ataque fica automatico mesmo com o jogador tendo
+       escolhido manual. A preferencia SALVA nao e' tocada — antes o codigo
+       chamava toggleAutoAttack() e reescrevia a escolha dele em silencio,
+       que ficava assim tambem no desktop depois. */
+    setMobileOption,
+    aplicarMobile,
+    get mobile(){ return {...(data.mobile||{})}; },
+    mobileAutoAttackOverride:false,
+    get autoAttack(){ return data.autoAttack||this.mobileAutoAttackOverride===true; },
     get skinId(){ return data.skinId; },
     get controls(){ return {...data.controls}; },
     getCombatFx(){

@@ -78,8 +78,16 @@ assert(Math.abs(Math.hypot(diagonal.dx,diagonal.dy)-1)<1e-9,
   'Movimento diagonal não foi normalizado');
 assert(normal.dx===1&&normal.dy===0,'Movimento simples foi alterado');
 
-const normalizationCalls=html.match(/\(\{dx,dy\}=normalizeCampaignMovementVector\(dx,dy\)\);/g)||[];
-assert(normalizationCalls.length===2,
-  `Esperadas 2 normalizações (movimento e dash), encontradas ${normalizationCalls.length}`);
+/* O movimento e o dash continuam normalizados, mas com semanticas
+   diferentes desde o analogico: movimento LIMITA o teto em 1 (meio curso do
+   polegar = meia velocidade) e o dash forca magnitude 1 (dash curto seria
+   imprevisivel). Por isso sao duas funcoes, nao duas chamadas da mesma. */
+const movimentoNormalizado=html.match(/\(\{dx,dy\}=normalizeCampaignMovementVector\(dx,dy\)\);/g)||[];
+assert(movimentoNormalizado.length===1,
+  `Esperada 1 normalizacao de movimento, encontradas ${movimentoNormalizado.length}`);
+const dashNormalizado=html.match(/\(\{dx,dy\}=normalizeDashDirection\(dx,dy\)\);/g)||[];
+assert(dashNormalizado.length===1,
+  `Esperada 1 normalizacao de dash, encontradas ${dashNormalizado.length}`);
+assert(html.includes('function normalizeDashDirection(dx,dy){'),'normalizeDashDirection ausente');
 
 console.log(`OK: ${deityIds.length} divindades, ${dungeonIds.length} masmorras e movimento combinado limitado à velocidade normal.`);

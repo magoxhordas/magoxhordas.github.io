@@ -17,15 +17,17 @@
    fechados — o item do menu some, startDungeonMode() volta na porta, a
    aba do Codex nao aparece e as teclas so' dela saem das Configuracoes.
 
-   Para religar: troque `dungeon:false` por `dungeon:true` aqui. E' o
-   unico lugar.
+   O mesmo vale para `skins`: a aba Skins sai das Configuracoes, mas
+   HERO_SKINS, o desbloqueio e a skin ja' equipada continuam intactos.
+
+   Para religar: troque o `false` por `true` aqui. E' o unico lugar.
 
    Fica em window (e nao num `const` no topo de um script) porque os
    modulos em src/ sao scripts classicos carregados depois: um `const`
    de topo cria vinculo lexical, nao propriedade de window, e la' dentro
    ele nao seria visto de forma confiavel.
    ══════════════════════════════════════════════════════ */
-window.RECURSOS = { dungeon:false };
+window.RECURSOS = { dungeon:false, skins:false };
 window.recursoLigado = function(nome){
   return !window.RECURSOS || window.RECURSOS[nome] !== false;
 };
@@ -1010,6 +1012,7 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 
 .mn-cartao{
   position:relative; isolation:isolate; overflow:hidden;
+  touch-action:manipulation;   /* o toque duplo escolhe, nao amplia a pagina */
   display:grid; align-content:start; justify-items:center;
   gap:clamp(5px,.9vh,10px);
   padding:clamp(14px,2.4vh,26px) clamp(10px,1.6vw,20px) clamp(13px,2.2vh,22px);
@@ -1255,6 +1258,7 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
 }
 .cs-heroi{
   position:relative; display:grid; grid-template-rows:1fr auto auto;
+  touch-action:manipulation;   /* o toque duplo escolhe, nao amplia a pagina */
   gap:5px; justify-items:center;
   padding:clamp(8px,1.3vh,15px) 6px clamp(8px,1.3vh,13px);
   background:linear-gradient(180deg, rgba(16,11,26,.62), rgba(10,7,18,.9));
@@ -6409,7 +6413,12 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
         <div class="settings-control-head"><h2>Comandos</h2><button onclick="GameSettings.resetControls()">Restaurar padrão</button></div>
         <div class="settings-key-grid" id="settings-key-grid"></div>
         <p class="settings-help">Clique em uma tecla para alterá-la. Com o ataque automático desligado, use o botão esquerdo do mouse.</p>
-      </div>
+              <article class="settings-card" id="settings-mobile-wrap">
+          <h2>Controles no celular</h2>
+          <p>Só aparecem em aparelhos com tela sensível ao toque.</p>
+          <div id="settings-mobile-card"></div>
+        </article>
+</div>
 
       <div class="settings-panel" data-settings-panel="video">
         <div class="settings-resolution-grid" id="settings-resolution-grid"></div>
@@ -6607,7 +6616,7 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
 })(window);
 
 </script>
-  <script src="src/core/input-system.js"></script>
+  <script src="src/core/input-system.js?v=20260906-mobile2"></script>
 <script>
 (function(global){
   'use strict';
@@ -9449,7 +9458,11 @@ function updateBlessingsHUD(){
 // Crit — called when dealing damage
 function applyCardCrit(player,baseDmg,target){
   baseDmg*=1+CampProgressionSystem.damageBonus(player,target);
-  const cc = player.cardEffects?.critChance||0;
+  /* Critico INATO da classe + o que veio de cartas.
+     Antes a base era zero para todo mundo, entao o "crítico 85" que a
+     ficha do Arqueiro anuncia — o maior do jogo — nao existia em lugar
+     nenhum do codigo: era so' um numero na tela de selecao. */
+  const cc = (player.baseCrit||0) + (player.cardEffects?.critChance||0);
   if(cc>0 && Math.random()<cc){
     if(typeof RunStats!=='undefined')RunStats.recordCritical({playerIndex:player?.idx||0,attackEventId:player?._runAttackEventId||null});
     const mult = player.cardEffects?.critMult||2.5;
@@ -9516,7 +9529,7 @@ function applyMetaUpgrades(pl){
 
 </script>
   <script src="src/blessings/blessing-data.js?v=20260904-blessings-v4"></script>
-  <script src="src/blessings/blessing-system.js?v=20260904-blessings-v4"></script>
+  <script src="src/blessings/blessing-system.js?v=20260906-arqueiro1"></script>
   <script>
 // HUB — Acampamento
 // ══════════════════════════════════════════════
@@ -11027,7 +11040,26 @@ const CLASS_DEFS = {
     stats:{ vida:35, dano:65, veloc:95, crit:85 },
     ability:'Flecha de Plasma',
     abilityDesc:'Liga 2 inimigos e replica o dano.',
-    baseHp:80, baseDmg:15, baseSpd:156, baseAtk:780, baseRange:330, baseMulti:1,
+    /* BALANCEAMENTO — o Arqueiro pagava o preco de ser fragil sem receber
+       vantagem nenhuma em troca. Medido pelas formulas do proprio jogo
+       (dano por alvo / cooldown, com a area de cada classe):
+
+                     1 inimigo   3    6+
+         mago            38      38   38
+         guerreiro       41     124  165
+         viking          37     112  223
+         Arqueiro ANTES  38      62   62   <- ultimo em tudo, e com 80 de vida
+         Arqueiro AGORA  56     106  106
+
+       Ou seja: nem no alvo unico, que e' a especialidade dele, ele
+       liderava. Agora lidera contra alvo unico (chefes) e continua o
+       ultimo em horda grande, que e' o lugar certo de um atirador.
+
+       Tres mudancas: dano 15->16, critico inato de 25% (entregando o que
+       a ficha ja' prometia) e a cadeia de plasma ligando 2 alvos em vez
+       de 1. A vida segue 80 de proposito — a fragilidade E' a classe. */
+    baseHp:80, baseDmg:16, baseSpd:156, baseAtk:780, baseRange:330, baseMulti:1,
+    baseCrit:0.25, basePlasmaChain:2,
     abilityKey:'plasma',
     previewPalKey:'PAL_ARCHER_P',
     shopItems:[
@@ -11222,6 +11254,34 @@ function csAnimarRetrato(canvas, classe, atacando, fill){
   })();
 }
 
+/* ══ DUPLO CLIQUE = CONTINUAR ══
+   Nas tres telas de escolha (modo, dificuldade e heroi) o primeiro clique
+   marca o cartao e o segundo, se vier logo em seguida NO MESMO cartao, ja'
+   avanca — o mesmo que apertar CONTINUAR, sem ter de mirar no botao la'
+   embaixo.
+   Feito na mao em cima do 'click' em vez de usar o evento 'dblclick' porque
+   no celular o navegador nao dispara dblclick de forma confiavel enquanto a
+   pagina puder ser ampliada: o toque duplo vira zoom. O CSS dos cartoes tira
+   esse zoom (touch-action:manipulation) e aqui a dupla e' contada pelo tempo,
+   valendo igual para o mouse e para o dedo. */
+const DUPLO_MS=400;
+let _duploAlvo=null, _duploEm=0, _duploTravaAte=0;
+
+function duploConfirmar(cartao, escolher, confirmar){
+  escolher();
+  const agora=performance.now();
+  const dupla = _duploAlvo===cartao && agora-_duploEm<=DUPLO_MS && agora>=_duploTravaAte;
+  _duploAlvo = cartao;
+  _duploEm   = agora;
+  if(!dupla) return;
+  /* Quem confirma fecha a porta por um instante. E' esta trava — e so' ela —
+     que impede o impulso de continuar sozinho: o terceiro e o quarto clique
+     da mesma rajada nao podem confirmar de novo, nem neste cartao nem na tela
+     seguinte, que ja' nasceu debaixo do cursor. */
+  _duploTravaAte = agora+DUPLO_MS;
+  confirmar();
+}
+
 function buildCharSelectUI(playerIdx){
   csJogadorAtual=playerIdx;
   csHeroiEscolhido=null;
@@ -11249,7 +11309,7 @@ function buildCharSelectUI(playerIdx){
       <span class="cs-heroi-nome">${def.name}</span>
       <span class="cs-heroi-badge">${def.badge}</span>`;
 
-    cartao.addEventListener('click',()=>csEscolher(cid));
+    cartao.addEventListener('click',()=>duploConfirmar(cartao,()=>csEscolher(cid),confirmCharSelect));
     cartao.addEventListener('keydown',e=>{
       if(e.key==='Enter'||e.key===' '){ e.preventDefault(); csEscolher(cid); }
     });
@@ -11546,7 +11606,7 @@ function buildModeMenu(){
 
   alvo.querySelectorAll('.mn-cartao').forEach(c=>{
     const escolher=()=>selectMode(Number(c.dataset.modo));
-    c.addEventListener('click',escolher);
+    c.addEventListener('click',()=>duploConfirmar(c,escolher,confirmarModo));
     c.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();escolher();} });
   });
   selectMode(_selMode||1);
@@ -11592,7 +11652,7 @@ function buildDiffMenu(){
 
   alvo.querySelectorAll('.mn-cartao').forEach(c=>{
     const escolher=()=>selectDiff(c.dataset.dif);
-    c.addEventListener('click',escolher);
+    c.addEventListener('click',()=>duploConfirmar(c,escolher,goCharSelect));
     c.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();escolher();} });
   });
   selectDiff(_selDiff||'medium');
@@ -16666,6 +16726,14 @@ function normalizeCampaignMovementVector(dx,dy){
   if(length>1){dx/=length;dy/=length;}
   return {dx,dy};
 }
+/* O dash e' diferente do movimento: aqui a magnitude precisa ser SEMPRE 1.
+   O movimento so' limita o teto (meio curso do analogico = meia velocidade),
+   mas um dash com meio curso sairia curto e imprevisivel. */
+function normalizeDashDirection(dx,dy){
+  const length=Math.hypot(dx,dy);
+  if(length<=1e-6) return {dx:0,dy:0};
+  return {dx:dx/length,dy:dy/length};
+}
 function triggerDash(pl){
   if(!pl||pl.dead||pl._dashActive||pl._dashCd>0) return;
   // Direção do dash = direção atual de movimento, ou última dir do sprite
@@ -16695,14 +16763,31 @@ function triggerDash(pl){
     if(keys['ArrowUp'])    dy-=1;
     if(keys['ArrowDown'])  dy+=1;
   }
+  /* Toque: o dash segue a direcao do analogico. Com o polegar quase no
+     centro (magnitude baixa demais para valer como direcao) usa a ULTIMA
+     direcao valida — assim o dash nunca sai para um lado aleatorio.
+     A direcao vale mesmo com o dedo parado no joystick, que e' o caso de
+     apertar Dash com o outro polegar sem soltar o movimento. */
+  if(isP1&&typeof InputManager!=='undefined'&&InputManager.getMovementVector){
+    const v=InputManager.getMovementVector();
+    if(v.magnitude>0.25){ dx+=v.x; dy+=v.y; }
+    /* hasAnalogMovement responde "ha' vetor de movimento", nao "ha' dedo no
+       joystick": dentro da zona morta a fonte e' REMOVIDA, entao com o polegar
+       parado no centro ele ja' devolve false — justamente o caso que este ramo
+       existe para atender. Quem sabe do dedo e' o sensor. */
+    else if(dx===0&&dy===0&&(InputManager.hasAnalogMovement?.()||window.MobileTouchSensor?.isMoving?.())){
+      const u=InputManager.getLastMovementDirection();
+      dx+=u.x; dy+=u.y;
+    }
+  }
   // Sem input de movimento: dash para o lado que o sprite está virado
-  if(dx===0&&dy===0){
+  if(Math.abs(dx)<1e-4&&Math.abs(dy)<1e-4){
     if(pl.dir==='left')  dx=-1;
     else if(pl.dir==='right') dx=1;
     else if(pl.dir==='up')    dy=-1;
     else dy=1;
   }
-  ({dx,dy}=normalizeCampaignMovementVector(dx,dy));
+  ({dx,dy}=normalizeDashDirection(dx,dy));
   const DASH_SPD=14; const DASH_DUR=140;
   pl._dashActive=true; pl._dashTimer=DASH_DUR;
   pl._dashVx=dx*DASH_SPD*(1000/16.67); pl._dashVy=dy*DASH_SPD*(1000/16.67);
@@ -16845,7 +16930,8 @@ class Player {
     this.berserkActive=false; this.berserkTimer=0; this.berserkDur=5000; this.lifeSteal=0.15;
     this.slowDur=1200;
     this.fireDur=800;
-    this.plasmaChain=1;
+    this.plasmaChain=cd.basePlasmaChain||1;
+    this.baseCrit=cd.baseCrit||0;
     this.dmgReduce=0;
     this.shopEffects={lastDamageAt:performance.now()};
     this.instantFreeze=false;
@@ -16902,6 +16988,12 @@ class Player {
       if(keys['ArrowDown'])  dy+=1;
     }
     ({dx,dy}=normalizeCampaignMovementVector(dx,dy));
+    /* Toque: soma a intencao analogica a' do teclado. O vetor ja' vem
+       normalizado com magnitude 0..1, e a linha de baixo multiplica por
+       this.speed — entao meio curso do polegar da' meia velocidade sem
+       nenhuma regra nova de gameplay. So' o jogador 1 recebe o toque. */
+    if(this.idx===0&&typeof InputManager!=='undefined'&&InputManager.combinarMovimento)
+      ({dx,dy}=InputManager.combinarMovimento(dx,dy));
     this._moveDx=dx;this._moveDy=dy;
 
     // ── Dash cooldown tick ──
@@ -16947,8 +17039,11 @@ class Player {
     this.x+=dx*this.speed*moveMult*dt; this.y+=dy*this.speed*moveMult*dt;
     this.x=Math.max(38,Math.min(W-38,this.x));
     this.y=Math.max(205,Math.min(H-24,this.y));
-    this.isMoving=(dx!==0||dy!==0);
-    if(dx<0) this.dir='left'; else if(dx>0) this.dir='right';
+    this.isMoving=(Math.abs(dx)>1e-4||Math.abs(dy)>1e-4);
+    // Fisica em 360 graus, sprite em 4: escolhe pelo eixo dominante.
+    if(typeof InputManager!=='undefined'&&InputManager.direcaoVisual)
+      this.dir=InputManager.direcaoVisual(dx,dy,this.dir);
+    else if(dx<0) this.dir='left'; else if(dx>0) this.dir='right';
     else if(dy<0) this.dir='up'; else if(dy>0) this.dir='down';
     // Update dash bar
     if(this.idx===0) _updateDashBar(this);
@@ -20919,8 +21014,8 @@ GameRuntime.onSuspend(()=>{
 
 </script>
   <script src="src/core/audio-system.js"></script>
-  <script src="src/ui/settings-system.js?v=20260905-dungeon-off"></script>
-    <script src="src/dungeon/dungeon-system.js?v=20260905-dungeon-off"></script>
+  <script src="src/ui/settings-system.js?v=20260906-mobile2"></script>
+    <script src="src/dungeon/dungeon-system.js?v=20260906-mobile2"></script>
   <script>
 // SISTEMA DE PESCA — Estilo Stardew Valley
 // ═══════════════════════════════════════════════════════
@@ -21797,18 +21892,18 @@ function closeFishing(){
 }
 
 </script>
-  <script src="src/camp/collision-map.js?v=20260906-contracts1"></script>
-  <script src="src/camp/layout-data.js?v=20260906-contracts1"></script>
+  <script src="src/camp/collision-map.js?v=20260906-arqueiro1"></script>
+  <script src="src/camp/layout-data.js?v=20260906-arqueiro1"></script>
   <script src="src/camp/farming-data.js"></script>
   <script src="src/camp/farming-system.js"></script>
-  <script src="src/camp/interaction-data.js?v=20260906-contracts1"></script>
+  <script src="src/camp/interaction-data.js?v=20260906-arqueiro1"></script>
   <script src="src/camp/environment-renderer.js"></script>
   <script src="src/camp/pet-system.js"></script>
   <script src="src/camp/archer-system.js"></script>
-  <script src="src/camp/contracts-data.js?v=20260906-contracts3"></script>
-  <script src="src/camp/contracts-system.js?v=20260906-contracts3"></script>
-  <script src="src/camp/contract-board-renderer.js?v=20260906-contracts3"></script>
-  <script src="src/camp/contracts-ui.js?v=20260906-contracts3"></script>
+  <script src="src/camp/contracts-data.js?v=20260906-arqueiro1"></script>
+  <script src="src/camp/contracts-system.js?v=20260906-arqueiro1"></script>
+  <script src="src/camp/contract-board-renderer.js?v=20260906-arqueiro1"></script>
+  <script src="src/camp/contracts-ui.js?v=20260906-arqueiro1"></script>
   <script>
   /* As moedas e o inventário usam `let` no script principal e, portanto,
      não ficam disponíveis como propriedades de window. O sistema recebe
@@ -22105,10 +22200,17 @@ window.visualViewport?.addEventListener('resize',scheduleResponsiveLayout,{passi
     const action=button.dataset.mobileAction;
     button.addEventListener('pointerdown',e=>{
       e.preventDefault();
-      button.setPointerCapture?.(e.pointerId);
+      /* setPointerCapture LANCA quando o ponteiro ja' saiu (toque rapidissimo,
+         ponteiro cancelado pelo sistema). O `?.` so' protege do metodo ausente,
+         nao da excecao — e a excecao aqui matava o Dash em silencio, porque o
+         resto do handler nunca rodava. */
+      try{ button.setPointerCapture?.(e.pointerId); }catch(_){}
       if(action==='context'){ pressContext(button); return; }
       button.classList.add('pressed');
       if(action==='dash'){
+        /* Toque MUITO curto, so' no dash. Nao vibra em ataque nem a cada
+           passo; a ausencia da API nao pode virar erro. */
+        if(window.MobileTouchSensor?.vibrarLigado!==false) try{ navigator.vibrate?.(12); }catch(_){}
         if(dungeonActive()&&typeof _dngTriggerDash==='function') _dngTriggerDash();
         else if(typeof state!=='undefined'&&state==='playing'&&typeof triggerDash==='function'&&player) triggerDash(player);
       } else if(action==='menu'){
@@ -22116,6 +22218,8 @@ window.visualViewport?.addEventListener('resize',scheduleResponsiveLayout,{passi
         else if(typeof toggleInventory==='function') toggleInventory();
         setTimeout(updateMobileControls,0);
       } else if(action==='pause'){
+        // Pausar solta o joystick: sem isso o heroi voltava andando sozinho.
+        try{ InputManager.resetAnalog?.(); MobileTouchSensor?.release?.(); }catch(_){}
         if(dungeonActive()&&typeof DNG._togglePause==='function') DNG._togglePause();
         else if(typeof state!=='undefined'&&state==='playing'){
           pauseGame();
@@ -22166,8 +22270,48 @@ function updateMobileControls(){
 }
 window.updateMobileControls=updateMobileControls;
 
+/* ══ O ESTADO DA PARTIDA E' OBSERVADO, NAO AVISADO ══
+   updateMobileControls tinha uma LISTA de gatilhos: trocar de tela, girar o
+   aparelho, abrir a mochila, redimensionar. A lista estava incompleta e do
+   pior jeito possivel: a abertura do capitulo termina DENTRO do laco do
+   jogo — 'chapter' vira 'playing' sem passar por showScreen e sem mexer nos
+   filhos de <body>, que e' o que o MutationObserver enxerga.
+
+   Resultado no celular: a partida comecava com os botoes escondidos e o
+   joystick desligado (ele exige a classe mobile-gameplay-active). Um arrasto
+   inteiro na tela dava vetor zero — o heroi simplesmente nao andava, ate' que
+   algo sem relacao (a barra de endereco recolhendo, uma rotacao, abrir a
+   mochila) disparasse um dos gatilhos por acaso.
+
+   Acrescentar mais um gatilho so' adiaria o proximo furo. Aqui o estado e'
+   VIGIADO: uma comparacao de texto por quadro, e o DOM so' e' tocado quando
+   ele realmente muda. Vale para todas as transicoes — capitulo, pausa,
+   subida de nivel, fim de jogo — inclusive as que ainda nao existem. */
+(function vigiarEstadoDoJogo(){
+  if(!getResponsiveViewport().coarse) return;   // no desktop nao ha o que ligar
+  let anterior=null;
+  (function tique(){
+    requestAnimationFrame(tique);
+    const dng=typeof DNG!=='undefined'&&DNG.running
+      ? (DNG.paused?'p':DNG.menuOpen?'m':DNG.mapOpen?'a':'r') : '-';
+    const atual=(typeof state!=='undefined'?state:'?')+'|'+dng;
+    if(atual===anterior) return;
+    anterior=atual;
+    updateMobileControls();
+  })();
+})();
+
 const mobileShowScreen=window.showScreen;
 window.showScreen=function(){
+  /* Trocar de tela solta o joystick. Sem isto, abrir a loja ou o Codex com
+     o polegar apoiado deixava o vetor congelado e o heroi voltava andando
+     sozinho ao fechar o painel. */
+  try{
+    window.MobileTouchSensor?.release?.();
+    window.MobileTouchSensor?.limparContexto?.();   // o botao de interagir nao sobrevive a troca de tela
+    window.MobileTouchSensor?.conferirOrientacao?.();
+    window.InputManager?.resetAnalog?.();
+  }catch(_){}
   const result=mobileShowScreen.apply(this,arguments);
   setTimeout(updateMobileControls,0);
   return result;
@@ -22700,14 +22844,25 @@ window.CampV2 = (function(){
     let dx=0,dy=0; const k=S.teclas;
     if(k['w']||k['arrowup'])dy=-1; if(k['s']||k['arrowdown'])dy=1;
     if(k['a']||k['arrowleft'])dx=-1; if(k['d']||k['arrowright'])dx=1;
-    S.andando=!!(dx||dy); S.correndo=!!(k['shift']&&S.andando);
-    if(dx&&dy){dx*=.707;dy*=.707;}
-    if(dy<0)S.dir='up'; else if(dy>0)S.dir='down';
+    if(typeof InputManager!=='undefined'&&InputManager.combinarMovimento)
+      ({dx,dy}=InputManager.combinarMovimento(dx,dy));
+    else { const t=Math.hypot(dx,dy); if(t>1){dx/=t;dy/=t;} }
+    S.andando=(Math.abs(dx)>1e-4||Math.abs(dy)>1e-4); S.correndo=!!(k['shift']&&S.andando);
+    // Perto da horta e dos NPCs, magnitude baixa e' o que permite encostar
+    // no ponto certo sem passar direto.
+    if(typeof InputManager!=='undefined'&&InputManager.direcaoVisual)
+      S.dir=InputManager.direcaoVisual(dx,dy,S.dir);
+    else if(dy<0)S.dir='up'; else if(dy>0)S.dir='down';
     else if(dx<0)S.dir='left'; else if(dx>0)S.dir='right';
     const vel=(S.correndo?188:118)*dt;
-    if(dx&&livre(S.x+dx*vel,S.y)) S.x+=dx*vel;
-    if(dy&&livre(S.x,S.y+dy*vel)) S.y+=dy*vel;
+    // Eixos resolvidos separadamente: empurrando na diagonal contra uma
+    // parede, o eixo livre continua andando em vez de travar tudo.
+    if(Math.abs(dx)>1e-4&&livre(S.x+dx*vel,S.y)) S.x+=dx*vel;
+    if(Math.abs(dy)>1e-4&&livre(S.x,S.y+dy*vel)) S.y+=dy*vel;
     atualizarPet(dt);
+    // o botao contextual do celular espelha o MESMO alvo do prompt [E]
+    if(typeof MobileTouchSensor!=='undefined'&&MobileTouchSensor.publicarContexto)
+      MobileTouchSensor.publicarContexto(S.alvo?{rotulo:S.alvo.rotulo,executar:interagirComAlvo}:null);
 
     const cant=canteiroEm(S.x,S.y);
     if(cant){
@@ -22800,14 +22955,22 @@ window.CampV2 = (function(){
     atualizar(dt,ts); desenhar(cv.getContext('2d'),ts);
   }
 
+  /* A acao de interagir vive AQUI e e' chamada tanto pela tecla E quanto
+     pelo botao contextual do celular. Duplicar a regra nos dois caminhos
+     era o jeito de um sair do outro com o tempo. */
+  function interagirComAlvo(){
+    const a=S.alvo; if(!a) return false;
+    if(a.id==='canteiro'){ a.abrir(); return true; }
+    pausar(); S.voltarAoFechar=true; a.abrir();
+    return true;
+  }
+
   function aoTeclar(e){
     if(!S.ativo) return;
     const k=e.key.toLowerCase();
     if(k==='shift'){ S.teclas['shift']=true; return; }
     S.teclas[k]=true;
-    if(k==='e'&&S.alvo){ e.preventDefault(); const a=S.alvo;
-      if(a.id==='canteiro'){ a.abrir(); return; }
-      pausar(); S.voltarAoFechar=true; a.abrir(); }
+    if(k==='e'&&S.alvo){ e.preventDefault(); interagirComAlvo(); }
     else if(k==='q'){ e.preventDefault(); trocarSemente(); }
     else if(k==='f2'){ e.preventDefault(); S.depurar=!S.depurar; }
     else if(k==='i'){ e.preventDefault(); if(typeof toggleInventory==='function') toggleInventory(); }
@@ -22867,7 +23030,7 @@ window.CampV2 = (function(){
     else if(S.ativo && !acampamentoNaFrente()) pausar();
   }, 250);
 
-  return {abrir, sair, pausar, retomar, PONTOS, BLOQUEIOS, BLOQUEIOS_CIRCULARES, PASSAGENS, CANTEIROS, S,
+  return {abrir, sair, pausar, retomar, interagirComAlvo, PONTOS, BLOQUEIOS, BLOQUEIOS_CIRCULARES, PASSAGENS, CANTEIROS, S,
           medidas:()=>({MW,MH})};
 })();
 // [/CAMP-V2]

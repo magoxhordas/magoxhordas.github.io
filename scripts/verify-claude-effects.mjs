@@ -62,7 +62,9 @@ includesAll(html,[
   "marcarElemento(pl,'poison',1400)",
   "marcarElemento(pl,'fire',900)",
   'for(const alvo of campaignObjectives.getTodosAlvos())drawEnemyStatusFx(alvo,t);',
-  "src/blessings/blessing-system.js?v=20260904-blessings-v4",
+  // sem a versao: o modulo ganha ?v= novo a cada mudanca, e a intencao
+  // aqui e "o modulo de bencaos e carregado", nao "esta na versao X"
+  "src/blessings/blessing-system.js",
   'getGlobalAttackSpeedBonus:owner=>getCampaignShopAttackSpeedBonus(owner)+(typeof getBlessingAttackSpeedBonus',
   /* O par de botoes de acao migrou de .paired-action-row para o rodape
      compartilhado dos menus (.mn-rodape + .mn-btn), usado agora pelas
