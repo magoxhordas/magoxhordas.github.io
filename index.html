@@ -17364,48 +17364,78 @@ const CAMPAIGN_ARENA_BOUNDS=Object.freeze({
 const _pontoSeparacao={x:0,y:0,radius:0};
 function separarDosCorpos(){
   const chefes=[bossOrc,bossSkel,bossSpider,bossMajor,petBoss];
-  // Altares, fogueiras, ninhos, obeliscos e baus tambem barram o heroi: sao
-  // objetos de pedra, e atravessa-los denunciava que nao eram nada alem de
-  // desenho. A lista vem do modulo de objetivos, que sabe quais sao solidos
-  // — a fissura e o casulo do sobrevivente, por exemplo, ficam de fora.
-  const solidos=(typeof campaignObjectives!=='undefined'&&campaignObjectives.getSolidTargets)
-    ?campaignObjectives.getSolidTargets():[];
-  const corpos=solidos.length?chefes.concat(solidos):chefes;
+  /* Altares, fogueiras, ninhos, obeliscos, baus, o casulo e o objeto do
+     evento da vez tambem barram o heroi: sao coisas fisicas, e atravessa-las
+     denunciava que nao eram nada alem de desenho. Quem decide o que e' solido
+     sao os proprios modulos — a fissura infernal, que e' uma rachadura no
+     chao, fica de fora. */
+  const corpos=chefes.concat(corposDeCenario());
   for(const pl of [player,player2]){
     if(!pl||pl.dead)continue;
-    for(const chefe of corpos){
-      if(!chefe||chefe.dead)continue;
-      const minimo=(Number(chefe.radius)||0)+(Number(pl.radius)||0);
-      if(!(minimo>0))continue;
-      let dx=pl.x-chefe.x, dy=pl.y-chefe.y;
-      const d=Math.hypot(dx,dy);
-      if(d>=minimo)continue;
-      // exatamente no centro: nao ha direcao, entao escolhe uma
-      if(d<0.001){ dx=0; dy=1; }
-      const ang0=Math.atan2(dy,dx);
-      // A saida reta nem sempre serve: quando o chefe prende o heroi contra a
-      // parede, ela cai fora da arena e o limite devolve o heroi para dentro
-      // do corpo dele (foi o que aconteceu com o Brutamontes no fundo da
-      // cripta: sobravam 26px de um minimo de 58). Entao, se o ponto reto for
-      // corrigido pelo limite, contorna — procura em volta do chefe o ponto
-      // mais proximo daquela direcao que caiba inteiro na arena.
-      let achouX=null, achouY=null;
-      for(let passo=0;passo<=12&&achouX===null;passo++){
-        for(const lado of (passo===0?[0]:[1,-1])){
-          const ang=ang0+lado*passo*(Math.PI/12);
-          const px=chefe.x+Math.cos(ang)*minimo, py=chefe.y+Math.sin(ang)*minimo;
-          _pontoSeparacao.x=px; _pontoSeparacao.y=py; _pontoSeparacao.radius=pl.radius;
-          clampCampaignEntity(_pontoSeparacao);
-          if(Math.abs(_pontoSeparacao.x-px)<0.01&&Math.abs(_pontoSeparacao.y-py)<0.01){
-            achouX=px; achouY=py; break;
-          }
-        }
+    for(const corpo of corpos) empurrarParaForaDe(pl,corpo);
+  }
+}
+
+/* ══ CENARIO SOLIDO: UMA LISTA SO' ══
+   Os objetos do objetivo da onda MAIS o no' do evento ativo. Precisa ser a
+   MESMA lista para o heroi e para os inimigos: se divergissem, o inimigo
+   empurraria o heroi para dentro de um objeto que so' ele atravessa, e o
+   heroi sairia por um lado que o inimigo ocupa. */
+function corposDeCenario(){
+  const doObjetivo=(typeof campaignObjectives!=='undefined'&&campaignObjectives.getSolidTargets)
+    ?campaignObjectives.getSolidTargets():[];
+  const doEvento=(typeof campaignEvents!=='undefined'&&campaignEvents.getSolidBodies)
+    ?campaignEvents.getSolidBodies():[];
+  return doEvento.length?doObjetivo.concat(doEvento):doObjetivo;
+}
+
+/* Empurra UMA entidade para fora de UM corpo. Mesma busca em arco do heroi:
+   a saida reta nem sempre cabe na arena, e sem o contorno o inimigo preso
+   entre o objeto e a parede voltava a ser devolvido para dentro do objeto.
+   Devolve true quando mexeu. */
+function empurrarParaForaDe(ent,corpo){
+  if(!ent||ent.dead||!corpo||corpo.dead||corpo===ent)return false;
+  const raioCorpo=Number(corpo.radius)||0;
+  // Corpo sem raio nao e' corpo. Somar os dois raios e testar a soma deixava
+  // um objeto de raio zero empurrando pelo raio de QUEM ESBARRA nele.
+  if(!(raioCorpo>0))return false;
+  const minimo=raioCorpo+(Number(ent.radius)||0);
+  if(!(minimo>0))return false;
+  let dx=ent.x-corpo.x, dy=ent.y-corpo.y;
+  const d=Math.hypot(dx,dy);
+  if(d>=minimo)return false;
+  if(d<0.001){ dx=0; dy=1; }
+  const ang0=Math.atan2(dy,dx);
+  let achouX=null, achouY=null;
+  for(let passo=0;passo<=12&&achouX===null;passo++){
+    for(const lado of (passo===0?[0]:[1,-1])){
+      const ang=ang0+lado*passo*(Math.PI/12);
+      const px=corpo.x+Math.cos(ang)*minimo, py=corpo.y+Math.sin(ang)*minimo;
+      _pontoSeparacao.x=px; _pontoSeparacao.y=py; _pontoSeparacao.radius=ent.radius;
+      clampCampaignEntity(_pontoSeparacao);
+      if(Math.abs(_pontoSeparacao.x-px)<0.01&&Math.abs(_pontoSeparacao.y-py)<0.01){
+        achouX=px; achouY=py; break;
       }
-      // Toda a volta bloqueada (arena apertada demais): fica com a saida reta.
-      if(achouX===null){ achouX=chefe.x+Math.cos(ang0)*minimo; achouY=chefe.y+Math.sin(ang0)*minimo; }
-      pl.x=achouX; pl.y=achouY;
-      clampCampaignEntity(pl);
     }
+  }
+  if(achouX===null){ achouX=corpo.x+Math.cos(ang0)*minimo; achouY=corpo.y+Math.sin(ang0)*minimo; }
+  ent.x=achouX; ent.y=achouY;
+  clampCampaignEntity(ent);
+  return true;
+}
+
+/* Os inimigos tambem esbarram no cenario. Sem isto, o altar barrava o heroi
+   e os inimigos entravam por dentro dele para acerta-lo — o objeto virava
+   cobertura so' para um lado, e ficava evidente que era desenho.
+   Os CHEFES ficam de fora, como ja' ficavam para o heroi: eles tem coreografia
+   propria (salto, investida) que deslocar quebraria. */
+function separarInimigosDoCenario(){
+  const corpos=corposDeCenario();
+  if(!corpos.length)return;
+  for(const e of enemies){
+    if(!e||e.dead)continue;
+    if(e.isSpecter&&e.phased)continue;   // espectro em fase atravessa: e' o poder dele
+    for(const corpo of corpos) empurrarParaForaDe(e,corpo);
   }
 }
 
@@ -19954,8 +19984,8 @@ function templeChoose(choice){
 
 </script>
   <script src="src/campaign/campaign-ui.js"></script>
-  <script src="src/campaign/campaign-objectives.js?v=20260906-objetos"></script>
-  <script src="src/campaign/campaign-events.js?v=20260906-objetos"></script>
+  <script src="src/campaign/campaign-objectives.js?v=20260906-colisao"></script>
+  <script src="src/campaign/campaign-events.js?v=20260906-colisao"></script>
   <script src="src/campaign/campaign-runtime.js"></script>
   <script src="src/campaign/chapter-data.js"></script>
   <script src="src/campaign/campaign-system.js"></script>
@@ -20418,6 +20448,9 @@ function loop(ts){
       const aggro=campaignObjectives.enemyAggroTarget(e)||NecromancerSystem.getEnemyAggroTarget(e,[player,player2])||player;
       e.update(dt,aggro.x,aggro.y); clampCampaignEntity(e);
     }
+    // Depois de TODOS andarem, pelo mesmo motivo do heroi: separar durante o
+    // laco nao adianta, porque quem ja' se moveu volta a pisar no objeto.
+    separarInimigosDoCenario();
     // legacy non-boss-wave bosses (waves 2-4 mini-bosses kept for feel)
     if(bossOrc&&!bossOrc.dead){ bossOrc.update(dt,player.x,player.y); clampCampaignEntity(bossOrc,36); }
     if(bossSkel&&!bossSkel.dead){ bossSkel.update(dt,player.x,player.y); clampCampaignEntity(bossSkel,36); }
