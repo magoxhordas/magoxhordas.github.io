@@ -427,7 +427,13 @@ const GameSettings = (function(){
     queueManualAttack,hasManualAttack,clearManualAttack,consumeManualAttack,playAttackSound,
     recordBossRushVictory,recordDungeonBoss,refreshSkinUnlocks,getSkinRequirementState,
     getProgressSnapshot(){return JSON.parse(JSON.stringify(skinProgress));},
-    get autoAttack(){ return data.autoAttack; },
+    /* Override de RUNTIME do mobile: no touch o gesto inteiro e' da
+       locomocao, entao o ataque fica automatico mesmo com o jogador tendo
+       escolhido manual. A preferencia SALVA nao e' tocada — antes o codigo
+       chamava toggleAutoAttack() e reescrevia a escolha dele em silencio,
+       que ficava assim tambem no desktop depois. */
+    mobileAutoAttackOverride:false,
+    get autoAttack(){ return data.autoAttack||this.mobileAutoAttackOverride===true; },
     get skinId(){ return data.skinId; },
     get controls(){ return {...data.controls}; },
     getCombatFx(){

@@ -6609,7 +6609,7 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
 })(window);
 
 </script>
-  <script src="src/core/input-system.js"></script>
+  <script src="src/core/input-system.js?v=20260906-mobile1"></script>
 <script>
 (function(global){
   'use strict';
@@ -16691,6 +16691,14 @@ function normalizeCampaignMovementVector(dx,dy){
   if(length>1){dx/=length;dy/=length;}
   return {dx,dy};
 }
+/* O dash e' diferente do movimento: aqui a magnitude precisa ser SEMPRE 1.
+   O movimento so' limita o teto (meio curso do analogico = meia velocidade),
+   mas um dash com meio curso sairia curto e imprevisivel. */
+function normalizeDashDirection(dx,dy){
+  const length=Math.hypot(dx,dy);
+  if(length<=1e-6) return {dx:0,dy:0};
+  return {dx:dx/length,dy:dy/length};
+}
 function triggerDash(pl){
   if(!pl||pl.dead||pl._dashActive||pl._dashCd>0) return;
   // Direção do dash = direção atual de movimento, ou última dir do sprite
@@ -16720,14 +16728,27 @@ function triggerDash(pl){
     if(keys['ArrowUp'])    dy-=1;
     if(keys['ArrowDown'])  dy+=1;
   }
+  /* Toque: o dash segue a direcao do analogico. Com o polegar quase no
+     centro (magnitude baixa demais para valer como direcao) usa a ULTIMA
+     direcao valida — assim o dash nunca sai para um lado aleatorio.
+     A direcao vale mesmo com o dedo parado no joystick, que e' o caso de
+     apertar Dash com o outro polegar sem soltar o movimento. */
+  if(isP1&&typeof InputManager!=='undefined'&&InputManager.getMovementVector){
+    const v=InputManager.getMovementVector();
+    if(v.magnitude>0.25){ dx+=v.x; dy+=v.y; }
+    else if(dx===0&&dy===0&&InputManager.hasAnalogMovement?.()){
+      const u=InputManager.getLastMovementDirection();
+      dx+=u.x; dy+=u.y;
+    }
+  }
   // Sem input de movimento: dash para o lado que o sprite está virado
-  if(dx===0&&dy===0){
+  if(Math.abs(dx)<1e-4&&Math.abs(dy)<1e-4){
     if(pl.dir==='left')  dx=-1;
     else if(pl.dir==='right') dx=1;
     else if(pl.dir==='up')    dy=-1;
     else dy=1;
   }
-  ({dx,dy}=normalizeCampaignMovementVector(dx,dy));
+  ({dx,dy}=normalizeDashDirection(dx,dy));
   const DASH_SPD=14; const DASH_DUR=140;
   pl._dashActive=true; pl._dashTimer=DASH_DUR;
   pl._dashVx=dx*DASH_SPD*(1000/16.67); pl._dashVy=dy*DASH_SPD*(1000/16.67);
@@ -16928,6 +16949,12 @@ class Player {
       if(keys['ArrowDown'])  dy+=1;
     }
     ({dx,dy}=normalizeCampaignMovementVector(dx,dy));
+    /* Toque: soma a intencao analogica a' do teclado. O vetor ja' vem
+       normalizado com magnitude 0..1, e a linha de baixo multiplica por
+       this.speed — entao meio curso do polegar da' meia velocidade sem
+       nenhuma regra nova de gameplay. So' o jogador 1 recebe o toque. */
+    if(this.idx===0&&typeof InputManager!=='undefined'&&InputManager.combinarMovimento)
+      ({dx,dy}=InputManager.combinarMovimento(dx,dy));
     this._moveDx=dx;this._moveDy=dy;
 
     // ── Dash cooldown tick ──
@@ -16973,8 +17000,11 @@ class Player {
     this.x+=dx*this.speed*moveMult*dt; this.y+=dy*this.speed*moveMult*dt;
     this.x=Math.max(38,Math.min(W-38,this.x));
     this.y=Math.max(205,Math.min(H-24,this.y));
-    this.isMoving=(dx!==0||dy!==0);
-    if(dx<0) this.dir='left'; else if(dx>0) this.dir='right';
+    this.isMoving=(Math.abs(dx)>1e-4||Math.abs(dy)>1e-4);
+    // Fisica em 360 graus, sprite em 4: escolhe pelo eixo dominante.
+    if(typeof InputManager!=='undefined'&&InputManager.direcaoVisual)
+      this.dir=InputManager.direcaoVisual(dx,dy,this.dir);
+    else if(dx<0) this.dir='left'; else if(dx>0) this.dir='right';
     else if(dy<0) this.dir='up'; else if(dy>0) this.dir='down';
     // Update dash bar
     if(this.idx===0) _updateDashBar(this);
@@ -20945,8 +20975,8 @@ GameRuntime.onSuspend(()=>{
 
 </script>
   <script src="src/core/audio-system.js"></script>
-  <script src="src/ui/settings-system.js?v=20260906-arqueiro1"></script>
-    <script src="src/dungeon/dungeon-system.js?v=20260905-dungeon-off"></script>
+  <script src="src/ui/settings-system.js?v=20260906-mobile1"></script>
+    <script src="src/dungeon/dungeon-system.js?v=20260906-mobile1"></script>
   <script>
 // SISTEMA DE PESCA — Estilo Stardew Valley
 // ═══════════════════════════════════════════════════════
@@ -22135,6 +22165,9 @@ window.visualViewport?.addEventListener('resize',scheduleResponsiveLayout,{passi
       if(action==='context'){ pressContext(button); return; }
       button.classList.add('pressed');
       if(action==='dash'){
+        /* Toque MUITO curto, so' no dash. Nao vibra em ataque nem a cada
+           passo; a ausencia da API nao pode virar erro. */
+        try{ navigator.vibrate?.(12); }catch(_){}
         if(dungeonActive()&&typeof _dngTriggerDash==='function') _dngTriggerDash();
         else if(typeof state!=='undefined'&&state==='playing'&&typeof triggerDash==='function'&&player) triggerDash(player);
       } else if(action==='menu'){
@@ -22142,6 +22175,8 @@ window.visualViewport?.addEventListener('resize',scheduleResponsiveLayout,{passi
         else if(typeof toggleInventory==='function') toggleInventory();
         setTimeout(updateMobileControls,0);
       } else if(action==='pause'){
+        // Pausar solta o joystick: sem isso o heroi voltava andando sozinho.
+        try{ InputManager.resetAnalog?.(); MobileTouchSensor?.release?.(); }catch(_){}
         if(dungeonActive()&&typeof DNG._togglePause==='function') DNG._togglePause();
         else if(typeof state!=='undefined'&&state==='playing'){
           pauseGame();
@@ -22194,6 +22229,10 @@ window.updateMobileControls=updateMobileControls;
 
 const mobileShowScreen=window.showScreen;
 window.showScreen=function(){
+  /* Trocar de tela solta o joystick. Sem isto, abrir a loja ou o Codex com
+     o polegar apoiado deixava o vetor congelado e o heroi voltava andando
+     sozinho ao fechar o painel. */
+  try{ window.MobileTouchSensor?.release?.(); window.InputManager?.resetAnalog?.(); }catch(_){}
   const result=mobileShowScreen.apply(this,arguments);
   setTimeout(updateMobileControls,0);
   return result;
@@ -22726,13 +22765,21 @@ window.CampV2 = (function(){
     let dx=0,dy=0; const k=S.teclas;
     if(k['w']||k['arrowup'])dy=-1; if(k['s']||k['arrowdown'])dy=1;
     if(k['a']||k['arrowleft'])dx=-1; if(k['d']||k['arrowright'])dx=1;
-    S.andando=!!(dx||dy); S.correndo=!!(k['shift']&&S.andando);
-    if(dx&&dy){dx*=.707;dy*=.707;}
-    if(dy<0)S.dir='up'; else if(dy>0)S.dir='down';
+    if(typeof InputManager!=='undefined'&&InputManager.combinarMovimento)
+      ({dx,dy}=InputManager.combinarMovimento(dx,dy));
+    else { const t=Math.hypot(dx,dy); if(t>1){dx/=t;dy/=t;} }
+    S.andando=(Math.abs(dx)>1e-4||Math.abs(dy)>1e-4); S.correndo=!!(k['shift']&&S.andando);
+    // Perto da horta e dos NPCs, magnitude baixa e' o que permite encostar
+    // no ponto certo sem passar direto.
+    if(typeof InputManager!=='undefined'&&InputManager.direcaoVisual)
+      S.dir=InputManager.direcaoVisual(dx,dy,S.dir);
+    else if(dy<0)S.dir='up'; else if(dy>0)S.dir='down';
     else if(dx<0)S.dir='left'; else if(dx>0)S.dir='right';
     const vel=(S.correndo?188:118)*dt;
-    if(dx&&livre(S.x+dx*vel,S.y)) S.x+=dx*vel;
-    if(dy&&livre(S.x,S.y+dy*vel)) S.y+=dy*vel;
+    // Eixos resolvidos separadamente: empurrando na diagonal contra uma
+    // parede, o eixo livre continua andando em vez de travar tudo.
+    if(Math.abs(dx)>1e-4&&livre(S.x+dx*vel,S.y)) S.x+=dx*vel;
+    if(Math.abs(dy)>1e-4&&livre(S.x,S.y+dy*vel)) S.y+=dy*vel;
     atualizarPet(dt);
 
     const cant=canteiroEm(S.x,S.y);

@@ -2253,11 +2253,18 @@ const DNG={
       if(this.keys['a']||this.keys['arrowleft']) dx=-1;
       if(this.keys['d']||this.keys['arrowright']) dx=+1;
     }
-    const moving=!!(dx||dy);
-    if(dx&&dy){dx*=0.707;dy*=0.707;}
-    if(dy<0)this.pDir='up';else if(dy>0)this.pDir='down';
+    /* A Dungeon consome o MESMO vetor da campanha e do acampamento, e
+       aplica a velocidade dela (this.pSpeed) por cima. O input entrega
+       intencao; a velocidade continua sendo regra deste modo. */
+    if(typeof InputManager!=='undefined'&&InputManager.combinarMovimento)
+      ({dx,dy}=InputManager.combinarMovimento(dx,dy));
+    else { const t=Math.hypot(dx,dy); if(t>1){dx/=t;dy/=t;} }
+    const moving=(Math.abs(dx)>1e-4||Math.abs(dy)>1e-4);
+    if(typeof InputManager!=='undefined'&&InputManager.direcaoVisual)
+      this.pDir=InputManager.direcaoVisual(dx,dy,this.pDir);
+    else if(dy<0)this.pDir='up';else if(dy>0)this.pDir='down';
     else if(dx<0)this.pDir='left';else if(dx>0)this.pDir='right';
-    if(dx||dy)this.pFacing=Math.atan2(dy,dx);
+    if(moving)this.pFacing=Math.atan2(dy,dx);
     this._pMoving=moving;
     if(moving){this.pFrameTick+=dt;if(this.pFrameTick>180){this.pFrameTick=0;this.pFrameIdx=(this.pFrameIdx+1)%3;}}
     else this.pFrameIdx=0;
