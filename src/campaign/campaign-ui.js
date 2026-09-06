@@ -38,16 +38,52 @@
       #campaign-action-button.pressed{transform:scale(.92);filter:brightness(1.18)}
       #campaign-choice-layer{position:absolute;inset:0;display:none;place-items:center;padding:18px;background:rgba(3,2,7,.77);pointer-events:auto;z-index:2}
       #campaign-choice-layer.visible{display:grid}
-      #campaign-choice-card{width:min(620px,calc(100vw - 28px));max-height:calc(100vh - 34px);overflow:auto;padding:19px;background:linear-gradient(145deg,#181221,#09070f);border:2px solid #b18a49;box-shadow:0 0 0 3px #261a2d,0 18px 60px #000;text-align:center}
-      #campaign-choice-kicker{font-size:10px;letter-spacing:3px;color:#d2a855;text-transform:uppercase}
-      #campaign-choice-title{margin:5px 0 7px;font-size:23px;color:#fff0c2;text-shadow:0 2px #000}
-      #campaign-choice-body{margin:0 auto 15px;max-width:520px;color:#c8bea9;font-size:12px;line-height:1.55}
-      #campaign-choice-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
-      .campaign-choice-option{min-height:88px;padding:10px;border:2px solid #5b4933;background:linear-gradient(180deg,#2b2232,#15101c);color:#f4e8c7;font-family:inherit;cursor:pointer}
-      .campaign-choice-option:hover,.campaign-choice-option:focus-visible{outline:none;border-color:#e5b95d;box-shadow:0 0 18px rgba(229,185,93,.25);transform:translateY(-1px)}
-      .campaign-choice-option-title{display:block;font-size:14px;font-weight:900;color:#ffd77b}
-      .campaign-choice-option-detail{display:block;margin-top:5px;font-size:10px;line-height:1.35;color:#bdb3a0}
-      .campaign-choice-option.costly .campaign-choice-option-title{color:#ef9c73}
+      /* A tela de escolha usa a MESMA linguagem dos menus do jogo: ornamento de
+         losango, legenda entre filetes, cartoes de borda dourada e o veu roxo
+         escuro. Antes era um dialogo generico de navegador no meio de um jogo
+         pixel art — destoava de tudo o que esta' em volta. */
+      #campaign-choice-card{position:relative;width:min(660px,calc(100vw - 28px));max-height:calc(100vh - 34px);overflow:auto;
+        padding:22px 22px 20px;background:linear-gradient(160deg,#151024 0%,#0b0813 55%,#07060d 100%);
+        border:1px solid rgba(200,168,75,.42);
+        box-shadow:0 0 0 1px rgba(8,6,15,.9),0 0 34px rgba(200,168,75,.10),0 22px 70px rgba(0,0,0,.85);
+        text-align:center}
+      /* filete interno: o mesmo truque de moldura dupla das telas de menu */
+      #campaign-choice-card::before{content:'';position:absolute;inset:5px;border:1px solid rgba(200,168,75,.16);pointer-events:none}
+      #campaign-choice-ornamento{display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:9px}
+      #campaign-choice-ornamento i{display:block;height:1px;width:52px;background:linear-gradient(90deg,transparent,rgba(200,168,75,.75),transparent)}
+      #campaign-choice-ornamento b{display:block;width:6px;height:6px;background:#c8a84b;transform:rotate(45deg);box-shadow:0 0 9px rgba(200,168,75,.55)}
+      #campaign-choice-kicker{font-size:9px;letter-spacing:3.4px;color:#c8a84b;text-transform:uppercase;opacity:.92}
+      #campaign-choice-title{margin:7px 0 8px;font-size:25px;font-weight:bold;letter-spacing:2.5px;color:#f4e6bd;
+        text-shadow:0 2px 20px rgba(0,0,0,.92),0 0 30px rgba(200,168,75,.26)}
+      #campaign-choice-body{margin:0 auto 17px;max-width:530px;color:#9a8fae;font-size:11px;letter-spacing:.6px;line-height:1.6}
+      #campaign-choice-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(186px,1fr));gap:11px}
+      .campaign-choice-option{position:relative;min-height:96px;padding:13px 11px 12px;cursor:pointer;
+        display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;
+        color:#f4e8c7;font-family:inherit;text-align:center;
+        background:linear-gradient(180deg,rgba(26,20,42,.92),rgba(11,8,19,.96));
+        border:1px solid rgba(120,104,150,.30);border-radius:3px;
+        transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+      /* fio dourado no pe do cartao, como nos cartoes de modo/dificuldade */
+      .campaign-choice-option::after{content:'';position:absolute;left:14%;right:14%;bottom:0;height:1px;
+        background:linear-gradient(90deg,transparent,rgba(200,168,75,.0),transparent);transition:background .18s ease}
+      .campaign-choice-option:hover,.campaign-choice-option:focus-visible{outline:none;transform:translateY(-2px);
+        border-color:rgba(240,208,128,.72);box-shadow:0 0 22px rgba(200,168,75,.18),inset 0 0 22px rgba(200,168,75,.05)}
+      .campaign-choice-option:hover::after,.campaign-choice-option:focus-visible::after{
+        background:linear-gradient(90deg,transparent,rgba(240,208,128,.85),transparent)}
+      .campaign-choice-option-title{display:block;font-size:13px;font-weight:bold;letter-spacing:1.1px;color:#f0d080;
+        text-shadow:0 1px 0 #000}
+      .campaign-choice-option-detail{display:block;font-size:9.5px;letter-spacing:.5px;line-height:1.5;color:#9a8fae}
+      /* Preco e' informacao de decisao: fica separado e legivel, nao enfiado
+         no meio do nome como estava. */
+      .campaign-choice-option-price{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;
+        font-size:10px;letter-spacing:1px;color:#ffd77b;background:rgba(200,168,75,.10);
+        border:1px solid rgba(200,168,75,.34);border-radius:2px}
+      .campaign-choice-option.costly .campaign-choice-option-price{color:#ffc9a3;border-color:rgba(239,156,115,.42);background:rgba(239,156,115,.10)}
+      /* "Seguir viagem" nao e' uma oferta: fica sobrio, para nao competir com
+         as tres que custam moeda. */
+      .campaign-choice-option.neutra{grid-column:1/-1;min-height:0;padding:9px;background:rgba(8,6,14,.7);
+        border-color:rgba(120,104,150,.20)}
+      .campaign-choice-option.neutra .campaign-choice-option-title{font-size:11px;color:#c0b7d0;letter-spacing:2px}
       @media (pointer:fine) and (min-width:801px){#campaign-action-button{display:none!important}}
       @media (max-width:800px){#campaign-objective-panel{right:max(8px,var(--safe-right,0px));top:74px;width:min(212px,calc(100vw - 16px));padding:6px 8px}#campaign-objective-title{font-size:12px}#campaign-objective-detail{font-size:9px}#campaign-interact-prompt{bottom:82px;font-size:9px}#campaign-choice-title{font-size:18px}#campaign-choice-card{padding:14px}.campaign-choice-option{min-height:72px}}
       body.campaign-chapter-active #${ROOT_ID},body:not(.campaign-hud-active) #${ROOT_ID}{display:none!important}
@@ -78,7 +114,7 @@
         <div id="campaign-interact-prompt"><span id="campaign-interact-key">E</span><span id="campaign-interact-text"></span></div>
         <button id="campaign-action-button" type="button" aria-label="Interagir">INTERAGIR</button>
         <div id="campaign-choice-layer" role="dialog" aria-modal="true" aria-labelledby="campaign-choice-title">
-          <div id="campaign-choice-card"><div id="campaign-choice-kicker">DECISÃO COMPARTILHADA</div><h2 id="campaign-choice-title"></h2><p id="campaign-choice-body"></p><div id="campaign-choice-options"></div></div>
+          <div id="campaign-choice-card"><div id="campaign-choice-ornamento" aria-hidden="true"><i></i><b></b><i></i></div><div id="campaign-choice-kicker">DECISÃO COMPARTILHADA</div><h2 id="campaign-choice-title"></h2><p id="campaign-choice-body"></p><div id="campaign-choice-options"></div></div>
         </div>`;
       doc.body.appendChild(root);
       root.classList.toggle('suspended',suspended);
@@ -147,10 +183,29 @@
       root.querySelector('#campaign-choice-body').textContent=config.body||'';
       const list=root.querySelector('#campaign-choice-options');list.replaceChildren();
       for(const option of config.options||[]){
-        const button=doc.createElement('button');button.type='button';button.className=`campaign-choice-option${option.costly?' costly':''}`;
-        const optionTitle=doc.createElement('span');optionTitle.className='campaign-choice-option-title';optionTitle.textContent=option.title||option.id;
+        const button=doc.createElement('button');button.type='button';
+        /* O preco vinha grudado no nome ("Ração de Campo · 7"), o que fazia o
+           jogador ler duas informacoes diferentes na mesma linha. Aqui ele e'
+           separado numa etiqueta propria; o nome fica so' o nome. */
+        const bruto=String(option.title||option.id||'');
+        /* O titulo chega como "Ração de Campo · 7🪙": o numero NAO e' o fim da
+           string, vem a moeda depois. Exigir digito no fim fazia a separacao
+           falhar em todas as ofertas — e, sem preco, todas caiam na classe
+           neutra, que ocupa a linha inteira: os tres cartoes viravam uma pilha. */
+        const corte=bruto.match(/^(.*?)\s*[·\-]\s*(\d+)\s*\D*$/);
+        const nome=corte?corte[1]:bruto;
+        const preco=corte?corte[2]:null;
+        const neutra=!preco&&!option.costly;
+        button.className=`campaign-choice-option${option.costly?' costly':''}${neutra?' neutra':''}`;
+        const optionTitle=doc.createElement('span');optionTitle.className='campaign-choice-option-title';optionTitle.textContent=nome;
+        button.append(optionTitle);
+        if(preco){
+          const etiqueta=doc.createElement('span');etiqueta.className='campaign-choice-option-price';
+          etiqueta.textContent=`${preco} 🪙`;
+          button.append(etiqueta);
+        }
         const optionDetail=doc.createElement('span');optionDetail.className='campaign-choice-option-detail';optionDetail.textContent=option.detail||'';
-        button.append(optionTitle,optionDetail);
+        button.append(optionDetail);
         button.onclick=()=>{if(token!==choiceToken)return;hideChoice();option.onChoose?.(option.id);};
         list.appendChild(button);
       }

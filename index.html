@@ -19983,10 +19983,10 @@ function templeChoose(choice){
 }
 
 </script>
-  <script src="src/campaign/campaign-ui.js"></script>
-  <script src="src/campaign/campaign-objectives.js?v=20260906-colisao"></script>
-  <script src="src/campaign/campaign-events.js?v=20260906-colisao"></script>
-  <script src="src/campaign/campaign-runtime.js"></script>
+  <script src="src/campaign/campaign-ui.js?v=20260906-aliado"></script>
+  <script src="src/campaign/campaign-objectives.js?v=20260906-aliado"></script>
+  <script src="src/campaign/campaign-events.js?v=20260906-aliado"></script>
+  <script src="src/campaign/campaign-runtime.js?v=20260906-aliado"></script>
   <script src="src/campaign/chapter-data.js"></script>
   <script src="src/campaign/campaign-system.js"></script>
   <script src="src/campaign/boss-modifier-data.js?v=20260904-threat1"></script>
@@ -20139,21 +20139,51 @@ function drawLegacyEnemyStatusFx(e,t){
   // RAIO: arcos ATRAVESSANDO o corpo + estalo branco
   if(active('electric')){
     ctx.globalCompositeOperation='lighter';
-    if((Math.floor(t/110)+Math.floor(seed*10))%4===0){ ctx.globalAlpha=.5; banhar('#fdfbc8',.6); }
-    ctx.globalAlpha=.95; ctx.strokeStyle='#fff9a8'; ctx.shadowColor='#ffe94d'; ctx.shadowBlur=8; ctx.lineWidth=1.6;
-    for(let i=0;i<3;i++){
-      const a=seed+i*2.09+Math.floor(t/90)*1.1;
-      ctx.beginPath();
-      ctx.moveTo(cx+Math.cos(a)*r*.95, cy+Math.sin(a)*r*.95);
-      for(let j=0;j<4;j++){
-        const tt=(j+1)/4;
-        ctx.lineTo(cx+Math.cos(a+Math.PI)*r*.95*tt + Math.cos(a+1.57)*((j%2?1:-1)*r*.26),
-                   cy+Math.sin(a+Math.PI)*r*.95*tt + Math.sin(a+1.57)*((j%2?1:-1)*r*.26));
+    /* CORPO GRANDE PEDE OUTRO DESENHO.
+       O raio original ia de uma ponta do corpo a' OPOSTA (r*.95 ate' r*.95 do
+       outro lado), com zigue-zague de r*.26. Num inimigo de raio 16 isso e'
+       uma faisca; num chefe de raio 58 viram tres riscos de 110px cruzando a
+       silhueta — um X gigante que, somado a' lavagem branca, escondia o chefe
+       inteiro. Era o que estava estranho.
+       A correcao nao e' so' encolher: num corpo grande a eletricidade tem de
+       RASTEJAR pela silhueta. Entao o comprimento da faisca para de acompanhar
+       o corpo e o que cresce e' a QUANTIDADE — mais faiscas curtas, ancoradas
+       em pontos diferentes, em vez de menos faiscas maiores. */
+    const grande=r>=30;
+    const lavagem=grande?.35:1;            // chefe apanha muito: nao pode estourar de branco
+    if((Math.floor(t/110)+Math.floor(seed*10))%4===0){ ctx.globalAlpha=.5*lavagem; banhar('#fdfbc8',.6*lavagem); }
+    ctx.globalAlpha=grande?.8:.95; ctx.strokeStyle='#fff9a8'; ctx.shadowColor='#ffe94d';
+    ctx.shadowBlur=grande?5:8; ctx.lineWidth=1.6;
+    if(grande){
+      const alcance=Math.min(r*.42,24);                 // a faisca nao cresce com o corpo
+      const quantas=Math.min(7,3+Math.round(r/18));     // o corpo maior ganha MAIS faiscas
+      for(let i=0;i<quantas;i++){
+        const a=seed+i*2.09+Math.floor(t/90)*1.1;
+        const ox=cx+Math.cos(a)*r*.62, oy=cy+Math.sin(a)*r*.58;   // ancorada na silhueta
+        const dir=a+1.9+Math.sin(seed+i)*0.6;
+        ctx.beginPath(); ctx.moveTo(ox,oy);
+        for(let j=0;j<4;j++){
+          const tt=(j+1)/4;
+          ctx.lineTo(ox+Math.cos(dir)*alcance*tt + Math.cos(dir+1.57)*((j%2?1:-1)*alcance*.30),
+                     oy+Math.sin(dir)*alcance*tt + Math.sin(dir+1.57)*((j%2?1:-1)*alcance*.30));
+        }
+        ctx.stroke();
       }
-      ctx.stroke();
+    }else{
+      for(let i=0;i<3;i++){
+        const a=seed+i*2.09+Math.floor(t/90)*1.1;
+        ctx.beginPath();
+        ctx.moveTo(cx+Math.cos(a)*r*.95, cy+Math.sin(a)*r*.95);
+        for(let j=0;j<4;j++){
+          const tt=(j+1)/4;
+          ctx.lineTo(cx+Math.cos(a+Math.PI)*r*.95*tt + Math.cos(a+1.57)*((j%2?1:-1)*r*.26),
+                     cy+Math.sin(a+Math.PI)*r*.95*tt + Math.sin(a+1.57)*((j%2?1:-1)*r*.26));
+        }
+        ctx.stroke();
+      }
     }
     ctx.shadowBlur=0;
-    ctx.globalAlpha=.9; ctx.fillStyle='#ffffff';
+    ctx.globalAlpha=grande?.7:.9; ctx.fillStyle='#ffffff';
     for(let i=0;i<3;i++){ const f=t*.012+seed+i*2.4;
       ctx.fillRect(cx+Math.cos(f)*r*1.05, cy+Math.sin(f)*r*.95, 2,2); }
     ctx.globalCompositeOperation='source-over';

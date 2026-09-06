@@ -103,7 +103,10 @@ for(const {arq,largura,semVerde} of ARTES){
 /* ── 2. Ligadas no codigo, com o desenho a mao de reserva ── */
 exigir(/desenharObjeto\(ctx,'casulo_sobrevivente',x,y\+\d+,\d+,target\)/.test(objetivos),
   'o casulo do sobrevivente nao e desenhado no alvo survivor_web');
-exigir(/survivor_web'\)\{[\s\S]{0,400}?ctx\.strokeStyle='#e0ebe4'/.test(objetivos),
+/* A janela e' generosa de proposito: ela existe para garantir que o desenho a
+   mao continue NO MESMO ramo, nao para medir quantos comentarios cabem antes
+   dele. Uma janela apertada quebra sozinha quando alguem documenta o trecho. */
+exigir(/survivor_web'\)\{[\s\S]{0,1200}?ctx\.strokeStyle='#e0ebe4'/.test(objetivos),
   'o desenho a mao do casulo sumiu — ele e a reserva enquanto o PNG nao carrega');
 exigir(/drawObject\?\.\(ctx,'mercador_perdido',x,y\+\d+,\d+\)/.test(eventos),
   'o mercador perdido nao usa a arte dedicada');

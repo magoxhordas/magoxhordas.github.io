@@ -121,6 +121,18 @@ const campaignEvents=CampaignEvents.create({
   addTimedModifier:modifier=>campaignObjectives.addTimedModifier(modifier),
   drawHero:drawCampaignHero,
   drawObject:(ctx2,nome,x,yBase,largura)=>CampaignObjectives.desenharObjeto(ctx2,nome,x,yBase,largura),
+  /* O aliado da tempestade atira com a arma da propria classe. Reaproveita o
+     projetil amigo do pet (EnemyProj com isFriendly), que ja' tem colisao com
+     inimigos resolvida em checkPetProjCollisions — inventar um segundo tipo de
+     projetil amigo criaria duas regras de acerto para manter. */
+  spawnAllyProjectile:(x,y,ang,dano,cor)=>{
+    try{
+      const p=new EnemyProj(x,y,ang,Math.max(1,Math.round(dano)),cor||'#ffe6a8','flecha');
+      p.isFriendly=true;
+      projs.push(p);
+      return true;
+    }catch(_){ return false; }
+  },
   now:()=>performance.now(),
 });
 
