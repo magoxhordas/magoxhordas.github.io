@@ -184,6 +184,7 @@ const GameSettings = (function(){
   }
   function renderSkins(){
     const grid=document.getElementById('settings-skin-grid'); if(!grid) return;
+    if(!recursoLigado('skins')){ grid.innerHTML=''; return; }   // recurso desligado: nem desenha
     refreshSkinUnlocks(true);
     const skins=(Array.isArray(window.HERO_SKINS)?window.HERO_SKINS:[]).filter(sk=>skinDisponivel(sk.id));
     const classId=(typeof selectedClass!=='undefined'&&selectedClass.p1)||'mage';
@@ -219,9 +220,22 @@ const GameSettings = (function(){
     if(typeof window.drawMenuHero==='function') window.drawMenuHero();
     if(typeof DNG!=='undefined'&&typeof DNG._updateHUD==='function') DNG._updateHUD();
   }
-  function render(){ renderAudio(); renderControls(); renderVideo(); renderSkins(); if(typeof AchievementSystem!=='undefined')AchievementSystem.renderSettings?.(); setTab(activeTab); }
+  function render(){ renderAudio(); renderControls(); renderVideo(); renderSkins(); aplicarRecursos(); if(typeof AchievementSystem!=='undefined')AchievementSystem.renderSettings?.(); setTab(activeTab); }
+
+  const recursoLigado=nome=>typeof window.recursoLigado!=='function'||window.recursoLigado(nome);
+
+  /* Aba de recurso desligado some do topo e ninguem cai nela nem pelo
+     estado salvo. Botao e painel continuam no HTML — ao religar voltam
+     sozinhos, sem mexer em markup. Mesma tecnica da aba do Codex. */
+  function aplicarRecursos(){
+    const skins=recursoLigado('skins');
+    document.querySelector('[data-settings-tab="skins"]')?.style.setProperty('display',skins?'':'none');
+    if(!skins) document.querySelector('[data-settings-panel="skins"]')?.classList.remove('active');
+    return {skins};
+  }
 
   function setTab(tab){
+    if(tab==='skins'&&!recursoLigado('skins')) tab='audio';
     activeTab=tab;
     document.querySelectorAll('[data-settings-tab]').forEach(el=>el.classList.toggle('active',el.dataset.settingsTab===tab));
     document.querySelectorAll('[data-settings-panel]').forEach(el=>el.classList.toggle('active',el.dataset.settingsPanel===tab));
