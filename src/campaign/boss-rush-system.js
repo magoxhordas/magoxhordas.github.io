@@ -61,7 +61,7 @@ function buildBossRushScreen(){
     const card=document.createElement('div');
     card.className='br-boss-card'+(unlocked?'':' br-locked');
     if(unlocked&&sel) card.style.cssText='border-color:#ff4422;box-shadow:0 0 12px rgba(255,60,20,0.3);';
-    card.innerHTML=`<div class="br-boss-icon">${bossRushPixelIcon(b,46)}${!unlocked?gamePixelIconHtml('lock',20,null,'br-lock-pixel'):''}</div><div class="br-boss-name">${b.name}</div><div class="br-boss-wave">Onda ${b.unlockWave}+</div>`;
+    card.innerHTML=`<div class="br-boss-icon">${bossRushPixelIcon(b,36)}${!unlocked?gamePixelIconHtml('lock',20,null,'br-lock-pixel'):''}</div><div class="br-boss-name">${b.name}</div><div class="br-boss-wave">Onda ${b.unlockWave}+</div>`;
     if(unlocked) card.onclick=()=>{ bossRushSelected=sel?bossRushSelected.filter(x=>x!==b.id):[...bossRushSelected,b.id]; buildBossRushScreen(); };
     list.appendChild(card);
   });
@@ -90,7 +90,7 @@ function buildBossRushScreen(){
       card.className='br-boss-card br-pet';
       if(sel) card.style.cssText='border-color:#cc88ff;box-shadow:0 0 12px rgba(150,60,220,0.35);';
       const capturedBadge=captured?'<div style="font-size:9px;color:#88aa44;letter-spacing:1px;margin-top:2px;">✓ CAPTURADO</div>':'<div style="font-size:9px;color:#5a3a7a;letter-spacing:1px;margin-top:2px;">Não capturado</div>';
-      card.innerHTML=`<div class="br-boss-icon">${bossRushPixelIcon(pb,46)}</div><div class="br-boss-name">${pb.name}</div><div class="br-boss-wave">Onda ${pb.wave}</div>${capturedBadge}`;
+      card.innerHTML=`<div class="br-boss-icon">${bossRushPixelIcon(pb,36)}</div><div class="br-boss-name">${pb.name}</div><div class="br-boss-wave">Onda ${pb.wave}</div>${capturedBadge}`;
       card.onclick=()=>{ bossRushSelected=sel?bossRushSelected.filter(x=>x!==pb.id):[...bossRushSelected,pb.id]; buildBossRushScreen(); };
       list.appendChild(card);
     });
@@ -99,8 +99,16 @@ function buildBossRushScreen(){
   // Hint if no pet bosses found yet
   if(metPets.length===0){
     const hint=document.createElement('div');
-    hint.style.cssText='width:100%;font-size:12px;color:#3a1a5a;letter-spacing:2px;text-align:center;margin-top:8px;';
-    hint.innerHTML=`<span class="pixel-inline">${gamePixelIconHtml('paw',18)} Encontre criaturas selvagens durante expedições para reavê-las aqui</span>`;
+    /* A dica e' uma linha longa e sem quebra; em janela estreita ela
+       empurrava a largura da tela inteira. max-width + quebra resolvem. */
+    hint.style.cssText='width:100%;max-width:100%;box-sizing:border-box;padding:0 8px;'+
+      'font-size:clamp(8px,.8vw,11px);color:#8a6a52;letter-spacing:1px;text-align:center;'+
+      'margin-top:8px;overflow-wrap:anywhere;';
+    /* O icone fica em .pixel-inline (que e' white-space:nowrap), mas o
+       TEXTO nao: envolto naquela classe, a frase inteira virava uma linha
+       so' e empurrava a largura da tela em janela estreita. */
+    hint.innerHTML=`<span class="pixel-inline" style="vertical-align:middle">${gamePixelIconHtml('paw',16)}</span> `+
+      `Encontre criaturas selvagens durante expedições para reavê-las aqui`;
     list.appendChild(hint);
   }
 
@@ -117,7 +125,15 @@ function startBossRush(){
   bossRushQueue=allBosses.filter(b=>bossRushSelected.includes(b.id));
   bossRushCurrent=0;
   bossRushPendingAt=0;
+  /* gameMode e difficulty tambem, nao so' as variaveis de SELECAO.
+     confirmCharSelect() decide pedir ou nao um segundo heroi lendo
+     `gameMode`, e ele so' era atualizado la' dentro de beginGame(). Depois
+     de uma run cooperativa, o Boss Rush — que e' sempre solo — exigia um
+     JOGADOR 2, e a escolha dele era descartada logo em seguida, quando
+     beginGame fazia gameMode=_selMode=1. goCharSelect() ja' fazia esse
+     par; aqui faltava. */
   _selMode=1; _selDiff='medium';
+  gameMode=1; difficulty='medium';
   charSelectStep=1; buildCharSelectUI(1);
   showScreen('char-select');
 }

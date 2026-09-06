@@ -3,7 +3,15 @@
 
   const SAVE_KEY='mago_x_hordas_achievements_v1';
   const VERSION=1;
-  const catalog=()=>global.AchievementData?.ACHIEVEMENTS||[];
+  /* Um funil so': tudo — lista, contagem, porcentagem e desbloqueio —
+     passa por aqui, entao filtrar neste ponto faz a conquista de recurso
+     desligado sumir de toda a tela de uma vez, sem varrer a interface. */
+  const recursoLigado=nome=>typeof global.recursoLigado!=='function'||global.recursoLigado(nome);
+  const catalog=()=>{
+    const todas=global.AchievementData?.ACHIEVEMENTS||[];
+    const presas=global.AchievementData?.RECURSO_POR_ID||{};
+    return todas.filter(item=>{const r=presas[item.id];return !r||recursoLigado(r);});
+  };
   const byId=()=>new Map(catalog().map(item=>[item.id,item]));
   const clone=value=>JSON.parse(JSON.stringify(value));
   const number=value=>Number.isFinite(Number(value))?Number(value):0;
@@ -24,6 +32,17 @@
     for(const def of catalog()){
       const saved=raw.achievements?.[def.id]||{};
       base.achievements[def.id]={unlocked:!!saved.unlocked,unlockedAt:timestamp(saved.unlockedAt),currentProgress:Math.max(0,number(saved.currentProgress)),totalProgress:Math.max(1,number(saved.totalProgress)||def.target||1)};
+    }
+    /* O que esta' FORA do catalogo (recurso desligado) e' copiado como
+       estava. Sem isto, normalize() reconstruiria o estado so' com o que
+       o catalogo conhece e o proximo save APAGARIA do arquivo a conquista
+       que o jogador ja' tinha ganhado la' atras. */
+    for(const [id,saved] of Object.entries(raw.achievements||{})){
+      if(!base.achievements[id]&&saved&&typeof saved==='object'){
+        base.achievements[id]={unlocked:!!saved.unlocked,unlockedAt:timestamp(saved.unlockedAt),
+          currentProgress:Math.max(0,number(saved.currentProgress)),
+          totalProgress:Math.max(1,number(saved.totalProgress)||1)};
+      }
     }
     return base;
   }

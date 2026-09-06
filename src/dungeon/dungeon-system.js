@@ -3817,6 +3817,14 @@ GameRuntime.onSuspend(()=>{
 window.DNG = DNG;
 
 window.startDungeonMode = function(){
+  /* Recurso desligado: a porta fecha AQUI, e nao em cada botao. Assim
+     qualquer caminho — menu, tentar de novo apos morrer, "jogar de novo"
+     do resumo da run — para no mesmo lugar. O modulo inteiro continua
+     carregado e intacto; so' nao comeca. */
+  if(typeof window.recursoLigado==='function'&&!window.recursoLigado('dungeon')){
+    console.info('[Dungeon] recurso desligado em window.RECURSOS.dungeon — entrada ignorada.');
+    return;
+  }
   if(typeof cleanupCampaignRuntime==='function')cleanupCampaignRuntime('dungeon');
   hideAllScreens();
   document.body.classList.remove('campaign-hud-active');

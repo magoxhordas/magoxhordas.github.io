@@ -51,7 +51,10 @@ const rushList=bossDataSource.slice(bossDataSource.indexOf('const BOSS_RUSH_LIST
 assert(!rushList.includes("arena:'castle'"),'o mapa antigo ainda aparece nas listas do Boss Rush');
 assert(campaignSource.includes("const initialArena=bossRushMode?(bossRushQueue[0]?.arena||'crypt'):'crypt';"),'Boss Rush ainda inicia no mapa generico');
 assert(html.includes("function resetBossRushState(clearSelection=false)"),'reset central do modo chefao ausente');
-assert(html.includes("function openCampaignSetup()")&&html.includes("resetBossRushState(false);\n  state='menu';\n  showScreen('play-menu');"),'campanha nao zera o modo chefao');
+/* A preparacao entra pela tela de MODO DE JOGO agora, e nao mais direto
+   na dificuldade. O contrato e' o mesmo — zerar o modo chefao antes de
+   abrir a preparacao —, so' o nome da tela de entrada mudou. */
+assert(html.includes("function openCampaignSetup()")&&html.includes("resetBossRushState(false);\n  state='menu';\n  showScreen('mode-menu');"),'campanha nao zera o modo chefao');
 assert(campaignSource.includes('function clampCampaignEntity(entity,padding=0){\n  if(!entity) return entity;'),'limites ainda ignoram entidades do Boss Rush');
 assert(html.includes('body.campaign-hud-active.boss-rush-no-coins #ui-top {'),
   'HUD moderna do modo Chefao nao removeu a coluna vazia do ouro');

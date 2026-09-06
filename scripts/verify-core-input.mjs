@@ -182,7 +182,7 @@ const scriptTag='<script src="src/core/input-system.js"></script>';
 const scriptIndex=html.indexOf(scriptTag);
 assert(scriptIndex>=0,'index.html nao carrega o modulo de input');
 assert(scriptIndex<html.indexOf("InputManager.registerScope('campaign'"),'modulo de input deve carregar antes da campanha');
-const dungeonTag='<script src="src/dungeon/dungeon-system.js"></script>';
+const dungeonTag='<script src="src/dungeon/dungeon-system.js';
 assert(html.indexOf(dungeonTag)>scriptIndex,'modulo de input deve carregar antes da Dungeon');
 
 includesAll(integrationSource,[

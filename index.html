@@ -7,6 +7,29 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Mago X Hordas</title>
+<script>
+/* ══════════════════════════════════════════════════════
+   RECURSOS LIGADOS E DESLIGADOS
+
+   A Dungeon esta' DESLIGADA a pedido do jogador. Nada foi apagado: o
+   modulo src/dungeon/, a arte, os dados, o Codex dela e as conquistas
+   continuam exatamente onde estavam. So' os CAMINHOS DE ENTRADA estao
+   fechados — o item do menu some, startDungeonMode() volta na porta, a
+   aba do Codex nao aparece e as teclas so' dela saem das Configuracoes.
+
+   Para religar: troque `dungeon:false` por `dungeon:true` aqui. E' o
+   unico lugar.
+
+   Fica em window (e nao num `const` no topo de um script) porque os
+   modulos em src/ sao scripts classicos carregados depois: um `const`
+   de topo cria vinculo lexical, nao propriedade de window, e la' dentro
+   ele nao seria visto de forma confiavel.
+   ══════════════════════════════════════════════════════ */
+window.RECURSOS = { dungeon:false };
+window.recursoLigado = function(nome){
+  return !window.RECURSOS || window.RECURSOS[nome] !== false;
+};
+</script>
 <link rel="icon" type="image/png" href="assets/heroes/mage/icon.png">
 <link rel="stylesheet" href="src/ui/post-run.css?v=20260905-postrun6">
 <link rel="stylesheet" href="src/progression/achievements.css?v=20260905-achievements2">
@@ -121,19 +144,7 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
     linear-gradient(180deg, #04020b 0%, #07040f 40%, #050310 100%);
   overflow:hidden;
 }
-/* Animated glowing orbs */
-.menu-orb {
-  position:absolute; border-radius:50%; pointer-events:none; z-index:0;
-  animation:orbPulse 6s ease-in-out infinite;
-}
-.menu-orb-1 { width:400px; height:400px; top:-100px; left:50%; transform:translateX(-50%); background:radial-gradient(circle, rgba(120,60,200,0.22) 0%, transparent 70%); animation-delay:0s; }
-.menu-orb-2 { width:300px; height:300px; bottom:80px; left:15%; background:radial-gradient(circle, rgba(180,100,20,0.18) 0%, transparent 70%); animation-delay:2s; }
-.menu-orb-3 { width:250px; height:250px; bottom:60px; right:15%; background:radial-gradient(circle, rgba(40,100,200,0.15) 0%, transparent 70%); animation-delay:4s; }
-@keyframes orbPulse { 0%,100%{opacity:0.6;transform:translateX(-50%) scale(1)} 50%{opacity:1;transform:translateX(-50%) scale(1.15)} }
-.menu-orb-2 { animation:orbPulse2 7s ease-in-out infinite; }
-.menu-orb-3 { animation:orbPulse3 8s ease-in-out infinite; }
-@keyframes orbPulse2 { 0%,100%{opacity:0.5} 50%{opacity:0.9} }
-@keyframes orbPulse3 { 0%,100%{opacity:0.4} 50%{opacity:0.85} }
+/* Os orbes do menu antigo sairam junto com o markup deles. */
 
 .menu-deco-top { font-size:20px; color:rgba(200,168,75,0.35); letter-spacing:6px; margin-bottom:10px; position:relative; z-index:1; text-shadow:0 0 20px rgba(200,168,75,0.3); }
 
@@ -862,6 +873,556 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
     radial-gradient(ellipse at 50% 0%,rgba(60,20,100,0.4) 0%,transparent 55%),
     linear-gradient(180deg,#06040e 0%,#0c0818 50%,#060410 100%);
 }
+/* ══════════════════════════════════════════════════════
+   ESCALA DOS MENUS — uma fonte de verdade
+
+   Cada tela tinha os proprios numeros e elas foram ficando diferentes: o
+   titulo da selecao de heroi chegava a 36px enquanto os botoes paravam em
+   13px, o que deixava a tela desequilibrada. Agora as tres (modo,
+   dificuldade e herois) leem os MESMOS tokens, entao ajustar aqui ajusta
+   todas juntas.
+   ══════════════════════════════════════════════════════ */
+:root{
+  /* Titulo: meio-termo. Era ate' 36px e ficava grande demais. */
+  --mn-fs-titulo:clamp(17px,2.15vw,27px);
+  /* Titulos CURTOS ("DIFICULDADE", "MODO DE JOGO", "MODO CHEFAO") sobem de
+     corpo. Eles ja' tinham o mesmo tamanho de "ESCOLHA SEU HEROI", mas com
+     6 caracteres a menos ocupavam bem menos largura e liam como menores —
+     o olho compara a MANCHA, nao o numero. */
+  --mn-fs-titulo-curto:clamp(21px,2.7vw,34px);
+  --mn-ls-titulo:clamp(4px,.9vw,10px);
+  --mn-fs-legenda:clamp(8px,.85vw,11px);
+  --mn-ls-legenda:clamp(2px,.42vw,4px);
+  /* Botao: era pequeno demais perto do resto. Subiu fonte, respiro e
+     largura minima, mantendo a proporcao entre eles. */
+  /* Meio-termo: 43px de altura ficou pequeno, 56px ficou pesado demais
+     perto dos cartoes. Estes valores dao ~47px na tela cheia. */
+  --mn-fs-btn:clamp(10px,1.02vw,13px);
+  --mn-ls-btn:clamp(2px,.36vw,3.5px);
+  --mn-pad-btn:clamp(11px,1.7vh,15px) clamp(18px,2.4vw,32px);
+  --mn-min-btn:clamp(130px,15vw,190px);
+  --mn-max-btn:clamp(160px,19vw,230px);
+  /* Respiro acima do titulo: ele estava colado no topo da tela. */
+  --mn-topo:clamp(10px,4.2vh,46px);
+}
+
+/* ══════════════════════════════════════════════════════
+   MENUS — estilo compartilhado
+
+   A tela de herois definiu a linguagem: fundo de cena com veu, titulo
+   ornamentado, cartoes que reagem, botoes chanfrados e casca de
+   aplicativo (titulo e botoes fixos, so' o miolo rola).
+
+   Estas classes tiram isso de la' para que MODO DE JOGO e DIFICULDADE
+   nao repitam o CSS. Onde a tela de herois tinha regra propria, ela
+   continua — trocar tudo de uma vez seria risco sem ganho.
+   ══════════════════════════════════════════════════════ */
+
+/* ── Fundo em duas camadas, para cruzar sem piscar ── */
+.mn-bg{
+  position:absolute; inset:0; z-index:0;
+  background-size:cover; background-position:center;
+  opacity:0; transition:opacity .55s ease; transform:scale(1.04);
+}
+.mn-bg.ativa{ opacity:1; }
+/* A arte do Modo Chefao e' a mais clara e movimentada das cinco, e o veu
+   padrao nao dava contraste para o texto corrido dessa tela. Aqui ele
+   escurece mais no miolo, onde ficam a descricao e a lista de chefes. */
+#bossrush-screen .mn-veu{
+  background:
+    linear-gradient(180deg, rgba(8,4,6,.90) 0%, rgba(8,4,6,.72) 26%, rgba(8,4,6,.80) 62%, rgba(6,3,5,.96) 100%),
+    radial-gradient(ellipse at 50% 45%, rgba(8,4,6,.30) 0%, rgba(8,4,6,.70) 82%);
+}
+.br-chamada{
+  margin:0; text-align:center; color:#e8b09a;
+  font-size:var(--mn-fs-legenda); letter-spacing:1.5px; max-width:640px;
+  text-shadow:0 2px 10px rgba(0,0,0,.9);
+}
+.br-dica{
+  margin:0; text-align:center; color:#a2745e;
+  font-size:clamp(8px,.78vw,10px); letter-spacing:1px; max-width:640px;
+}
+.br-sub{ display:flex; align-items:center; gap:10px; justify-content:center; }
+.mn-particulas{
+  position:absolute; inset:0; z-index:1; pointer-events:none;
+  width:100%; height:100%;
+}
+.mn-veu{
+  position:absolute; inset:0; z-index:1; pointer-events:none;
+  background:
+    linear-gradient(180deg, rgba(8,5,14,.88) 0%, rgba(8,5,14,.52) 30%, rgba(8,5,14,.74) 66%, rgba(6,4,10,.95) 100%),
+    radial-gradient(ellipse at 50% 40%, rgba(8,5,14,0) 0%, rgba(8,5,14,.52) 78%);
+}
+
+/* ── Casca: titulo e botoes fixos, miolo rolando ── */
+.mn-palco{
+  position:relative; z-index:2; width:100%; height:100%;
+  display:grid; grid-template-rows:auto minmax(0,1fr) auto;
+  justify-items:center; align-content:stretch;
+  gap:clamp(8px,1.4vh,18px);
+  padding:clamp(12px,2.6vh,30px) clamp(14px,3.4vw,48px);
+  box-sizing:border-box; overflow:hidden;
+}
+.mn-rolavel{
+  width:100%; min-height:0; overflow-y:auto; overscroll-behavior:contain;
+  display:grid; align-content:center; justify-items:center;
+  gap:clamp(10px,1.8vh,22px); padding:clamp(4px,.8vh,10px) 0;
+}
+
+/* ── Titulo ornamentado ── */
+.mn-cabecalho{ display:grid; justify-items:center; gap:6px; text-align:center;
+  padding-top:var(--mn-topo); }
+.mn-ornamento{ display:flex; align-items:center; gap:10px; }
+.mn-orn-linha{
+  display:block; width:clamp(34px,7vw,92px); height:1px;
+  background:linear-gradient(90deg, transparent, rgba(200,168,75,.62), transparent);
+}
+.mn-orn-losango{
+  display:block; width:9px; height:9px; transform:rotate(45deg);
+  border:1px solid rgba(200,168,75,.75); background:rgba(200,168,75,.16);
+  box-shadow:0 0 10px rgba(200,168,75,.35);
+}
+.mn-titulo{
+  margin:0; font-size:var(--mn-fs-titulo-curto); font-weight:bold;
+  letter-spacing:var(--mn-ls-titulo); color:#f4e6bd;
+  text-shadow:0 2px 20px rgba(0,0,0,.92), 0 0 34px rgba(200,168,75,.26);
+}
+.mn-legenda{
+  margin:2px 0 0; display:flex; align-items:center; gap:10px;
+  font-size:var(--mn-fs-legenda); letter-spacing:var(--mn-ls-legenda);
+  text-transform:uppercase; color:#9a8fae;
+}
+.mn-leg-linha{
+  display:block; width:clamp(18px,4vw,54px); height:1px;
+  background:linear-gradient(90deg, transparent, rgba(154,143,174,.5), transparent);
+}
+
+/* ── Cartoes ──
+   O RETANGULO E' INTEIRO: a imagem entra como fundo do proprio cartao,
+   coberta por um veu, em vez de uma faixa recortada no topo. Assim a
+   moldura fecha em volta de tudo e nada aparece cortado. */
+.mn-cartoes{
+  display:grid; gap:clamp(10px,1.8vw,24px);
+  width:100%; justify-items:stretch;
+}
+.mn-cartoes.de-2{ grid-template-columns:repeat(2,minmax(0,1fr)); max-width:760px; }
+.mn-cartoes.de-3{ grid-template-columns:repeat(3,minmax(0,1fr)); max-width:940px; }
+
+.mn-cartao{
+  position:relative; isolation:isolate; overflow:hidden;
+  display:grid; align-content:start; justify-items:center;
+  gap:clamp(5px,.9vh,10px);
+  padding:clamp(14px,2.4vh,26px) clamp(10px,1.6vw,20px) clamp(13px,2.2vh,22px);
+  min-height:clamp(150px,26vh,250px);
+  border:1px solid rgba(120,104,150,.24); border-radius:12px;
+  background:#0b0714; cursor:pointer;
+  transition:transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+/* imagem do cartao: cobre o retangulo inteiro */
+.mn-cartao-fundo{
+  position:absolute; inset:0; z-index:-2;
+  background-size:cover; background-position:center;
+  transform:scale(1.02); transition:transform .35s ease, filter .25s ease;
+  filter:saturate(.85) brightness(.72);
+}
+.mn-cartao-veu{
+  position:absolute; inset:0; z-index:-1; pointer-events:none;
+  background:linear-gradient(180deg, rgba(6,4,12,.42) 0%, rgba(6,4,12,.72) 52%, rgba(5,3,10,.92) 100%);
+  transition:background .25s ease;
+}
+.mn-cartao:hover, .mn-cartao.selecionado{
+  transform:translateY(-4px);
+  border-color:color-mix(in srgb, var(--cc) 66%, transparent);
+  box-shadow:0 10px 30px rgba(0,0,0,.5), 0 0 22px color-mix(in srgb, var(--cc) 22%, transparent);
+}
+.mn-cartao:hover .mn-cartao-fundo, .mn-cartao.selecionado .mn-cartao-fundo{
+  transform:scale(1.07); filter:saturate(1) brightness(.86);
+}
+.mn-cartao.selecionado .mn-cartao-veu{
+  background:linear-gradient(180deg, rgba(6,4,12,.30) 0%, rgba(6,4,12,.64) 52%, rgba(5,3,10,.90) 100%);
+}
+.mn-cartao:focus-visible{ outline:2px solid var(--cc); outline-offset:3px; }
+/* fio da cor, so' no selecionado */
+.mn-cartao::after{
+  content:""; position:absolute; left:12%; right:12%; bottom:0; height:2px;
+  background:var(--cc); opacity:0; transition:opacity .2s ease; border-radius:2px;
+}
+.mn-cartao.selecionado::after{ opacity:1; }
+
+.mn-cartao-icone{
+  display:grid; place-items:center;
+  width:clamp(34px,4.4vw,54px); height:clamp(34px,4.4vw,54px);
+  border-radius:50%; margin-bottom:2px;
+  /* color define o traco do SVG: os icones usam currentColor, entao a
+     cor da classe/dificuldade chega neles sem ficar presa no desenho. */
+  color:var(--cc);
+  background:radial-gradient(circle, color-mix(in srgb, var(--cc) 26%, transparent) 0%, rgba(0,0,0,.46) 74%);
+  border:1px solid color-mix(in srgb, var(--cc) 42%, transparent);
+  box-shadow:0 0 14px color-mix(in srgb, var(--cc) 20%, transparent);
+  transition:box-shadow .22s ease, border-color .22s ease;
+}
+.mn-cartao.selecionado .mn-cartao-icone{
+  box-shadow:0 0 20px color-mix(in srgb, var(--cc) 40%, transparent);
+  border-color:color-mix(in srgb, var(--cc) 72%, transparent);
+}
+.mn-svg{ display:block; overflow:visible; }
+.mn-svg *{ vector-effect:non-scaling-stroke; }
+.mn-cartao-nome{
+  font-size:clamp(13px,1.5vw,21px); font-weight:bold; color:#f4e6bd; letter-spacing:1.5px;
+  text-shadow:0 2px 10px rgba(0,0,0,.9);
+}
+.mn-cartao-desc{
+  margin:0; font-size:clamp(9px,.92vw,12px); line-height:1.5; color:#c9bfda;
+  text-align:center; text-shadow:0 1px 6px rgba(0,0,0,.9);
+}
+.mn-cartao-linhas{ display:grid; gap:3px; justify-items:center; margin-top:2px; }
+.mn-cartao-linha{
+  font-size:clamp(8px,.85vw,11px); letter-spacing:.5px; color:var(--cc);
+  text-shadow:0 1px 6px rgba(0,0,0,.9);
+}
+.mn-cartao-linha.neutra{ color:#a99ec0; }
+
+/* ── Botoes chanfrados ── */
+.mn-rodape{
+  z-index:3; display:grid; grid-auto-flow:column; gap:clamp(9px,1.4vw,18px);
+  justify-content:center; justify-self:stretch;
+  padding:clamp(10px,1.6vh,18px) 0 clamp(4px,.8vh,10px);
+  background:linear-gradient(180deg, rgba(6,4,10,0) 0%, rgba(6,4,10,.82) 42%, rgba(6,4,10,.94) 100%);
+}
+.mn-btn{
+  position:relative; font-family:inherit; cursor:pointer;
+  max-width:var(--mn-max-btn); white-space:nowrap;
+  font-size:var(--mn-fs-btn); letter-spacing:var(--mn-ls-btn);
+  text-transform:uppercase; font-weight:bold;
+  min-width:var(--mn-min-btn);
+  padding:var(--mn-pad-btn);
+  color:#b9aecb; background:linear-gradient(180deg, rgba(20,14,32,.92), rgba(10,7,18,.96));
+  border:1px solid rgba(130,112,166,.36);
+  /* Retangulo INTEIRO. O chanfro nos cantos cortava a moldura e deixava
+     o botao com cara de recortado; a borda agora fecha em volta. */
+  border-radius:4px;
+  transition:color .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
+}
+.mn-btn:hover:not(:disabled){
+  color:#f2e3b8; border-color:rgba(200,168,75,.62);
+  background:linear-gradient(180deg, rgba(34,24,52,.95), rgba(16,11,26,.98));
+}
+.mn-btn:focus-visible{ outline:2px solid rgba(200,168,75,.7); outline-offset:3px; }
+.mn-btn-principal{
+  color:#8ff0b4; border-color:rgba(90,220,140,.55);
+  background:linear-gradient(180deg, rgba(12,30,20,.94), rgba(6,16,11,.97));
+  box-shadow:0 0 16px rgba(70,210,130,.18), inset 0 0 22px rgba(70,210,130,.10);
+}
+.mn-btn-principal:hover:not(:disabled){
+  color:#c8ffdd; border-color:rgba(120,245,175,.85);
+  background:linear-gradient(180deg, rgba(18,46,30,.96), rgba(9,24,16,.98));
+  box-shadow:0 0 26px rgba(70,210,130,.34), inset 0 0 26px rgba(70,210,130,.16);
+}
+.mn-btn:disabled{ opacity:.42; cursor:not-allowed; box-shadow:none; }
+
+/* ── Nivel de ameaca, no estilo dos menus ── */
+.mn-ameaca{
+  display:grid; justify-items:center; gap:7px;
+  padding:clamp(9px,1.4vh,15px) clamp(14px,2vw,26px);
+  background:rgba(10,7,18,.66); border:1px solid rgba(120,104,150,.22);
+  border-radius:10px;
+}
+.mn-ameaca-titulo{
+  display:flex; align-items:center; gap:9px;
+  font-size:clamp(8px,.75vw,10px); letter-spacing:3px; text-transform:uppercase; color:#8b7f9e;
+}
+.mn-ameaca-linha{ display:flex; align-items:center; gap:clamp(10px,1.6vw,20px); }
+.mn-ameaca-valor{
+  font-size:clamp(18px,2.2vw,28px); font-weight:bold; color:#f4e6bd; min-width:1.6em; text-align:center;
+}
+.mn-ameaca-detalhe{ font-size:clamp(8px,.82vw,11px); color:#9d92b2; text-align:center; }
+.mn-passo{
+  width:clamp(26px,3vw,34px); height:clamp(26px,3vw,34px);
+  font-family:inherit; font-size:15px; cursor:pointer; color:#cfc4e2;
+  background:rgba(20,14,32,.9); border:1px solid rgba(130,112,166,.4); border-radius:6px;
+  transition:border-color .18s ease, color .18s ease;
+}
+.mn-passo:hover:not(:disabled){ color:#f2e3b8; border-color:rgba(200,168,75,.6); }
+.mn-passo:disabled{ opacity:.35; cursor:not-allowed; }
+
+/* ── Telas estreitas ── */
+@media (max-width:820px){
+  .mn-cartoes.de-3{ grid-template-columns:1fr; max-width:420px; }
+  .mn-cartao{ min-height:0; }
+}
+@media (max-width:620px){
+  .mn-cartoes.de-2{ grid-template-columns:1fr; max-width:400px; }
+  .mn-rodape{ grid-auto-flow:row; width:100%; max-width:420px; justify-self:center; }
+  .mn-btn{ width:100%; min-width:0; }
+}
+@media (max-height:560px){
+  .mn-titulo{ font-size:clamp(19px,2.4vw,26px); }
+  .mn-cartao{ min-height:0; padding:clamp(9px,1.6vh,14px) 10px; }
+  .mn-cartao-icone{ width:30px; height:30px; }
+}
+@media (prefers-reduced-motion:reduce){
+  .mn-bg,.mn-cartao,.mn-cartao-fundo,.mn-btn{ transition:none; }
+}
+
+/* ══════════════════════════════════════════════════════
+   TELA DE HEROIS
+
+   Uma tela so'. Escolher um heroi nao abre outra janela: DESCE UMA ABA
+   logo abaixo da grade, com a ficha dele. O contexto nunca se perde — os
+   cinco continuam visiveis para comparar, que e' o ponto.
+
+   Grid em tudo, com gap e padding em clamp(): acompanha a janela em vez
+   de espremer.
+   ══════════════════════════════════════════════════════ */
+#char-select{ padding:0; overflow:hidden; }
+
+/* ── Fundo do heroi em foco ──
+   Duas camadas alternadas: a de baixo mostra o atual, a de cima recebe o
+   novo e sobe o alpha. Com uma so' a troca piscaria. */
+.cs-bg{
+  position:absolute; inset:0; z-index:0;
+  background-size:cover; background-position:center;
+  opacity:0; transition:opacity .55s ease; transform:scale(1.04);
+}
+.cs-bg.ativa{ opacity:1; }
+.cs-veu{
+  position:absolute; inset:0; z-index:1; pointer-events:none;
+  background:
+    linear-gradient(180deg, rgba(8,5,14,.88) 0%, rgba(8,5,14,.50) 30%, rgba(8,5,14,.74) 66%, rgba(6,4,10,.95) 100%),
+    radial-gradient(ellipse at 50% 40%, rgba(8,5,14,0) 0%, rgba(8,5,14,.52) 78%);
+}
+
+/* ── Palco: colunas do conteudo ── */
+.cs-palco{
+  position:relative; z-index:2;
+  width:100%; height:100%;
+  /* Casca de aplicativo: TITULO e BOTOES sempre visiveis, e so' o miolo
+     (grade + ficha) rola. Com o palco inteiro rolando, o rodape grudado
+     flutuava por cima do quadro de poder e escondia o texto. */
+  display:grid; grid-template-rows:auto minmax(0,1fr) auto;
+  justify-items:center; align-content:stretch;
+  gap:clamp(8px,1.4vh,18px);
+  padding:clamp(12px,2.6vh,30px) clamp(14px,3.4vw,48px);
+  box-sizing:border-box; overflow:hidden;
+}
+/* O miolo: unica regiao que rola. min-height:0 e' obrigatorio, senao o
+   item de grid nunca encolhe abaixo do proprio conteudo e o scroll
+   simplesmente nao acontece. */
+.cs-rolavel{
+  width:100%; min-height:0; overflow-y:auto; overscroll-behavior:contain;
+  display:grid; grid-template-rows:auto auto; align-content:center;
+  justify-items:center; gap:clamp(8px,1.4vh,18px);
+  padding:clamp(4px,.8vh,10px) 0;
+}
+
+/* ══ TITULO ══ */
+.cs-cabecalho{ display:grid; justify-items:center; gap:6px; text-align:center;
+  padding-top:var(--mn-topo); }
+/* Ornamento: losango entre dois fios que se apagam nas pontas. */
+.cs-ornamento{ display:flex; align-items:center; gap:10px; }
+.cs-orn-linha{
+  display:block; width:clamp(34px,7vw,92px); height:1px;
+  background:linear-gradient(90deg, transparent, rgba(200,168,75,.62), transparent);
+}
+.cs-orn-losango{
+  display:block; width:9px; height:9px; transform:rotate(45deg);
+  border:1px solid rgba(200,168,75,.75);
+  background:rgba(200,168,75,.16);
+  box-shadow:0 0 10px rgba(200,168,75,.35);
+}
+.cs-titulo{
+  margin:0; font-size:var(--mn-fs-titulo); font-weight:bold;
+  letter-spacing:var(--mn-ls-titulo); color:#f4e6bd;
+  text-shadow:0 2px 20px rgba(0,0,0,.92), 0 0 34px rgba(200,168,75,.26);
+}
+/* Legenda entre dois fios, como no menu de referencia. */
+.cs-legenda{
+  margin:2px 0 0; display:flex; align-items:center; gap:10px;
+  font-size:var(--mn-fs-legenda); letter-spacing:var(--mn-ls-legenda);
+  text-transform:uppercase; color:#9a8fae;
+}
+.cs-leg-linha{
+  display:block; width:clamp(18px,4vw,54px); height:1px;
+  background:linear-gradient(90deg, transparent, rgba(154,143,174,.5), transparent);
+}
+
+/* ══ GRADE DOS HEROIS ══ */
+.cs-grade{
+  display:grid; grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:clamp(8px,1.3vw,18px);
+  width:100%; max-width:1000px;
+}
+.cs-heroi{
+  position:relative; display:grid; grid-template-rows:1fr auto auto;
+  gap:5px; justify-items:center;
+  padding:clamp(8px,1.3vh,15px) 6px clamp(8px,1.3vh,13px);
+  background:linear-gradient(180deg, rgba(16,11,26,.62), rgba(10,7,18,.9));
+  border:1px solid rgba(120,104,150,.20); border-radius:9px;
+  cursor:pointer;
+  transition:transform .2s ease, border-color .2s ease, background .2s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+.cs-heroi::after{
+  content:""; position:absolute; left:14%; right:14%; bottom:-1px; height:2px;
+  background:var(--cc); opacity:0; transition:opacity .2s ease; border-radius:2px;
+}
+.cs-heroi:hover, .cs-heroi.focado{
+  transform:translateY(-4px);
+  border-color:color-mix(in srgb, var(--cc) 62%, transparent);
+  background:linear-gradient(180deg, rgba(26,18,42,.74), rgba(12,8,22,.95));
+}
+.cs-heroi:hover::after, .cs-heroi.focado::after{ opacity:1; }
+.cs-heroi:focus-visible{ outline:2px solid var(--cc); outline-offset:3px; }
+.cs-heroi canvas{ image-rendering:pixelated; width:100%; height:auto; max-width:88px; }
+.cs-heroi-nome{ font-size:clamp(10px,1.05vw,14px); font-weight:bold; color:#f2e3b8; letter-spacing:1px; }
+.cs-heroi-badge{
+  font-size:clamp(6px,.58vw,8px); letter-spacing:1.5px; text-transform:uppercase;
+  color:var(--cc); border:1px solid color-mix(in srgb, var(--cc) 40%, transparent);
+  padding:2px 6px; border-radius:3px; white-space:nowrap;
+}
+
+/* ══ ABA QUE DESCE ══
+   Fechada tem altura zero. Ao escolher, a altura vai para o conteudo. A
+   transicao e' em grid-template-rows justamente para nao precisar de uma
+   altura fixa em pixel — a ficha pode crescer sem quebrar a animacao. */
+.cs-aba{
+  width:100%; max-width:1000px;
+  display:grid; grid-template-rows:0fr;
+  transition:grid-template-rows .38s cubic-bezier(.2,.8,.3,1), opacity .3s ease;
+  opacity:0;
+}
+.cs-aba.aberta{ grid-template-rows:1fr; opacity:1; }
+.cs-aba-interna{ overflow:hidden; min-height:0; }
+.cs-aba-grade{
+  display:grid;
+  grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr);
+  gap:clamp(10px,1.8vw,26px); align-items:center;
+  margin-top:clamp(8px,1.4vh,16px);
+  padding:clamp(11px,1.8vh,20px) clamp(12px,1.8vw,24px);
+  background:linear-gradient(180deg, rgba(14,10,24,.86), rgba(9,6,16,.94));
+  border:1px solid color-mix(in srgb, var(--cc) 26%, rgba(120,104,150,.20));
+  border-radius:11px;
+  box-shadow:0 12px 34px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04);
+}
+
+/* Coluna 1 — identidade */
+.cs-ficha-heroi{ display:grid; align-items:center; }
+.cs-ficha-retrato{
+  position:relative; display:grid; place-items:center;
+  width:clamp(62px,7.4vw,96px); aspect-ratio:1;
+}
+.cs-ficha-retrato::before{
+  content:""; position:absolute; inset:4%;
+  background:radial-gradient(circle, color-mix(in srgb, var(--cc) 32%, transparent) 0%, transparent 68%);
+  filter:blur(5px);
+}
+.cs-ficha-retrato canvas{ position:relative; image-rendering:pixelated; width:100%; height:auto; }
+.cs-ficha-id{ display:grid; gap:4px; justify-items:start; min-width:0; }
+.cs-ficha-nome{ margin:0; font-size:clamp(15px,1.7vw,23px); color:#f4e6bd; letter-spacing:1.5px; }
+.cs-ficha-badge{
+  font-size:clamp(6px,.6vw,8px); letter-spacing:2px; text-transform:uppercase;
+  color:var(--cc); border:1px solid color-mix(in srgb, var(--cc) 44%, transparent);
+  padding:2px 7px; border-radius:3px;
+}
+.cs-ficha-desc{ margin:3px 0 0; font-size:clamp(9px,.92vw,12px); line-height:1.5; color:#c3b8d6; }
+.cs-ficha-arma{ margin:0; font-size:clamp(8px,.8vw,10px); color:#8b809f; letter-spacing:1px; }
+
+/* Coluna 2 — atributos */
+.cs-ficha-atributos{ display:grid; gap:clamp(5px,.9vh,9px); min-width:0; }
+.cs-atributo{ display:grid; grid-template-columns:clamp(52px,6vw,76px) 1fr; gap:9px; align-items:center; }
+.cs-atributo-nome{
+  font-size:clamp(7px,.66vw,9px); letter-spacing:1.4px; color:#9d92b2; text-transform:uppercase;
+}
+.cs-atributo-trilho{ height:5px; background:rgba(255,255,255,.07); border-radius:3px; overflow:hidden; }
+.cs-atributo-barra{
+  height:100%; border-radius:3px; width:0; background:var(--cc);
+  box-shadow:0 0 8px color-mix(in srgb, var(--cc) 45%, transparent);
+  transition:width .55s cubic-bezier(.2,.8,.3,1);
+}
+
+/* Coluna 3 — poder */
+.cs-ficha-poder{
+  display:grid; grid-template-columns:auto 1fr; gap:10px; align-items:start; min-width:0;
+  padding:clamp(8px,1.2vh,13px) clamp(9px,1.2vw,15px);
+  background:rgba(255,255,255,.035);
+  border:1px solid color-mix(in srgb, var(--cc) 30%, transparent);
+  border-radius:8px;
+}
+.cs-poder-marca{ color:var(--cc); font-size:13px; line-height:1.3; }
+.cs-poder-nome{ margin:0 0 3px; font-size:clamp(11px,1.1vw,15px); color:#f4e6bd; letter-spacing:.5px; }
+.cs-poder-desc{ margin:0; font-size:clamp(8px,.85vw,11px); line-height:1.5; color:#a99ec0; }
+
+/* ══ BOTOES ══
+   Cantos chanfrados e brilho no principal, como no menu de referencia.
+   O chanfro sai de clip-path: nada de imagem de borda. */
+/* Rodape: faixa fixa da casca. Em janela baixa a ficha empurrava os
+   botoes para fora da vista, e a acao principal da tela nao pode ficar
+   onde nao se ve. */
+.cs-rodape{
+  z-index:3;
+  display:grid; grid-auto-flow:column; gap:clamp(9px,1.4vw,18px);
+  justify-content:center; justify-self:stretch;
+  padding:clamp(10px,1.6vh,18px) 0 clamp(4px,.8vh,10px);
+  background:linear-gradient(180deg, rgba(6,4,10,0) 0%, rgba(6,4,10,.82) 42%, rgba(6,4,10,.94) 100%);
+}
+.cs-btn{
+  position:relative; font-family:inherit; cursor:pointer;
+  font-size:var(--mn-fs-btn); letter-spacing:var(--mn-ls-btn);
+  text-transform:uppercase; font-weight:bold;
+  /* teto de largura: sem ele o botao desta tela esticava e ficava maior
+     que o das outras, que e' exatamente o que destoava */
+  min-width:var(--mn-min-btn); max-width:var(--mn-max-btn);
+  /* uma linha sempre: um rotulo mais longo quebrava em duas e deixava
+     ESTE botao mais alto que os das outras telas */
+  white-space:nowrap;
+  padding:var(--mn-pad-btn);
+  color:#b9aecb; background:linear-gradient(180deg, rgba(20,14,32,.92), rgba(10,7,18,.96));
+  border:1px solid rgba(130,112,166,.36);
+  /* Retangulo INTEIRO. O chanfro nos cantos cortava a moldura e deixava
+     o botao com cara de recortado; a borda agora fecha em volta. */
+  border-radius:4px;
+  transition:color .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
+}
+.cs-btn:hover:not(:disabled){
+  color:#f2e3b8; border-color:rgba(200,168,75,.62);
+  background:linear-gradient(180deg, rgba(34,24,52,.95), rgba(16,11,26,.98));
+}
+.cs-btn:focus-visible{ outline:2px solid rgba(200,168,75,.7); outline-offset:3px; }
+
+/* Principal: sempre verde de "avancar", com brilho que responde ao estado. */
+.cs-btn-principal{
+  color:#8ff0b4; border-color:rgba(90,220,140,.55);
+  background:linear-gradient(180deg, rgba(12,30,20,.94), rgba(6,16,11,.97));
+  box-shadow:0 0 16px rgba(70,210,130,.18), inset 0 0 22px rgba(70,210,130,.10);
+}
+.cs-btn-principal:hover:not(:disabled){
+  color:#c8ffdd; border-color:rgba(120,245,175,.85);
+  background:linear-gradient(180deg, rgba(18,46,30,.96), rgba(9,24,16,.98));
+  box-shadow:0 0 26px rgba(70,210,130,.34), inset 0 0 26px rgba(70,210,130,.16);
+}
+/* Desabilitado enquanto nenhum heroi foi escolhido: o botao diz o que falta. */
+.cs-btn:disabled{ opacity:.42; cursor:not-allowed; box-shadow:none; }
+
+/* ── Telas estreitas ── */
+@media (max-width:820px){
+  .cs-aba-grade{ grid-template-columns:1fr; gap:12px; }
+  .cs-ficha-poder{ order:3; }
+}
+@media (max-width:620px){
+  .cs-grade{ grid-template-columns:repeat(3,minmax(0,1fr)); max-width:420px; }
+  .cs-rodape{ grid-auto-flow:row; width:100%; max-width:420px; }
+  .cs-btn{ width:100%; min-width:0; }
+}
+@media (max-height:560px){
+  .cs-heroi canvas{ max-width:56px; }
+  .cs-titulo{ font-size:clamp(16px,2vw,22px); }
+  .cs-ficha-retrato{ width:clamp(52px,6vw,72px); }
+}
+@media (prefers-reduced-motion:reduce){
+  .cs-bg,.cs-aba,.cs-heroi,.cs-atributo-barra,.cs-btn{ transition:none; }
+}
+
 .cs-title { font-size:18px; color:#f0d080; letter-spacing:5px; text-transform:uppercase; margin-bottom:3px; text-shadow:0 0 14px rgba(200,168,75,0.4); }
 .cs-sub   { font-size:12px; color:#4a3a1a; letter-spacing:4px; text-transform:uppercase; margin-bottom:16px; }
 .cs-cards { display:flex; gap:10px; justify-content:center; margin-bottom:16px; flex-wrap:wrap; max-width:850px; }
@@ -1594,20 +2155,47 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
     linear-gradient(180deg,#08020e 0%,#120408 50%,#080210 100%);
   flex-direction:column; align-items:center; justify-content:center;
 }
-.br-title { font-size:28px; color:#ff4422; letter-spacing:6px; font-weight:900;
-  text-shadow:0 0 20px rgba(255,60,20,0.6); margin-bottom:4px; text-transform:uppercase; }
-.br-sub { font-size:14px; color:#6a2a1a; letter-spacing:4px; text-transform:uppercase; margin-bottom:20px; }
-.br-boss-list { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-bottom:16px; max-width:700px; }
+/* O Modo Chefao usa a MESMA escala das outras telas de menu: antes tinha
+   numeros proprios (28px de titulo, 14px de legenda) e destoava. */
+/* O titulo NAO leva respiro proprio: ele mora dentro de .mn-cabecalho, que
+   ja' aplica --mn-topo. Ter os dois somava o mesmo respiro DUAS vezes e
+   empurrava o texto ~76px abaixo do losango — o titulo ficava solto no meio
+   da tela em vez de fechar o ornamento. Mesma coisa no margin-bottom da
+   legenda: quem espaca o cabecalho e' o gap do grid. */
+.br-title { font-size:var(--mn-fs-titulo-curto); color:#ff5533; letter-spacing:var(--mn-ls-titulo);
+  font-weight:900; text-shadow:0 2px 20px rgba(0,0,0,.9), 0 0 26px rgba(255,60,20,0.45);
+  margin:0; text-transform:uppercase; }
+.br-sub { font-size:var(--mn-fs-legenda); color:#b06a52; letter-spacing:var(--mn-ls-legenda);
+  text-transform:uppercase; margin:2px 0 0; }
+/* O miolo desta tela carrega DUAS filas de cartoes, mais chamada e dica —
+   o dobro do que as outras telas de menu poem ali. O respiro padrao entre
+   os blocos (ate' 22px, duas vezes) era o que sobrava para a barra de
+   rolagem aparecer. Aqui ele encolhe; nas outras telas continua igual. */
+#bossrush-screen .mn-rolavel{ gap:clamp(5px,1vh,12px); padding-block:0; }
+/* E a casca cede alguns pixels tambem. Sem isto a conta fecha em ZERO de
+   folga: qualquer nome de chefe mais comprido, uma fonte um pouco
+   diferente no navegador do jogador, e a barra volta. A diferenca de ~4px
+   por lado nao se percebe ao lado das outras telas; a barra de rolagem
+   aparecendo, sim. */
+#bossrush-screen .mn-palco{ gap:clamp(6px,1vh,13px); padding-block:clamp(10px,2vh,24px); }
+/* Cartoes MENORES de proposito. Com 6 chefes numa fila e 5 criaturas na
+   outra, a lista media 356px de conteudo dentro de 332px de area util: 24px
+   a mais, o suficiente para nascer barra de rolagem numa tela que cabe
+   inteira. Encolher o cartao (medalhao, respiro e fontes) devolve ~36px e
+   a tela fecha sem rolar. Largura: 6 x 100 + 5 x 8 = 640, folgado dentro
+   dos 720 da faixa. */
+.br-boss-list { display:flex; gap:8px; flex-wrap:wrap; justify-content:center;
+  width:100%; max-width:min(720px,100%); box-sizing:border-box;  }
 .br-boss-card {
   background:rgba(8,3,18,0.95); border:1px solid rgba(140,40,20,0.45);
-  border-radius:4px; padding:12px 14px; cursor:pointer; text-align:center;
-  transition:all .2s; width:110px;
+  border-radius:4px; padding:7px 11px; cursor:pointer; text-align:center;
+  transition:all .2s; width:100px;
 }
 .br-boss-card:hover:not(.br-locked) { border-color:#ff4422; transform:translateY(-3px); box-shadow:0 6px 20px rgba(0,0,0,0.5); }
 .br-boss-card.br-locked { opacity:0.4; cursor:not-allowed; border-color:rgba(80,40,20,0.3); }
-.br-boss-icon { font-size:28px; margin-bottom:6px; }
-.br-boss-name { font-size:12px; color:#cc6644; font-weight:bold; letter-spacing:.5px; margin-bottom:3px; }
-.br-boss-wave { font-size:11px; color:#5a3020; letter-spacing:1px; }
+.br-boss-icon { font-size:24px; margin-bottom:4px; }
+.br-boss-name { font-size:11px; color:#cc6644; font-weight:bold; letter-spacing:.4px; margin-bottom:2px; line-height:1.25; }
+.br-boss-wave { font-size:10px; color:#5a3020; letter-spacing:1px; }
 .br-boss-card.br-locked .br-boss-icon::after { content:none; }
 .br-boss-card.br-pet { border-color:rgba(140,60,200,0.45); }
 .br-boss-card.br-pet:hover:not(.br-locked) { border-color:#cc88ff; box-shadow:0 6px 20px rgba(120,40,200,0.3); }
@@ -2250,58 +2838,145 @@ body.boss-rush-no-coins #coin-display { display:none !important; }
   white-space:normal;
 }
 
-/* ═══════════ MENU v6 — estilo HADES ═══════════ */
-#main-menu { justify-content:center; align-items:stretch; background:
-  radial-gradient(ellipse at 78% 45%, rgba(30,160,70,0.20) 0%, transparent 42%),
-  radial-gradient(ellipse at 76% 42%, rgba(90,50,170,0.16) 0%, transparent 55%),
-  radial-gradient(ellipse at 15% 90%, rgba(160,90,20,0.10) 0%, transparent 50%),
-  linear-gradient(120deg, #030807 0%, #06110a 45%, #050310 100%); }
-.hd-layout { display:flex; width:100%; height:100%; align-items:center; position:relative; z-index:2; }
-.hd-left { flex:1.1; display:flex; flex-direction:column; justify-content:center; padding-left:clamp(30px,9vw,150px); }
-.hd-logo {
-  font-size:clamp(64px,10vw,138px); font-weight:900; letter-spacing:clamp(6px,1.2vw,18px); line-height:0.9;
-  background:linear-gradient(180deg,#eafff0 0%,#9fe8b4 30%,#3fae5a 62%,#0c4a20 100%);
-  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
-  filter:drop-shadow(0 0 30px rgba(60,220,110,0.35)) drop-shadow(0 6px 18px rgba(0,0,0,0.95));
+/* ═══════════ MENU PRINCIPAL — arte de cena + painel lateral ═══════════
+   Referencia enviada pelo jogador: a arte ocupa a tela inteira e o menu
+   mora num painel escuro a esquerda — logo em cima, itens ligados por uma
+   trilha ornamentada, versao no rodape.
+
+   O fundo NAO entra no `background` de #main-menu: a regra global
+   `.screen{background:...!important}`, que vem depois neste arquivo,
+   venceria a do id. Vai numa camada propria, como ja' fazem as outras
+   telas de menu (.mn-bg).
+
+   As particulas do menu antigo (estrelas + runas) continuam: o canvas e'
+   injetado por JS e sobe para z-index 2, acima do veu e abaixo do painel.
+   ═══════════════════════════════════════════════════════════════════ */
+#main-menu { justify-content:flex-start; align-items:stretch; padding:0; overflow:hidden; }
+
+.mp-arte{
+  position:absolute; inset:0; z-index:0;
+  background:url('assets/menu/bg-principal.jpg') center/cover no-repeat;
 }
-.hd-logo-sub {
-  font-size:clamp(30px,4.6vw,64px); font-weight:900; letter-spacing:clamp(8px,1.6vw,26px); margin-top:2px;
-  background:linear-gradient(180deg,#fff2c8,#c8a84b 60%,#7a5c1a);
-  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
-  filter:drop-shadow(0 0 18px rgba(200,168,75,0.35));
+/* Veu em duas direcoes: horizontal para assentar o painel sem apagar a
+   arte da direita, vertical para o topo e o rodape nao brigarem com o
+   logo e a versao. */
+.mp-veu{
+  position:absolute; inset:0; z-index:1; pointer-events:none;
+  background:
+    linear-gradient(90deg,
+      rgba(4,3,9,.96) 0%, rgba(4,3,9,.93) 20%, rgba(4,3,9,.74) 32%,
+      rgba(4,3,9,.30) 42%, rgba(4,3,9,0) 55%),
+    linear-gradient(180deg,
+      rgba(4,3,9,.42) 0%, rgba(4,3,9,0) 22%,
+      rgba(4,3,9,0) 64%, rgba(4,3,9,.62) 100%);
 }
-.hd-x { -webkit-text-fill-color:#b83420; font-size:0.72em; filter:drop-shadow(0 0 10px rgba(220,60,30,0.6)); }
-.hd-tag { font-size:clamp(10px,1vw,15px); color:#4a7a58; letter-spacing:clamp(3px,0.6vw,8px); margin:10px 0 clamp(20px,4vh,44px) 4px; }
-.hd-menu { display:flex; flex-direction:column; gap:clamp(4px,0.9vh,10px); }
-.hd-item {
-  font-family:'Courier New',monospace; font-size:clamp(22px,2.4vw,36px); font-weight:bold;
-  letter-spacing:clamp(2px,0.4vw,6px); color:#7d8f80; cursor:pointer; width:fit-content;
-  padding:3px 10px 3px 0; position:relative; transition:color .15s, transform .15s, text-shadow .15s;
+
+/* Ancorado no TOPO, nao centralizado: na referencia o logo encosta em
+   cima, o menu fica no miolo e a versao no rodape. Centralizar os tres
+   juntos empurrava o logo para o meio da tela e deixava um vazio embaixo.
+   A versao desce sozinha com margin-top:auto. */
+/* Grade de tres faixas — logo, miolo, versao — em vez de pilha flexivel.
+   O miolo e' 1fr e o menu se centraliza DENTRO dele, entao a lista fica
+   no meio do vao entre o logo e o rodape sem numero fixo, em qualquer
+   altura de janela. Com flex eu precisaria de um gap chutado, que so'
+   acertaria numa altura. */
+.mp-painel{
+  position:relative; z-index:3;
+  display:grid; grid-template-rows:auto minmax(0,1fr) auto;
+  gap:clamp(14px,3vh,34px);
+  width:min(560px,46vw); min-width:0; height:100%;
+  padding:clamp(20px,6vh,60px) clamp(16px,2.4vw,40px) clamp(18px,4vh,44px);
+  box-sizing:border-box;
 }
-.hd-item::before { content:'▶'; position:absolute; left:-30px; opacity:0; font-size:0.6em; top:50%;
-  transform:translateY(-50%); color:#7de89a; transition:opacity .15s, left .15s; }
-.hd-item:hover { color:#eafff0; transform:translateX(14px); text-shadow:0 0 22px rgba(90,230,130,0.55); }
-.hd-item:hover::before { opacity:1; left:-22px; }
-.hd-primary { color:#8fe8a8; text-shadow:0 0 14px rgba(70,210,110,0.3); }
-.hd-exit { color:#6a4a48; font-size:clamp(18px,1.8vw,26px); margin-top:clamp(8px,2vh,20px); }
-.hd-exit:hover { color:#e8a098; text-shadow:0 0 18px rgba(220,80,60,0.45); }
-.hd-ver { font-size:clamp(10px,0.9vw,14px); color:#33523c; letter-spacing:3px; margin-top:clamp(18px,4vh,42px); }
-.hd-right { flex:1; display:flex; align-items:center; justify-content:center; position:relative; }
-#hd-hero { image-rendering:pixelated; width:clamp(190px,27vw,420px); height:auto; position:relative; z-index:2;
-  filter:drop-shadow(0 0 34px rgba(120,80,220,0.45)) drop-shadow(0 14px 24px rgba(0,0,0,0.8));
-  animation:hdFloat 4.5s ease-in-out infinite; }
-@keyframes hdFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
-.hd-circle { position:absolute; width:clamp(280px,34vw,560px); height:clamp(280px,34vw,560px); z-index:1; }
-.hd-ring { position:absolute; inset:0; border-radius:50%; }
-.hd-r1 { border:2px dashed rgba(70,220,120,0.35); animation:hdSpin 32s linear infinite; }
-.hd-r2 { inset:9%; border:1px solid rgba(140,90,230,0.35); box-shadow:0 0 40px rgba(120,70,220,0.12) inset; animation:hdSpin 24s linear infinite reverse; }
-.hd-r3 { inset:20%; border:2px dotted rgba(200,168,75,0.30); animation:hdSpin 44s linear infinite; }
-@keyframes hdSpin { to { transform:rotate(360deg); } }
-@media (max-width:900px){
-  .hd-layout{ flex-direction:column; justify-content:center; gap:8px; }
-  .hd-left{ padding-left:0; align-items:center; text-align:center; }
-  .hd-item{ margin:0 auto; }
-  .hd-right{ order:-1; } .hd-circle{ width:240px; height:240px; } #hd-hero{ width:130px; }
+.mp-logo{
+  width:min(460px,100%); height:auto; display:block; align-self:flex-start;
+  filter:drop-shadow(0 6px 26px rgba(0,0,0,.95))
+         drop-shadow(0 0 30px rgba(60,220,130,.13));
+}
+
+/* ── Trilha e itens ──
+   A linha vertical e' pseudo-elemento do proprio nav, entao acompanha a
+   altura da lista sem nenhum numero fixo. O losango de cada item e' posto
+   EM CIMA dela pela mesma variavel, para os dois nunca se separarem. */
+.mp-menu{
+  --mp-trilha:clamp(20px,2.3vw,32px);
+  position:relative; align-self:center; width:100%;
+  display:flex; flex-direction:column;
+  gap:clamp(4px,1.7vh,17px); padding-left:var(--mp-trilha);
+  box-sizing:border-box;
+}
+.mp-menu::before{
+  content:''; position:absolute; left:calc(var(--mp-trilha) * .28);
+  top:8px; bottom:8px; width:1px;
+  background:linear-gradient(180deg, transparent,
+    rgba(120,200,150,.30) 12%, rgba(120,200,150,.30) 88%, transparent);
+}
+.mp-item{
+  position:relative; display:flex; align-items:center;
+  gap:clamp(9px,1.05vw,15px);
+  padding:clamp(7px,1.15vh,12px) clamp(12px,1.4vw,20px);
+  font-family:'Courier New',monospace; font-weight:bold;
+  font-size:clamp(11px,1.08vw,15px); letter-spacing:clamp(2px,.32vw,4.5px);
+  text-transform:uppercase; color:#8ba795; cursor:pointer;
+  border:1px solid transparent; border-radius:3px;
+  background:transparent; white-space:nowrap;
+  transition:color .16s, border-color .16s, background .16s, transform .16s;
+}
+/* losango na trilha */
+.mp-item::before{
+  content:''; position:absolute; top:50%;
+  left:calc(var(--mp-trilha) * -.72 - 3px);
+  width:6px; height:6px; margin-top:-3px; transform:rotate(45deg);
+  border:1px solid rgba(140,210,170,.55); background:rgba(10,20,14,.9);
+  transition:border-color .16s, background .16s, box-shadow .16s;
+}
+/* ornamento da ponta direita: so' aparece no item em foco, fechando a
+   moldura como na referencia */
+.mp-item::after{
+  content:''; position:absolute; right:clamp(9px,1vw,14px); top:50%;
+  width:5px; height:5px; margin-top:-2.5px; transform:rotate(45deg);
+  border:1px solid currentColor; opacity:0; transition:opacity .16s;
+}
+.mp-item:hover, .mp-item:focus-visible, .mp-item.mp-ativo{
+  color:#eafff0; outline:none;
+  border-color:rgba(120,230,160,.46);
+  background:linear-gradient(90deg,
+    rgba(22,54,34,.72), rgba(12,30,20,.34) 68%, rgba(12,30,20,0));
+  box-shadow:0 0 22px -7px rgba(70,220,120,.45),
+             inset 0 0 26px rgba(60,200,110,.07);
+}
+.mp-item:hover::before, .mp-item:focus-visible::before, .mp-item.mp-ativo::before{
+  border-color:#9fe8b4; background:#3fae5a;
+  box-shadow:0 0 9px rgba(80,220,130,.8);
+}
+.mp-item:hover::after, .mp-item:focus-visible::after, .mp-item.mp-ativo::after{ opacity:.55; }
+
+.mp-icone{ display:flex; flex:0 0 auto; color:inherit; }
+.mp-icone svg{ width:clamp(15px,1.4vw,20px); height:clamp(15px,1.4vw,20px); display:block; }
+.mp-rotulo{ min-width:0; overflow:hidden; text-overflow:ellipsis; }
+
+/* Sair mantem a cor de perigo em todos os estados. */
+.mp-sair{ color:#8a5a56; margin-top:clamp(4px,1.1vh,12px); }
+.mp-sair:hover, .mp-sair:focus-visible, .mp-sair.mp-ativo{
+  color:#f0b0a6; border-color:rgba(220,110,90,.5);
+  background:linear-gradient(90deg, rgba(58,20,16,.72), rgba(30,12,10,.32) 68%, transparent);
+  box-shadow:0 0 22px -7px rgba(220,90,60,.45), inset 0 0 26px rgba(200,80,50,.07);
+}
+.mp-sair:hover::before, .mp-sair:focus-visible::before, .mp-sair.mp-ativo::before{
+  border-color:#f0b0a6; background:#b8483a; box-shadow:0 0 9px rgba(230,100,70,.75);
+}
+
+.mp-versao{
+  align-self:end;
+  font-size:clamp(8px,.72vw,10.5px); color:#4a6b55;
+  letter-spacing:clamp(2px,.3vw,3.5px); text-transform:uppercase;
+  padding-left:clamp(20px,2.3vw,32px);
+}
+
+/* Telas largas mas baixas: o painel encolhe o respiro antes de cortar. */
+@media (max-height:620px){
+  .mp-painel{ gap:clamp(8px,1.6vh,16px); padding-block:clamp(10px,2vh,20px); }
+  .mp-logo{ width:min(300px,100%); }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -3145,52 +3820,33 @@ canvas, img {
     transform-origin:top right;
   }
 
-  /* Menu principal empilhado com rolagem interna em alturas muito curtas. */
-  .hd-layout {
-    flex-direction:column;
+  /* Menu principal no celular: o painel deixa de ser coluna lateral e
+     ocupa a largura toda, com a arte respirando por tras. O veu vira
+     vertical — na vertical nao ha' "esquerda" para escurecer. */
+  .mp-painel {
+    width:100%;
     justify-content:flex-start;
-    gap:3px;
-    overflow-y:auto;
-    overflow-x:hidden;
-    padding:max(8px,var(--safe-top)) max(10px,var(--safe-right))
-      max(8px,var(--safe-bottom)) max(10px,var(--safe-left));
+    gap:clamp(8px,1.8vh,18px);
+    padding:max(10px,var(--safe-top)) max(14px,var(--safe-right))
+      max(10px,var(--safe-bottom)) max(14px,var(--safe-left));
+    overflow-y:auto; overflow-x:hidden;
   }
-  .hd-left {
-    width:100%;
-    flex:none;
-    padding-left:0;
-    align-items:center;
-    text-align:center;
+  .mp-veu {
+    background:linear-gradient(180deg,
+      rgba(4,3,9,.90) 0%, rgba(4,3,9,.80) 42%,
+      rgba(4,3,9,.55) 68%, rgba(4,3,9,.88) 100%);
   }
-  .hd-right {
-    order:-1;
-    flex:none;
-    min-height:72px;
-  }
-  .hd-circle { width:clamp(116px,33vw,164px); height:clamp(116px,33vw,164px); }
-  #hd-hero { width:clamp(70px,21vw,105px); }
-  .hd-logo { font-size:clamp(38px,14vw,64px); }
-  .hd-logo-sub { font-size:clamp(21px,7vw,34px); letter-spacing:clamp(5px,2vw,11px); }
-  .hd-tag {
-    font-size:clamp(8px,2.4vw,11px);
-    letter-spacing:clamp(1px,.8vw,3px);
-    margin:4px 0 8px;
-  }
-  .hd-menu { width:min(330px,94vw); gap:1px; }
-  .hd-item {
-    width:100%;
+  /* justify-self, nao align-self: o painel virou GRADE, e ali align-* e' o
+     eixo vertical. Com align-self o logo continuava colado a esquerda. */
+  .mp-logo { width:min(320px,86%); justify-self:center; }
+  .mp-menu { --mp-trilha:18px; width:100%; gap:3px; }
+  .mp-item {
     min-height:var(--touch-target);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:4px 10px;
-    margin:0;
-    font-size:clamp(16px,5vw,21px);
+    font-size:clamp(12px,3.6vw,16px);
+    letter-spacing:clamp(1.5px,.7vw,3px);
+    padding:6px clamp(10px,3vw,16px);
   }
-  .hd-item:hover { transform:none; }
-  .hd-item::before { display:none; }
-  .hd-exit { margin-top:1px; font-size:clamp(14px,4.2vw,18px); }
-  .hd-ver { margin-top:4px; font-size:9px; }
+  .mp-versao { justify-self:center; padding-left:0; font-size:9px; }
 
   /* Escolhas, personagens, cartas e telas finais. */
   .menu-panel {
@@ -3223,14 +3879,16 @@ canvas, img {
     padding:10px 8px;
   }
   .cs-preview { width:64px; height:64px; }
-  .cs-title, .coll-title, .br-title, .temple-title {
+  /* .br-title saiu daqui: o Modo Chefao usa os tokens dos menus, e esta
+     regra o devolvia a outra escala em telas estreitas. */
+  .cs-title, .coll-title, .temple-title {
     max-width:100%;
     text-align:center;
     font-size:var(--font-title);
     letter-spacing:clamp(2px,1vw,5px);
     overflow-wrap:anywhere;
   }
-  .cs-sub, .coll-sub, .br-sub, .temple-sub {
+  .cs-sub, .coll-sub, .temple-sub {
     max-width:100%;
     text-align:center;
     font-size:var(--font-caption);
@@ -3534,23 +4192,21 @@ canvas, img {
   #inv-notif { bottom:max(6px,var(--safe-bottom)); }
   #audio-hud { top:auto; bottom:max(5px,var(--safe-bottom)); }
 
-  .hd-layout {
-    flex-direction:row;
-    justify-content:center;
-    overflow:hidden;
-    padding:max(5px,var(--safe-top)) max(15px,var(--safe-right))
+  /* Celular deitado: volta a ser coluna lateral, mas estreita — sobra
+     altura de menos para empilhar tudo. */
+  .mp-painel {
+    width:min(62vw,420px);
+    gap:clamp(5px,1.4vh,12px);
+    padding:max(5px,var(--safe-top)) max(10px,var(--safe-right))
       max(5px,var(--safe-bottom)) max(15px,var(--safe-left));
   }
-  .hd-left { width:58%; align-items:flex-start; text-align:left; padding-left:clamp(14px,4vw,40px); }
-  .hd-right { order:0; width:42%; min-height:0; }
-  .hd-circle { width:clamp(150px,45vh,210px); height:clamp(150px,45vh,210px); }
-  #hd-hero { width:clamp(90px,27vh,128px); }
-  .hd-logo { font-size:clamp(34px,12vh,60px); }
-  .hd-logo-sub { font-size:clamp(19px,6vh,30px); }
-  .hd-tag { margin:2px 0 5px; font-size:8px; }
-  .hd-menu { width:min(330px,48vw); display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
-  .hd-item { min-height:36px; justify-content:flex-start; font-size:clamp(13px,4.2vh,18px); padding:2px 6px; }
-  .hd-ver { margin-top:2px; }
+  .mp-logo { width:min(260px,100%); }
+  .mp-menu { --mp-trilha:16px; gap:1px; }
+  .mp-item {
+    min-height:32px; padding:3px 10px;
+    font-size:clamp(10px,3vh,13px); letter-spacing:clamp(1.5px,.5vh,3px);
+  }
+  .mp-versao { font-size:8px; padding-left:16px; }
 
   .screen:not(#main-menu):not(#dungeon-screen) {
     padding-top:max(6px,var(--safe-top));
@@ -5002,36 +5658,18 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
      MAIN MENU — Medieval / LOTR style
 ═══════════════════════════════════ -->
 <div class="screen" id="main-menu">
-  <!-- Animated orb background -->
-  <div class="menu-orb menu-orb-1"></div>
-  <div class="menu-orb menu-orb-2"></div>
-  <div class="menu-orb menu-orb-3"></div>
+  <!-- A arte vive numa camada propria, NAO no background de #main-menu: a
+       regra global .screen{background:...!important} venceria a do id.
+       Mesma tecnica das outras telas de menu (.mn-bg). O canvas de
+       estrelas e runas e' injetado por JS logo depois do veu. -->
+  <div class="mp-arte"></div>
+  <div class="mp-veu"></div>
 
-  <!-- ═══ MENU v6 — estilo Hades ═══ -->
-  <div class="hd-layout">
-    <div class="hd-left">
-      <div class="hd-logo">MAGO</div>
-      <div class="hd-logo-sub"><span class="hd-x">✕</span> HORDAS</div>
-      <div class="hd-tag">ᚱᚢᚾᛖ · CRÔNICAS DA TERRA-MÉDIA</div>
-      <nav class="hd-menu">
-        <a class="hd-item hd-primary" onclick="openCampaignSetup()">Jogar</a>
-        <a class="hd-item" onclick="openBossRushMenu()">Modo Chefão</a>
-        <a class="hd-item" onclick="CampV2.abrir()">Acampamento</a>
-        <a class="hd-item" onclick="openCollection()">Códex de Arda</a>
-        <a class="hd-item" onclick="startDungeonMode()">Dungeon</a>
-        <a class="hd-item hd-settings" onclick="openSettings()">Configurações</a>
-        <a class="hd-item hd-exit" onclick="closeGame()">Sair</a>
-      </nav>
-      <div class="hd-ver">v5.0 · EDIÇÃO TERRA-MÉDIA</div>
-    </div>
-    <div class="hd-right">
-      <div class="hd-circle">
-        <div class="hd-ring hd-r1"></div>
-        <div class="hd-ring hd-r2"></div>
-        <div class="hd-ring hd-r3"></div>
-      </div>
-      <canvas id="hd-hero" width="192" height="240"></canvas>
-    </div>
+  <div class="mp-painel">
+    <img class="mp-logo" src="assets/menu/logo.png"
+         alt="Mago X Hordas — Crônicas da Terra-Média">
+    <nav class="mp-menu" id="mp-menu" aria-label="Menu principal"></nav>
+    <div class="mp-versao">v5.0 · EDIÇÃO TERRA-MÉDIA</div>
   </div>
 </div>
 
@@ -5152,60 +5790,73 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
 <!-- ══════════════════════════════════
      PLAY MENU
 ═══════════════════════════════════ -->
+<!-- ══════════════════════════════════
+     MODO DE JOGO
+═══════════════════════════════════ -->
+<div class="screen" id="mode-menu" style="display:none">
+  <div class="mn-bg ativa" style="background-image:url('assets/menu/bg-modo-jogo.jpg')"></div>
+  <div class="mn-veu"></div>
+  <canvas class="mn-particulas" id="part-mode-menu" aria-hidden="true"></canvas>
+
+  <div class="mn-palco">
+    <header class="mn-cabecalho">
+      <span class="mn-ornamento" aria-hidden="true">
+        <i class="mn-orn-linha"></i><i class="mn-orn-losango"></i><i class="mn-orn-linha"></i>
+      </span>
+      <h1 class="mn-titulo">MODO DE JOGO</h1>
+      <p class="mn-legenda"><i class="mn-leg-linha"></i><span>COMO VOCÊ VAI ENFRENTAR AS HORDAS</span><i class="mn-leg-linha"></i></p>
+    </header>
+
+    <div class="mn-rolavel">
+      <div class="mn-cartoes de-2" id="mode-cards" role="listbox" aria-label="Modo de jogo"></div>
+    </div>
+
+    <footer class="mn-rodape">
+      <button class="mn-btn mn-btn-principal" id="mode-confirm" onclick="confirmarModo()">CONTINUAR</button>
+      <button class="mn-btn" onclick="goMainMenu()">VOLTAR</button>
+    </footer>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     DIFICULDADE
+═══════════════════════════════════ -->
 <div class="screen" id="play-menu" style="display:none">
-  <h2 class="pm-title">✦ ESCOLHA SUA JORNADA ✦</h2>
-  <div class="pm-sub">— Alianças &amp; Provação —</div>
+  <div class="mn-bg" id="dif-bg-a"></div>
+  <div class="mn-bg" id="dif-bg-b"></div>
+  <div class="mn-veu"></div>
+  <canvas class="mn-particulas" id="part-play-menu" aria-hidden="true"></canvas>
 
-  <div class="section-title">Heróis</div>
-  <div class="choice-cards" style="margin-bottom:18px;">
-    <div class="choice-card selected" id="mode-1p" onclick="selectMode(1)">
-      <div class="c-icon"><span class="pixel-icon-slot" data-pixel-icon="wizard" data-pixel-size="46"></span></div>
-      <div class="c-name" style="color:#f0d080;">Solitário</div>
-      <div class="c-desc">1 herói<br><span class="c-tag pixel-inline"><span class="pixel-icon-slot" data-pixel-icon="keyboard" data-pixel-size="15"></span> WASD</span></div>
-    </div>
-    <div class="choice-card" id="mode-2p" onclick="selectMode(2)">
-      <div class="c-icon"><span class="pixel-icon-slot" data-pixel-icon="sword" data-pixel-size="40"></span><span class="pixel-icon-slot" data-pixel-icon="bow" data-pixel-size="40"></span></div>
-      <div class="c-name" style="color:#88ccff;">Aliança</div>
-      <div class="c-desc">2 heróis · coop local<br><span class="c-tag pixel-inline"><span class="pixel-icon-slot" data-pixel-icon="keyboard" data-pixel-size="15"></span> WASD</span> <span class="c-tag pixel-inline"><span class="pixel-icon-slot" data-pixel-icon="keyboard" data-pixel-size="15"></span> Setas</span></div>
-    </div>
-  </div>
+  <div class="mn-palco">
+    <header class="mn-cabecalho">
+      <span class="mn-ornamento" aria-hidden="true">
+        <i class="mn-orn-linha"></i><i class="mn-orn-losango"></i><i class="mn-orn-linha"></i>
+      </span>
+      <h1 class="mn-titulo">DIFICULDADE</h1>
+      <p class="mn-legenda"><i class="mn-leg-linha"></i><span>AJUSTE O DESAFIO DA SUA JORNADA</span><i class="mn-leg-linha"></i></p>
+    </header>
 
-  <div class="section-title">Dificuldade</div>
-  <div class="choice-cards" style="margin-bottom:20px;">
-    <div class="choice-card easy" id="diff-easy" onclick="selectDiff('easy')">
-      <div class="c-icon"><span class="pixel-icon-slot" data-pixel-icon="leaf" data-pixel-size="44"></span></div>
-      <div class="c-name" style="color:#33cc55;">Aprendiz</div>
-      <div class="c-desc">Hordas leves<br><span class="c-stat pixel-inline" style="color:#5fdc82;"><span class="pixel-icon-slot" data-pixel-icon="heart" data-pixel-size="16"></span> +20% vida · <span class="pixel-icon-slot" data-pixel-icon="coin" data-pixel-size="16"></span> +8% moedas</span></div>
-    </div>
-    <div class="choice-card medium selected" id="diff-medium" onclick="selectDiff('medium')">
-      <div class="c-icon"><span class="pixel-icon-slot" data-pixel-icon="sword" data-pixel-size="44"></span></div>
-      <div class="c-name" style="color:#ccaa22;">Guerreiro</div>
-      <div class="c-desc">Equilíbrio padrão<br><span class="c-stat pixel-inline" style="color:#e8c860;"><span class="pixel-icon-slot" data-pixel-icon="heart" data-pixel-size="16"></span> vida padrão · <span class="pixel-icon-slot" data-pixel-icon="coin" data-pixel-size="16"></span> −8% moedas</span></div>
-    </div>
-    <div class="choice-card hard" id="diff-hard" onclick="selectDiff('hard')">
-      <div class="c-icon"><span class="pixel-icon-slot pixel-icon-danger" data-pixel-icon="skull" data-pixel-size="44"></span></div>
-      <div class="c-name" style="color:#cc3322;">Lendário</div>
-      <div class="c-desc">Hordas brutais<br><span class="c-stat pixel-inline" style="color:#ff8870;"><span class="pixel-icon-slot" data-pixel-icon="heart" data-pixel-size="16"></span> −15% vida · <span class="pixel-icon-slot" data-pixel-icon="coin" data-pixel-size="16"></span> −22% moedas</span></div>
-    </div>
-  </div>
+    <div class="mn-rolavel">
+      <div class="mn-cartoes de-3" id="diff-cards" role="listbox" aria-label="Dificuldade"></div>
 
-  <div id="threat-block" style="display:none;margin-bottom:18px;">
-    <div class="section-title">Nível de Ameaça</div>
-    <div class="threat-row">
-      <button class="threat-btn" id="threat-minus" onclick="mudarAmeaca(-1)" aria-label="Diminuir ameaça">−</button>
-      <div class="threat-core">
-        <div class="threat-number" id="threat-value">0</div>
+      <div class="mn-ameaca" id="threat-block" style="display:none">
+        <div class="mn-ameaca-titulo">
+          <i class="mn-leg-linha"></i><span>NÍVEL DE AMEAÇA</span><i class="mn-leg-linha"></i>
+        </div>
+        <div class="mn-ameaca-linha">
+          <button class="mn-passo" id="threat-minus" onclick="mudarAmeaca(-1)" aria-label="Diminuir ameaça">−</button>
+          <span class="mn-ameaca-valor" id="threat-value">0</span>
+          <button class="mn-passo" id="threat-plus" onclick="mudarAmeaca(1)" aria-label="Aumentar ameaça">+</button>
+        </div>
+        <div class="mn-ameaca-detalhe" id="threat-detail">Chefões se comportam normalmente.</div>
         <div class="threat-pips" id="threat-pips" aria-hidden="true"></div>
       </div>
-      <button class="threat-btn" id="threat-plus" onclick="mudarAmeaca(1)" aria-label="Aumentar ameaça">+</button>
     </div>
-    <div class="threat-detail" id="threat-detail">Chefões se comportam normalmente.</div>
-    <div class="threat-help">Chefões recebem modificadores sorteados que mudam seus ataques e a arena. Quanto maior a ameaça, maior o bônus de moedas do chefão.</div>
-  </div>
 
-  <div class="pm-actions" style="display:flex;gap:12px;justify-content:center;align-items:stretch;">
-    <button class="menu-btn primary pm-go" id="start-btn" onclick="goCharSelect()"><span class="pixel-btn-content"><span class="pixel-icon-slot" data-pixel-icon="sword" data-pixel-size="22"></span> ESCOLHER HERÓI →</span></button>
-    <button class="menu-btn pm-back" onclick="goMainMenu()">Voltar</button>
+    <footer class="mn-rodape">
+      <button class="mn-btn mn-btn-principal" id="start-btn" onclick="goCharSelect()">CONFIRMAR</button>
+      <button class="mn-btn" onclick="voltarAoModo()">VOLTAR</button>
+    </footer>
   </div>
 </div>
 
@@ -5213,12 +5864,71 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
      CHAR SELECT
 ═══════════════════════════════════ -->
 <div class="screen" id="char-select" style="display:none">
-  <div class="cs-title">ESCOLHA SEU HERÓI</div>
-  <div class="cs-sub" id="cs-sub-label">— Jogador 1 —</div>
-  <div class="cs-cards" id="cs-cards-row"></div>
-  <div class="paired-action-row">
-    <button class="menu-btn primary paired-action-btn" id="cs-confirm-btn" onclick="confirmCharSelect()">CONFIRMAR</button>
-    <button class="menu-btn paired-action-btn" onclick="cancelCharSelect()">Voltar</button>
+  <!-- Fundo do heroi em foco. Duas camadas para o cruzamento suave:
+       a escondida recebe a imagem nova e so' entao sobe o alpha. -->
+  <div class="cs-bg" id="cs-bg-a"></div>
+  <div class="cs-bg" id="cs-bg-b"></div>
+  <div class="cs-veu"></div>
+  <canvas class="mn-particulas" id="part-char-select" aria-hidden="true"></canvas>
+
+  <div class="cs-palco">
+    <!-- ══ TITULO ══ -->
+    <header class="cs-cabecalho">
+      <span class="cs-ornamento" aria-hidden="true">
+        <i class="cs-orn-linha"></i>
+        <i class="cs-orn-losango"></i>
+        <i class="cs-orn-linha"></i>
+      </span>
+      <h1 class="cs-titulo">ESCOLHA SEU HERÓI</h1>
+      <p class="cs-legenda" id="cs-sub-label">
+        <i class="cs-leg-linha"></i><span id="cs-sub-texto">ENCONTRE SEU ESTILO</span><i class="cs-leg-linha"></i>
+      </p>
+    </header>
+
+    <!-- ══ GRADE ══ -->
+    <div class="cs-rolavel">
+      <div class="cs-grade" id="cs-cards-row" role="listbox" aria-label="Heróis"></div>
+
+    <!-- ══ ABA QUE DESCE ══
+         Nao e' outra tela: e' uma gaveta no fluxo, logo abaixo da grade.
+         Fechada tem altura zero; ao escolher um heroi ela desce. -->
+    <div class="cs-aba" id="cs-aba" aria-live="polite">
+      <div class="cs-aba-interna">
+        <div class="cs-aba-grade">
+          <!-- Sem retrato aqui: o heroi ja' aparece animado no cartao logo
+               acima, e repeti-lo mostrava DOIS do mesmo na tela. A ficha
+               fica so' com nome, atributos e poder. -->
+          <section class="cs-ficha-heroi">
+            <div class="cs-ficha-id">
+              <h2 class="cs-ficha-nome" id="cs-det-nome"></h2>
+              <span class="cs-ficha-badge" id="cs-det-badge"></span>
+              <p class="cs-ficha-desc" id="cs-det-desc"></p>
+              <p class="cs-ficha-arma" id="cs-det-arma"></p>
+            </div>
+          </section>
+
+          <section class="cs-ficha-atributos" id="cs-det-stats"></section>
+
+          <section class="cs-ficha-poder">
+            <span class="cs-poder-marca" aria-hidden="true">◆</span>
+            <div>
+              <p class="cs-poder-nome" id="cs-det-poder"></p>
+              <p class="cs-poder-desc" id="cs-det-poder-desc"></p>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    </div><!-- /cs-rolavel -->
+
+    <!-- ══ BOTOES ══ -->
+    <footer class="cs-rodape">
+      <button class="cs-btn cs-btn-principal" id="cs-confirm-btn" onclick="confirmCharSelect()" disabled>
+        INICIAR
+      </button>
+      <button class="cs-btn" onclick="cancelCharSelect()">VOLTAR</button>
+    </footer>
   </div>
 </div>
 
@@ -5613,6 +6323,8 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
     <button class="coll-tab"        id="coll-tab-bosses"   onclick="collSetTab('bosses')"><span class="coll-tab-rune">ᛃ</span> Senhores</button>
     <button class="coll-tab"        id="coll-tab-pets"     onclick="collSetTab('pets')"><span class="coll-tab-rune">ᚨ</span> Companheiros</button>
     <button class="coll-tab"        id="coll-tab-blessings"onclick="collSetTab('blessings')"><span class="coll-tab-rune">ᛞ</span> Bênçãos</button>
+    <!-- A aba Masmorras continua aqui; quem a esconde e' collSetTab, pela
+         chave de recursos, para o botao voltar sozinho ao religar. -->
     <button class="coll-tab"        id="coll-tab-dungeon"  onclick="collSetTab('dungeon')"><span class="coll-tab-rune">ᚱ</span> Masmorras</button>
   </div>
   <div class="coll-body">
@@ -5628,18 +6340,31 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
 
 <!-- ══ BOSS RUSH MODE ══ -->
 <div class="screen" id="bossrush-screen" style="display:none">
-  <div class="br-title"><span class="pixel-icon-slot pixel-icon-danger" data-pixel-icon="sword" data-pixel-size="38"></span> MODO CHEFÃO</div>
-  <div class="br-sub">— Boss Rush · Desafio Extremo —</div>
-  <div style="font-size:14px;color:#e8a888;letter-spacing:1px;margin-bottom:14px;text-align:center;">
-    Enfrente os chefões em sequência. Sem ondas normais. Prove sua força!
-  </div>
-  <div class="br-boss-list" id="br-boss-list"></div>
-  <div class="paired-action-row">
-    <button class="br-start-btn paired-action-btn" id="br-start-btn" onclick="startBossRush()">INICIAR BOSS RUSH</button>
-    <button class="menu-btn paired-action-btn" onclick="showScreen('main-menu')">Voltar</button>
-  </div>
-  <div style="font-size:12px;color:#b0885f;margin-top:12px;text-align:center;">
-    Derrote um boss na campanha normal para desbloqueá-lo aqui
+  <div class="mn-bg ativa" style="background-image:url('assets/menu/bg-chefao.jpg')"></div>
+  <div class="mn-veu"></div>
+  <canvas class="mn-particulas" id="part-bossrush-screen" aria-hidden="true"></canvas>
+  <!-- Mesma casca das outras telas: cabecalho e botoes fixos, e so' a
+       lista de chefes rola. Antes era um empilhamento livre que
+       transbordava em janela pequena. -->
+  <div class="mn-palco">
+    <header class="mn-cabecalho">
+      <span class="mn-ornamento" aria-hidden="true">
+        <i class="mn-orn-linha"></i><i class="mn-orn-losango"></i><i class="mn-orn-linha"></i>
+      </span>
+      <h1 class="br-title">MODO CHEFÃO</h1>
+      <p class="br-sub"><i class="mn-leg-linha"></i><span>BOSS RUSH · DESAFIO EXTREMO</span><i class="mn-leg-linha"></i></p>
+    </header>
+
+    <div class="mn-rolavel">
+      <p class="br-chamada">Enfrente os chefões em sequência. Sem ondas normais.</p>
+      <div class="br-boss-list" id="br-boss-list"></div>
+      <p class="br-dica">Derrote um chefe na campanha normal para desbloqueá-lo aqui</p>
+    </div>
+
+    <footer class="mn-rodape">
+      <button class="mn-btn mn-btn-principal" id="br-start-btn" onclick="startBossRush()">INICIAR</button>
+      <button class="mn-btn" onclick="showScreen('main-menu')">VOLTAR</button>
+    </footer>
   </div>
 </div>
 <div class="br-hud" id="br-hud"></div>
@@ -5927,7 +6652,9 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
   'use strict';
 
   const DEFAULT_SCREENS=[
-    'main-menu','play-menu','pause-menu','shop','gameover','char-select',
+    // 'mode-menu' e' a entrada da campanha: escolher solo ou cooperativo
+    // antes da dificuldade. Sem estar nesta lista a tela nunca aparece.
+    'main-menu','mode-menu','play-menu','pause-menu','shop','gameover','char-select',
     'temple-screen','hub-screen','collection-screen','bossrush-screen',
     'dungeon-screen','settings-screen'
   ];
@@ -5964,8 +6691,8 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
 </script>
 <script src="src/core/save-system.js"></script>
 <script src="src/core/run-stats-system.js?v=20260905-postrun3"></script>
-<script src="src/progression/achievement-data.js?v=20260904-achievements1"></script>
-<script src="src/progression/achievement-system.js?v=20260905-achievements3"></script>
+<script src="src/progression/achievement-data.js?v=20260905-dungeon-off"></script>
+<script src="src/progression/achievement-system.js?v=20260905-dungeon-off"></script>
 <script src="src/ui/post-run-system.js?v=20260905-postrun6"></script>
 <script src="src/camp/meta-progression-system.js?v=20260826-camp-progression"></script>
   <script>
@@ -10186,7 +10913,7 @@ function drawPetSprite(c, petId, x, y, flipX, now){
 }
 
 </script>
-  <script src="src/ui/menu-codex-system.js?v=20260904-blessings-v4"></script>
+  <script src="src/ui/menu-codex-system.js?v=20260905-dungeon-off"></script>
   <script src="src/campaign/boss-data.js"></script>
   <script src="src/campaign/boss-rush-system.js"></script>
   <script src="src/classes/necromancer/necromancer-data.js?v=20260825-reanimation"></script>
@@ -10395,11 +11122,11 @@ function openCampaignSetup(){
   if(raf){ cancelAnimationFrame(raf); raf=null; }
   if(typeof cleanupCampaignRuntime==='function')cleanupCampaignRuntime('campaign-setup');
   closeCampaignChapterOverlay();
+  // Jogar abre primeiro o MODO DE JOGO; a dificuldade e' a tela seguinte.
   resetBossRushState(false);
   state='menu';
-  showScreen('play-menu');
-  selectMode(1);
-  selectDiff('medium');
+  showScreen('mode-menu');
+  buildModeMenu();
 }
 
 function openBossRushMenu(){
@@ -10410,6 +11137,7 @@ function openBossRushMenu(){
   state='menu';
   showScreen('bossrush-screen');
   buildBossRushScreen();
+  mnParticulas('part-bossrush-screen',MN_PALETAS.chefao);
 }
 
 function cancelCharSelect(){
@@ -10420,98 +11148,188 @@ function cancelCharSelect(){
     return;
   }
   showScreen('play-menu');
+  buildDiffMenu();
+}
+
+/* ══ TELA DE HEROIS ══
+   Uma tela so'. Escolher um heroi nao abre outra janela: desce uma ABA
+   com a ficha dele, logo abaixo da grade. Os cinco continuam visiveis,
+   entao da' para comparar sem ir e voltar. */
+
+const CS_CLASSES=['mage','warrior','archer','viking','necromancer'];
+let csHeroiEscolhido=null;
+let csJogadorAtual=1;
+let csBgAtual='a';
+
+/* Troca o fundo com cruzamento. Duas camadas alternadas: a escondida
+   recebe a imagem e so' entao sobe o alpha — com uma so' a troca piscaria. */
+function csTrocarFundo(classe){
+  const a=document.getElementById('cs-bg-a'), b=document.getElementById('cs-bg-b');
+  if(!a||!b)return;
+  const entra=csBgAtual==='a'?b:a, sai=csBgAtual==='a'?a:b;
+  const url=`assets/heroes/bg-${classe}.jpg`;
+  const img=new Image();
+  img.onload=()=>{
+    entra.style.backgroundImage=`url("${url}")`;
+    entra.classList.add('ativa');
+    sai.classList.remove('ativa');
+    csBgAtual=csBgAtual==='a'?'b':'a';
+  };
+  img.src=url;
+}
+
+/* Um laco de animacao por canvas. Para sozinho quando o elemento sai do
+   documento, entao reconstruir a tela nao deixa lacos orfaos rodando. */
+/* Cada canvas guarda a "geracao" do laco que o desenha. Ao iniciar um
+   novo, a geracao muda e o laco antigo se encerra sozinho no proximo
+   quadro. Sem isto, escolher heróis em sequencia deixava um laco vivo por
+   clique — cinco cliques, cinco lacos desenhando no MESMO canvas e
+   brigando entre si, o que fazia o retrato tremer. */
+let csGeracao=0;
+function csAnimarRetrato(canvas, classe, atacando, fill){
+  if(!canvas)return;
+  const minha=++csGeracao;
+  canvas.dataset.geracao=String(minha);
+  let jaApareceu=false;
+  (function quadro(){
+    if(!canvas.isConnected)return;
+    if(canvas.dataset.geracao!==String(minha))return;   // outro laco assumiu
+    /* Tela escondida: PARA — mas so' DEPOIS de ter aparecido uma vez.
+       Sem parar, os cinco retratos seguiam desenhando em canvas invisivel
+       para sempre depois de uma unica visita: cinco desenhos de sprite por
+       quadro, inclusive durante a partida, competindo com o laco do jogo.
+       E o "depois de ter aparecido" nao e' detalhe: buildCharSelectUI cria
+       os cartoes ANTES do showScreen, entao no primeiro quadro a tela
+       ainda esta' oculta — um guarda simples matava os cinco lacos ali
+       mesmo e o retrato nunca animava. Parar e' seguro porque os dois
+       caminhos que abrem esta tela (goCharSelect e startBossRush)
+       reconstroem os cartoes antes de mostra-la. */
+    const visivel = canvas.offsetParent!==null;
+    if(visivel) jaApareceu=true;
+    if(jaApareceu && !visivel) return;
+    if(!visivel){ requestAnimationFrame(quadro); return; }
+    const c=canvas.getContext('2d');
+    c.clearRect(0,0,canvas.width,canvas.height);
+    const t=Date.now();
+    if(typeof drawHeroPortrait==='function'){
+      const set=(typeof HERO_IMG_SETS!=='undefined')?HERO_IMG_SETS[classe]:null;
+      const nAtk=(set&&set.down&&set.down.atk&&set.down.atk.length)||6;
+      atacando()
+        ? drawHeroPortrait(canvas,classe,'atkFrame',Math.floor(t/110)%nAtk,fill)
+        : drawHeroPortrait(canvas,classe,'walkFrame',Math.floor(t/300)%6,fill);
+    }
+    requestAnimationFrame(quadro);
+  })();
 }
 
 function buildCharSelectUI(playerIdx){
-  document.getElementById('cs-sub-label').textContent = gameMode===2
-    ? `— Jogador ${playerIdx} · ${playerIdx===1?'WASD':'Setas'} —`
-    : '— Escolha sua classe —';
-  const row=document.getElementById('cs-cards-row');
-  row.innerHTML='';
-  const classes=['mage','warrior','archer','viking','necromancer'];
-  const cur = playerIdx===1 ? selectedClass.p1 : selectedClass.p2;
-  classes.forEach(cid=>{
+  csJogadorAtual=playerIdx;
+  csHeroiEscolhido=null;
+
+  document.getElementById('cs-sub-texto').textContent = gameMode===2
+    ? `JOGADOR ${playerIdx} · ${playerIdx===1?'WASD':'SETAS'}`
+    : 'ENCONTRE SEU ESTILO';
+
+  const grade=document.getElementById('cs-cards-row');
+  grade.innerHTML='';
+  const anterior = playerIdx===1 ? selectedClass.p1 : selectedClass.p2;
+
+  CS_CLASSES.forEach(cid=>{
     const def=CLASS_DEFS[cid];
-    const card=document.createElement('div');
-    card.className=`cs-card ${cid}${cur===cid?' selected':''}`;
-    card.dataset.cid=cid;
-    // mini preview canvas
-    const previewId=`cs-prev-${cid}`;
-    // stat bars
-    const sb=(label,val)=>`<div class="cs-stat-row"><span class="cs-stat-label">${label}</span><div class="cs-stat-bar"><div class="cs-stat-fill" style="width:${val}%"></div></div></div>`;
-    card.innerHTML=`
-      <div class="cs-preview"><canvas id="${previewId}" width="80" height="80"></canvas></div>
-      <div class="cs-class-badge">${def.badge}</div>
-      <div class="cs-class-name">${def.name}</div>
-      <div class="cs-weapon-tag">⚔ ${def.weapon}</div>
-      <div class="cs-desc">${def.desc}</div>
-      <div class="cs-stats">
-        ${sb('VIDA',def.stats.vida)}
-        ${sb('DANO',def.stats.dano)}
-        ${sb('VELOC',def.stats.veloc)}
-        ${sb('CRÍTICO',def.stats.crit)}
-      </div>
-      <div class="cs-ability-box">
-        <div class="cs-ability-name">◆ ${def.ability}</div>
-        <div class="cs-ability-desc">${def.abilityDesc}</div>
-      </div>
-      <div class="cs-selected-label">SELECIONADO ✓</div>`;
-    card.onclick=()=>{
-      if(playerIdx===1) selectedClass.p1=cid; else selectedClass.p2=cid;
-      row.querySelectorAll('.cs-card').forEach(c=>c.classList.remove('selected'));
-      card.classList.add('selected');
-    };
-    row.appendChild(card);
-    // Animate preview with real WIZ sprite + class palette
-    const CS_FILL=0.82;   // folga no medalhao do card (1 = preenche tudo)
-    const palLookup = {PAL_WIZARD, PAL_WARRIOR_P, PAL_ARCHER_P, PAL_VIKING_P, PAL_NECROMANCER};
-    requestAnimationFrame(function animate(){
-      const cv=document.getElementById(previewId);
-      if(!cv) return;
-      const c2d=cv.getContext('2d');
-      c2d.clearRect(0,0,80,80);
-      const pal=palLookup[def.previewPalKey]||PAL_WIZARD;
-      const t=Date.now();
-      // Pick idle or gentle walk frame
-      const pvCls={PAL_WIZARD:'mage',PAL_WARRIOR_P:'warrior',PAL_ARCHER_P:'archer',PAL_VIKING_P:'viking',PAL_NECROMANCER:'necromancer'}[def.previewPalKey]||'mage';
-      // Arte nova (PNG): andando sempre; se o card estiver selecionado, ataca.
-      if(typeof drawHeroPortrait==='function'){
-        const sel=card.classList.contains('selected');
-        const nAtk=(HERO_IMG_SETS[pvCls]&&HERO_IMG_SETS[pvCls].down.atk.length)||6;
-        const ok=sel
-          ? drawHeroPortrait(cv,pvCls,'atkFrame',Math.floor(t/110)%nAtk,CS_FILL)
-          : drawHeroPortrait(cv,pvCls,'walkFrame',Math.floor(t/300)%6,CS_FILL);
-        if(ok){ requestAnimationFrame(animate); return; }   // segue animando!
-      }
-      const fi=Math.floor(t/350)%3; // 0,1,2 walk cycle
-      const sprite=WIZ.down[fi];
-      // Draw scaled 2× into the 80×80 canvas centred
-      const PX_SAVE=PX;
-      // temporarily draw at 2px per pixel
-      const cellW=16, cellH=(sprite.length);
-      const offX=Math.floor((80-cellW*2)/2);
-      const offY=Math.floor((80-cellH*2)/2);
-      for(let row2=0;row2<sprite.length;row2++){
-        const rowStr=sprite[row2];
-        for(let col=0;col<rowStr.length;col++){
-          const ch=rowStr[col];
-          if(ch===' ') continue;
-          const col2=pal[ch];
-          if(!col2) continue;
-          c2d.fillStyle=col2;
-          c2d.fillRect(offX+col*2, offY+row2*2, 2, 2);
-        }
-      }
-      // Weapon glow overlay
-      const glowCol=def.color;
-      c2d.save(); c2d.globalAlpha=0.18+0.08*Math.sin(t*0.005);
-      c2d.fillStyle=glowCol;
-      c2d.beginPath(); c2d.arc(40,40,36,0,Math.PI*2); c2d.fill();
-      c2d.restore();
-      requestAnimationFrame(animate);
+    const cartao=document.createElement('div');
+    cartao.className=`cs-heroi ${cid}`;
+    cartao.style.setProperty('--cc', def.color);
+    cartao.dataset.cid=cid;
+    cartao.tabIndex=0;
+    cartao.setAttribute('role','option');
+    cartao.setAttribute('aria-selected','false');
+    cartao.setAttribute('aria-label',`${def.name} — ${def.badge}`);
+    cartao.innerHTML=`
+      <canvas width="110" height="110" aria-hidden="true"></canvas>
+      <span class="cs-heroi-nome">${def.name}</span>
+      <span class="cs-heroi-badge">${def.badge}</span>`;
+
+    cartao.addEventListener('click',()=>csEscolher(cid));
+    cartao.addEventListener('keydown',e=>{
+      if(e.key==='Enter'||e.key===' '){ e.preventDefault(); csEscolher(cid); }
     });
+    grade.appendChild(cartao);
+
+    // no cartao ele ataca quando esta escolhido; senao, anda
+    csAnimarRetrato(cartao.querySelector('canvas'),cid,()=>cartao.classList.contains('focado'),0.9);
   });
-  document.getElementById('cs-confirm-btn').textContent = (gameMode===2&&playerIdx===1) ? 'JOGADOR 2' : 'INICIAR BATALHA';
+
+  csFecharAba();
+  // Se o jogador ja' tinha uma classe, a tela abre nela; senao, o fundo
+  // mostra o primeiro sem comprometer a escolha.
+  if(anterior&&CLASS_DEFS[anterior]) csEscolher(anterior,true);
+  else csTrocarFundo(CS_CLASSES[0]);
+}
+
+/* Escolher = marcar o cartao, trocar o fundo e DESCER a aba com a ficha. */
+function csEscolher(cid, semAnimarBarras){
+  if(!CLASS_DEFS[cid])return;
+  const def=CLASS_DEFS[cid];
+  csHeroiEscolhido=cid;
+  if(csJogadorAtual===1) selectedClass.p1=cid; else selectedClass.p2=cid;
+
+  const grade=document.getElementById('cs-cards-row');
+  grade.querySelectorAll('.cs-heroi').forEach(c=>{
+    const meu=c.dataset.cid===cid;
+    c.classList.toggle('focado',meu);
+    c.setAttribute('aria-selected', meu?'true':'false');
+  });
+
+  csTrocarFundo(cid);
+  // particulas na cor do heroi, para a tela respirar junto com o fundo
+  if(typeof MenuParticulas!=='undefined'){
+    const cv=document.getElementById('part-char-select');
+    const paleta=[def.color,'#ffffff',def.color];
+    if(cv)MenuParticulas.ligar(cv,paleta); else MenuParticulas.pintar(paleta);
+    MenuParticulas.pintar(paleta);
+  }
+  csPreencherAba(cid,def,semAnimarBarras);
+
+  const aba=document.getElementById('cs-aba');
+  aba.classList.add('aberta');
+
+  const botao=document.getElementById('cs-confirm-btn');
+  botao.disabled=false;
+  botao.textContent=(gameMode===2&&csJogadorAtual===1)?'JOGADOR 2':'INICIAR';
+}
+
+function csFecharAba(){
+  const aba=document.getElementById('cs-aba');
+  if(aba) aba.classList.remove('aberta');
+  const botao=document.getElementById('cs-confirm-btn');
+  if(botao){ botao.disabled=true; botao.textContent='INICIAR'; }
+}
+
+function csPreencherAba(cid,def,semAnimarBarras){
+  const aba=document.getElementById('cs-aba');
+  aba.style.setProperty('--cc',def.color);
+  document.getElementById('cs-det-nome').textContent=def.name;
+  document.getElementById('cs-det-badge').textContent=def.badge;
+  document.getElementById('cs-det-desc').textContent=def.desc;
+  document.getElementById('cs-det-arma').textContent=`⚔ ${def.weapon}`;
+  document.getElementById('cs-det-poder').textContent=def.ability;
+  document.getElementById('cs-det-poder-desc').textContent=def.abilityDesc;
+
+  const ordem=[['VIDA','vida'],['DANO','dano'],['VELOCIDADE','veloc'],['CRÍTICO','crit']];
+  document.getElementById('cs-det-stats').innerHTML=ordem.map(([rotulo,chave])=>{
+    const v=Math.max(0,Math.min(100,Number(def.stats[chave])||0));
+    return `<div class="cs-atributo">
+      <span class="cs-atributo-nome">${rotulo}</span>
+      <div class="cs-atributo-trilho"><div class="cs-atributo-barra" data-valor="${v}"></div></div>
+    </div>`;
+  }).join('');
+
+  // as barras nascem em zero e crescem: o valor e' percebido ao chegar
+  const pintar=()=>aba.querySelectorAll('.cs-atributo-barra')
+    .forEach(b=>{ b.style.width=b.dataset.valor+'%'; });
+  if(semAnimarBarras) pintar(); else requestAnimationFrame(()=>requestAnimationFrame(pintar));
+
+
 }
 
 function confirmCharSelect(){
@@ -10523,17 +11341,279 @@ function confirmCharSelect(){
   }
 }
 
+/* ══ MENUS: MODO DE JOGO e DIFICULDADE ══
+   Eram uma tela so' com tudo empilhado. Agora sao duas, cada uma com um
+   assunto, na mesma linguagem da tela de herois. */
+
+/* Paletas das particulas. Saem das cores dominantes de cada arte, para
+   as motas parecerem poeira DAQUELA cena e nao um efeito generico. */
+const MN_PALETAS={
+  modo:      ['#e8b45c','#ffd8a0','#c8894b'],
+  easy:      ['#7fe3a0','#4fbf7a','#cdf5dc'],
+  medium:    ['#f0c666','#e8a03c','#ffe4ae'],
+  hard:      ['#ff7a5c','#e04030','#ffb6a0'],
+  chefao:    ['#ff5533','#ff9a70','#b81f10'],
+};
+
+function mnParticulas(idCanvas,paleta){
+  if(typeof MenuParticulas==='undefined')return;
+  const cv=document.getElementById(idCanvas);
+  if(cv)MenuParticulas.ligar(cv,paleta);
+}
+
+const MODOS=[
+  {id:1, nome:'Solitário', cor:'#c8a84b', icone:'solo',
+   desc:'Um herói contra as hordas.', linhas:['1 jogador','WASD + Mouse']},
+  {id:2, nome:'Aliança', cor:'#7cc4ff', icone:'dupla',
+   desc:'Dois heróis, cooperativo local.', linhas:['2 jogadores','WASD e Setas']},
+];
+
+const DIFICULDADES=[
+  {id:'easy',   nome:'Aprendiz',  cor:'#5fdc82', icone:'broto',  fundo:'bg-dif-easy',
+   desc:'Para quem está começando.', linhas:['+20% vida','+8% moedas']},
+  {id:'medium', nome:'Guerreiro', cor:'#e8c860', icone:'espada', fundo:'bg-dif-medium',
+   desc:'Equilíbrio perfeito.',      linhas:['Vida padrão','—8% moedas']},
+  {id:'hard',   nome:'Lendário',  cor:'#ff6a55', icone:'cranio', fundo:'bg-dif-hard',
+   desc:'Apenas para os mais corajosos.', linhas:['−15% vida','+22% moedas']},
+];
+
+let difBgAtual='a';
+
+/* ══ ICONES DOS MENUS ══
+   SVG desenhado a mao, no lugar dos sprites de pixel art.
+
+   Por que nao reaproveitei os do jogo: aqueles sao sprites do MUNDO —
+   grade baixa, pensados para 16px dentro da partida. Ampliados no menu
+   eles ficam serrilhados e brigam com a tipografia fina das telas novas.
+   Estes sao vetoriais: traco de espessura constante, cantos arredondados,
+   e escalam em qualquer tamanho.
+
+   Todos usam currentColor, entao herdam a cor da classe/dificuldade do
+   proprio cartao — nenhuma cor fica presa no desenho. */
+const MN_ICONES={
+  /* Solitario: uma silhueta. Cabeca solta do corpo para leitura rapida
+     mesmo em 26px. */
+  solo:`<circle cx="12" cy="7.2" r="3.1"/>
+        <path d="M5.6 20.4c0-3.6 2.9-6 6.4-6s6.4 2.4 6.4 6"/>`,
+  /* Alianca: duas silhuetas, a de tras menor e mais apagada — sugere
+     dupla sem virar borrao. */
+  dupla:`<circle cx="9" cy="7.6" r="2.8"/>
+         <path d="M3.2 20.2c0-3.3 2.6-5.5 5.8-5.5s5.8 2.2 5.8 5.5"/>
+         <circle cx="16.8" cy="8.4" r="2.2" opacity=".62"/>
+         <path d="M14.4 20.2c0-2.6 1.6-4.4 4-4.4 1.5 0 2.7.7 3.4 1.9" opacity=".62"/>`,
+  /* Aprendiz: broto. Curva do caule + duas folhas; nada de arvore
+     detalhada, que some no tamanho pequeno. */
+  broto:`<path d="M12 20.5V11"/>
+         <path d="M12 12.6C12 8.9 9.2 6 5.6 6c0 3.7 2.8 6.6 6.4 6.6z"/>
+         <path d="M12 14.4c0-3 2.3-5.4 5.3-5.4 0 3-2.4 5.4-5.3 5.4z"/>`,
+  /* Guerreiro: espada na diagonal, com guarda e pomo. Diagonal porque
+     na vertical some no meio do circulo. */
+  espada:`<path d="M19.6 4.4 11 13"/>
+          <path d="m17.4 3.1 3.5-.1-.1 3.5"/>
+          <path d="m7.4 16.6 3.9-3.9 2.1 2.1-3.9 3.9z"/>
+          <path d="m6.1 17.9 2.1 2.1"/>
+          <path d="M4.6 19.4 3 21"/>`,
+  /* Lendario: cranio geometrico. Duas orbitas e a mandibula sugerida por
+     tres tracos — reconhecivel sem virar mancha escura. */
+  cranio:`<path d="M12 3c-4.4 0-7.6 3.1-7.6 7.3 0 2.5 1.1 4.2 2.6 5.3v2.6c0 1 .8 1.8 1.8 1.8h6.4c1 0 1.8-.8 1.8-1.8v-2.6c1.5-1.1 2.6-2.8 2.6-5.3C19.6 6.1 16.4 3 12 3z"/>
+          <circle cx="9.1" cy="10.6" r="1.9" fill="currentColor" stroke="none"/>
+          <circle cx="14.9" cy="10.6" r="1.9" fill="currentColor" stroke="none"/>
+          <path d="M10.4 20v-2.4M13.6 20v-2.4"/>`,
+  /* ── Menu principal ── */
+  /* Chama: contorno externo mais a lingua interna. Sem a interna vira uma
+     gota generica no tamanho pequeno. */
+  chama:`<path d="M12.4 2.8c.5 5.8 4.4 7.4 4.4 11.5 0 3-2.1 5.1-4.8 5.1s-4.8-1.9-4.8-4.6c0-1 .3-1.9.8-2.8.1 1.1.7 1.7 1.5 1.7.9 0 1.5-.6 1.5-1.6 0-.8-.5-1.6-.5-3 0-2.4 1.4-4.6 1.9-6.3z"/>
+         <path d="M12.2 11.9c.9 1.4 1.9 2.2 1.9 3.5 0 1.2-.9 2-2.1 2s-2-.8-2-1.8c0-1.3 1.3-2 2.2-3.7z" opacity=".62"/>`,
+  /* Tenda: triangulo externo e a porta em V. */
+  tenda:`<path d="M12 3.4 20.9 20H3.1z"/>
+         <path d="M12 3.4 8.6 20"/>
+         <path d="m12 3.4 3.4 16.6"/>`,
+  /* Livro aberto: duas paginas espelhadas com a lombada no meio. */
+  livro:`<path d="M4 5h4.8c1.6 0 2.9 1 2.9 2.4V20c0-1.1-1.3-2-2.7-2H4z"/>
+         <path d="M20 5h-4.8c-1.6 0-2.9 1-2.9 2.4V20c0-1.1 1.3-2 2.7-2H20z"/>`,
+  /* Portal: arco de entrada com um segundo arco dentro — le' como
+     "descer" mesmo em 20px, que e' o que a Dungeon e'. */
+  portal:`<path d="M5.6 20.4V10.2a6.4 6.4 0 0 1 12.8 0v10.2"/>
+          <path d="M3.4 20.4h17.2"/>
+          <path d="M9.4 20.4v-5.8a2.6 2.6 0 0 1 5.2 0v5.8"/>`,
+  /* Engrenagem: nucleo e oito dentes em traco. Dentes desenhados como
+     linhas, nao como recortes, para nao virar mancha no tamanho pequeno. */
+  engrenagem:`<circle cx="12" cy="12" r="3.1"/>
+              <path d="M12 2.7v2.7M12 18.6v2.7M21.3 12h-2.7M5.4 12H2.7"/>
+              <path d="m18.6 5.4-1.9 1.9M7.3 16.7l-1.9 1.9M18.6 18.6l-1.9-1.9M7.3 7.3 5.4 5.4"/>`,
+  /* Saida: porta aberta a esquerda e a seta indo embora. */
+  saida:`<path d="M14 3.6H5.8c-1 0-1.8.8-1.8 1.8v13.2c0 1 .8 1.8 1.8 1.8H14"/>
+         <path d="M20 12H9.6"/>
+         <path d="m16.8 8.6 3.4 3.4-3.4 3.4"/>`,
+};
+
+/* Devolve o SVG pronto. `tam` e' so' a caixa: o traco acompanha porque
+   vector-effect mantem a espessura ao escalar. */
+function mnIcone(nome,tam){
+  const d=MN_ICONES[nome]||MN_ICONES.espada;
+  return `<svg class="mn-svg" viewBox="0 0 24 24" width="${tam}" height="${tam}"
+    fill="none" stroke="currentColor" stroke-width="1.6"
+    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+}
+
+/* ══ MENU PRINCIPAL ══
+   Os itens sao DADOS, nao HTML solto: o icone sai do mesmo conjunto
+   vetorial das outras telas, o rotulo e a acao ficam lado a lado, e o
+   estado "em foco" tem um dono so'.
+
+   Por que o realce anda: a referencia mostra sempre um item aceso. Com
+   realce so' no :hover, o menu ficava apagado ate' o mouse encostar —
+   e no teclado, invisivel. Aqui o item apontado assume a moldura, e ao
+   tirar o mouse ela volta para o primeiro. */
+/* A acao e' uma funcao, nao um texto: a chamada so' acontece no clique,
+   entao nao importa a ordem em que os modulos foram carregados. */
+const MP_TODOS=[
+  {rotulo:'Jogar',          icone:'chama',      acao:()=>openCampaignSetup()},
+  {rotulo:'Modo Chefão',    icone:'cranio',     acao:()=>openBossRushMenu()},
+  {rotulo:'Acampamento',    icone:'tenda',      acao:()=>CampV2.abrir()},
+  {rotulo:'Códex de Arda',  icone:'livro',      acao:()=>openCollection()},
+  {rotulo:'Dungeon',        icone:'portal',     acao:()=>startDungeonMode(), recurso:'dungeon'},
+  {rotulo:'Configurações',  icone:'engrenagem', acao:()=>openSettings()},
+  {rotulo:'Sair',           icone:'saida',      acao:()=>closeGame(), classe:'mp-sair'},
+];
+
+function mpRealcar(el){
+  if(!el)return;
+  const nav=document.getElementById('mp-menu');
+  if(!nav)return;
+  nav.querySelectorAll('.mp-item').forEach(i=>i.classList.toggle('mp-ativo',i===el));
+}
+
+function buildMainMenu(){
+  const nav=document.getElementById('mp-menu');
+  if(!nav)return;
+  /* Item preso a um recurso desligado nem chega a ser desenhado — botao
+     cinza que nao faz nada seria pior do que nao existir. */
+  const MP_ITENS=MP_TODOS.filter(it=>!it.recurso||window.recursoLigado(it.recurso));
+  nav.innerHTML=MP_ITENS.map((it,i)=>
+    `<button type="button" class="mp-item ${it.classe||''}${i===0?' mp-ativo':''}">`
+    + `<span class="mp-icone">${mnIcone(it.icone,20)}</span>`
+    + `<span class="mp-rotulo">${it.rotulo}</span></button>`).join('');
+
+  const itens=[...nav.querySelectorAll('.mp-item')];
+  itens.forEach((el,i)=>{
+    el.addEventListener('click',()=>MP_ITENS[i].acao());
+    el.addEventListener('mouseenter',()=>mpRealcar(el));
+    el.addEventListener('focus',()=>mpRealcar(el));
+    // Setas percorrem a lista; e' o unico jeito de navegar sem mouse.
+    el.addEventListener('keydown',e=>{
+      if(e.key!=='ArrowDown'&&e.key!=='ArrowUp')return;
+      e.preventDefault();
+      const passo=e.key==='ArrowDown'?1:-1;
+      itens[(i+passo+itens.length)%itens.length].focus();
+    });
+  });
+  nav.addEventListener('mouseleave',()=>mpRealcar(itens[0]));
+}
+
+/* Fundo da tela de dificuldade: mesma tecnica da tela de herois, duas
+   camadas que se cruzam para a troca nao piscar. */
+function difTrocarFundo(arquivo){
+  const a=document.getElementById('dif-bg-a'), b=document.getElementById('dif-bg-b');
+  if(!a||!b)return;
+  const entra=difBgAtual==='a'?b:a, sai=difBgAtual==='a'?a:b;
+  const url=`assets/menu/${arquivo}.jpg`;
+  const img=new Image();
+  img.onload=()=>{
+    entra.style.backgroundImage=`url("${url}")`;
+    entra.classList.add('ativa'); sai.classList.remove('ativa');
+    difBgAtual=difBgAtual==='a'?'b':'a';
+  };
+  img.src=url;
+}
+
+/* ── MODO DE JOGO ── */
+function buildModeMenu(){
+  const alvo=document.getElementById('mode-cards');
+  if(!alvo)return;
+  alvo.innerHTML=MODOS.map(m=>`
+    <div class="mn-cartao" data-modo="${m.id}" style="--cc:${m.cor}" tabindex="0"
+         role="option" aria-selected="false" aria-label="${m.nome}">
+      <div class="mn-cartao-fundo" style="background-image:url('assets/menu/bg-modo-jogo.jpg')"></div>
+      <div class="mn-cartao-veu"></div>
+      <span class="mn-cartao-icone">${mnIcone(m.icone,26)}</span>
+      <span class="mn-cartao-nome">${m.nome}</span>
+      <p class="mn-cartao-desc">${m.desc}</p>
+      <div class="mn-cartao-linhas">
+        ${m.linhas.map((l,i)=>`<span class="mn-cartao-linha${i?' neutra':''}">${l}</span>`).join('')}
+      </div>
+    </div>`).join('');
+
+  alvo.querySelectorAll('.mn-cartao').forEach(c=>{
+    const escolher=()=>selectMode(Number(c.dataset.modo));
+    c.addEventListener('click',escolher);
+    c.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();escolher();} });
+  });
+  selectMode(_selMode||1);
+  mnParticulas('part-mode-menu',MN_PALETAS.modo);
+}
+
 function selectMode(n){
   _selMode=n;
-  document.getElementById('mode-1p').classList.toggle('selected',n===1);
-  document.getElementById('mode-2p').classList.toggle('selected',n===2);
-  atualizarAmeaca();
+  document.querySelectorAll('#mode-cards .mn-cartao').forEach(c=>{
+    const meu=Number(c.dataset.modo)===n;
+    c.classList.toggle('selecionado',meu);
+    c.setAttribute('aria-selected',meu?'true':'false');
+  });
 }
+
+function confirmarModo(){
+  gameMode=_selMode;
+  showScreen('play-menu');
+  buildDiffMenu();
+}
+
+function voltarAoModo(){
+  showScreen('mode-menu');
+  buildModeMenu();
+}
+
+/* ── DIFICULDADE ── */
+function buildDiffMenu(){
+  const alvo=document.getElementById('diff-cards');
+  if(!alvo)return;
+  alvo.innerHTML=DIFICULDADES.map(d=>`
+    <div class="mn-cartao" data-dif="${d.id}" style="--cc:${d.cor}" tabindex="0"
+         role="option" aria-selected="false" aria-label="${d.nome}">
+      <div class="mn-cartao-fundo" style="background-image:url('assets/menu/${d.fundo}.jpg')"></div>
+      <div class="mn-cartao-veu"></div>
+      <span class="mn-cartao-icone">${mnIcone(d.icone,26)}</span>
+      <span class="mn-cartao-nome">${d.nome}</span>
+      <p class="mn-cartao-desc">${d.desc}</p>
+      <div class="mn-cartao-linhas">
+        ${d.linhas.map(l=>`<span class="mn-cartao-linha">${l}</span>`).join('')}
+      </div>
+    </div>`).join('');
+
+  alvo.querySelectorAll('.mn-cartao').forEach(c=>{
+    const escolher=()=>selectDiff(c.dataset.dif);
+    c.addEventListener('click',escolher);
+    c.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();escolher();} });
+  });
+  selectDiff(_selDiff||'medium');
+}
+
 function selectDiff(d){
   _selDiff=d;
-  ['easy','medium','hard'].forEach(x=>document.getElementById('diff-'+x).classList.toggle('selected',x===d));
-  atualizarAmeaca();
+  difficulty=d;
+  document.querySelectorAll('#diff-cards .mn-cartao').forEach(c=>{
+    const meu=c.dataset.dif===d;
+    c.classList.toggle('selecionado',meu);
+    c.setAttribute('aria-selected',meu?'true':'false');
+  });
+  const ficha=DIFICULDADES.find(x=>x.id===d);
+  if(ficha)difTrocarFundo(ficha.fundo);
+  // as motas acompanham a dificuldade: verde, dourado ou vermelho
+  mnParticulas('part-play-menu',MN_PALETAS[d]||MN_PALETAS.medium);
+  if(typeof MenuParticulas!=='undefined')MenuParticulas.pintar(MN_PALETAS[d]||MN_PALETAS.medium);
+  if(typeof atualizarAmeaca==='function')atualizarAmeaca();
 }
+
 function atualizarAmeaca(){
   const bloco=document.getElementById('threat-block');
   const sistema=typeof BossModifierSystem!=='undefined'?BossModifierSystem:null;
@@ -18788,6 +19868,7 @@ function templeChoose(choice){
   <script src="src/campaign/boss-modifiers.js?v=20260904-threat1"></script>
   <script src="src/ui/campaign-overlays.js"></script>
   <script src="src/ui/boss-hud.js"></script>
+  <script src="src/ui/menu-particles.js?v=20260905-menu1"></script>
   <script src="src/ui/combo-hud.js?v=20260905-combo1"></script>
   <script>
 // GAME LOOP
@@ -19704,7 +20785,9 @@ InputManager.registerScope('campaign',{
 (function initMenuParticles(){
   const menuEl = document.getElementById('main-menu');
   const mc = document.createElement('canvas');
-  mc.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;';
+  // z-index 2: acima do veu e abaixo do painel, como as particulas das
+  // outras telas de menu. Em 0 o veu apagava as estrelas.
+  mc.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:2;';
   menuEl.appendChild(mc);
   const mctx = mc.getContext('2d');
   let mraf = null;
@@ -19821,6 +20904,7 @@ loadPersistentData();
 activeCookingBuffs=CampProgressionSystem.preparedMeals()
   .filter(meal=>COOKING_RECIPES.some(recipe=>recipe.id===meal.id))
   .slice(0,CampProgressionSystem.mealLimit());
+buildMainMenu();
 showScreen('main-menu');
 selectMode(1); selectDiff('medium');
 
@@ -19835,8 +20919,8 @@ GameRuntime.onSuspend(()=>{
 
 </script>
   <script src="src/core/audio-system.js"></script>
-  <script src="src/ui/settings-system.js?v=20260905-juice1"></script>
-    <script src="src/dungeon/dungeon-system.js"></script>
+  <script src="src/ui/settings-system.js?v=20260905-dungeon-off"></script>
+    <script src="src/dungeon/dungeon-system.js?v=20260905-dungeon-off"></script>
   <script>
 // SISTEMA DE PESCA — Estilo Stardew Valley
 // ═══════════════════════════════════════════════════════
@@ -21108,12 +22192,11 @@ window.drawMenuHero=function(classId){
     drawHeroOnCanvas(cv,{classId:cid,direction:'down',frameIndex:0,pixelSize:PXH});
   }catch(e){}
 };
-window.drawMenuHero();
-// mantem a vitrine animada enquanto o menu estiver visivel
-setInterval(()=>{
-  const cv=document.getElementById('hd-hero');
-  if(cv&&cv.offsetParent!==null) window.drawMenuHero();
-}, 120);
+/* A vitrine do heroi saiu do menu: na arte nova o mago ja' esta' na cena,
+   e um sprite flutuando por cima brigaria com ela. A funcao continua —
+   settings-system.js a chama ao trocar de classe e ela e' inofensiva sem
+   o canvas — mas o timer de 120ms que so' redesenhava #hd-hero nao tem
+   mais o que redesenhar. */
 
 
 
