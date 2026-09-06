@@ -77,6 +77,18 @@ includesAll(settings,[
   'function closeSettings(){ GameSettings.close(); }',
 ], 'configuracoes e controles');
 
+includesAll(html,[
+  '--settings-title-size:18px',
+  '--settings-text-size:13px',
+  '--settings-control-size:11px',
+  '.settings-shell button,.settings-shell input,.settings-shell select,.settings-shell output{font-family:inherit}',
+  '.settings-card-copy h2,.settings-control-head h2,.settings-panel>h2,#settings-mobile-wrap>h2,.settings-skin-head h2',
+  '.settings-row{display:grid;',
+  '#settings-mobile-card>h3',
+  '<h2 class="settings-section-title">Efeitos de combate</h2>',
+], 'tipografia padronizada das Configuracoes');
+assert(!html.includes('<h2 style="margin-top:18px">Efeitos de combate</h2>'),'titulo de efeitos voltou a depender de estilo inline incompleto');
+
 const menuAt=html.indexOf('<script src="src/ui/menu-codex-system.js');
 const bossDataAt=html.indexOf('<script src="src/campaign/boss-data.js"></script>');
 const audioAt=html.indexOf('<script src="src/core/audio-system.js"></script>');

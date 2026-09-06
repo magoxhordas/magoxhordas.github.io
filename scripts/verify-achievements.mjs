@@ -7,6 +7,7 @@ const read=file=>fs.readFileSync(path.join(root,file),'utf8').replace(/\r\n/g,'\
 const dataSource=read('src/progression/achievement-data.js');
 const statsSource=read('src/core/run-stats-system.js');
 const systemSource=read('src/progression/achievement-system.js');
+const styleSource=read('src/progression/achievements.css');
 const html=read('index.html');
 let checks=0;
 function assert(condition,message){if(!condition)throw new Error(`FALHA: ${message}`);checks++;}
@@ -14,6 +15,11 @@ function assert(condition,message){if(!condition)throw new Error(`FALHA: ${messa
 for(const [name,source] of [['achievement-data',dataSource],['run-stats',statsSource],['achievement-system',systemSource]])new vm.Script(source,{filename:name});
 for(const file of ['src/progression/achievement-data.js','src/progression/achievement-system.js','src/progression/achievements.css'])assert(html.includes(file),`index.html nao carrega ${file}`);
 assert(html.includes('data-settings-tab="achievements"')&&html.includes('id="settings-achievements-root"'),'quinta aba de Conquistas nao esta nas Configuracoes');
+assert(systemSource.includes('function orderedEntries()')&&systemSource.includes('<div class="ach-list">'),'lista ordenada de Conquistas foi removida');
+for(const removed of ['ach-tools','ach-search-input','ach-category','ach-sort','data-ach-status']){
+  assert(!systemSource.includes(removed),`menu removido de Conquistas voltou: ${removed}`);
+}
+assert(!styleSource.includes('.ach-tools')&&!styleSource.includes('.ach-search'),'CSS antigo do menu de filtros ainda esta carregado');
 
 const storage=new Map();
 const sandbox={console,Date,JSON,structuredClone,GameSettings:{getProgressSnapshot:()=>({})},PET_DEFS:{wolf:{},cat:{}}};

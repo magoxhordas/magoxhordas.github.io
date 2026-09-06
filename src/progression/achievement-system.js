@@ -23,7 +23,6 @@
   let toastBusy=false;
   let toastGeneration=0;
   let persistTimer=null;
-  let filters={status:'all',category:'all',search:'',sort:'default'};
 
   function blank(){return{version:VERSION,achievements:{},counters:{victories:0,classKills:{mage:0,archer:0,viking:0,warrior:0,necromancer:0},bossKills:0,dungeonBossKills:0,fish:0,crops:0}};}
   function normalize(raw){
@@ -154,27 +153,17 @@
   function viewEntries(){return catalog().map(def=>({...def,...entry(def.id)}));}
   function summary(){const entries=viewEntries(),unlocked=entries.filter(item=>item.unlocked).length;return{unlocked,total:entries.length,percent:entries.length?Math.round(unlocked/entries.length*100):0};}
   function formatDate(value){if(!value)return'';try{return new Intl.DateTimeFormat('pt-BR').format(new Date(value));}catch(_){return'';}}
-  function visibleEntries(){
-    const search=filters.search.trim().toLocaleLowerCase('pt-BR');let items=viewEntries().filter(item=>{
-      if(filters.status==='unlocked'&&!item.unlocked)return false;if(filters.status==='locked'&&item.unlocked)return false;if(filters.status==='secret'&&!item.hidden)return false;if(filters.category!=='all'&&item.category!==filters.category)return false;
-      const secret=item.hidden&&!item.unlocked;const searchable=secret?'conquista secreta continue explorando':`${item.name} ${item.description}`;
-      if(search&&!searchable.toLocaleLowerCase('pt-BR').includes(search))return false;return true;
-    });
+  function orderedEntries(){
+    const items=viewEntries();
     const progress=item=>item.totalProgress?item.currentProgress/item.totalProgress:0;
     items.sort((a,b)=>{
-      if(filters.sort==='az')return a.name.localeCompare(b.name,'pt-BR');if(filters.sort==='recent')return String(b.unlockedAt||'').localeCompare(String(a.unlockedAt||''));if(filters.sort==='progress')return progress(b)-progress(a)||a.order-b.order;
       const rank=item=>item.unlocked?0:item.hidden?3:progress(item)>0?1:2;return rank(a)-rank(b)||(b.unlockedAt||'').localeCompare(a.unlockedAt||'')||progress(b)-progress(a)||a.order-b.order;
     });return items;
   }
   function renderSettings(){
     if(typeof document==='undefined')return;const root=document.getElementById('settings-achievements-root');if(!root)return;const info=summary();
-    const categoryOptions=Object.entries(global.AchievementData?.CATEGORIES||{}).map(([id,name])=>`<option value="${id}" ${filters.category===id?'selected':''}>${name}</option>`).join('');
     root.innerHTML=`<header class="ach-head"><div><h2>CONQUISTAS</h2><p>Desafios de jornada, domínio e descoberta.</p></div><strong>${info.unlocked} / ${info.total}</strong><span>${info.percent}% CONCLUÍDO</span><div class="ach-completion"><i style="width:${info.percent}%"></i></div></header>
-      <div class="ach-tools"><div class="ach-statuses">${[['all','Todas'],['unlocked','Desbloqueadas'],['locked','Bloqueadas'],['secret','Secretas']].map(([id,label])=>`<button class="${filters.status===id?'active':''}" data-ach-status="${id}">${label}</button>`).join('')}</div><label class="ach-search"><span>⌕</span><input id="ach-search-input" type="search" placeholder="Buscar conquista..." value="${filters.search.replace(/"/g,'&quot;')}"></label><select id="ach-category"><option value="all">Todas as categorias</option>${categoryOptions}</select><select id="ach-sort"><option value="default">Padrão</option><option value="recent" ${filters.sort==='recent'?'selected':''}>Recentes</option><option value="progress" ${filters.sort==='progress'?'selected':''}>Progresso</option><option value="az" ${filters.sort==='az'?'selected':''}>A–Z</option></select></div>
-      <div class="ach-list">${visibleEntries().map(item=>{const secret=item.hidden&&!item.unlocked,name=secret?'Conquista Secreta':item.name,desc=secret?'Continue explorando para descobrir.':item.description,pct=Math.round(item.currentProgress/item.totalProgress*100);return`<article class="ach-row ${item.unlocked?'unlocked':'locked'} ${secret?'secret':''}"><span class="ach-icon" aria-hidden="true">${secret?'▣':item.icon}</span><div class="ach-copy"><h3>${name}</h3><p>${desc}</p>${!item.unlocked&&item.totalProgress>1&&!secret?`<div class="ach-progress"><i style="width:${pct}%"></i></div><small>${Math.floor(item.currentProgress)} / ${Math.floor(item.totalProgress)}</small>`:''}</div><div class="ach-state">${item.unlocked?`<b>✓ DESBLOQUEADA</b><time>${formatDate(item.unlockedAt)}</time>`:'<b>▣ BLOQUEADA</b>'}</div></article>`;}).join('')||'<p class="ach-empty">Nenhuma conquista corresponde aos filtros.</p>'}</div>`;
-    root.querySelectorAll('[data-ach-status]').forEach(button=>button.onclick=()=>{filters.status=button.dataset.achStatus;renderSettings();});
-    root.querySelector('#ach-search-input').oninput=event=>{filters.search=event.target.value;renderSettings();document.getElementById('ach-search-input')?.focus();};
-    root.querySelector('#ach-category').onchange=event=>{filters.category=event.target.value;renderSettings();};root.querySelector('#ach-sort').onchange=event=>{filters.sort=event.target.value;renderSettings();};
+      <div class="ach-list">${orderedEntries().map(item=>{const secret=item.hidden&&!item.unlocked,name=secret?'Conquista Secreta':item.name,desc=secret?'Continue explorando para descobrir.':item.description,pct=Math.round(item.currentProgress/item.totalProgress*100);return`<article class="ach-row ${item.unlocked?'unlocked':'locked'} ${secret?'secret':''}"><span class="ach-icon" aria-hidden="true">${secret?'▣':item.icon}</span><div class="ach-copy"><h3>${name}</h3><p>${desc}</p>${!item.unlocked&&item.totalProgress>1&&!secret?`<div class="ach-progress"><i style="width:${pct}%"></i></div><small>${Math.floor(item.currentProgress)} / ${Math.floor(item.totalProgress)}</small>`:''}</div><div class="ach-state">${item.unlocked?`<b>✓ DESBLOQUEADA</b><time>${formatDate(item.unlockedAt)}</time>`:'<b>▣ BLOQUEADA</b>'}</div></article>`;}).join('')||'<p class="ach-empty">Nenhuma conquista disponível.</p>'}</div>`;
   }
   function debugUnlock(id){return unlock(id);}
   function debugSetProgress(id,value){return setProgress(id,value);}
