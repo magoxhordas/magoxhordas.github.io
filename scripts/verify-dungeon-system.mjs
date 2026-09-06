@@ -25,7 +25,7 @@ function between(start,end,context){
 }
 
 new vm.Script(source,{filename:'src/dungeon/dungeon-system.js'});
-const tag='<script src="src/dungeon/dungeon-system.js"></script>';
+const tag='<script src="src/dungeon/dungeon-system.js';
 const tagAt=html.indexOf(tag);
 assert(tagAt>=0,'index.html nao carrega o modulo da Dungeon');
 assert(!html.includes('// DUNGEON MODE — v3: responsivo + visual por arma'),'implementacao da Dungeon ainda esta inline');

@@ -1,0 +1,177 @@
+/* ══════════════════════════════════════════════════════
+   PARTICULAS DOS MENUS
+
+   As telas de menu sao imagens paradas com texto por cima. Um punhado de
+   motas subindo devagar, nas cores do proprio fundo, tira o ar de cartaz
+   sem competir com a leitura.
+
+   Regras que orientam o modulo:
+     - a paleta vem de FORA (a tela diz as suas cores), entao trocar o
+       fundo troca as particulas junto;
+     - o laco so' roda com a tela visivel — menu escondido nao gasta
+       quadro;
+     - respeita prefers-reduced-motion e a intensidade de efeitos que o
+       jogador escolheu nas configuracoes.
+
+   Script classico, como o resto do projeto.
+   ══════════════════════════════════════════════════════ */
+(function(global){
+  'use strict';
+
+  const CONFIG={
+    /* Quantidade por 100 mil pixels de tela: assim uma janela grande nao
+       fica vazia nem uma pequena fica poluida. */
+    DENSIDADE:7.5,
+    MAX:110,
+    /* Motas pequenas e lentas de proposito: e' atmosfera, nao chuva.
+       A primeira medicao com densidade 2.6 dava ~12 motas numa janela de
+       700x680 — quase invisiveis. */
+    RAIO:[0.9,2.9],
+    /* TEMPO PARA ATRAVESSAR A TELA INTEIRA, de baixo para cima.
+       Antes isto era velocidade fixa (4 a 15 px/s) com vida curta (4 a 11
+       s). Na conta: uma mota subia no MAXIMO 165px — e tipicamente uns
+       60 — numa tela de 600px de altura, e morria ali. Passados uns dez
+       segundos, TODAS tinham renascido no rodape e nenhuma chegava perto
+       do meio: os quatro quintos de cima ficavam vazios e o pe' da tela
+       virava um amontoado. Amarrar o tempo a ALTURA faz a travessia valer
+       em qualquer janela, do notebook ao monitor grande. */
+    TRAVESSIA:[14000,30000],  // ms de ponta a ponta
+    BALANCO:[6,20],       // amplitude do vaivem horizontal
+    ALPHA_MAX:0.62,
+  };
+
+  const acaso=(a,b)=>a+Math.random()*(b-a);
+
+  let canvas=null, ctx=null, laco=null;
+  let particulas=[], cores=['#ffffff'], ultimo=0;
+
+  function intensidade(){
+    try{
+      const p=(typeof global.GameSettings!=='undefined'&&global.GameSettings.getCombatFx)
+        ?global.GameSettings.getCombatFx():null;
+      if(p&&p.reduzirMovimento)return 0;
+      return ({baixa:0.6,normal:1,alta:1.3})[p&&p.intensidade]||1;
+    }catch(_){ return 1; }
+  }
+
+  function querMenosMovimento(){
+    try{ return global.matchMedia&&global.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+    catch(_){ return false; }
+  }
+
+  function nova(l,a,nascendoNoMeio){
+    const travessia=acaso(CONFIG.TRAVESSIA[0],CONFIG.TRAVESSIA[1]);
+    const alt=Math.max(1,a);
+    // ao ligar, espalha pela tela inteira; depois nascem logo abaixo da borda
+    const y=nascendoNoMeio?Math.random()*alt:alt+acaso(2,40);
+    return {
+      x:Math.random()*l,
+      y,
+      r:acaso(CONFIG.RAIO[0],CONFIG.RAIO[1]),
+      // velocidade DERIVADA da altura: percorre a tela toda dentro da vida
+      sobe:(alt+40)/(travessia/1000),
+      balanco:acaso(CONFIG.BALANCO[0],CONFIG.BALANCO[1]),
+      fase:Math.random()*Math.PI*2,
+      cor:cores[Math.floor(Math.random()*cores.length)],
+      /* Quem nasce espalhado tira a IDADE da altura em que apareceu: uma
+         mota no meio da tela ja' andou metade do caminho. Assim o
+         aparecer-e-sumir bate com a posicao e as mortes ficam escalonadas
+         sozinhas, sem um piscar coletivo alguns segundos depois. */
+      nasceu:performance.now()-(nascendoNoMeio?travessia*(1-y/alt):0),
+      vida:travessia,
+    };
+  }
+
+  /* UMA fonte de medida so'.
+     A versao anterior dimensionava o buffer por getBoundingClientRect()
+     (tamanho VISUAL) e desenhava por clientWidth/clientHeight (tamanho de
+     LAYOUT). Quando os dois diferiam — e diferem, porque o jogo escala a
+     interface — o desenho saia num espaco menor e era ESTICADO ate' o
+     buffer, e o clearRect nao alcancava a faixa restante: cada mota virava
+     um risco curvo que nunca era apagado.
+     clientWidth/clientHeight sao o espaco em que o canvas de fato desenha,
+     entao sao eles que mandam aqui e no laco. */
+  function medida(){
+    return {l:Math.max(1,canvas.clientWidth||0), a:Math.max(1,canvas.clientHeight||0)};
+  }
+
+  function ajustarTamanho(){
+    if(!canvas)return;
+    const dpr=Math.min(2,global.devicePixelRatio||1);
+    const {l,a}=medida();
+    if(canvas.width!==l*dpr||canvas.height!==a*dpr){
+      canvas.width=l*dpr; canvas.height=a*dpr;
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+    }
+    const alvo=Math.min(CONFIG.MAX,
+      Math.round((l*a/100000)*CONFIG.DENSIDADE*intensidade()));
+    while(particulas.length<alvo) particulas.push(nova(l,a,true));
+    if(particulas.length>alvo) particulas.length=alvo;
+  }
+
+  function quadro(agora){
+    /* Tela saiu de vista: para o laco E LIMPA. Sem limpar, o canvas
+       guardava o ultimo quadro pintado, e ao voltar para aquela tela o
+       jogador via motas CONGELADAS ate' o laco reassumir. */
+    if(!canvas||!canvas.isConnected||canvas.offsetParent===null){ limpar(); parar(); return; }
+    // tela em transicao pode reportar 0: nao desenha neste quadro
+    if(canvas.clientWidth<2||canvas.clientHeight<2){ laco=requestAnimationFrame(quadro); return; }
+    const dt=Math.min(64,agora-(ultimo||agora)); ultimo=agora;
+    ajustarTamanho();
+    const {l,a}=medida();
+    ctx.clearRect(0,0,l,a);
+    for(let i=0;i<particulas.length;i++){
+      const p=particulas[i];
+      const idade=agora-p.nasceu;
+      if(idade>p.vida||p.y<-20){ particulas[i]=nova(l,a,false); continue; }
+      p.y-=p.sobe*(dt/1000);
+      const x=p.x+Math.sin(agora*0.0006+p.fase)*p.balanco;
+      // aparece e some nas pontas da vida: nada surge nem corta de repente
+      const t=idade/p.vida;
+      const fade=t<0.18?(t/0.18):(t>0.78?(1-t)/0.22:1);
+      ctx.globalAlpha=Math.max(0,Math.min(1,fade))*CONFIG.ALPHA_MAX;
+      ctx.fillStyle=p.cor;
+      ctx.beginPath(); ctx.arc(x,p.y,p.r,0,Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha=1;
+    laco=requestAnimationFrame(quadro);
+  }
+
+  function parar(){
+    if(laco){ cancelAnimationFrame(laco); laco=null; }
+  }
+
+  function limpar(){
+    if(ctx&&canvas) ctx.clearRect(0,0,canvas.width,canvas.height);
+  }
+
+  /* Liga as particulas num canvas, com a paleta daquela tela. Chamar de
+     novo com outras cores troca a paleta sem reiniciar o efeito. */
+  function ligar(alvo,paleta){
+    if(!alvo||typeof document==='undefined')return;
+    if(Array.isArray(paleta)&&paleta.length) cores=paleta.slice();
+    if(canvas!==alvo){
+      parar();
+      limpar();               // o canvas anterior nao pode ficar sujo
+      canvas=alvo; ctx=canvas.getContext('2d');
+      particulas=[]; ultimo=0;
+    }
+    // as particulas vivas trocam de cor aos poucos, conforme renascem
+    if(querMenosMovimento()||intensidade()===0){ parar(); if(ctx)ctx.clearRect(0,0,canvas.width,canvas.height); return; }
+    if(!laco) laco=requestAnimationFrame(quadro);
+  }
+
+  function desligar(){
+    parar();
+    if(ctx&&canvas) ctx.clearRect(0,0,canvas.width,canvas.height);
+    canvas=null; ctx=null; particulas=[];
+  }
+
+  /* Troca so' a paleta. As motas que ja' estao na tela mantem a cor ate'
+     renascerem, entao a transicao acontece sozinha, sem corte. */
+  function pintar(paleta){
+    if(Array.isArray(paleta)&&paleta.length) cores=paleta.slice();
+  }
+
+  global.MenuParticulas=Object.freeze({CONFIG,ligar,desligar,pintar});
+})(typeof window!=='undefined'?window:globalThis);

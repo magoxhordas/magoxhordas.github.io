@@ -21,12 +21,18 @@ const GameSettings = (function(){
       dash:'ShiftLeft', inventory:'KeyI', map:'KeyM', crafting:'KeyT', pause:'Escape'
     }
   };
+  /* Mapa e Criacao so' existem dentro da Dungeon: com o recurso desligado
+     eles saem da lista de teclas, senao o jogador ficaria configurando
+     comando de um modo que nao pode abrir. O vinculo em si continua
+     salvo — voltam intactos ao religar. */
+  const soDungeon=new Set(['map','crafting']);
   const controlMeta=[
     ['moveUp','Mover para cima'],['moveDown','Mover para baixo'],
     ['moveLeft','Mover para esquerda'],['moveRight','Mover para direita'],
     ['dash','Esquiva / dash'],['inventory','Inventário'],
     ['map','Mapa da Dungeon'],['crafting','Criação na Dungeon'],['pause','Pausar']
-  ];
+  ].filter(([id])=>!soDungeon.has(id)
+    ||typeof window.recursoLigado!=='function'||window.recursoLigado('dungeon'));
   const resolutions=[
     ['auto','Automática','Ocupa o maior espaço disponível'],
     ['1','640 × 480','Janela compacta'],
@@ -166,10 +172,20 @@ const GameSettings = (function(){
       `<button class="settings-resolution ${String(data.renderScale)===value?'selected':''}" onclick="GameSettings.setResolution('${value}')"><span>${title}</span><small>${desc}</small></button>`
     ).join('');
   }
+  /* Skins cuja unica tarefa acontece na Dungeon. Com o recurso desligado
+     elas saem da vitrine: deixar "TAREFA: derrote 20 chefes na Dungeon"
+     numa lista onde a Dungeon nao abre e' prometer o impossivel. O
+     desbloqueio em si nao e' tocado — quem ja' ganhou continua com a skin
+     equipada, e religar o recurso devolve as duas a lista. */
+  const skinsSoDungeon=new Set(['imperial_time','urban_chrono']);
+  function skinDisponivel(id){
+    if(!skinsSoDungeon.has(id)) return true;
+    return typeof window.recursoLigado!=='function'||window.recursoLigado('dungeon');
+  }
   function renderSkins(){
     const grid=document.getElementById('settings-skin-grid'); if(!grid) return;
     refreshSkinUnlocks(true);
-    const skins=Array.isArray(window.HERO_SKINS)?window.HERO_SKINS:[];
+    const skins=(Array.isArray(window.HERO_SKINS)?window.HERO_SKINS:[]).filter(sk=>skinDisponivel(sk.id));
     const classId=(typeof selectedClass!=='undefined'&&selectedClass.p1)||'mage';
     grid.innerHTML=skins.map(skin=>{
       const req=getSkinRequirementState(skin.id);

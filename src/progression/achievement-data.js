@@ -75,6 +75,18 @@
     ['excellent_meal','Chef de Guerra','Prepare uma comida com resultado EXCELENTE.','camp','flag',1,'♨',true]
   ];
 
+  /* Conquistas presas a um recurso. Com o recurso desligado em
+     window.RECURSOS elas saem do CATALOGO — nao da' para conquistar o que
+     nao se pode jogar. O dado continua aqui e no save do jogador: religar
+     o recurso traz tudo de volta, inclusive o que ja' estava conquistado.
+     A conferencia de 60 abaixo segue valendo — nada saiu da lista. */
+  const RECURSO_POR_ID=Object.freeze({
+    enter_dungeon:'dungeon',
+    first_dungeon_boss:'dungeon',
+    '20_dungeon_bosses':'dungeon',
+    hyper_boss:'dungeon'
+  });
+
   const ACHIEVEMENTS=Object.freeze(raw.map((entry,index)=>Object.freeze({
     order:index+1,id:entry[0],name:entry[1],description:entry[2],category:entry[3],
     progressType:entry[4],target:entry[5],icon:entry[6],hidden:entry[7]===true
@@ -82,5 +94,5 @@
   if(ACHIEVEMENTS.length!==60) throw new Error(`Catálogo de conquistas inválido: ${ACHIEVEMENTS.length}/60`);
   if(new Set(ACHIEVEMENTS.map(item=>item.id)).size!==60) throw new Error('IDs de conquistas duplicados.');
 
-  global.AchievementData=Object.freeze({VERSION:1,CATEGORIES,ACHIEVEMENTS});
+  global.AchievementData=Object.freeze({VERSION:1,CATEGORIES,ACHIEVEMENTS,RECURSO_POR_ID});
 })(typeof window!=='undefined'?window:globalThis);

@@ -171,10 +171,18 @@ function showCollection(){ openCollection(); }
 function closeCollection(){ showScreen('main-menu'); }
 
 function collSetTab(tab){
+  /* Aba de recurso desligado: some do topo e ninguem cai nela nem pelo
+     estado salvo. O botao continua no HTML — ao religar ele volta
+     sozinho, sem mexer em markup. */
+  const ligada=n=>typeof window.recursoLigado!=='function'||window.recursoLigado(n);
+  if(tab==='dungeon'&&!ligada('dungeon')) tab='weapons';
   collTab=tab;
   ['weapons','items','enemies','classes','bosses','pets','blessings','dungeon'].forEach(t=>{
     const b=document.getElementById('coll-tab-'+t);
-    if(b) b.className='coll-tab'+(t===tab?' active':'');
+    if(!b) return;
+    if(t==='dungeon'&&!ligada('dungeon')){ b.style.display='none'; return; }
+    b.style.display='';
+    b.className='coll-tab'+(t===tab?' active':'');
   });
   const det=document.getElementById('coll-detail');
   det.className='coll-detail';
@@ -1486,7 +1494,8 @@ function renderCollItems(grid){
     const icon=collItemIcon(spec);
     grid.appendChild(collCard(icon,spec.name,'Universal',false,()=>showBuffDetail(spec,'Item universal','#e4c65a'),null,'#e4c65a'));
   });
-  if(Array.isArray(window.DNG_RELICS)){
+  const dungeonNoCodex=typeof window.recursoLigado!=='function'||window.recursoLigado('dungeon');
+  if(dungeonNoCodex&&Array.isArray(window.DNG_RELICS)){
     section('RELIQUIAS DA DUNGEON');
     window.DNG_RELICS.forEach(it=>{
       const icon=codexRelicIcon(`dng_relic_${it.id}`,'#63d8d1')||collItemIcon(it);
@@ -1496,7 +1505,7 @@ function renderCollItems(grid){
       },null,'#63d8d1'));
     });
   }
-  if(Array.isArray(window.DNG_RING_TYPES)){
+  if(dungeonNoCodex&&Array.isArray(window.DNG_RING_TYPES)){
     section('ANEIS DA DUNGEON');
     window.DNG_RING_TYPES.forEach(it=>{
       const icon=codexRelicIcon(`dng_ring_${it.id}`,'#a875ef')||collGameIcon('ring');
