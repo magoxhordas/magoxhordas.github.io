@@ -233,7 +233,12 @@
       const x=node.x,y=node.y,pulse=.5+.5*Math.sin(time*.006+node.phase),color=eventColor(active.id);ctx.save();
       ctx.globalAlpha=.28;ctx.fillStyle='#000';ctx.beginPath();ctx.ellipse(x,y+17,30,9,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
       if(node.kind==='merchant'){
+        // Mesma linguagem do Altar dos Deuses: arte dedicada quando ela ja'
+        // carregou, blocos a mao enquanto nao.
+        const arteMercador=deps.drawObject?.(ctx,'mercador_perdido',x,y+19,44);
+        if(!arteMercador){
         ctx.fillStyle='#5a3c2a';ctx.fillRect(x-10,y-14,20,31);ctx.fillStyle='#c49458';ctx.fillRect(x-8,y-26,16,13);ctx.fillStyle='#513b70';ctx.fillRect(x-14,y-15,28,12);ctx.fillStyle='#e4c06b';ctx.fillRect(x-18,y+7,11,12);ctx.fillRect(x+7,y+7,11,12);
+        }
       }else if(node.kind==='god_altar'){
         // A quinta arte escolhida pelo usuario ja existe recortada no pacote.
         // O evento usa exatamente esse santuario, sem o placeholder circular.
@@ -251,6 +256,10 @@
           desenhado=!!deps.drawHero?.(ctx,'necromancer',x,y+23,'down','idle',0);ctx.restore();
           if(desenhado){ctx.globalAlpha=.42;ctx.strokeStyle='#9f6cff';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y+16,18,6,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;}
         }
+        // Fora do capitulo 5 (onde o necromante e' a aparicao proposital),
+        // o espirito tem arte propria. A sombra ja' foi desenhada acima, por
+        // isso a arte entregue veio sem a sombra assada dela.
+        if(!desenhado) desenhado=!!deps.drawObject?.(ctx,'espirito_errante',x,y+23,36);
         if(!desenhado){ctx.globalAlpha=.70;ctx.fillStyle='#c9baff';ctx.beginPath();ctx.arc(x,y-12,12,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.moveTo(x-13,y-6);ctx.quadraticCurveTo(x-18,y+16,x-5,y+23);ctx.lineTo(x,y+14);ctx.lineTo(x+7,y+23);ctx.quadraticCurveTo(x+18,y+14,x+13,y-6);ctx.fill();ctx.fillStyle='#fff';ctx.fillRect(x-5,y-15,3,3);ctx.fillRect(x+3,y-15,3,3);ctx.globalAlpha=1;}
       }
       const glow=ctx.createRadialGradient(x,y,0,x,y,48);glow.addColorStop(0,`${color}44`);glow.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=glow;ctx.fillRect(x-50,y-50,100,100);ctx.restore();

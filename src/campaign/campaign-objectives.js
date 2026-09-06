@@ -1164,6 +1164,9 @@
         if(desenharObjeto(ctx,target.artVariant||'ninho_east',x,y+16,48,target)||desenharObjeto(ctx,'ninho',x,y+16,48,target)){ctx.restore();return;}
         ctx.fillStyle='#5b594b';ctx.beginPath();ctx.ellipse(x,y,22,14,0,0,Math.PI*2);ctx.fill();for(let i=0;i<5;i++){ctx.fillStyle=i%2?'#dfe6d9':'#aaa994';ctx.beginPath();ctx.arc(x-12+i*6,y-4+(i%2)*7,5,0,Math.PI*2);ctx.fill();}
       }else if(target.kind==='survivor_web'){
+        // Arte dedicada, ancorada pela base. O desenho a mao continua de
+        // reserva para o quadro em que a imagem ainda nao carregou.
+        if(desenharObjeto(ctx,'casulo_sobrevivente',x,y+28,30,target)){ctx.restore();return;}
         ctx.strokeStyle='#e0ebe4';ctx.lineWidth=2;for(let i=0;i<7;i++){const a=i*Math.PI/7;ctx.beginPath();ctx.ellipse(x,y,21-i*2,28-i*2,a,0,Math.PI*2);ctx.stroke();}ctx.fillStyle='#865b47';ctx.fillRect(x-5,y-8,10,21);ctx.fillStyle='#d7b08a';ctx.fillRect(x-4,y-15,8,8);
       }else if(target.kind==='survivor'||target.kind==='hero_ally'){
         const aliado=target.kind==='hero_ally';
