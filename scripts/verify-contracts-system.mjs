@@ -92,6 +92,7 @@ const retrato=(extra={})=>({
   const {ctx}=carregar();
   const S=ctx.ContractsSystem;
   S.configurar({});
+  exigir(S.OFERTA===2,'o quadro deve exibir exatamente duas ofertas');
   const oferta=S.garantirOferta();
   exigir(oferta.length===S.OFERTA,`o quadro deve mostrar ${S.OFERTA} contratos (mostrou ${oferta.length})`);
   exigir(new Set(oferta).size===oferta.length,'o quadro repetiu contratos na mesma oferta');
@@ -349,6 +350,8 @@ const retrato=(extra={})=>({
   for(const acao of ['aceitar','abandonar','atualizar','coletar','fechar'])
     exigir(ui.includes(`function ${acao}(`),`a interface nao tem a acao ${acao}`);
   exigir(ui.includes('CONCLUÍDO'),'a interface nao marca contrato concluido');
+  exigir(ui.includes('.gr-cnome{font-size:calc(18px * var(--gr-k))'),'o nome do contrato voltou a usar fonte pequena');
+  exigir(ui.includes('.gr-cdesc{margin:0;font-size:calc(14px * var(--gr-k))'),'a descricao do contrato voltou a usar fonte pequena');
 
   /* A interface segue o MOLDE DA CONVERSA DO ARQUEIRO — foi pedido assim.
      Estes itens sao o que define aquele molde; se sumirem, o Guerreiro

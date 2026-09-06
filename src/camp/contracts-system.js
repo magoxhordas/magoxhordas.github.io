@@ -24,7 +24,7 @@
 
   const CHAVE='mago_x_hordas_contracts_v1';
   const VERSAO=1;
-  const OFERTA=3;          // contratos visiveis no quadro
+  const OFERTA=2;          // duas ofertas deixam o quadro mais legivel e arejado
   const MAX_ATIVOS=2;      // quantos podem ir juntos para a expedicao
   const REROLLS_POR_VISITA=1;
 
@@ -265,4 +265,3 @@
     _resetParaTestes:()=>{estado=vazio();persistir();},
   });
 })(typeof window!=='undefined'?window:globalThis);
-
