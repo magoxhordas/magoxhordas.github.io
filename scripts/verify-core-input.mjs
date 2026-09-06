@@ -278,7 +278,8 @@ campaignState.d=true;
 unregisterCampaign();
 assert(campaignState.d===false,'unregisterScope nao limpou o estado do escopo');
 
-const scriptTag='<script src="src/core/input-system.js"></script>';
+// casa o CAMINHO: o modulo ganha ?v=... a cada mudanca de cache
+const scriptTag='<script src="src/core/input-system.js';
 const scriptIndex=html.indexOf(scriptTag);
 assert(scriptIndex>=0,'index.html nao carrega o modulo de input');
 assert(scriptIndex<html.indexOf("InputManager.registerScope('campaign'"),'modulo de input deve carregar antes da campanha');
