@@ -30,14 +30,20 @@ function montar({touch=true,largura=800}={}){
   const listeners=new Map();
   const criado=[];
   const elemento=()=>({style:{setProperty(){},removeProperty(){}},classList:{_s:new Set(),
-      add(c){this._s.add(c);},remove(c){this._s.delete(c);},contains(c){return this._s.has(c);}},
-    setAttribute(){},appendChild(){},querySelector:()=>null,remove(){}});
+      add(c){this._s.add(c);},remove(c){this._s.delete(c);},contains(c){return this._s.has(c);},
+      toggle(c,forcar){const v=forcar===undefined?!this._s.has(c):!!forcar;
+        if(v)this._s.add(c);else this._s.delete(c);return v;}},
+    setAttribute(){},appendChild(){},querySelector:()=>null,remove(){},
+    _ls:{}, addEventListener(t,f){ (this._ls[t]=this._ls[t]||[]).push(f); },
+    disparar(t,ev){ (this._ls[t]||[]).forEach(f=>f(ev||{preventDefault(){},stopPropagation(){}})); },
+    textContent:'',type:'',innerHTML:'',id:''});
   const corpo=elemento(); corpo.classList.add('mobile-gameplay-active');
   const doc={
     body:corpo,
     head:{appendChild(){}},
     documentElement:{style:{setProperty(){}}},
     createElement(){const e=elemento();criado.push(e);return e;},
+    _criados:criado,
     getElementById:()=>null,
     addEventListener(tipo,fn){ if(!listeners.has(tipo))listeners.set(tipo,[]); listeners.get(tipo).push(fn); },
     readyState:'complete',
@@ -48,7 +54,7 @@ function montar({touch=true,largura=800}={}){
   const sb={
     console, document:doc, innerWidth:largura,
     performance:{now:()=>relogio},
-    navigator:{maxTouchPoints:touch?5:0},
+    navigator:{maxTouchPoints:touch?5:0, _vibracoes:[], vibrate(ms){this._vibracoes.push(ms);return true;}},
     matchMedia:()=>({matches:touch}),
     GameEvents:{emit(){}},
     GameSettings:{autoAttack:false},
@@ -313,6 +319,84 @@ function montar({touch=true,largura=800}={}){
   // o acampamento resolve os eixos separadamente (desliza na parede)
   exigir(/livre\(S\.x\+dx\*vel,S\.y\)/.test(html)&&/livre\(S\.x,S\.y\+dy\*vel\)/.test(html),
     'o acampamento perdeu o deslizamento por eixo');
+}
+
+/* ── BOTAO CONTEXTUAL ──
+   Aparece so' quando ha' algo perto, executa a MESMA funcao do teclado e
+   some ao sair de perto. */
+{
+  const B=montar();
+  const S=B.sb.MobileTouchSensor;
+  let executou=0;
+  S.publicarContexto(null);
+  const btn=()=>B.doc.body._filhos?.find?.(e=>e.id==='mobile-context-btn');
+  S.publicarContexto({rotulo:'Pescar',executar:()=>{executou++;}});
+  exigir(S.publicarContexto.length>=0,'publicarContexto ausente');
+  S.limparContexto();
+  exigir(executou===0,'o botao executou sem ninguem apertar');
+  // a acao publicada e' a que roda
+  S.publicarContexto({rotulo:'Cozinhar',executar:()=>{executou++;}});
+  exigir(typeof S.limparContexto==='function','limparContexto ausente');
+}
+exigir(/publicarContexto/.test(html),'o acampamento nao publica a acao contextual');
+exigir(/function interagirComAlvo\(\)/.test(html),
+  'a acao de interagir nao foi extraida — teclado e botao estariam duplicando a regra');
+exigir(/if\(k==='e'&&S\.alvo\)\{ e\.preventDefault\(\); interagirComAlvo\(\); \}/.test(html),
+  'a tecla E deixou de usar a mesma funcao do botao');
+exigir(/executar:interagirComAlvo/.test(html),'o botao contextual nao chama a funcao do teclado');
+
+/* ── CONFIGURACOES DE CONTROLE ── */
+exigir(/mobile:\{ joystick:'medio', dashAlto:false, vibrar:true \}/.test(settings),
+  'as preferencias de controle mobile nao tem padrao');
+exigir(/setMobileOption/.test(settings),'faltou o setter das opcoes mobile');
+exigir(/definirEscala/.test(fonte)&&/definirEscala/.test(settings),
+  'o tamanho do joystick nao chega ao sensor');
+exigir(/--mobile-dash-extra/.test(fonte)&&/--mobile-dash-extra/.test(settings),
+  'a posicao do Dash nao chega ao CSS');
+exigir(/vibrarLigado/.test(fonte)&&/vibrarLigado/.test(html),
+  'a preferencia de vibracao nao e respeitada');
+{
+  // COMPORTAMENTO, nao texto: desligada nao pode vibrar; ligada tem de vibrar
+  const B=montar();
+  const S=B.sb.MobileTouchSensor;
+  S.publicarContexto({rotulo:'Pescar',executar:()=>{}});
+  const btn=B.doc._criados.find(e=>e.id==='mobile-context-btn');
+  exigir(!!btn,'o botao contextual nao foi criado');
+  S.vibrarLigado=false;
+  btn.disparar('pointerdown');
+  exigir(B.sb.navigator._vibracoes.length===0,'vibrou com a preferencia desligada');
+  S.vibrarLigado=true;
+  btn.disparar('pointerdown');
+  exigir(B.sb.navigator._vibracoes.length===1,'nao vibrou com a preferencia ligada');
+  exigir(B.sb.navigator._vibracoes[0]<=20,`vibracao longa demais: ${B.sb.navigator._vibracoes[0]}ms`);
+}
+exigir(/settings-mobile-card/.test(html),'o cartao de controles mobile nao esta na tela');
+{
+  // escala limitada: nem minusculo nem gigante
+  const B=montar();
+  const S=B.sb.MobileTouchSensor;
+  S.definirEscala(99); B.disparar('pointerdown',B.toque(1,100,300));
+  exigir(S.raio<=68*1.5+1,`escala grande demais deixou raio ${S.raio}`);
+  B.disparar('pointerup',B.toque(1,100,300));
+  S.definirEscala(0.01); B.disparar('pointerdown',B.toque(2,100,300));
+  exigir(S.raio>=48*0.6-1,`escala pequena demais deixou raio ${S.raio}`);
+  B.disparar('pointerup',B.toque(2,100,300));
+  S.definirEscala(1);
+}
+
+/* ── AVISO DE ORIENTACAO ── */
+exigir(/mobile-girar/.test(fonte),'falta o aviso de girar o dispositivo');
+exigir(/conferirOrientacao/.test(fonte)&&/conferirOrientacao/.test(html),
+  'a orientacao nao e reconferida ao trocar de tela');
+{
+  const B=montar({largura:400});
+  B.sb.innerHeight=900;                     // em pe'
+  B.disparar('pointerdown',B.toque(1,100,300));
+  B.disparar('pointermove',B.toque(1,180,300));
+  B.assentar(100);
+  B.sb.MobileTouchSensor.conferirOrientacao();
+  B.assentar();
+  exigir(B.vetor.active===false,'girar para retrato deixou o joystick preso');
 }
 
 console.log(`OK: input mobile analogico verificado (${checagens} verificacoes).`);

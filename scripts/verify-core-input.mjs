@@ -207,14 +207,14 @@ assert(input.direcaoVisual(0,0,'left')==='left','sem movimento a direcao visual 
 const touchListeners=new Map();
 const makeTouchElement=id=>({
   id,style:{removeProperty(){},setProperty(){}},
-  classList:{add(){},remove(){},contains:name=>name==='mobile-gameplay-active'},
+  classList:{add(){},remove(){},toggle(){},contains:name=>name==='mobile-gameplay-active'},
   setAttribute(){},appendChild(){},remove(){},
   querySelector(){return null;},querySelectorAll(){return [];}
 });
 const legacyControls=makeTouchElement('mobile-controls');
 const touchDocument={
   readyState:'complete',hidden:false,
-  body:{...makeTouchElement('body'),classList:{add(){},remove(){},contains:name=>name==='mobile-gameplay-active'}},
+  body:{...makeTouchElement('body'),classList:{add(){},remove(){},toggle(){},contains:name=>name==='mobile-gameplay-active'}},
   head:makeTouchElement('head'),documentElement:{style:{setProperty(){}}},
   createElement:makeTouchElement,
   getElementById:id=>id==='mobile-controls'?legacyControls:null,

@@ -235,12 +235,18 @@
       SEGUE_CENTRO:0.5,                           // quanto o centro cede ao passar do raio
       SUMICO_MS:140,
     };
-    let pointerId=null,centroX=0,centroY=0,raio=56;
+    let pointerId=null,centroX=0,centroY=0,raio=56,escala=1;
     let sensorEl=null,knobEl=null,installed=false;
+    let vibrarLigado=true;
 
     function raioAtual(){
       const largura=Number(global.innerWidth)||360;
-      return Math.max(AJUSTE.RAIO_MIN,Math.min(AJUSTE.RAIO_MAX,largura*AJUSTE.RAIO_VW));
+      const base=Math.max(AJUSTE.RAIO_MIN,Math.min(AJUSTE.RAIO_MAX,largura*AJUSTE.RAIO_VW));
+      return base*escala;   // Pequeno/Medio/Grande das Configuracoes
+    }
+    function definirEscala(valor){
+      const v=Number(valor);
+      escala=Number.isFinite(v)&&v>0?Math.max(0.6,Math.min(1.5,v)):1;
     }
 
     function isCoarseDevice(){
@@ -309,7 +315,8 @@
 
         /* No mobile ficam apenas Dash + Pausa. As setas, Criar/Acao e Itens somem. */
         #mobile-controls{
-          inset:auto max(10px,var(--safe-right,0px)) max(10px,var(--safe-bottom,0px)) auto!important;
+          inset:auto max(10px,var(--safe-right,0px))
+            calc(max(10px,var(--safe-bottom,0px)) + var(--mobile-dash-extra,0px)) auto!important;
           left:auto!important;right:max(10px,var(--safe-right,0px))!important;
           width:auto!important;padding:0!important;transform:none!important;
           align-items:center!important;justify-content:flex-end!important;
@@ -354,7 +361,37 @@
           border:1px solid rgba(240,208,128,.72);background:rgba(200,168,75,.24);
           box-shadow:0 0 10px rgba(240,208,128,.16);
           transform:translate(-50%,-50%);will-change:transform}
-        @media (hover:hover) and (pointer:fine){#mobile-touch-sensor{display:none!important}}
+        /* Retrato durante o gameplay: a arena foi desenhada deitada, e em
+           pe' sobra pouca altura util. O aviso cobre so' o JOGO — menus
+           continuam acessiveis em pe'. */
+        #mobile-girar{position:fixed;inset:0;z-index:60;display:none;
+          align-items:center;justify-content:center;text-align:center;
+          background:linear-gradient(180deg,rgba(6,4,12,.94),rgba(3,2,8,.97));
+          font-family:'Courier New',monospace;color:#e8d5a8;padding:24px}
+        #mobile-girar.ativo{display:flex}
+        #mobile-girar span{display:block;font-size:40px;margin-bottom:14px;
+          animation:girarDica 2.4s ease-in-out infinite}
+        #mobile-girar b{display:block;font-size:15px;letter-spacing:3px;text-transform:uppercase}
+        #mobile-girar small{display:block;font-size:11px;letter-spacing:1.5px;color:#9a8560;margin-top:8px}
+        @keyframes girarDica{0%,100%{transform:rotate(0)}50%{transform:rotate(-90deg)}}
+
+        /* Botao contextual: so' existe quando ha' algo perto para usar.
+           Fica ACIMA do Dash, com area de toque maior que o desenho. */
+        #mobile-context-btn{position:fixed;z-index:47;display:none;
+          right:max(10px,var(--safe-right,0px));
+          bottom:calc(max(10px,var(--safe-bottom,0px)) + 84px);
+          min-width:68px;min-height:60px;padding:10px 14px;
+          border-radius:12px;border:2px solid rgba(140,240,170,.7);
+          background:linear-gradient(180deg,rgba(18,44,26,.92),rgba(8,20,12,.95));
+          color:#d8f2de;font-family:'Courier New',monospace;font-size:13px;
+          letter-spacing:1.5px;text-transform:uppercase;text-align:center;
+          box-shadow:0 0 18px rgba(0,0,0,.5),0 0 14px rgba(90,220,130,.18);
+          touch-action:none;pointer-events:auto;
+          transition:transform .12s,filter .12s,opacity .15s;opacity:.9}
+        #mobile-context-btn.ativo{display:block}
+        #mobile-context-btn.pressed{transform:scale(.94);filter:brightness(1.3)}
+        @media (hover:hover) and (pointer:fine){
+          #mobile-touch-sensor,#mobile-context-btn{display:none!important}}
       `;
       global.document.head?.appendChild(style);
       sensorEl=global.document.createElement('div');
@@ -364,6 +401,66 @@
       knobEl.id='mobile-touch-sensor-knob';
       sensorEl.appendChild(knobEl);
       global.document.body.appendChild(sensorEl);
+    }
+
+    /* ── BOTAO CONTEXTUAL ──
+       Aparece so' quando o modo publica uma acao disponivel, e executa a
+       MESMA funcao que a tecla usa — nada de regra de gameplay duplicada
+       aqui dentro. */
+    let contextoEl=null, contextoAtual=null, contextoRotulo='';
+    function garantirContexto(){
+      if(contextoEl||!global.document?.body)return;
+      contextoEl=global.document.createElement('button');
+      contextoEl.id='mobile-context-btn';
+      contextoEl.type='button';
+      contextoEl.setAttribute('aria-label','Interagir');
+      contextoEl.addEventListener('pointerdown',ev=>{
+        ev.preventDefault?.(); ev.stopPropagation?.();
+        contextoEl.classList.add('pressed');
+        if(vibrarLigado) try{ global.navigator?.vibrate?.(10); }catch(_){}
+        try{ contextoAtual?.executar?.(); }catch(_){}
+      });
+      const soltar=()=>contextoEl.classList.remove('pressed');
+      contextoEl.addEventListener('pointerup',soltar);
+      contextoEl.addEventListener('pointercancel',soltar);
+      contextoEl.addEventListener('lostpointercapture',soltar);
+      global.document.body.appendChild(contextoEl);
+    }
+    /* Chamado uma vez por quadro pelo modo. So' toca no DOM quando o rotulo
+       muda — escrever texto todo quadro forcaria layout a' toa. */
+    function publicarContexto(acao){
+      if(!isCoarseDevice())return;
+      garantirContexto();
+      if(!contextoEl)return;
+      contextoAtual=acao&&typeof acao.executar==='function'?acao:null;
+      const rotulo=contextoAtual?String(contextoAtual.rotulo||'Interagir'):'';
+      if(rotulo!==contextoRotulo){
+        contextoRotulo=rotulo;
+        contextoEl.textContent=rotulo;
+        contextoEl.classList.toggle('ativo',!!rotulo);
+      }
+    }
+    function limparContexto(){ publicarContexto(null); }
+
+    /* ── AVISO DE ORIENTACAO ── */
+    let girarEl=null;
+    function garantirGirar(){
+      if(girarEl||!global.document?.body)return;
+      girarEl=global.document.createElement('div');
+      girarEl.id='mobile-girar';
+      girarEl.setAttribute('aria-hidden','true');
+      girarEl.innerHTML='<div><span>📱</span><b>Gire o dispositivo</b>'
+        +'<small>a arena foi feita para a tela deitada</small></div>';
+      global.document.body.appendChild(girarEl);
+    }
+    function conferirOrientacao(){
+      if(!isCoarseDevice())return;
+      garantirGirar(); if(!girarEl)return;
+      const emPe=(Number(global.innerHeight)||0)>(Number(global.innerWidth)||0);
+      const jogando=isGameplayActive();
+      const mostrar=emPe&&jogando;
+      girarEl.classList.toggle('ativo',mostrar);
+      if(mostrar) release();          // em pe' o joystick nao fica preso
     }
 
     function configureLegacyControls(){
@@ -453,14 +550,18 @@
       global.document.addEventListener('pointerup',onPointerUp,{passive:false});
       global.document.addEventListener('pointercancel',onPointerUp,{passive:false});
       global.addEventListener?.('blur',release);
-      global.addEventListener?.('orientationchange',release);
+      global.addEventListener?.('orientationchange',()=>{release();conferirOrientacao();});
+      global.addEventListener?.('resize',conferirOrientacao);
+      conferirOrientacao();
       global.document.addEventListener('visibilitychange',()=>{if(global.document.hidden)release();});
       return true;
     }
 
     return {
       install,release,shouldCapture,isCoarseDevice,isMoving,
-      vetorDoDelta,dentroDaZona,
+      vetorDoDelta,dentroDaZona,publicarContexto,limparContexto,definirEscala,conferirOrientacao,
+      get vibrarLigado(){return vibrarLigado;},
+      set vibrarLigado(v){vibrarLigado=v!==false;},
       get ajuste(){return {...AJUSTE,...AJUSTE_ANALOGICO};},
       get raio(){return raio;},
     };

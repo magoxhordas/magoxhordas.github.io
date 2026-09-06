@@ -6411,7 +6411,12 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
         <div class="settings-control-head"><h2>Comandos</h2><button onclick="GameSettings.resetControls()">Restaurar padrão</button></div>
         <div class="settings-key-grid" id="settings-key-grid"></div>
         <p class="settings-help">Clique em uma tecla para alterá-la. Com o ataque automático desligado, use o botão esquerdo do mouse.</p>
-      </div>
+              <article class="settings-card" id="settings-mobile-wrap">
+          <h2>Controles no celular</h2>
+          <p>Só aparecem em aparelhos com tela sensível ao toque.</p>
+          <div id="settings-mobile-card"></div>
+        </article>
+</div>
 
       <div class="settings-panel" data-settings-panel="video">
         <div class="settings-resolution-grid" id="settings-resolution-grid"></div>
@@ -6609,7 +6614,7 @@ body.campaign-chapter-active #br-hud { visibility:hidden!important;opacity:0!imp
 })(window);
 
 </script>
-  <script src="src/core/input-system.js?v=20260906-mobile1"></script>
+  <script src="src/core/input-system.js?v=20260906-mobile2"></script>
 <script>
 (function(global){
   'use strict';
@@ -20975,8 +20980,8 @@ GameRuntime.onSuspend(()=>{
 
 </script>
   <script src="src/core/audio-system.js"></script>
-  <script src="src/ui/settings-system.js?v=20260906-mobile1"></script>
-    <script src="src/dungeon/dungeon-system.js?v=20260906-mobile1"></script>
+  <script src="src/ui/settings-system.js?v=20260906-mobile2"></script>
+    <script src="src/dungeon/dungeon-system.js?v=20260906-mobile2"></script>
   <script>
 // SISTEMA DE PESCA — Estilo Stardew Valley
 // ═══════════════════════════════════════════════════════
@@ -22167,7 +22172,7 @@ window.visualViewport?.addEventListener('resize',scheduleResponsiveLayout,{passi
       if(action==='dash'){
         /* Toque MUITO curto, so' no dash. Nao vibra em ataque nem a cada
            passo; a ausencia da API nao pode virar erro. */
-        try{ navigator.vibrate?.(12); }catch(_){}
+        if(window.MobileTouchSensor?.vibrarLigado!==false) try{ navigator.vibrate?.(12); }catch(_){}
         if(dungeonActive()&&typeof _dngTriggerDash==='function') _dngTriggerDash();
         else if(typeof state!=='undefined'&&state==='playing'&&typeof triggerDash==='function'&&player) triggerDash(player);
       } else if(action==='menu'){
@@ -22232,7 +22237,12 @@ window.showScreen=function(){
   /* Trocar de tela solta o joystick. Sem isto, abrir a loja ou o Codex com
      o polegar apoiado deixava o vetor congelado e o heroi voltava andando
      sozinho ao fechar o painel. */
-  try{ window.MobileTouchSensor?.release?.(); window.InputManager?.resetAnalog?.(); }catch(_){}
+  try{
+    window.MobileTouchSensor?.release?.();
+    window.MobileTouchSensor?.limparContexto?.();   // o botao de interagir nao sobrevive a troca de tela
+    window.MobileTouchSensor?.conferirOrientacao?.();
+    window.InputManager?.resetAnalog?.();
+  }catch(_){}
   const result=mobileShowScreen.apply(this,arguments);
   setTimeout(updateMobileControls,0);
   return result;
@@ -22781,6 +22791,9 @@ window.CampV2 = (function(){
     if(Math.abs(dx)>1e-4&&livre(S.x+dx*vel,S.y)) S.x+=dx*vel;
     if(Math.abs(dy)>1e-4&&livre(S.x,S.y+dy*vel)) S.y+=dy*vel;
     atualizarPet(dt);
+    // o botao contextual do celular espelha o MESMO alvo do prompt [E]
+    if(typeof MobileTouchSensor!=='undefined'&&MobileTouchSensor.publicarContexto)
+      MobileTouchSensor.publicarContexto(S.alvo?{rotulo:S.alvo.rotulo,executar:interagirComAlvo}:null);
 
     const cant=canteiroEm(S.x,S.y);
     if(cant){
@@ -22873,14 +22886,22 @@ window.CampV2 = (function(){
     atualizar(dt,ts); desenhar(cv.getContext('2d'),ts);
   }
 
+  /* A acao de interagir vive AQUI e e' chamada tanto pela tecla E quanto
+     pelo botao contextual do celular. Duplicar a regra nos dois caminhos
+     era o jeito de um sair do outro com o tempo. */
+  function interagirComAlvo(){
+    const a=S.alvo; if(!a) return false;
+    if(a.id==='canteiro'){ a.abrir(); return true; }
+    pausar(); S.voltarAoFechar=true; a.abrir();
+    return true;
+  }
+
   function aoTeclar(e){
     if(!S.ativo) return;
     const k=e.key.toLowerCase();
     if(k==='shift'){ S.teclas['shift']=true; return; }
     S.teclas[k]=true;
-    if(k==='e'&&S.alvo){ e.preventDefault(); const a=S.alvo;
-      if(a.id==='canteiro'){ a.abrir(); return; }
-      pausar(); S.voltarAoFechar=true; a.abrir(); }
+    if(k==='e'&&S.alvo){ e.preventDefault(); interagirComAlvo(); }
     else if(k==='q'){ e.preventDefault(); trocarSemente(); }
     else if(k==='f2'){ e.preventDefault(); S.depurar=!S.depurar; }
     else if(k==='i'){ e.preventDefault(); if(typeof toggleInventory==='function') toggleInventory(); }
@@ -22940,7 +22961,7 @@ window.CampV2 = (function(){
     else if(S.ativo && !acampamentoNaFrente()) pausar();
   }, 250);
 
-  return {abrir, sair, pausar, retomar, PONTOS, BLOQUEIOS, BLOQUEIOS_CIRCULARES, PASSAGENS, CANTEIROS, S,
+  return {abrir, sair, pausar, retomar, interagirComAlvo, PONTOS, BLOQUEIOS, BLOQUEIOS_CIRCULARES, PASSAGENS, CANTEIROS, S,
           medidas:()=>({MW,MH})};
 })();
 // [/CAMP-V2]
